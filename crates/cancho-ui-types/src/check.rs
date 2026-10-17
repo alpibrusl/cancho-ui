@@ -6,7 +6,7 @@
 //! semantic model from `docs/semantics.md`.
 
 use cancho_ui_syntax::{
-    ast::{Accessibility, Component, ElementKind, File, Role, ViewNode},
+    ast::{Accessibility, Binding, Component, ElementKind, File, Role, ViewNode},
     Span,
 };
 use thiserror::Error;
@@ -74,7 +74,7 @@ fn check_component(c: &Component) -> Result<(), TypeError> {
 
 fn check_view_node(_component: &str, node: &ViewNode) -> Result<(), TypeError> {
     match node {
-        ViewNode::Element { kind, accessibility, children, span } => {
+        ViewNode::Element { kind, accessibility, children, bindings, span } => {
             if let ElementKind::Named(name) = kind {
                 if !is_pascal_case(name) {
                     return Err(TypeError::NotPascalCaseKind {
@@ -87,9 +87,20 @@ fn check_view_node(_component: &str, node: &ViewNode) -> Result<(), TypeError> {
             for c in children {
                 check_view_node(_component, c)?;
             }
+            for b in bindings {
+                check_binding(b)?;
+            }
         }
         ViewNode::Text { .. } => {}
     }
+    Ok(())
+}
+
+fn check_binding(_b: &Binding) -> Result<(), TypeError> {
+    // Phase 2 enforces binding types (e.g. `on:` must reference a
+    // declared event; `role:` must be one of the built-in roles;
+    // `label:` must be non-empty for interactive primitives). For
+    // now, the parser accepts and the type checker passes through.
     Ok(())
 }
 
@@ -155,11 +166,11 @@ mod tests {
 
     #[test]
     fn reserved_name_refused() {
-        // `state` is reserved at the language level (per the rule
+        // `effect` is reserved at the language level (per the rule
         // catalog in `spec/diagnostics/README.md`) but is not a hard
-        // keyword in the parser, so it lexes as an identifier and
+        // keyword in the lexer, so it lexes as an identifier and
         // the reserved-word check fires here.
-        let f = parse_ok("component state { view { Text { \"hi\" } } }\n");
+        let f = parse_ok("component effect { view { Text { \"hi\" } } }\n");
         let err = check_file(&f).unwrap_err();
         assert!(matches!(err, TypeError::ReservedComponentName { .. }));
     }

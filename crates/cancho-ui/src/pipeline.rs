@@ -123,6 +123,14 @@ fn parse_to_diag(e: ParseError, _file: &Path) -> Diagnostic {
             format!("unexpected end of file; expected {}", expected),
             None,
         ),
+        ParseError::InvalidNumber { raw, line, column } => (
+            "parse-invalid-number",
+            format!("invalid number literal: {}", raw),
+            Some(Span::new(
+                cancho_ui_syntax::Position { line: *line, column: *column },
+                cancho_ui_syntax::Position { line: *line, column: *column },
+            )),
+        ),
     };
     Diagnostic { code: code.into(), message, span }
 }
@@ -132,15 +140,35 @@ fn token_name(t: &cancho_ui_syntax::Token) -> &'static str {
     match t {
         Token::Component => "`component`",
         Token::View => "`view`",
+        Token::State => "`state`",
+        Token::On => "`on`",
+        Token::Requires => "`requires`",
+        Token::Let => "`let`",
         Token::LBrace => "`{`",
         Token::RBrace => "`}`",
         Token::LParen => "`(`",
         Token::RParen => "`)`",
+        Token::LBracket => "`[`",
+        Token::RBracket => "`]`",
         Token::Semi => "`;`",
         Token::Comma => "`,`",
+        Token::Dot => "`.`",
         Token::DotDot => "`:`",
+        Token::Plus => "`+`",
+        Token::Minus => "`-`",
+        Token::Star => "`*`",
+        Token::Slash => "`/`",
+        Token::Eq => "`=`",
+        Token::EqEq => "`==`",
+        Token::BangEq => "`!=`",
+        Token::Lt => "`<`",
+        Token::LtEq => "`<=`",
+        Token::Gt => "`>`",
+        Token::GtEq => "`>=`",
         Token::Ident(_) => "identifier",
         Token::StringLit(_) => "string literal",
+        Token::IntLit(_) => "integer literal",
+        Token::FloatLit(_) => "float literal",
         Token::Eof => "end of file",
     }
 }

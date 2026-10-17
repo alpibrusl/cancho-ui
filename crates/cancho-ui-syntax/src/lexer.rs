@@ -17,19 +17,41 @@ pub enum Token {
     // Keywords (the Phase 1 reserved set, see spec/grammar §2)
     Component,
     View,
+    State,
+    On,
+    Requires,
+    Let,
 
     // Punctuation
     LBrace,    // {
     RBrace,    // }
     LParen,    // (
     RParen,    // )
+    LBracket,  // [
+    RBracket,  // ]
     Semi,      // ;
     Comma,     // ,
+    Dot,       // .
     DotDot,    // :
+
+    // Operators
+    Plus,      // +
+    Minus,     // -
+    Star,      // *
+    Slash,     // /
+    Eq,        // =
+    EqEq,      // ==
+    BangEq,    // !=
+    Lt,        // <
+    LtEq,      // <=
+    Gt,        // >
+    GtEq,      // >=
 
     // Literals and identifiers
     Ident(String),
     StringLit(String),
+    IntLit(i64),
+    FloatLit(f64),
 
     // End of file
     Eof,
@@ -40,7 +62,15 @@ impl Token {
     /// distinguish `Text` (a built-in primitive, used as an element
     /// kind) from any identifier.
     pub fn is_keyword(&self) -> bool {
-        matches!(self, Token::Component | Token::View)
+        matches!(
+            self,
+            Token::Component
+                | Token::View
+                | Token::State
+                | Token::On
+                | Token::Requires
+                | Token::Let
+        )
     }
 }
 
@@ -196,10 +226,54 @@ impl Lexer {
             '}' => { self.bump(); Ok(Token::RBrace) }
             '(' => { self.bump(); Ok(Token::LParen) }
             ')' => { self.bump(); Ok(Token::RParen) }
+            '[' => { self.bump(); Ok(Token::LBracket) }
+            ']' => { self.bump(); Ok(Token::RBracket) }
             ';' => { self.bump(); Ok(Token::Semi) }
             ',' => { self.bump(); Ok(Token::Comma) }
+            '.' => { self.bump(); Ok(Token::Dot) }
             ':' => { self.bump(); Ok(Token::DotDot) }
+            '+' => { self.bump(); Ok(Token::Plus) }
+            '-' => { self.bump(); Ok(Token::Minus) }
+            '*' => { self.bump(); Ok(Token::Star) }
+            '/' => { self.bump(); Ok(Token::Slash) }
+            '=' => {
+                self.bump();
+                if self.peek() == Some('=') {
+                    self.bump();
+                    Ok(Token::EqEq)
+                } else {
+                    Ok(Token::Eq)
+                }
+            }
+            '!' => {
+                self.bump();
+                if self.peek() == Some('=') {
+                    self.bump();
+                    Ok(Token::BangEq)
+                } else {
+                    Err(LexError::UnexpectedChar { ch: '!', line: self.line, column: self.column })
+                }
+            }
+            '<' => {
+                self.bump();
+                if self.peek() == Some('=') {
+                    self.bump();
+                    Ok(Token::LtEq)
+                } else {
+                    Ok(Token::Lt)
+                }
+            }
+            '>' => {
+                self.bump();
+                if self.peek() == Some('=') {
+                    self.bump();
+                    Ok(Token::GtEq)
+                } else {
+                    Ok(Token::Gt)
+                }
+            }
             '"' => self.lex_string(),
+            c if c.is_ascii_digit() => self.lex_number(),
             c if is_ident_start(c) => self.lex_ident(),
             c => Err(LexError::UnexpectedChar {
                 ch: c,
@@ -207,6 +281,49 @@ impl Lexer {
                 column: self.column,
             }),
         }
+    }
+
+    fn lex_number(&mut self) -> Result<Token, LexError> {
+        let mut s = String::new();
+        while let Some(c) = self.peek() {
+            if c.is_ascii_digit() {
+                s.push(c);
+                self.bump();
+            } else {
+                break;
+            }
+        }
+        // Optional fractional part.
+        if self.peek() == Some('.') {
+            // Look ahead — if next-next is a digit, treat as float.
+            let next = self.source.get(self.cursor + 1).copied();
+            if next.map(|c| c.is_ascii_digit()).unwrap_or(false) {
+                s.push('.');
+                self.bump();
+                while let Some(c) = self.peek() {
+                    if c.is_ascii_digit() {
+                        s.push(c);
+                        self.bump();
+                    } else {
+                        break;
+                    }
+                }
+                return Ok(Token::FloatLit(s.parse().map_err(|_| {
+                    LexError::UnexpectedChar {
+                        ch: '.',
+                        line: self.line,
+                        column: self.column,
+                    }
+                })?));
+            }
+        }
+        Ok(Token::IntLit(s.parse().map_err(|_| {
+            LexError::UnexpectedChar {
+                ch: '?',
+                line: self.line,
+                column: self.column,
+            }
+        })?))
     }
 
     fn lex_string(&mut self) -> Result<Token, LexError> {
@@ -255,13 +372,18 @@ impl Lexer {
         Ok(match s.as_str() {
             "component" => Token::Component,
             "view" => Token::View,
-            // Note: `Text`, `Column`, `Row` are intentionally NOT
-            // keywords. They are element kinds in the parser, and
-            // an agent or human is free to define their own
-            // component named `Text` (the parser's element-kind
-            // path is unambiguous because the reserved-word rule
-            // applies at the binding level, not the kind level —
-            // see `spec/diagnostics/name_reserved`).
+            "state" => Token::State,
+            "on" => Token::On,
+            "requires" => Token::Requires,
+            "let" => Token::Let,
+            // Note: `Text`, `Column`, `Row`, `Button` are
+            // intentionally NOT keywords. They are element kinds
+            // in the parser, and an agent or human is free to
+            // define their own component with any of these names
+            // (the parser's element-kind path is unambiguous
+            // because the reserved-word rule applies at the
+            // binding level, not the kind level — see
+            // `spec/diagnostics/name_reserved`).
             _ => Token::Ident(s),
         })
     }

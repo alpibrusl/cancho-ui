@@ -1,8 +1,9 @@
 # ROADMAP.md
 
-> **Status: Phase 0, design contract.** This document records what
-> cancho-ui intends to build, in what order, and how each phase ends.
-> A phase that ends is a phase whose exit criteria are met; a phase
+> **Status: Phase 0 and Tier 1 of Phase 1 shipped in the initial
+> commit (`42993cd`).** This document records what cancho-ui
+> intends to build, in what order, and how each phase ends. A
+> phase that ends is a phase whose exit criteria are met; a phase
 > that stops is one whose stop/rethink conditions fired. Estimates
 > are planning ranges, not commitments — the same caveat
 > [cancho's own ROADMAP.md](https://github.com/alpibrusl/cancho/blob/main/docs/ROADMAP.md)
@@ -12,13 +13,69 @@
 > the cancho Core dependencies named and the stop/rethink conditions
 > made explicit at every phase.
 
+## What shipped
+
+| Slice | Status | Where it landed |
+|---|---|---|
+| **Phase 0** — design contract | ✅ done | initial commit `42993cd` |
+| **Phase 1 / Tier 1** — static render end-to-end (Hello, world) | ✅ done | initial commit `42993cd` |
+| **Phase 1 / Tier 2** — state + events + Counter works in the browser | ⏳ in progress (Tier 2.1 below) | next commit |
+| **Phase 1 / Tier 3** — `requires` enforcement, capability checker, search-able-list demo | pending | |
+| **Phase 1 / Tier 4** — `match` on `Result`, async with `await`, `foreign` blocks | pending | |
+| **Phase 1 / Tier 5** — source maps, `--output json`, `inspect` / `diff` / `report` / `skill` / `introspect` / `test` | pending | |
+| **Phase 2** — capability/effect reachability, full refusal suite, evidence report | pending | |
+
+### Phase 1 / Tier 1 row
+
+**Phase 1 Tier 1: hello world — static render end-to-end**
+(`42993cd`). Shipped the lexer, parser, type-checker, typed UI IR,
+canonical JSON serializer, JavaScript + DOM emitter, and CLI binary
+in one commit. Hello-world source (`examples/hello/hello.cui`) compiles
+to JavaScript that produces the right DOM tree in a real browser
+(verified via jsdom). 19 tests, all green.
+
+**Found while writing it:**
+
+- **`EmptyView` check was added then removed.** It refused
+  components with an empty `view` block, but empty view bodies are
+  legitimate when a component composes an empty wrapper around a
+  child. The check is gone; no rule in the Phase 1 catalog required
+  it. Recorded here so a future reader doesn't add it back.
+- **The IR `Span` orphan rule** required a wrapper type
+  (`IrSpan`/`IrPosition`) in `cancho-ui-ir`. `Serialize` cannot be
+  `impl`'d for a foreign type, so the IR owns its serializable
+  positions and converts from `cancho_ui_syntax::span::Span`.
+- **The proposal §5.2 sketch used call-style syntax
+  (`Text("hello")`)**; the implementation and
+  `spec/grammar/README.md` use block-style (`Text { "hello" }`).
+  Corrected in [`docs/language-design.md`](docs/language-design.md)
+  §10 decision 11 and in [`docs/proposal.md`](docs/proposal.md)
+  §5.2 (which now notes the divergence and points at the grammar).
+- **`.gitignore` initially forgot `/target`** — `git add .` pulled
+  in build artifacts. Reset, fixed, restaged. Recorded so the next
+  workspace doesn't repeat the mistake.
+- **`/target` is in the ignore, but `examples/hello/hello.js` is
+  generated** and ignored via `*.js`. Reproducing the hello world
+  is `cargo run -p cancho-ui --bin cancho-ui -- build
+  examples/hello/hello.cui -o examples/hello/hello.js`, not a
+  committed artifact.
+
+**Not in this slice (deliberately):** state, events, capabilities,
+matches, async, foreign, target blocks, source maps,
+`--output json`, agent-facing `inspect` / `diff` / `report` /
+`skill` / `introspect` / `test`. These are Tier 2 / Tier 3 / Tier 4 /
+Tier 5 below.
+
 ---
 
 ## Phase 0 — Design contract and feasibility
 
 **Indicative duration:** 1–2 weeks.
 
-**Deliverables**
+**Status:** done. Phase 0 deliverables landed in the initial
+commit (`42993cd`); see [`SESSION-LOG.md`](SESSION-LOG.md) for
+the implementation record. The Tier 1 implementation followed
+immediately and lives in the same commit.
 
 - `docs/proposal.md` — the polished proposal, citing the cancho Core
   documents that settle each inherited idea.

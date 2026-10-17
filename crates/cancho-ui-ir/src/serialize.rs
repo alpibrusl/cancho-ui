@@ -1,14 +1,6 @@
 //! Canonical IR serialization. Phase 1 emits JSON; Phase 2 may
 //! add a binary form. The shape mirrors
 //! `../../../spec/ir-schema/README.md` §10.
-//!
-//! Stable rules:
-//! - field order matches the declaration order in `ir.rs`,
-//! - no insignificant whitespace,
-//! - stable ID encoding is a decimal integer (Phase 2 will switch
-//!   to the 32-byte hex hash when the canonical encoder lands),
-//! - source spans are kept (they are part of the IR, not a
-//!   sidecar, for Phase 1).
 
 use serde::Serialize;
 
@@ -19,15 +11,9 @@ pub fn schema_version() -> &'static str {
 }
 
 pub fn canonical_json(ir: &IrFile) -> String {
-    // serde_json::to_string is already deterministic for a struct
-    // with derived Serialize and a fixed field order. Phase 2 adds
-    // explicit canonical ordering if a snapshot test demands it.
     serde_json::to_string_pretty(ir).expect("IrFile serialization is infallible")
 }
 
-/// A serializable view of `cancho_ui_syntax::span::Span`. We can't
-/// `impl Serialize for the foreign Span` (orphan rule), so the IR
-/// stores an `IrSpan` directly and provides a `From<Span>` impl.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct IrSpan {
     pub start: IrPosition,
@@ -70,12 +56,161 @@ impl Serialize for IrFile {
 impl Serialize for IrComponent {
     fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
-        let mut s = ser.serialize_struct("IrComponent", 4)?;
+        let mut s = ser.serialize_struct("IrComponent", 6)?;
         s.serialize_field("id", &self.id.0)?;
         s.serialize_field("name", &self.name)?;
+        s.serialize_field("state", &self.state)?;
+        s.serialize_field("requires", &self.requires)?;
+        s.serialize_field("events", &self.events)?;
         s.serialize_field("view", &self.view)?;
         s.serialize_field("span", &IrSpan::from(self.span))?;
         s.end()
+    }
+}
+
+impl Serialize for IrStateField {
+    fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut s = ser.serialize_struct("IrStateField", 4)?;
+        s.serialize_field("name", &self.name)?;
+        s.serialize_field("ty", &self.ty)?;
+        s.serialize_field("initial", &self.initial)?;
+        s.serialize_field("span", &IrSpan::from(self.span))?;
+        s.end()
+    }
+}
+
+impl Serialize for IrType {
+    fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        match self {
+            IrType::Int => ser.serialize_unit_variant("IrType", 0, "Int"),
+            IrType::Float => ser.serialize_unit_variant("IrType", 1, "Float"),
+            IrType::Bool => ser.serialize_unit_variant("IrType", 2, "Bool"),
+            IrType::String => ser.serialize_unit_variant("IrType", 3, "String"),
+        }
+    }
+}
+
+impl Serialize for IrCapabilityRef {
+    fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut s = ser.serialize_struct("IrCapabilityRef", 2)?;
+        s.serialize_field("name", &self.name)?;
+        s.serialize_field("span", &IrSpan::from(self.span))?;
+        s.end()
+    }
+}
+
+impl Serialize for IrEventHandler {
+    fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut s = ser.serialize_struct("IrEventHandler", 4)?;
+        s.serialize_field("name", &self.name)?;
+        s.serialize_field("params", &self.params)?;
+        s.serialize_field("body", &self.body)?;
+        s.serialize_field("span", &IrSpan::from(self.span))?;
+        s.end()
+    }
+}
+
+impl Serialize for IrStmt {
+    fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        match self {
+            IrStmt::Assign { target, value, span } => {
+                use serde::ser::SerializeStruct;
+                let mut s = ser.serialize_struct("IrStmt::Assign", 3)?;
+                s.serialize_field("target", target)?;
+                s.serialize_field("value", value)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
+            IrStmt::Expr { expr, span } => {
+                use serde::ser::SerializeStruct;
+                let mut s = ser.serialize_struct("IrStmt::Expr", 2)?;
+                s.serialize_field("expr", expr)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
+        }
+    }
+}
+
+impl Serialize for IrExpr {
+    fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        match self {
+            IrExpr::IntLit { value, span } => {
+                let mut s = ser.serialize_struct("IrExpr::IntLit", 2)?;
+                s.serialize_field("value", value)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
+            IrExpr::FloatLit { value, span } => {
+                let mut s = ser.serialize_struct("IrExpr::FloatLit", 2)?;
+                s.serialize_field("value", value)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
+            IrExpr::StringLit { value, span } => {
+                let mut s = ser.serialize_struct("IrExpr::StringLit", 2)?;
+                s.serialize_field("value", value)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
+            IrExpr::BoolLit { value, span } => {
+                let mut s = ser.serialize_struct("IrExpr::BoolLit", 2)?;
+                s.serialize_field("value", value)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
+            IrExpr::Ident { name, span } => {
+                let mut s = ser.serialize_struct("IrExpr::Ident", 2)?;
+                s.serialize_field("name", name)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
+            IrExpr::Binary { op, lhs, rhs, span } => {
+                let mut s = ser.serialize_struct("IrExpr::Binary", 4)?;
+                s.serialize_field("op", op)?;
+                s.serialize_field("lhs", lhs)?;
+                s.serialize_field("rhs", rhs)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
+            IrExpr::Unary { op, operand, span } => {
+                let mut s = ser.serialize_struct("IrExpr::Unary", 3)?;
+                s.serialize_field("op", op)?;
+                s.serialize_field("operand", operand)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
+        }
+    }
+}
+
+impl Serialize for IrBinOp {
+    fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        let s = match self {
+            IrBinOp::Add => "Add",
+            IrBinOp::Sub => "Sub",
+            IrBinOp::Mul => "Mul",
+            IrBinOp::Div => "Div",
+            IrBinOp::Eq => "Eq",
+            IrBinOp::Ne => "Ne",
+            IrBinOp::Lt => "Lt",
+            IrBinOp::Le => "Le",
+            IrBinOp::Gt => "Gt",
+            IrBinOp::Ge => "Ge",
+        };
+        ser.serialize_str(s)
+    }
+}
+
+impl Serialize for IrUnOp {
+    fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        ser.serialize_str(match self {
+            IrUnOp::Neg => "Neg",
+        })
     }
 }
 
@@ -92,22 +227,32 @@ impl Serialize for IrViewBlock {
 impl Serialize for IrViewNode {
     fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
         match self {
-            IrViewNode::Element { kind, accessibility, children, span } => {
+            IrViewNode::Element { kind, accessibility, bindings, children, span } => {
                 use serde::ser::SerializeStruct;
-                let mut s = ser.serialize_struct("IrViewNode::Element", 4)?;
+                let mut s = ser.serialize_struct("IrViewNode::Element", 5)?;
                 s.serialize_field("kind", kind)?;
                 s.serialize_field("accessibility", accessibility)?;
+                s.serialize_field("bindings", bindings)?;
                 s.serialize_field("children", children)?;
                 s.serialize_field("span", &IrSpan::from(*span))?;
                 s.end()
             }
-            IrViewNode::Text { value, span } => {
+            IrViewNode::Text { parts, span } => {
                 use serde::ser::SerializeStruct;
                 let mut s = ser.serialize_struct("IrViewNode::Text", 2)?;
-                s.serialize_field("value", value)?;
+                s.serialize_field("parts", parts)?;
                 s.serialize_field("span", &IrSpan::from(*span))?;
                 s.end()
             }
+        }
+    }
+}
+
+impl Serialize for IrTextPart {
+    fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        match self {
+            IrTextPart::Literal(s) => ser.serialize_str(s),
+            IrTextPart::Expr(e) => e.serialize(ser),
         }
     }
 }
@@ -118,12 +263,8 @@ impl Serialize for IrElementKind {
             IrElementKind::Column => ser.serialize_unit_variant("IrElementKind", 0, "Column"),
             IrElementKind::Row => ser.serialize_unit_variant("IrElementKind", 1, "Row"),
             IrElementKind::Text => ser.serialize_unit_variant("IrElementKind", 2, "Text"),
-            IrElementKind::Named(s) => {
-                use serde::ser::SerializeStruct;
-                let mut st = ser.serialize_struct("IrElementKind::Named", 1)?;
-                st.serialize_field("Named", s)?;
-                st.end()
-            }
+            IrElementKind::Button => ser.serialize_unit_variant("IrElementKind", 3, "Button"),
+            IrElementKind::Named(s) => ser.serialize_str(s),
         }
     }
 }
@@ -140,9 +281,33 @@ impl Serialize for IrAccessibility {
 
 impl Serialize for IrRole {
     fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        let s = match self {
+            IrRole::Text => "text",
+            IrRole::Heading => "heading",
+            IrRole::Button => "button",
+            IrRole::Other(s) => s.as_str(),
+        };
+        ser.serialize_str(s)
+    }
+}
+
+impl Serialize for IrBinding {
+    fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut s = ser.serialize_struct("IrBinding", 3)?;
+        s.serialize_field("key", &self.key)?;
+        s.serialize_field("value", &self.value)?;
+        s.serialize_field("span", &IrSpan::from(self.span))?;
+        s.end()
+    }
+}
+
+impl Serialize for IrBindingValue {
+    fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
         match self {
-            IrRole::Text => ser.serialize_unit_variant("IrRole", 0, "Text"),
-            IrRole::Other(s) => ser.serialize_str(s),
+            IrBindingValue::String(s) => ser.serialize_str(s),
+            IrBindingValue::EventRef(s) => ser.serialize_str(s),
+            IrBindingValue::Role(r) => r.serialize(ser),
         }
     }
 }

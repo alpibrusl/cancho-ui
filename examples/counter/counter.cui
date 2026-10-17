@@ -1,0 +1,34 @@
+// examples/counter/counter.cui — the proposal §5.2 Counter.
+// Tier 2 makes this work: state declarations, event handlers, the
+// Button primitive with on: handler, and reactive re-render.
+
+component Counter {
+    state count: Int = 0;
+
+    on Increment {
+        count = count + 1;
+    }
+
+    on Reset {
+        count = 0;
+    }
+
+    view {
+        Column {
+            Text {
+                role: status
+                "Count: {count}"
+            }
+            Button {
+                role: button
+                label: "Increment"
+                on: Increment
+            }
+            Button {
+                role: button
+                label: "Reset"
+                on: Reset
+            }
+        }
+    }
+}

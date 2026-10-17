@@ -307,7 +307,11 @@ The initial language supports:
 ### 5.2 Illustrative syntax
 
 The following is a sketch to discuss the language design. It is
-**not valid or implemented cancho-ui syntax**.
+**not valid or implemented cancho-ui syntax**. The Phase 1
+implementation uses **block-style** primitives, not the call-style
+shown here — see [`docs/language-design.md`](language-design.md)
+§10 decision 11 and [`spec/grammar/README.md`](../spec/grammar/README.md)
+for the canonical grammar.
 
 ```text
 component Counter {
@@ -315,12 +319,17 @@ component Counter {
 
     view {
         Column {
-            Text("Count: {count}")
+            Text { "Count: {count}" }
 
-            Button("Increment") {
-                count = count + 1
+            Button {
+                label: "Increment"
+                on: Increment
             }
         }
+    }
+
+    on Increment {
+        count = count + 1
     }
 }
 ```
