@@ -1,0 +1,17 @@
+// examples/hello/hello.cui — the smallest cancho-ui program.
+// Tier 1 supports one component, one view block, Text and Column
+// primitives, accessibility metadata, and the PascalCase naming
+// rule. Phase 2 adds state, events, capabilities, slots, etc.
+
+component Hello {
+    view {
+        Column {
+            role: banner
+            label: "hello banner"
+            Text {
+                role: heading
+                "hello, world"
+            }
+        }
+    }
+}

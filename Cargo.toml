@@ -1,0 +1,25 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/cancho-ui-syntax",
+    "crates/cancho-ui-types",
+    "crates/cancho-ui-ir",
+    "crates/cancho-ui-codegen-web",
+    "crates/cancho-ui",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "EUPL-1.2"
+publish = false
+
+[workspace.dependencies]
+cancho-ui-syntax   = { path = "crates/cancho-ui-syntax" }
+cancho-ui-types    = { path = "crates/cancho-ui-types" }
+cancho-ui-ir       = { path = "crates/cancho-ui-ir" }
+cancho-ui-codegen-web = { path = "crates/cancho-ui-codegen-web" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"

@@ -1,0 +1,17 @@
+[package]
+name = "cancho-ui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "cancho-ui"
+path = "src/main.rs"
+
+[dependencies]
+cancho-ui-syntax      = { workspace = true }
+cancho-ui-types       = { workspace = true }
+cancho-ui-ir          = { workspace = true }
+cancho-ui-codegen-web = { workspace = true }
+serde_json            = { workspace = true }
+thiserror             = { workspace = true }

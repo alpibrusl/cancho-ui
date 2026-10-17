@@ -1,0 +1,9 @@
+[package]
+name = "cancho-ui-types"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+cancho-ui-syntax = { workspace = true }
+thiserror = { workspace = true }

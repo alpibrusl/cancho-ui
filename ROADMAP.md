@@ -1,0 +1,350 @@
+# ROADMAP.md
+
+> **Status: Phase 0, design contract.** This document records what
+> cancho-ui intends to build, in what order, and how each phase ends.
+> A phase that ends is a phase whose exit criteria are met; a phase
+> that stops is one whose stop/rethink conditions fired. Estimates
+> are planning ranges, not commitments — the same caveat
+> [cancho's own ROADMAP.md](https://github.com/alpibrusl/cancho/blob/main/docs/ROADMAP.md)
+> applies.
+>
+> The proposal's §10 is the source; this is its operating form, with
+> the cancho Core dependencies named and the stop/rethink conditions
+> made explicit at every phase.
+
+---
+
+## Phase 0 — Design contract and feasibility
+
+**Indicative duration:** 1–2 weeks.
+
+**Deliverables**
+
+- `docs/proposal.md` — the polished proposal, citing the cancho Core
+  documents that settle each inherited idea.
+- `docs/language-design.md` — the syntax sketch and the design
+  decisions behind it.
+- `docs/semantics.md` — answers to all twelve questions in §5.3 of
+  the proposal, each labelled with the guarantee tier
+  (`static | tested | runtime | trust | unknown`).
+- `docs/security-model.md` — the five-tier guarantee model, the
+  capability/effect rules, and the trust-boundary contract.
+- `docs/platform-model.md` — the decision record for web-first and
+  the mobile-backend candidates.
+- `spec/ir-schema/README.md` — the typed UI IR sketch and its
+  conformance fixtures.
+- `spec/diagnostics/README.md` — the machine-readable diagnostic
+  format.
+- `spec/grammar/README.md` — the grammar sketch (Lark or hand-rolled
+  EBNF; nothing implemented).
+- `examples/README.md` — at least ten valid and ten invalid fixtures,
+  written down, **not compiled** — the contract the Phase 1 compiler
+  must meet.
+
+**Exit criteria**
+
+- Every inherited cancho Core guarantee is named against the cancho
+  document that settles it (no hidden duplication, no
+  re-stated-without-citation rules).
+- Every net-new guarantee has a fixture under `examples/` and a tier
+  labelled in `docs/semantics.md`.
+- The mobile-backend decision is recorded with measured reasoning,
+  not taste.
+- The IR schema sketch has enough fidelity that the Phase 1 backend
+  cannot back itself into a corner in two weeks.
+
+**Stop / rethink if**
+
+- The semantic rules cannot express asynchronous UI behavior without
+  ambiguous ordering or lifecycle rules — i.e. there is no model the
+  team can explain without framework-specific assumptions.
+- The proposed safety story depends on trusting arbitrary foreign
+  code as if it were verified cancho-ui.
+- The language adds complexity without an identifiable
+  agent-facing benefit (the central differentiator must remain
+  visible).
+- The cancho Core integration contract is not on a roadmap —
+  cancho-ui cannot depend on a "to be added later" compiler IR.
+
+---
+
+## Phase 1 — Minimal web vertical slice
+
+**Indicative duration:** 2–4 weeks.
+
+**Deliverables**
+
+- Parser and minimal type checker.
+- Small typed UI IR (the schema from `spec/ir-schema/`, not a
+  re-design).
+- Component composition and typed properties.
+- Local state and event handlers, with the semantic rules from
+  `docs/semantics.md` §2 and §3.
+- Web backend producing JavaScript + DOM behavior (no JSX, no
+  virtual DOM library — the IR lowers directly to DOM ops).
+- Source maps or usable source-level diagnostics.
+- Build, check and test commands with stable exit codes
+  (`cancho-ui build`, `cancho-ui check`, `cancho-ui test`).
+
+**Exit criteria**
+
+- A Counter-style example (component, state, event handler, view)
+  compiles and runs in a browser.
+- A searchable-list example compiles and runs, exercising
+  asynchronous work, lifecycle, and one capability.
+- All `examples/refusal/` fixtures are refused with the documented
+  rule.
+- The CLI's `--help` matches `cancho-ui skill`'s command list, the
+  same way
+  [`cancho agent_cli::every_dispatched_command_is_documented`](https://github.com/alpibrusl/cancho/blob/main/docs/agent-cli.md)
+  enforces.
+- The build is reproducible from a clean checkout.
+
+**Stop / rethink if**
+
+- The prototype is mostly a thin syntax layer over framework code
+  with no useful semantic checks.
+- The IR cannot support diagnostics or backend conformance without
+  excessive special cases — i.e. the schema from Phase 0 was
+  underspecified.
+- The capability checker cannot distinguish declared from undeclared
+  authority on the web backend (a `Network` request that the
+  compiler cannot link to a `requires Network` line means Phase 0's
+  security model was incomplete).
+
+---
+
+## Phase 2 — State, effects, and agent-facing verification
+
+**Indicative duration:** 2–4 weeks.
+
+**Deliverables**
+
+- Defined transition semantics (the answers to §5.3 #2, #3).
+- Defined asynchronous result and cancellation model for the
+  supported subset (§5.3 #4, #5, #6).
+- Minimal capability declarations and effect reachability checks
+  (§5.3 #7, #8).
+- Structured JSON diagnostics — the locked format in `spec/diagnostics`.
+- `cancho-ui inspect component`, `cancho-ui inspect effects` —
+  machine-readable component and capability/effect introspection.
+- `cancho-ui report` — the evidence report separating static
+  checks, tests, runtime checks, and trust boundaries.
+- The full refusal suite from `examples/refusal/`.
+
+**Exit criteria**
+
+- Unauthorized effects are rejected in defined cases
+  (`capability-missing` rule).
+- Lifecycle and stale-result tests behave according to the
+  specification.
+- Agents can identify why a build failed from machine-readable
+  diagnostics.
+- The report names every trust boundary and does not claim
+  guarantees the implementation does not enforce.
+
+**Stop / rethink if**
+
+- The effect checker cannot distinguish declared from undeclared
+  authority — i.e. `effect-not-declared` and `capability-missing`
+  cannot be told apart, and the IR cannot encode the distinction.
+- Asynchronous behavior remains nondeterministic in cases the
+  language claims to define.
+- The diagnostic format drifts between releases (a `crates/cancho-ui`
+  snapshot test fails).
+
+---
+
+## Phase 3 — Replayable tests and agent benchmark
+
+**Indicative duration:** 2–3 weeks.
+
+**Deliverables**
+
+- Deterministic event inputs for supported event sequences.
+- Replayable traces for the demo application.
+- `cancho-ui diff <base> <candidate>` — semantic diff for
+  state/effect/capability changes.
+- A small set of repeatable agent tasks (the proposal §10 list).
+- A conventional baseline implementation in a familiar web stack
+  (React or Svelte, picked to match what an agent would write by
+  default).
+- Benchmark protocol and results report — the same shape
+  cancho Core's [`eval/`](https://github.com/alpibrusl/cancho/tree/main/eval)
+  uses, with pre-registration and a fixed oracle.
+
+**Example agent tasks** (from the proposal §10)
+
+- Add a validation rule.
+- Fix a stale-response bug.
+- Add a new state to the search flow.
+- Introduce a capability-gated operation.
+- Refactor a component without increasing its authority.
+
+**Metrics**
+
+- Task completion and functional correctness.
+- Regression rate.
+- Number of agent repair iterations.
+- Human interventions required.
+- Unintended capability expansion.
+- Test coverage of specified behaviors.
+- Time to diagnose and fix seeded bugs.
+
+**Exit criteria**
+
+- Tasks can be repeated using a documented protocol.
+- The baseline and cancho-ui are compared on equivalent
+  requirements.
+- Results include failures and limitations, not only successful
+  examples.
+- The methodology and the harness are committed before the runs
+  start (pre-registered), so the outcome cannot reshape the
+  measurement.
+
+**Stop / rethink if**
+
+- No measurable improvement appears in correctness, diagnosability,
+  authority control, or agent repair effort.
+- The benchmark rewards language familiarity or task differences
+  rather than the intended design advantages.
+
+---
+
+## Phase 4 — Mobile backend feasibility and cross-platform contract
+
+**Indicative duration:** 2–4 weeks.
+
+**Deliverables**
+
+- A technical spike for React Native (or the candidate chosen in
+  Phase 0's `docs/platform-model.md`).
+- A written comparison of rendering, lifecycle, asynchronous
+  behavior, permissions, accessibility, and foreign interfaces
+  between web and mobile.
+- A minimal mobile build of the same searchable-list demo, if
+  feasible.
+- Backend conformance tests against the shared IR and semantics.
+- An explicit list of platform-specific exceptions (no silent
+  degradation).
+
+**Exit criteria**
+
+- The same shared state/event specification produces equivalent
+  observable behavior for the supported flows.
+- Platform-specific effects go through declared adapters.
+- Unsupported operations fail clearly rather than silently
+  degrading.
+- The team has enough evidence to choose a mobile backend for
+  Phase 5.
+
+**Stop / rethink if**
+
+- The runtime cannot preserve essential language semantics without
+  pervasive platform-specific escape hatches.
+- The mobile implementation undermines the verification model
+  (a `bounded: true` report for a program that actually uses
+  untyped native code, for example).
+- Cross-platform equivalence costs more than the value it delivers
+  for the initial target users.
+
+---
+
+## Phase 5 — Cross-platform MVP release candidate
+
+**Indicative duration:** 2–4 weeks.
+
+**Deliverables**
+
+- Web and one mobile backend for the demo.
+- Reproducible setup/build instructions.
+- Versioned source/IR format and documented compatibility
+  expectations.
+- Conformance, refusal, lifecycle, and regression suites.
+- Agent-facing CLI and machine-readable evidence reports.
+- A security and limitations document — the explicit list of what
+  is and is not verified.
+- A short demonstration showing an agent implementing a feature
+  and repairing a deliberately introduced defect.
+
+**Exit criteria**
+
+- A new developer can build and test the project from a clean
+  checkout.
+- The demo runs on the supported targets.
+- Core cross-platform behaviors pass the same
+  specification-driven tests.
+- Capability changes are visible in semantic diffs and reports.
+- Known limitations and trust boundaries are documented.
+- The benchmark supports a defensible statement about what is
+  better, what is not, and what remains unproven.
+
+**Stop / rethink if**
+
+- Cross-platform behavior cannot be made consistent for the chosen
+  feature subset.
+- The safety claims are difficult to explain or reproduce.
+- The implementation is too costly to maintain relative to its
+  measured benefit.
+
+---
+
+## Phase 6 — Conditional post-MVP work
+
+Only pursue after the MVP has evidence of value:
+
+- Additional platform APIs and capability types.
+- Better accessibility checks and test tooling.
+- More robust component and layout model.
+- More mature native adapters.
+- Direct Swift/Kotlin generation experiments — gated on the
+  mobile-backend decision in Phase 4.
+- Optional WebAssembly for computation-heavy modules (the cancho
+  Core [`docs/wasm.md`](https://github.com/alpibrusl/cancho/blob/main/docs/wasm.md)
+  work is a starting point).
+- IDE integrations and agent tool protocols
+  ([`acli`](https://github.com/alpibrusl/acli) is the cancho
+  precedent).
+- Package ecosystem and reusable component libraries — gated on
+  cancho Core's [`docs/package-system.md`](https://github.com/alpibrusl/cancho/blob/main/docs/package-system.md)
+  having a cancho-UI equivalent, which itself depends on the
+  Phase 1 IR.
+- Broader verification of foreign interfaces and dependency
+  contracts.
+
+---
+
+## Deliberately excluded (for now)
+
+- Replacing JavaScript, Swift, or Kotlin.
+- A complete general-purpose UI framework.
+- A bespoke browser engine or rendering engine.
+- A new mobile operating-system runtime.
+- Direct native code generation for every iOS and Android UI API
+  (this is a Phase 6 option, not a Phase 1 promise).
+- Comprehensive formal verification of the entire application and
+  all dependencies.
+- Automatic proof that third-party libraries are safe.
+- A large component marketplace or design system.
+- Full production-grade IDE support.
+- Supporting every browser, OS version, device API, and
+  accessibility scenario at launch.
+- Claiming production readiness before security, accessibility,
+  lifecycle, and compatibility testing.
+
+Each of these is "yes, later" rather than "no" — saying yes early
+is what turns three months into three years.
+
+---
+
+## Beyond
+
+If the benchmark shows measurable improvement, cancho-ui has a
+credible reason to exist. If it does not, the useful parts
+(structured diagnostics, effect reporting, semantic diffs, and
+agent-oriented verification) may still be valuable as tools
+around existing languages — and this project's contribution is
+then the design and the evidence, not a competing runtime.
+
+The Phase 5 results report decides that. Until then, this is a
+research-backed compiler and agent-workflow project.

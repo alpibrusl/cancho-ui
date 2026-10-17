@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>cancho-ui hello world</title>
+    <style>
+        .cui-col {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .cui-row {
+            display: flex;
+            flex-direction: row;
+            gap: 0.5rem;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 2rem;
+        }
+        [role="banner"] {
+            padding: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        [role="heading"] {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="module" src="./hello.js"></script>
+</body>
+</html>

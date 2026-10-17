@@ -1,0 +1,26 @@
+# cancho-ui build output (lands with Phase 1)
+/target
+/build
+/dist
+*.o
+*.a
+*.so
+*.dylib
+*.out
+*.js
+*.js.map
+*.cui.bak
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Python bytecode from measurement scripts (lands with Phase 3)
+__pycache__/
+*.pyc
+
+# Core dumps: trap tests end programs by signal
+core
+core.[0-9]*
