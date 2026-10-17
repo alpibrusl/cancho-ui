@@ -446,3 +446,109 @@ component T {
     assert!(js.contains(".reason;"));
     assert!(!js.contains("var e = __cui_match_0.value"));
 }
+
+#[test]
+fn match_missing_err_arm_is_a_refusal() {
+    // Phase 2: a `match` on a `Result` state field must cover both
+    // constructors; a missing `Err` arm is `match-non-exhaustive`
+    // at compile time, not a runtime throw.
+    let src = "\
+component Half {
+    state x: Result[Int, String] = Ok(0);
+    view {
+        Text {
+            match x {
+                Ok(v) => { v }
+            }
+        }
+    }
+}
+";
+    let toks = lex(src).unwrap();
+    let ast = parse(toks).unwrap();
+    let err = check_file(&ast).unwrap_err();
+    match err {
+        cancho_ui_types::CheckError::MatchNonExhaustive { field, missing, .. } => {
+            assert_eq!(field, "x");
+            assert_eq!(missing, vec!["Err".to_string()]);
+        }
+        other => panic!("expected MatchNonExhaustive, got: {:?}", other),
+    }
+}
+
+#[test]
+fn match_missing_both_arms_lists_both() {
+    // An empty arm set over a `Result` bans both constructors.
+    let src = "\
+component T {
+    state x: Result[Int, String] = Ok(0);
+    view {
+        Text {
+            match x { }
+        }
+    }
+}
+";
+    let toks = lex(src).unwrap();
+    let ast = parse(toks).unwrap();
+    let err = check_file(&ast).unwrap_err();
+    match err {
+        cancho_ui_types::CheckError::MatchNonExhaustive { missing, .. } => {
+            assert_eq!(missing.len(), 2);
+        }
+        other => panic!("expected MatchNonExhaustive, got: {:?}", other),
+    }
+}
+
+#[test]
+fn wildcard_arm_satisfies_exhaustiveness() {
+    // Tier 6 semantics: `_` matches anything, so a bare Ok arm
+    // plus a wildcard is exhaustive.
+    let src = "\
+component T {
+    state x: Result[Int, String] = Ok(0);
+    view {
+        Text {
+            match x {
+                Ok(v) => { v }
+                _ => { 0 }
+            }
+        }
+    }
+}
+";
+    let js = compile_str(src);
+    assert!(js.contains("var v = __cui_match_"));
+}
+
+#[test]
+fn await_driven_field_needs_the_cancelled_arm() {
+    // A field assigned from `await(...)` holds Ok | Err |
+    // Cancelled at runtime, so its match needs all three arms
+    // (or a `_` catch-all) even when the declared type says
+    // `Result[T, E]`.
+    let src = "\
+component Ticker {
+    state r: Result[Int, String] = Ok(0);
+    state status: String = \"Idle\";
+    on Tick {
+        r = await(sleep(50));
+        status = match r {
+            Ok(v) => { \"Ok\" }
+            Err(e) => { \"Err\" }
+        };
+    }
+    view { Text { role: status \"Status: {status}\" } }
+}
+";
+    let toks = lex(src).unwrap();
+    let ast = parse(toks).unwrap();
+    let err = check_file(&ast).unwrap_err();
+    match err {
+        cancho_ui_types::CheckError::MatchNonExhaustive { field, missing, .. } => {
+            assert_eq!(field, "r");
+            assert_eq!(missing, vec!["Cancelled".to_string()]);
+        }
+        other => panic!("expected MatchNonExhaustive, got: {:?}", other),
+    }
+}

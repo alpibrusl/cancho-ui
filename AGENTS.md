@@ -137,10 +137,9 @@ drops the result and the `state-after-dispose` rule applies.
 `Result[T, E]` is two constructors: `Ok(value)` and `Err(reason)`.
 A `Request[T]` is awaited with `await(r)` and resolves to
 `Ok | Err | Cancelled` — three constructors. `match` on any of
-these must cover every variant; the runtime throws
-`no match arm matched` when an arm is missing, and the
-`match-non-exhaustive` rule (Phase 2) will surface the same
-issue at compile time:
+these must cover every variant. Missing an arm is a refusal with
+`match-non-exhaustive` at compile time (Phase 2); without
+compile-time coverage the runtime throws `no match arm matched`.
 
 ```cancho-ui
 component Half {
@@ -188,6 +187,12 @@ component Ticker {
     }
 }
 ```
+
+The compile-time check is scrutinee-aware: a field assigned from
+`await(...)` holds all three variants at runtime even though its
+declared type says `Result[T, E]`, so its `match` needs all three
+arms — a missing `Cancelled` is refused the same way. A `_`
+catch-all arm satisfies exhaustiveness.
 
 ---
 

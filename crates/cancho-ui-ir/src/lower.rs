@@ -43,6 +43,16 @@ pub enum LowerError {
         capability: String,
         span: Span,
     },
+
+    #[error(
+        "`match` on `{field}` in component `{component}` is not exhaustive; missing arm(s): {missing:?}"
+    )]
+    MatchNonExhaustive {
+        component: String,
+        field: String,
+        missing: Vec<String>,
+        span: Span,
+    },
 }
 
 pub fn lower_file(file: &File) -> Result<IrFile, LowerError> {
@@ -58,6 +68,7 @@ pub fn lower_file(file: &File) -> Result<IrFile, LowerError> {
         components,
     };
     check_capabilities(&ir)?;
+    check_match_exhaustiveness(&ir)?;
     Ok(ir)
 }
 
@@ -464,8 +475,7 @@ fn lower_unop(op: UnOp) -> IrUnOp {
 /// Walk the lowered IR's `reachable_effects` against the
 /// component's `requires`. Refuses on `CapabilityMissing` and
 /// `CapabilityUnused`.
-fn check_capabilities(ir: &IrFile) -> Result<(), LowerError> {
-    for c in &ir.components {
+fn check_capabilities(ir: &IrFile) -> Result<(), LowerError> {    for c in &ir.components {
         let declared: BTreeSet<String> = c.requires.iter().map(|r| r.name.clone()).collect();
         for eff in &c.reachable_effects {
             if !declared.contains(&eff.capability) {
@@ -498,3 +508,195 @@ fn check_capabilities(ir: &IrFile) -> Result<(), LowerError> {
 // Position is only used by error variants in LowerError).
 #[allow(dead_code)]
 const _POSITION: Position = Position { line: 0, column: 0 };
+
+/// Phase 2: the `match-non-exhaustive` check.
+///
+/// A `match` whose scrutinee is a state field of type
+/// `Result[T, E]` must cover every constructor the runtime can
+/// produce, unless a catch-all arm (`_`, or a bare identifier —
+/// Tier 6 semantics: it binds the whole value, so it matches
+/// anything) is present. Required constructors:
+///
+/// - `{Ok, Err}` for a plain `Result` field,
+/// - `{Ok, Err, Cancelled}` when the field is ever assigned from
+///   an `await(...)` expression (an awaited `Request[T]`
+///   resolves to all three) or when an arm matches `Cancelled`.
+///
+/// A `match` on anything other than a state field identifier is
+/// not statically resolved here; the runtime throw (Tier 6)
+/// remains the safety net for those. Phase 2's full type
+/// inference will widen this check.
+fn check_match_exhaustiveness(ir: &IrFile) -> Result<(), LowerError> {
+    for c in &ir.components {
+        let state_types: BTreeMap<String, &IrType> = c
+            .state
+            .iter()
+            .map(|s| (s.name.clone(), &s.ty))
+            .collect();
+        let await_driven = await_driven_fields(c);
+
+        for m in component_matches(c) {
+            check_one_match(&c.name, m, &state_types, &await_driven)?;
+        }
+    }
+    Ok(())
+}
+
+use std::collections::BTreeMap;
+
+/// Every `IrExpr::Match` reachable from the component's event
+/// handlers and its view (including nested inside arm bodies).
+fn component_matches(c: &IrComponent) -> Vec<&IrExpr> {
+    let mut out: Vec<&IrExpr> = Vec::new();
+    for e in &c.events {
+        for s in &e.body {
+            stmt_matches(s, &mut out);
+        }
+    }
+    view_matches(&c.view.body, &mut out);
+    out
+}
+
+fn stmt_matches<'a>(s: &'a IrStmt, out: &mut Vec<&'a IrExpr>) {
+    match s {
+        IrStmt::Assign { value, .. } => expr_matches(value, out),
+        IrStmt::Expr { expr, .. } => expr_matches(expr, out),
+    }
+}
+
+fn expr_matches<'a>(e: &'a IrExpr, out: &mut Vec<&'a IrExpr>) {
+    match e {
+        IrExpr::Match { scrutinee, arms, .. } => {
+            out.push(e);
+            expr_matches(scrutinee, out);
+            for a in arms {
+                expr_matches(&a.body, out);
+            }
+        }
+        IrExpr::Binary { lhs, rhs, .. } => {
+            expr_matches(lhs, out);
+            expr_matches(rhs, out);
+        }
+        IrExpr::Unary { operand, .. } => expr_matches(operand, out),
+        IrExpr::Call { args, .. } => {
+            for a in args {
+                expr_matches(a, out);
+            }
+        }
+        IrExpr::Ok { value, .. } => expr_matches(value, out),
+        IrExpr::Err { reason, .. } => expr_matches(reason, out),
+        IrExpr::Await { request, .. } => expr_matches(request, out),
+        _ => {}
+    }
+}
+
+fn view_matches<'a>(node: &'a IrViewNode, out: &mut Vec<&'a IrExpr>) {
+    match node {
+        IrViewNode::Element { children, .. } => {
+            for ch in children {
+                view_matches(ch, out);
+            }
+        }
+        IrViewNode::Text { parts, .. } => {
+            for p in parts {
+                if let IrTextPart::Expr(e) = p {
+                    expr_matches(e, out);
+                }
+            }
+        }
+    }
+}
+
+/// The state fields that are ever assigned from an
+/// `await(...)` expression. These hold `Ok | Err | Cancelled`
+/// at runtime even when their declared type says `Result[T, E]`.
+fn await_driven_fields(c: &IrComponent) -> BTreeSet<String> {
+    let mut set: BTreeSet<String> = BTreeSet::new();
+    for e in &c.events {
+        for s in &e.body {
+            if let IrStmt::Assign { target, value, .. } = s {
+                if expr_contains_await(value) {
+                    set.insert(target.clone());
+                }
+            }
+        }
+    }
+    set
+}
+
+fn expr_contains_await(e: &IrExpr) -> bool {
+    match e {
+        IrExpr::Await { .. } => true,
+        IrExpr::Binary { lhs, rhs, .. } => {
+            expr_contains_await(lhs) || expr_contains_await(rhs)
+        }
+        IrExpr::Unary { operand, .. } => expr_contains_await(operand),
+        IrExpr::Call { args, .. } => args.iter().any(expr_contains_await),
+        IrExpr::Ok { value, .. } => expr_contains_await(value),
+        IrExpr::Err { reason, .. } => expr_contains_await(reason),
+        IrExpr::Match { scrutinee, arms, .. } => {
+            expr_contains_await(scrutinee) || arms.iter().any(|a| expr_contains_await(&a.body))
+        }
+        _ => false,
+    }
+}
+
+fn check_one_match(
+    component_name: &str,
+    m: &IrExpr,
+    state_types: &BTreeMap<String, &IrType>,
+    await_driven: &BTreeSet<String>,
+) -> Result<(), LowerError> {
+    let (scrutinee, arms, span) = match m {
+        IrExpr::Match { scrutinee, arms, span } => (scrutinee, arms, *span),
+        _ => return Ok(()),
+    };
+    let field = match scrutinee.as_ref() {
+        IrExpr::Ident { name, .. } => name,
+        _ => return Ok(()),
+    };
+    let ty = match state_types.get(field) {
+        Some(t) => *t,
+        None => return Ok(()),
+    };
+    if !matches!(ty, IrType::Result { .. }) {
+        return Ok(());
+    }
+
+    let mut covered: BTreeSet<String> = BTreeSet::new();
+    let mut catch_all = false;
+    for arm in arms {
+        match &arm.pattern {
+            IrPattern::Wildcard { .. } | IrPattern::Ident { .. } => catch_all = true,
+            IrPattern::Variant { name, .. } | IrPattern::UnitVariant { name, .. } => {
+                covered.insert(name.clone());
+            }
+        }
+    }
+
+    // An awaited value resolves to all three constructors even
+    // though the declared type says `Result`, so treat the match
+    // as tri-variant. The presence of a `Cancelled` arm is the
+    // programmer announcing the same thing.
+    let tri_variant = await_driven.contains(field) || covered.contains("Cancelled");
+    let required: Vec<&str> = if tri_variant {
+        vec!["Ok", "Err", "Cancelled"]
+    } else {
+        vec!["Ok", "Err"]
+    };
+    let missing: Vec<String> = required
+        .iter()
+        .filter(|v| !covered.contains(**v))
+        .map(|v| v.to_string())
+        .collect();
+
+    if !catch_all && !missing.is_empty() {
+        return Err(LowerError::MatchNonExhaustive {
+            component: component_name.to_string(),
+            field: field.clone(),
+            missing,
+            span,
+        });
+    }
+    Ok(())
+}

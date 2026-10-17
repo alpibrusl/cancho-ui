@@ -235,6 +235,46 @@ fn check_to_diag(e: &cancho_ui_types::CheckError, file: &Path) -> Diagnostic {
                 notes: Vec::new(),
             }
         }
+        cancho_ui_types::CheckError::MatchNonExhaustive {
+            component,
+            field,
+            missing,
+            span,
+        } => {
+            let (code, severity, tier, subject, message, span) = (
+                "match-non-exhaustive",
+                Severity::Error,
+                Tier::Static,
+                Subject::Component { name: component.clone() },
+                format!(
+                    "`match` on `{}` in component `{}` is not exhaustive; missing arm(s): {}",
+                    field,
+                    component,
+                    missing.join(", ")
+                ),
+                Some(*span),
+            );
+            Diagnostic {
+                code: code.into(),
+                severity,
+                tier,
+                subject,
+                message,
+                span: span.map(|s| SpanOut::from_span(s, file)),
+                expected: None,
+                actual: None,
+                remediation: Some(Remediation {
+                    description: format!(
+                        "Add arm(s): {}. A `Cancelled` is required when the value comes from `await(...)` unless a `_` catch-all covers it.",
+                        missing.join(", ")
+                    ),
+                    suggestion: None,
+                    confidence: Confidence::High,
+                }),
+                related: Vec::new(),
+                notes: Vec::new(),
+            }
+        }
     }
 }
 
@@ -525,6 +565,32 @@ fn lower_to_diag(e: &LowerError, file: &Path) -> Diagnostic {
                     "Either use `{}` in an event handler or view, or remove the `requires {};` declaration.",
                     capability_to_example_call(capability),
                     capability
+                ),
+                suggestion: None,
+                confidence: Confidence::High,
+            }),
+        ),
+        LowerError::MatchNonExhaustive {
+            component,
+            field,
+            missing,
+            span,
+        } => (
+            "match-non-exhaustive",
+            Severity::Error,
+            Tier::Static,
+            Subject::Component { name: component.clone() },
+            format!(
+                "`match` on `{}` in component `{}` is not exhaustive; missing arm(s): {}",
+                field,
+                component,
+                missing.join(", ")
+            ),
+            Some(*span),
+            Some(Remediation {
+                description: format!(
+                    "Add arm(s): {}. A `Cancelled` is required when the value comes from `await(...)` unless a `_` catch-all covers it.",
+                    missing.join(", ")
                 ),
                 suggestion: None,
                 confidence: Confidence::High,

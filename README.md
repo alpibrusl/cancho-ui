@@ -181,8 +181,8 @@ compiler meets.
 
 [`docs/proposal.md`](docs/proposal.md) — the original MVP proposal. The
 implementation matches Tier 1–7 of the proposal's roadmap (the async
-slice included). The remaining Phase 2 items
-(compile-time `match-non-exhaustive`, `Option[T]`/`List[T]`,
+slice included), plus the Phase 2 compile-time `match-non-exhaustive`
+rule. The remaining Phase 2 items (`Option[T]`/`List[T]`,
 `Cancelled` at runtime, `foreign`/`target` blocks) and beyond are
 still ahead; the roadmap rows record what each shipped and
 what was found.

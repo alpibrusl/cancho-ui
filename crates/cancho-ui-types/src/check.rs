@@ -65,6 +65,14 @@ pub enum CheckError {
         capability: String,
         span: Span,
     },
+
+    #[error("`match` on `{field}` in component `{component}` is not exhaustive; missing arm(s): {missing:?}")]
+    MatchNonExhaustive {
+        component: String,
+        field: String,
+        missing: Vec<String>,
+        span: Span,
+    },
 }
 
 /// Run the shape pass + the capability pass. Returns the first
@@ -98,6 +106,17 @@ pub fn check_file(file: &File) -> Result<(), CheckError> {
         }) => Err(CheckError::CapabilityUnused {
             component,
             capability,
+            span,
+        }),
+        Err(cancho_ui_ir::lower::LowerError::MatchNonExhaustive {
+            component,
+            field,
+            missing,
+            span,
+        }) => Err(CheckError::MatchNonExhaustive {
+            component,
+            field,
+            missing,
             span,
         }),
     }
