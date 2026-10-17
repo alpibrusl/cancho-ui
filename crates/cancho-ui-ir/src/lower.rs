@@ -372,6 +372,11 @@ fn lower_pattern(p: &Pattern) -> IrPattern {
 fn builtin_capability(path: &[String]) -> Option<&'static str> {
     if path.len() == 2 && path[0] == "clock" && path[1] == "now" {
         Some("Clock")
+    } else if path.len() == 2 && path[0] == "net" && path[1] == "search" {
+        // Tier 9: `net.search(query)` is the asynchronous search
+        // effect. `await(net.search(q))` resolves to Ok | Err |
+        // Cancelled with an Ok payload of `List[String]`.
+        Some("Network")
     } else if path.len() == 1 && path[0] == "sleep" {
         // Tier 7: `sleep(ms)` is a pure-runtime wait. It does
         // not need a user-declared capability; the runtime

@@ -95,17 +95,25 @@ component SearchForm {
     requires Network
 
     state query: String = ""
+    state r: Result[List[String], String] = Ok([])
+    state status: String = "idle"
 
     on Submit {
-        let token = net.search(query)
-        match token.await() {
-            Ok(results) => { /* ... */ }
-            Err(reason) => { /* ... */ }
-            Cancelled   => { /* ... */ }
+        status = "loading"
+        r = await(net.search(query))
+        status = match r {
+            Ok(_) => { "done" }
+            Err(_) => { "error" }
+            Cancelled => { "cancelled" }
         }
     }
 }
 ```
+
+`net.search(query)` performs the `Network` capability; the
+`await(...)` resolves it over the `Ok | Err | Cancelled` arms —
+all three are mandatory when the field was assigned from
+`await(...)`, which `match-non-exhaustive` checks at compile time.
 
 A component that uses an effect without listing the capability
 is refused with `capability-missing`. The same exact-row rule
@@ -116,7 +124,7 @@ as Cancho Core's effect rows.
 component Leaker {
     // No `requires Network`, yet uses net.search:
     on Submit {
-        let token = net.search("")
+        r = await(net.search(""))
     }
 }
 ```
@@ -278,14 +286,19 @@ boundary. Same shape as Cancho Core's
 
 ## 6. View primitives carry accessibility metadata (placeholder)
 
+A `TextField` takes `label:`, `value:` and `on:`. Order matters
+differently per key today: `label:` must come **before** `value:`
+(the parser treats everything after the first `value:`/`on:` pair
+as bindings). Phase 2 will lift the ordering rule.
+
 ```cancho-ui
 component SearchInput {
     view {
-        TextField(value: query,
-                  role: searchbox,
-                  label: "Search query",
-                  keyboard: Enter -> Submit,
-                  on: Change)
+        TextField {
+            label: "Search query"
+            value: query
+            on: Change
+        }
     }
 }
 ```
@@ -295,6 +308,11 @@ A primitive with no `role` is refused with
 empty `label` is refused with `accessibility-label-empty`.
 A `Button` or `TextField` without a keyboard action for Enter
 is refused with `accessibility-keyboard-missing`.
+
+Those three a11y refusals are **contract, not implementation**:
+Tier 9 emit-time sets `role` / `aria-label` from the bindings but
+does yet not refuse missing ones — `keyboard:` bindings do not
+exist at all.
 
 ---
 

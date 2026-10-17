@@ -615,6 +615,7 @@ fn lower_to_diag(e: &LowerError, file: &Path) -> Diagnostic {
 fn capability_to_example_call(capability: &str) -> &'static str {
     match capability {
         "Clock" => "clock.now()",
+        "Network" => "net.search(query)",
         _ => "an effect requiring this capability",
     }
 }

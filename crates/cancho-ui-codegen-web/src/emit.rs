@@ -48,10 +48,14 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
     // Tier 4 we emit them inline so the binary is self-contained.
     let mut any_clock = false;
     let mut any_sleep = false;
+    let mut any_network = false;
     for c in &ir.components {
         for e in &c.reachable_effects {
             if e.capability == "Clock" {
                 any_clock = true;
+            }
+            if e.capability == "Network" {
+                any_network = true;
             }
         }
         for arm in c.events.iter().flat_map(|e| e.body.iter()) {
@@ -69,6 +73,10 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
     }
     if any_sleep {
         out.push_str(SLEEP_ADAPTER_JS);
+        out.push('\n');
+    }
+    if any_network {
+        out.push_str(NETWORK_ADAPTER_JS);
         out.push('\n');
     }
 
@@ -110,6 +118,32 @@ const SLEEP_ADAPTER_JS: &str = "\
 function __cui_sleep_ms(ms) {
     return new Promise(function (resolve) {
         setTimeout(function () { resolve({__cui_tag: \"Ok\", value: undefined}); }, ms);
+    });
+}
+";
+
+const NETWORK_ADAPTER_JS: &str = "\
+// Platform adapter: Network capability (Tier 9).
+// `net.search(q)` returns a Promise that resolves to
+// `{__cui_tag: \"Ok\", value: [...]}` after a simulated network
+// delay. Tier 9 stub: the search filters a fixed corpus by
+// substring, so the demo is fully interactive offline. A real
+// adapter performs the HTTP request and keeps the same resolve
+// channel; a failing deadline resolves with
+// `{__cui_tag: \"Err\", reason}` instead.
+const __CUI_CORPUS = [
+    \"Ada Lovelace\", \"Grace Hopper\", \"Linus Torvalds\",
+    \"Andrey Kolmogorov\", \"Bertrand Russell\", \"Ada Marrero\",
+];
+function __cui_net_search(q) {
+    return new Promise(function (resolve) {
+        setTimeout(function () {
+            const needle = String(q).trim().toLowerCase();
+            const value = __CUI_CORPUS.filter(function (item) {
+                return item.toLowerCase().indexOf(needle) !== -1;
+            });
+            resolve({__cui_tag: \"Ok\", value: value});
+        }, 120);
     });
 }
 ";
@@ -465,17 +499,22 @@ fn emit_arm_body(
             emit_expr_runtime(body, params)
         }
         IrPattern::Variant { name, binding, .. } => {
-            let mut local_params: Vec<&str> = params.to_vec();
-            local_params.push(binding.as_str());
-            let body_with_param = emit_expr_runtime(body, &local_params);
             // The payload field depends on the variant: `Ok`
             // stores its under `value`, `Err` under `reason` (see
             // the tagged constructor emitters).
+            // A `_` binding skips the IIFE bind entirely.
             let field = if name == "Err" { "reason" } else { "value" };
-            format!(
-                "(function () {{ var {0} = {1}.{2}; return {3}; }})()",
-                binding, scrutinee_var, field, body_with_param
-            )
+            if binding == "_" {
+                emit_expr_runtime(body, params)
+            } else {
+                let mut local_params: Vec<&str> = params.to_vec();
+                local_params.push(binding.as_str());
+                let body_with_param = emit_expr_runtime(body, &local_params);
+                format!(
+                    "(function () {{ var {0} = {1}.{2}; return {3}; }})()",
+                    binding, scrutinee_var, field, body_with_param
+                )
+            }
         }
         IrPattern::UnitVariant { .. } => {
             // No payload to bind. Just emit the body.
@@ -497,6 +536,14 @@ fn emit_call_runtime(path: &[String], args: &[IrExpr], params: &[&str]) -> Strin
         let rendered_args: Vec<String> =
             args.iter().map(|a| emit_expr_runtime(a, params)).collect();
         return format!("__cui_sleep_ms({})", rendered_args.join(", "));
+    }
+    if path.len() == 2 && path[0] == "net" && path[1] == "search" {
+        // Tier 9: `net.search(q)` resolves to
+        // `{__cui_tag:"Ok",value:[...]}` (or Err) after a
+        // simulated network delay.
+        let rendered_args: Vec<String> =
+            args.iter().map(|a| emit_expr_runtime(a, params)).collect();
+        return format!("__cui_net_search({})", rendered_args.join(", "));
     }
     let rendered_args: Vec<String> = args.iter().map(|a| emit_expr_runtime(a, params)).collect();
     format!(

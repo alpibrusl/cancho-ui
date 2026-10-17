@@ -640,3 +640,99 @@ component Roster {
     // Rows append into the enclosing element.
     assert!(js.contains("__n0.appendChild(__n1)"));
 }
+
+#[test]
+fn net_search_without_network_is_a_refusal() {
+    // Tier 9: `net.search` performs the Network capability, so an
+    // un-declared call is the `capability-missing` refusal.
+    let src = "\
+component T {
+    state q: String = \"\";
+    state r: Result[List[String], String] = Ok([]);
+    state status: String = \"idle\";
+    on Submit {
+        status = \"loading\";
+        r = await(net.search(q));
+        status = match r {
+            Ok(_) => { \"done\" }
+            Err(_) => { \"error\" }
+            Cancelled => { \"cancelled\" }
+        };
+    }
+    view { Text { \"x\" } }
+}
+";
+    let toks = lex(src).unwrap();
+    let ast = parse(toks).unwrap();
+    let err = check_file(&ast).unwrap_err();
+    match err {
+        cancho_ui_types::CheckError::CapabilityMissing { capability, call_path, .. } => {
+            assert_eq!(capability, "Network");
+            assert_eq!(call_path, "net.search");
+        }
+        other => panic!("expected CapabilityMissing, got: {:?}", other),
+    }
+}
+
+#[test]
+fn searchable_list_demo_emits_network_adapter_and_for_rows() {
+    // Tier 9: the proposal §9.3 demo compiles when the Network
+    // capability is declared. The emitted JS has:
+    //   - the adapter (only when some component really uses it),
+    //   - the awaited call form `await (__cui_net_search(...))`,
+    //   - the list assignment through the Ok arm,
+    //   - For rows over the results.
+    let src = "\
+component Search {
+    requires Network;
+    state query: String = \"\";
+    state status: String = \"idle\";
+    state r: Result[List[String], String] = Ok([]);
+    state results: List[String] = [];
+    on Change(value) { query = value; }
+    on Submit {
+        status = \"loading\";
+        r = await(net.search(query));
+        status = match r {
+            Ok(_) => { \"done\" }
+            Err(_) => { \"error\" }
+            Cancelled => { \"cancelled\" }
+        };
+        results = match r {
+            Ok(found) => { found }
+            Err(_) => { [] }
+            Cancelled => { [] }
+        };
+    }
+    view {
+        Column {
+            TextField {
+                label: \"Search query\"
+                value: query
+                on: Change
+            }
+            Button { label: \"Search\" on: Submit }
+            Text { role: status \"status: {status}\" }
+            For {
+                over: results
+                as: n
+                Text { \"row: {n}\" }
+            }
+        }
+    }
+}
+";
+    let js = compile_str(src);
+    // The Network adapter ships only because `net.search` is
+    // reachable.
+    assert!(js.contains("function __cui_net_search(q)"));
+    assert!(js.contains("__CUI_CORPUS"));
+    // The awaited call form.
+    assert!(js.contains("await (__cui_net_search(__state_query))"));
+    // The loading status paints before the handler suspends.
+    assert!(js.contains("__state_status = \"loading\";\n            __render();"));
+    // Ok arm passes the found list straight through.
+    assert!(js.contains("var found = __cui_match_"));
+    // Rows render via for..of.
+    assert!(js.contains("for (const n of __state_results)"));
+}
