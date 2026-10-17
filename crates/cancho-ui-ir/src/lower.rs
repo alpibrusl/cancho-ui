@@ -53,6 +53,21 @@ pub enum LowerError {
         missing: Vec<String>,
         span: Span,
     },
+
+    #[error(
+        "a lambda (`x => expr`) is only supported as the second argument of `filter(list, pred)` or `map(list, transform)`; remove the lambda or move it into a `filter`/`map` call"
+    )]
+    LambdaUnsupported { span: Span },
+
+    #[error(
+        "`{name}` is misused here (expected {detail}); see Tier 11 call forms: `filter(list, x => cond)`, `map(list, x => body)`, `len(value)`"
+    )]
+    BuiltinMisuse { name: String, detail: String, span: Span },
+
+    #[error(
+        "the lambda body must be pure: it may not `await(...)` or call effectful/suspending builtins — list operations run synchronously inside the render pass"
+    )]
+    PureLambdaRequired { span: Span },
 }
 
 pub fn lower_file(file: &File) -> Result<IrFile, LowerError> {
@@ -217,7 +232,98 @@ fn lower_expr_with_effects(
         )),
         Expr::BoolLit { value, span } => Ok((IrExpr::BoolLit { value: *value, span: *span }, vec![])),
         Expr::Ident { name, span } => Ok((IrExpr::Ident { name: name.clone(), span: *span }, vec![])),
+        Expr::Lambda { span, .. } => {
+            // `filter`/`map` consume their lambda before the
+            // generic call path sees it; a lambda anywhere else
+            // has no meaning (Tier 11 has no first-class
+            // function values).
+            Err(LowerError::LambdaUnsupported { span: *span })
+        }
         Expr::Call { path, args, span } => {
+            // Tier 11 call forms: `filter(list, x => cond)`,
+            // `map(list, x => body)`, `len(value)`. They are pure
+            // (no capability); the generic call path below does
+            // not see them.
+            if path.len() == 1 && path[0] == "filter" {
+                if args.len() != 2 {
+                    return Err(LowerError::BuiltinMisuse {
+                        name: "filter".to_string(),
+                        detail: "exactly two arguments: filter(list, x => cond)".to_string(),
+                        span: *span,
+                    });
+                }
+                let list = Box::new(lower_expr_pure(&args[0])?);
+                let (item, cond_body, cond_span) = match &args[1] {
+                    Expr::Lambda { param, body, .. } => {
+                        let lowered = lower_expr_pure(body)?;
+                        (param.clone(), lowered, body.span())
+                    }
+                    _ => {
+                        return Err(LowerError::BuiltinMisuse {
+                            name: "filter".to_string(),
+                            detail: "second argument must be a lambda: x => cond".to_string(),
+                            span: args[1].span(),
+                        });
+                    }
+                };
+                return Ok((
+                    IrExpr::Filter {
+                        list,
+                        item,
+                        cond: Box::new(cond_body),
+                        span: cond_span,
+                    },
+                    vec![],
+                ));
+            }
+            if path.len() == 1 && path[0] == "map" {
+                if args.len() != 2 {
+                    return Err(LowerError::BuiltinMisuse {
+                        name: "map".to_string(),
+                        detail: "exactly two arguments: map(list, x => body)".to_string(),
+                        span: *span,
+                    });
+                }
+                let list = Box::new(lower_expr_pure(&args[0])?);
+                let (item, mapper_body, mapper_span) = match &args[1] {
+                    Expr::Lambda { param, body, .. } => {
+                        let lowered = lower_expr_pure(body)?;
+                        (param.clone(), lowered, body.span())
+                    }
+                    _ => {
+                        return Err(LowerError::BuiltinMisuse {
+                            name: "map".to_string(),
+                            detail: "second argument must be a lambda: x => body".to_string(),
+                            span: args[1].span(),
+                        });
+                    }
+                };
+                return Ok((
+                    IrExpr::Map {
+                        list,
+                        item,
+                        body: Box::new(mapper_body),
+                        span: mapper_span,
+                    },
+                    vec![],
+                ));
+            }
+            if path.len() == 1 && path[0] == "len" {
+                if args.len() != 1 {
+                    return Err(LowerError::BuiltinMisuse {
+                        name: "len".to_string(),
+                        detail: "exactly one argument: len(value)".to_string(),
+                        span: *span,
+                    });
+                }
+                return Ok((
+                    IrExpr::Len {
+                        list: Box::new(lower_expr_pure(&args[0])?),
+                        span: *span,
+                    },
+                    vec![],
+                ));
+            }
             let mut lowered_args = Vec::with_capacity(args.len());
             let mut effects = Vec::new();
             for a in args {
@@ -242,8 +348,7 @@ fn lower_expr_with_effects(
             ))
         }
         Expr::Binary { op, lhs, rhs, span } => {
-            let (l, mut le) = lower_expr_with_effects(lhs)?;
-            let (r, mut re) = lower_expr_with_effects(rhs)?;
+            let (l, mut le) = lower_expr_with_effects(lhs)?;            let (r, mut re) = lower_expr_with_effects(rhs)?;
             le.append(&mut re);
             Ok((
                 IrExpr::Binary {
@@ -440,11 +545,12 @@ fn lower_view_node_with_effects(
             Ok((IrViewNode::Text { parts, span: *span }, effects))
         }
         ViewNode::For { over, binding, children, span } => {
-            // `over:` names a state field holding the list; lower
-            // it as an Ident read. (Tier 8 keeps this narrow — a
-            // general-expression `over` arrives with full type
-            // inference.)
-            let ir_over = IrExpr::Ident { name: over.clone(), span: *span };
+            // Tier 11: `over` is a general (pure) expression — a
+            // state list, or a derived one via `filter(list, n =>
+            // ...)`. Purity matters less here than in a predicate
+            // (a suspending `over` cannot even render), so the
+            // same rule applies: no effects, no suspends.
+            let ir_over = lower_expr_pure(over)?;
             let mut lowered_children = Vec::with_capacity(children.len());
             let mut effects = Vec::new();
             for ch in children {
@@ -689,6 +795,50 @@ fn await_driven_fields(c: &IrComponent) -> BTreeSet<String> {
         }
     }
     set
+}
+
+/// Lower a Tier 11 list-operation operand. Filter predicates,
+/// map bodies, and list arguments must be pure: no effects (the
+/// capability check) and no suspends (`await`, `sleep`) — the
+/// list operation runs synchronously inside the render pass.
+fn lower_expr_pure(e: &Expr) -> Result<IrExpr, LowerError> {
+    let (ir, effects) = lower_expr_with_effects(e)?;
+    if !effects.is_empty() {
+        return Err(LowerError::PureLambdaRequired { span: e.span() });
+    }
+    if ir_expr_suspends(&ir) {
+        return Err(LowerError::PureLambdaRequired { span: e.span() });
+    }
+    Ok(ir)
+}
+
+/// True when the (already lowered) expression can suspend: an
+/// `await(...)`, a `sleep(ms)` call, or anything carrying one.
+fn ir_expr_suspends(e: &IrExpr) -> bool {
+    match e {
+        IrExpr::Await { .. } => true,
+        IrExpr::Call { path, args, .. } => {
+            (path.len() == 1 && path[0] == "sleep") || args.iter().any(ir_expr_suspends)
+        }
+        IrExpr::Binary { lhs, rhs, .. } => {
+            ir_expr_suspends(lhs) || ir_expr_suspends(rhs)
+        }
+        IrExpr::Unary { operand, .. } => ir_expr_suspends(operand),
+        IrExpr::Ok { value, .. } | IrExpr::Some { value, .. } => ir_expr_suspends(value),
+        IrExpr::Err { reason, .. } => ir_expr_suspends(reason),
+        IrExpr::ListLit { items, .. } => items.iter().any(ir_expr_suspends),
+        IrExpr::Filter { list, cond, .. } => {
+            ir_expr_suspends(list) || ir_expr_suspends(cond)
+        }
+        IrExpr::Map { list, body, .. } => {
+            ir_expr_suspends(list) || ir_expr_suspends(body)
+        }
+        IrExpr::Len { list, .. } => ir_expr_suspends(list),
+        IrExpr::Match { scrutinee, arms, .. } => {
+            ir_expr_suspends(scrutinee) || arms.iter().any(|a| ir_expr_suspends(&a.body))
+        }
+        _ => false,
+    }
 }
 
 fn expr_contains_await(e: &IrExpr) -> bool {

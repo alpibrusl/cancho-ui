@@ -162,6 +162,75 @@ pub fn compile_to_ir(file: &Path) -> Result<cancho_ui_ir::ir::IrFile, PipelineEr
 fn check_to_diag(e: &cancho_ui_types::CheckError, file: &Path) -> Diagnostic {
     match e {
         cancho_ui_types::CheckError::Shape(t) => type_to_diag(t, file),
+        cancho_ui_types::CheckError::LambdaUnsupported { span } => {
+            let (code, severity, tier, subject, message, span) = (
+                "lambda-unsupported",
+                Severity::Error,
+                Tier::Static,
+                Subject::Component { name: String::new() },
+                "a lambda (`x => expr`) is only supported as the second argument of `filter(list, pred)` or `map(list, transform)`".to_string(),
+                Some(*span),
+            );
+            Diagnostic {
+                code: code.into(),
+                severity,
+                tier,
+                subject,
+                message,
+                span: span.map(|s| SpanOut::from_span(s, file)),
+                expected: None,
+                actual: None,
+                remediation: None,
+                related: Vec::new(),
+                notes: Vec::new(),
+            }
+        }
+        cancho_ui_types::CheckError::BuiltinMisuse { name, detail, span } => {
+            let (code, severity, tier, subject, message, span) = (
+                "builtin-shape-mismatch",
+                Severity::Error,
+                Tier::Static,
+                Subject::Component { name: String::new() },
+                format!("`{}` is misused here (expected {})", name, detail),
+                Some(*span),
+            );
+            Diagnostic {
+                code: code.into(),
+                severity,
+                tier,
+                subject,
+                message,
+                span: span.map(|s| SpanOut::from_span(s, file)),
+                expected: None,
+                actual: None,
+                remediation: None,
+                related: Vec::new(),
+                notes: Vec::new(),
+            }
+        }
+        cancho_ui_types::CheckError::PureLambdaRequired { span } => {
+            let (code, severity, tier, subject, message, span) = (
+                "pure-lambda-required",
+                Severity::Error,
+                Tier::Static,
+                Subject::Component { name: String::new() },
+                "the lambda body must be pure: it may not `await(...)` or call effectful/suspending builtins".to_string(),
+                Some(*span),
+            );
+            Diagnostic {
+                code: code.into(),
+                severity,
+                tier,
+                subject,
+                message,
+                span: span.map(|s| SpanOut::from_span(s, file)),
+                expected: None,
+                actual: None,
+                remediation: None,
+                related: Vec::new(),
+                notes: Vec::new(),
+            }
+        }
         cancho_ui_types::CheckError::CapabilityMissing {
             component,
             capability,
@@ -595,6 +664,33 @@ fn lower_to_diag(e: &LowerError, file: &Path) -> Diagnostic {
                 suggestion: None,
                 confidence: Confidence::High,
             }),
+        ),
+        LowerError::LambdaUnsupported { span } => (
+            "lambda-unsupported",
+            Severity::Error,
+            Tier::Static,
+            Subject::Component { name: String::new() },
+            "a lambda (`x => expr`) is only supported as the second argument of `filter(list, pred)` or `map(list, transform)`".to_string(),
+            Some(*span),
+            None,
+        ),
+        LowerError::BuiltinMisuse { name, detail, span } => (
+            "builtin-shape-mismatch",
+            Severity::Error,
+            Tier::Static,
+            Subject::Component { name: String::new() },
+            format!("`{}` is misused here (expected {})", name, detail),
+            Some(*span),
+            None,
+        ),
+        LowerError::PureLambdaRequired { span } => (
+            "pure-lambda-required",
+            Severity::Error,
+            Tier::Static,
+            Subject::Component { name: String::new() },
+            "the lambda body must be pure: it may not `await(...)` or call effectful/suspending builtins".to_string(),
+            Some(*span),
+            None,
         ),
     };
     Diagnostic {

@@ -73,6 +73,17 @@ pub enum CheckError {
         missing: Vec<String>,
         span: Span,
     },
+
+    #[error(
+        "a lambda (`x => expr`) is only supported as the second argument of `filter(list, pred)` or `map(list, transform)`"
+    )]
+    LambdaUnsupported { span: Span },
+
+    #[error("`{name}` is misused here (expected {detail})")]
+    BuiltinMisuse { name: String, detail: String, span: Span },
+
+    #[error("the lambda body must be pure: it may not `await(...)` or call effectful/suspending builtins")]
+    PureLambdaRequired { span: Span },
 }
 
 /// Run the shape pass + the capability pass. Returns the first
@@ -119,6 +130,15 @@ pub fn check_file(file: &File) -> Result<(), CheckError> {
             missing,
             span,
         }),
+        Err(cancho_ui_ir::lower::LowerError::LambdaUnsupported { span }) => {
+            Err(CheckError::LambdaUnsupported { span })
+        }
+        Err(cancho_ui_ir::lower::LowerError::BuiltinMisuse { name, detail, span }) => {
+            Err(CheckError::BuiltinMisuse { name, detail, span })
+        }
+        Err(cancho_ui_ir::lower::LowerError::PureLambdaRequired { span }) => {
+            Err(CheckError::PureLambdaRequired { span })
+        }
     }
 }
 

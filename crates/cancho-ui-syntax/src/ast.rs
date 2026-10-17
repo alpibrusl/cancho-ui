@@ -137,10 +137,11 @@ pub enum ViewNode {
     },
     /// `For { over: list as: item ... }` — Tier 8. Renders the
     /// children once per element of the `over` list; inside the
-    /// children, `item` is a read of the current element. The
-    /// `over` value is a state-field name.
+    /// children, `item` is a read of the current element. Since
+    /// Tier 11, `over` is a general (pure) expression: a state
+    /// list or a derived one — `filter(results, n => ...)`.
     For {
-        over: String,
+        over: Expr,
         binding: String,
         children: Vec<ViewNode>,
         span: Span,
@@ -289,6 +290,14 @@ pub enum Expr {
     None { span: Span },
     /// `[a, b, c]` — Tier 8. A `List[T]` literal.
     ListLit { items: Vec<Expr>, span: Span },
+    /// `x => body` — Tier 11. A single-parameter lambda. It is
+    /// accepted *syntactically* anywhere an argument could go, but
+    /// the lowering refuses it everywhere except as the second
+    /// argument of `filter(list, x => ...)` / `map(list, x => ...)`
+    /// (`lambda-unsupported`): Tier 11 has no first-class function
+    /// values, so a lambda never outlives the builtin call it
+    /// belongs to.
+    Lambda { param: String, body: Box<Expr>, span: Span },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -349,7 +358,8 @@ impl Expr {
             | Expr::Cancelled { span, .. }
             | Expr::Some { span, .. }
             | Expr::None { span, .. }
-            | Expr::ListLit { span, .. } => *span,
+            | Expr::ListLit { span, .. }
+            | Expr::Lambda { span, .. } => *span,
         }
     }
 }

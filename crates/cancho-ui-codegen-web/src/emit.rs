@@ -393,6 +393,28 @@ fn emit_expr_init(e: &IrExpr) -> String {
                 items.iter().map(emit_expr_init).collect();
             format!("[{}]", rendered.join(", "))
         }
+        // `filter`/`map`/`len` in a state initializer: emitted like
+        // the runtime form (Tier 11). A filter/map over another
+        // state field in an initializer reads that field before it
+        // is initialised — the same forward-reference risk any
+        // initializer carries — so prefer literals here.
+        IrExpr::Filter { list, item, cond, .. } => {
+            format!(
+                "({}).filter(function ({}) {{ return {}; }})",
+                emit_expr_init(list),
+                item,
+                emit_expr_init(cond)
+            )
+        }
+        IrExpr::Map { list, item, body, .. } => {
+            format!(
+                "({}).map(function ({}) {{ return {}; }})",
+                emit_expr_init(list),
+                item,
+                emit_expr_init(body)
+            )
+        }
+        IrExpr::Len { list, .. } => format!("({}).length", emit_expr_init(list)),
         // `match` is not a legal state-field initial value in Tier 6
         // (a state field's initial is an expression but a match
         // expression is a runtime construct, not a value). Phase 2
@@ -478,6 +500,34 @@ fn emit_expr_runtime(e: &IrExpr, params: &[&str]) -> String {
             let rendered: Vec<String> =
                 items.iter().map(|i| emit_expr_runtime(i, params)).collect();
             format!("[{}]", rendered.join(", "))
+        }
+        IrExpr::Filter { list, item, cond, .. } => {
+            // `filter(list, x => cond)` — an inline
+            // `Array.prototype.filter`. The user's `x` becomes the
+            // callback parameter and shadows a state field.
+            let mut local_params: Vec<&str> = params.to_vec();
+            local_params.push(item.as_str());
+            format!(
+                "({}).filter(function ({}) {{ return {}; }})",
+                emit_expr_runtime(list, params),
+                item,
+                emit_expr_runtime(cond, &local_params)
+            )
+        }
+        IrExpr::Map { list, item, body, .. } => {
+            let mut local_params: Vec<&str> = params.to_vec();
+            local_params.push(item.as_str());
+            format!(
+                "({}).map(function ({}) {{ return {}; }})",
+                emit_expr_runtime(list, params),
+                item,
+                emit_expr_runtime(body, &local_params)
+            )
+        }
+        IrExpr::Len { list, .. } => {
+            // Element count of a list, character count of a
+            // string — the same JS `.length`.
+            format!("({}).length", emit_expr_runtime(list, params))
         }
         IrExpr::Match { scrutinee, arms, .. } => {
             // Lower to nested ternaries. For Tier 6 the scrutinee

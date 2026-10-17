@@ -655,7 +655,36 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
                     let mut args = Vec::new();
                     if !matches!(self.peek().token, Token::RParen) {
                         loop {
-                            args.push(self.parse_expr()?);
+                            let arg = self.parse_expr()?;
+                            // `x => body` — a lambda argument. The
+                            // head must be a bare identifier; the
+                            // lowering refuses lambdas outside the
+                            // `filter`/`map` call forms
+                            // (`lambda-unsupported`).
+                            if matches!(self.peek().token, Token::FatArrow) {
+                                let param = match &arg {
+                                    Expr::Ident { name, .. } => name.clone(),
+                                    other => {
+                                        let s = other.span();
+                                        return Err(ParseError::Unexpected {
+                                            expected: "identifier before `=>` (lambda parameter)",
+                                            found: Token::FatArrow,
+                                            line: s.start.line,
+                                            column: s.start.column,
+                                        });
+                                    }
+                                };
+                                self.bump(); // =>
+                                let body = self.parse_expr()?;
+                                let span = Span::new(arg.span().start, body.span().end);
+                                args.push(Expr::Lambda {
+                                    param,
+                                    body: Box::new(body),
+                                    span,
+                                });
+                            } else {
+                                args.push(arg);
+                            }
                             if matches!(self.peek().token, Token::Comma) {
                                 self.bump();
                             } else {
@@ -835,7 +864,7 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
     /// caller; `kw_span` is its span.
     fn parse_for_node(&mut self, kw_span: crate::span::Span) -> Result<ViewNode, ParseError> {
         self.expect(Token::LBrace)?;
-        let mut over: Option<String> = None;
+        let mut over: Option<Expr> = None;
         let mut binding: Option<String> = None;
         loop {
             if let Token::Ident(name) = &self.peek().token {
@@ -843,22 +872,44 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
                 if key == "over" || key == "as" {
                     let key_tok = self.bump();
                     self.expect(Token::DotDot)?;
-                    let val_tok = self.bump();
-                    let val = match val_tok.token {
-                        Token::Ident(s) => s,
-                        other => {
-                            return Err(ParseError::Unexpected {
-                                expected: "state field name after `over:` or binding name after `as:`",
-                                found: other,
-                                line: val_tok.span.start.line,
-                                column: val_tok.span.start.column,
-                            });
+                    // Tier 11: `over:` is a general (pure)
+                    // expression — a state list, or a derived one
+                    // via `filter`. `as:` stays a binding name.
+                    let val = if key == "over" {
+                        self.parse_expr()?
+                    } else {
+                        let val_tok = self.bump();
+                        match val_tok.token {
+                            Token::Ident(s) => Expr::Ident {
+                                name: s,
+                                span: val_tok.span,
+                            },
+                            other => {
+                                return Err(ParseError::Unexpected {
+                                    expected: "binding name after `as:`",
+                                    found: other,
+                                    line: val_tok.span.start.line,
+                                    column: val_tok.span.start.column,
+                                });
+                            }
                         }
                     };
                     if key == "over" {
                         over = Some(val);
                     } else {
-                        binding = Some(val);
+                        let val_name = match val {
+                            Expr::Ident { name, .. } => name,
+                            other => {
+                                let s = other.span();
+                                return Err(ParseError::Unexpected {
+                                    expected: "binding name after `as:`",
+                                    found: Token::Eof,
+                                    line: s.start.line,
+                                    column: s.start.column,
+                                });
+                            }
+                        };
+                        binding = Some(val_name);
                     }
                     let _ = key_tok;
                     continue;

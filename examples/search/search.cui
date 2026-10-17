@@ -5,6 +5,13 @@
 // resolved `Ok(found) | Err(reason) | Cancelled` arms update the
 // `results` list. `For` renders one row per result.
 //
+// Tier 11 adds the client-side slice: `len(...)` reports the
+// match count, and the `For` renders a *derived* list —
+// `filter(results, n => len(n) > min)` — where `min` is a plain
+// Int state field driven by the `Show all` / `Long names only`
+// buttons. Filtering runs synchronously inside the render pass;
+// no request, no capability.
+//
 // The Tier 9 `net.search` stub filters a fixed corpus by
 // substring — the demo is fully interactive offline. The three
 // outcome arms cover the awaited request completely: a missing
@@ -18,8 +25,13 @@ component Search {
     state status: String = "idle";
     state r: Result[List[String], String] = Ok([]);
     state results: List[String] = [];
+    state min: Int = 0;
 
     on Change(value) { query = value; }
+
+    on ShowAll { min = 0; }
+
+    on ShowLong { min = 12; }
 
     on Submit {
         status = "loading";
@@ -48,10 +60,16 @@ component Search {
                 role: status
                 "status: {status}"
             }
+            Text {
+                role: status
+                "{len(results)} results matched"
+            }
+            Button { label: "Show all" on: ShowAll }
+            Button { label: "Long names only" on: ShowLong }
             For {
-                over: results
-                as: n
-                Text { "row: {n}" }
+                over: filter(results, n => len(n) > min)
+                as: row
+                Text { "row: {row}" }
             }
         }
     }

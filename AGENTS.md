@@ -259,14 +259,45 @@ view {
 }
 ```
 
-Two Tier 8 know-nots:
+Two know-nots (one healed by Tier 11, one still true):
 
 - Interpolation applies inside `For` bodies (any text body) but
   **not** inside `match` arm bodies — an arm body is a plain
   expression, so strings are joined with `+` there.
-- `filter`/`map` do not exist yet; a `For` renders the
-  whole list. Deriving views from a *filtered* list arrives with
-  Tier 9.
+- ~~`filter`/`map` do not exist yet~~ **Tier 11: they do.**
+
+Since Tier 11 a list view can be *derived*, not just stored. Three
+pure call forms — no capability required, they run synchronously
+inside the render pass:
+
+- `len(value)` — element count (or character count of a string).
+- `filter(list, x => pred)` — keep the elements where `pred` holds.
+- `map(list, x => body)` — transform each element.
+
+```cancho-ui
+state results: List[String] = [];
+state min: Int = 0;
+
+view {
+    Column {
+        Text { role: status "{len(results)} results matched" }
+        For {
+            over: filter(results, n => len(n) > min)
+            as: row
+            Text { "row: {row}" }
+        }
+    }
+}
+```
+
+The lambda (`x => expr`) is the only function value the language
+has, and it **never escapes**: it is accepted syntactically in any
+argument position, but lowering refuses it anywhere except as the
+second argument of `filter`/`map` (`lambda-unsupported`). A lambda
+body must be pure — no `await(...)`, no effect calls
+(`pure-lambda-required`); list operations run synchronously
+inside the render pass. Since Tier 11 `For`'s `over:` is a general
+pure expression, not just a state-field name.
 
 ---
 

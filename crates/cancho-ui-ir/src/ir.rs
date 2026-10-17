@@ -150,6 +150,19 @@ pub enum IrExpr {
     None { span: Span },
     /// `[a, b, c]` — Tier 8. A `List[T]` literal; a JS array.
     ListLit { items: Vec<IrExpr>, span: Span },
+    /// `filter(list, x => cond)` — Tier 11. Keeps the elements
+    /// for which `cond` (with `x` bound) is truthy; a JS
+    /// `Array.prototype.filter` with an inline callback. Pure —
+    /// no capability.
+    Filter { list: Box<IrExpr>, item: String, cond: Box<IrExpr>, span: Span },
+    /// `map(list, x => body)` — Tier 11. Maps each element
+    /// through `body` (with `x` bound); a JS
+    /// `Array.prototype.map` with an inline callback.
+    Map { list: Box<IrExpr>, item: String, body: Box<IrExpr>, span: Span },
+    /// `len(list)` — Tier 11. Element count of a list (or
+    /// character count of a string, the same JS `.length`).
+    /// Pure — no capability.
+    Len { list: Box<IrExpr>, span: Span },
 }
 
 #[derive(Debug, Clone, PartialEq)]

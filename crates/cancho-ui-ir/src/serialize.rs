@@ -275,6 +275,28 @@ impl Serialize for IrExpr {
                 s.serialize_field("span", &IrSpan::from(*span))?;
                 s.end()
             }
+            IrExpr::Filter { list, item, cond, span } => {
+                let mut s = ser.serialize_struct("IrExpr::Filter", 4)?;
+                s.serialize_field("list", list)?;
+                s.serialize_field("item", item)?;
+                s.serialize_field("cond", cond)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
+            IrExpr::Map { list, item, body, span } => {
+                let mut s = ser.serialize_struct("IrExpr::Map", 4)?;
+                s.serialize_field("list", list)?;
+                s.serialize_field("item", item)?;
+                s.serialize_field("body", body)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
+            IrExpr::Len { list, span } => {
+                let mut s = ser.serialize_struct("IrExpr::Len", 2)?;
+                s.serialize_field("list", list)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
         }
     }
 }

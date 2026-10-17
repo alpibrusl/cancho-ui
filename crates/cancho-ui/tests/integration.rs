@@ -819,3 +819,80 @@ component Search {
     // Sanity: the sentinel adapter ships with it.
     assert!(js.contains("const __cui_cancelled = Symbol"));
 }
+
+#[test]
+fn filter_lambda_shapes_are_refused() {
+    // Tier 11 call forms are shape-checked: missing predicate,
+    // non-lambda predicate, arity errors.
+    // 1. Missing predicate.
+    let src1 = "component T {\n    state l: List[String] = [\"a\"];\n    view { Text { \"{filter(l)}\" } }\n}\n";
+    let toks = lex(src1).unwrap();
+    let ast = parse(toks).unwrap();
+    match check_file(&ast) {
+        Err(cancho_ui_types::CheckError::BuiltinMisuse { name, .. }) => assert_eq!(name, "filter"),
+        other => panic!("expected BuiltinMisuse, got: {:?}", other.err()),
+    }
+    // 2. Second argument is not a lambda.
+    let src2 = "component T {\n    state l: List[String] = [\"a\"];\n    view { Text { \"{filter(l, l)}\" } }\n}\n";
+    let toks = lex(src2).unwrap();
+    let ast = parse(toks).unwrap();
+    match check_file(&ast) {
+        Err(cancho_ui_types::CheckError::BuiltinMisuse { name, .. }) => assert_eq!(name, "filter"),
+        other => panic!("expected BuiltinMisuse, got: {:?}", other.err()),
+    }
+    // 3. `len` with two arguments.
+    let src3 = "component T {\n    state l: List[String] = [\"a\"];\n    view { Text { \"{len(l, l)}\" } }\n}\n";
+    let toks = lex(src3).unwrap();
+    let ast = parse(toks).unwrap();
+    match check_file(&ast) {
+        Err(cancho_ui_types::CheckError::BuiltinMisuse { name, .. }) => assert_eq!(name, "len"),
+        other => panic!("expected BuiltinMisuse, got: {:?}", other.err()),
+    }
+}
+
+#[test]
+fn lambda_outside_filter_map_is_refused() {
+    // Tier 11 has no first-class function values: a lambda that
+    // is not a `filter`/`map` predicate is refused with
+    // `lambda-unsupported`.
+    let src = "component T {\n    state l: List[String] = [\"a\"];\n    view { Text { \"{reverse(l, n => n)}\" } }\n}\n";
+    let toks = lex(src).unwrap();
+    let ast = parse(toks).unwrap();
+    match check_file(&ast) {
+        Err(cancho_ui_types::CheckError::LambdaUnsupported { .. }) => {}
+        other => panic!("expected LambdaUnsupported, got: {:?}", other.err()),
+    }
+}
+
+#[test]
+fn impure_lambda_is_refused() {
+    // The predicate of a `filter` runs synchronously inside the
+    // render pass: a `sleep(...)` (or an awaited effect) inside it
+    // is refused with `pure-lambda-required`.
+    let src = "component T {\n    state l: List[String] = [\"a\"];\n    view { Text { \"{filter(l, n => sleep(5) > 0)}\" } }\n}\n";
+    let toks = lex(src).unwrap();
+    let ast = parse(toks).unwrap();
+    match check_file(&ast) {
+        Err(cancho_ui_types::CheckError::PureLambdaRequired { .. }) => {}
+        other => panic!("expected PureLambdaRequired, got: {:?}", other.err()),
+    }
+}
+
+#[test]
+fn derived_for_over_emits_filter_and_len() {
+    // Tier 11: `For { over: filter(results, n => len(n) > min) }`
+    // lowers to an inline `Array.prototype.filter`, `len(...)` in
+    // text interpolation lowers to `.length`, and a state field
+    // read (`min`) inside the predicate keeps its `__state_`
+    // prefix while the lambda's own parameter stays bare.
+    let src = "component T {\n    state results: List[String] = [];\n    state min: Int = 0;\n    view {\n        Column {\n            Text { \"{len(results)} results\" }\n            For {\n                over: filter(results, n => len(n) > min)\n                as: row\n                Text { \"row: {row}\" }\n            }\n        }\n    }\n}\n";
+    let js = compile_str(src);
+    // `len(results)` in the text body.
+    assert!(js.contains("(__state_results).length"));
+    // The derived `For` over an inline predicate.
+    assert!(js.contains(
+        "(__state_results).filter(function (n) { return ((n).length > __state_min); })"
+    ));
+    // The rows bind the loop variable.
+    assert!(js.contains("for (const row of ("));
+}
