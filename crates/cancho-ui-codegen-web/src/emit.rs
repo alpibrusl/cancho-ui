@@ -115,9 +115,10 @@ fn emit_component(c: &IrComponent) -> String {
         out.push_str("(");
         out.push_str(&e.params.join(", "));
         out.push_str(") {\n");
+        let param_set: Vec<&str> = e.params.iter().map(|s| s.as_str()).collect();
         for s in &e.body {
             out.push_str("            ");
-            out.push_str(&emit_stmt(s));
+            out.push_str(&emit_stmt(s, &param_set));
             out.push('\n');
         }
         out.push_str("            __render();\n");
@@ -162,24 +163,33 @@ fn emit_expr_init(e: &IrExpr) -> String {
     }
 }
 
-fn emit_expr_runtime(e: &IrExpr) -> String {
+fn emit_expr_runtime(e: &IrExpr, params: &[&str]) -> String {
     match e {
         IrExpr::IntLit { value, .. } => value.to_string(),
         IrExpr::FloatLit { value, .. } => format!("{}", value),
         IrExpr::StringLit { value, .. } => js_string(value),
         IrExpr::BoolLit { value, .. } => value.to_string(),
-        IrExpr::Ident { name, .. } => STATE_PREFIX.to_string() + name,
-        IrExpr::Call { path, args, .. } => emit_call_runtime(path, args),
+        IrExpr::Ident { name, .. } => {
+            // An identifier that matches a parameter name is a
+            // function parameter, not a state field; emit it
+            // bare. Everything else gets the state prefix.
+            if params.contains(&name.as_str()) {
+                name.clone()
+            } else {
+                STATE_PREFIX.to_string() + name
+            }
+        }
+        IrExpr::Call { path, args, .. } => emit_call_runtime(path, args, params),
         IrExpr::Unary { op: IrUnOp::Neg, operand, .. } => {
-            "(0 - (".to_string() + &emit_expr_runtime(operand) + "))"
+            "(0 - (".to_string() + &emit_expr_runtime(operand, params) + "))"
         }
         IrExpr::Binary { op, lhs, rhs, .. } => {
             "(".to_string()
-                + &emit_expr_runtime(lhs)
+                + &emit_expr_runtime(lhs, params)
                 + " "
                 + op.js_op()
                 + " "
-                + &emit_expr_runtime(rhs)
+                + &emit_expr_runtime(rhs, params)
                 + ")"
         }
     }
@@ -188,11 +198,11 @@ fn emit_expr_runtime(e: &IrExpr) -> String {
 /// Lower a builtin call to its JavaScript form. The capability
 /// that authorises the call has already been verified by the type
 /// checker; this function only picks the symbol to call.
-fn emit_call_runtime(path: &[String], args: &[IrExpr]) -> String {
+fn emit_call_runtime(path: &[String], args: &[IrExpr], params: &[&str]) -> String {
     if path.len() == 2 && path[0] == "clock" && path[1] == "now" {
         return "__cui_clock_now()".to_string();
     }
-    let rendered_args: Vec<String> = args.iter().map(emit_expr_runtime).collect();
+    let rendered_args: Vec<String> = args.iter().map(|a| emit_expr_runtime(a, params)).collect();
     format!(
         "/* unsupported call {}.{}({}) */",
         path.join("."),
@@ -201,14 +211,14 @@ fn emit_call_runtime(path: &[String], args: &[IrExpr]) -> String {
     )
 }
 
-fn emit_stmt(s: &IrStmt) -> String {
+fn emit_stmt(s: &IrStmt, params: &[&str]) -> String {
     match s {
         IrStmt::Assign { target, value, .. } => STATE_PREFIX.to_string()
             + target
             + " = "
-            + &emit_expr_runtime(value)
+            + &emit_expr_runtime(value, params)
             + ";",
-        IrStmt::Expr { expr, .. } => emit_expr_runtime(expr) + ";",
+        IrStmt::Expr { expr, .. } => emit_expr_runtime(expr, params) + ";",
     }
 }
 
@@ -234,8 +244,8 @@ fn emit_view_node(
                     }
                     IrTextPart::Expr(e) => {
                         out.push_str(&format!(
-                            "{0}{1}.appendChild(document.createTextNode(String({2}))));\n",
-                            indent, var, emit_expr_runtime(e)
+                            "{0}{1}.appendChild(document.createTextNode(String({2})));\n",
+                            indent, var, emit_expr_runtime(e, &[])
                         ));
                     }
                 }
@@ -282,6 +292,8 @@ fn emit_view_node(
 
             // Apply bindings.
             let mut click_handler: Option<String> = None;
+            let mut input_handler: Option<String> = None;
+            let mut input_value: Option<String> = None;
             let mut button_label: Option<String> = None;
             for b in bindings {
                 match &b.value {
@@ -295,6 +307,15 @@ fn emit_view_node(
                                     indent, var, js_string(s)
                                 ));
                             }
+                        } else if b.key == "value" {
+                            if matches!(kind, IrElementKind::TextField) {
+                                input_value = Some(s.clone());
+                            } else {
+                                out.push_str(&format!(
+                                    "{0}// value: on a non-TextField (Phase 2+)\n",
+                                    indent
+                                ));
+                            }
                         } else {
                             out.push_str(&format!(
                                 "{0}{1}.setAttribute({2}, {3});\n",
@@ -303,12 +324,40 @@ fn emit_view_node(
                         }
                     }
                     IrBindingValue::EventRef(name) => {
-                        if b.key == "on" && matches!(kind, IrElementKind::Button) {
-                            click_handler = Some(name.clone());
+                        if b.key == "on" {
+                            if matches!(kind, IrElementKind::Button) {
+                                click_handler = Some(name.clone());
+                            } else if matches!(kind, IrElementKind::TextField) {
+                                input_handler = Some(name.clone());
+                            } else {
+                                out.push_str(&format!(
+                                    "{0}// on: {1} on a non-button/non-textfield primitive (Phase 2+)\n",
+                                    indent, name
+                                ));
+                            }
                         } else {
                             out.push_str(&format!(
-                                "{0}// on: {1} on a non-button primitive (Phase 2+)\n",
-                                indent, name
+                                "{0}// {1}: {2} on a primitive (Phase 2+)\n",
+                                indent, b.key, name
+                            ));
+                        }
+                    }
+                    IrBindingValue::StateRef(name) => {
+                        if b.key == "value" {
+                            if matches!(kind, IrElementKind::TextField) {
+                                // One-way binding to a state field;
+                                // re-render reflects the new value.
+                                input_value = Some(format!("{}{}", STATE_PREFIX, name));
+                            } else {
+                                out.push_str(&format!(
+                                    "{0}// value: state ref on a non-TextField (Phase 2+)\n",
+                                    indent
+                                ));
+                            }
+                        } else {
+                            out.push_str(&format!(
+                                "{0}// {1}: {2} on a primitive (Phase 2+)\n",
+                                indent, b.key, name
                             ));
                         }
                     }
@@ -343,7 +392,7 @@ fn emit_view_node(
                                 IrTextPart::Expr(e) => {
                                     out.push_str(&format!(
                                         "{0}{1}.appendChild(document.createTextNode(String({2})));\n",
-                                        indent, var, emit_expr_runtime(e)
+                                        indent, var, emit_expr_runtime(e, &[])
                                     ));
                                 }
                             }
@@ -367,16 +416,36 @@ fn emit_view_node(
                 }
             }
 
+            // TextField: set the value attribute, type, and initial value.
+            if matches!(kind, IrElementKind::TextField) {
+                out.push_str(&format!(
+                    "{0}{1}.setAttribute('type', 'text');\n",
+                    indent, var
+                ));
+                if let Some(ref v) = input_value {
+                    out.push_str(&format!(
+                        "{0}{1}.value = {2};\n",
+                        indent, var, v
+                    ));
+                }
+            }
+
             // Append to parent.
             out.push_str(&format!(
                 "{0}{2}.appendChild({1});\n",
                 indent, var, parent_var
             ));
 
-            // Wire up click handler.
+            // Wire up event handlers.
             if let Some(event_name) = click_handler {
                 out.push_str(&format!(
                     "{0}{1}.addEventListener('click', __on_{2});\n",
+                    indent, var, event_name
+                ));
+            }
+            if let Some(event_name) = input_handler {
+                out.push_str(&format!(
+                    "{0}{1}.addEventListener('input', function (e) {{ __on_{2}(e.target.value); }});\n",
                     indent, var, event_name
                 ));
             }

@@ -283,6 +283,7 @@ impl Serialize for IrElementKind {
             IrElementKind::Row => ser.serialize_unit_variant("IrElementKind", 1, "Row"),
             IrElementKind::Text => ser.serialize_unit_variant("IrElementKind", 2, "Text"),
             IrElementKind::Button => ser.serialize_unit_variant("IrElementKind", 3, "Button"),
+            IrElementKind::TextField => ser.serialize_unit_variant("IrElementKind", 4, "TextField"),
             IrElementKind::Named(s) => ser.serialize_str(s),
         }
     }
@@ -327,6 +328,7 @@ impl Serialize for IrBindingValue {
             IrBindingValue::String(s) => ser.serialize_str(s),
             IrBindingValue::EventRef(s) => ser.serialize_str(s),
             IrBindingValue::Role(r) => r.serialize(ser),
+            IrBindingValue::StateRef(s) => ser.serialize_str(s),
         }
     }
 }

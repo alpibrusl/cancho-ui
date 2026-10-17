@@ -187,6 +187,7 @@ pub enum IrElementKind {
     Row,
     Text,
     Button,
+    TextField,
     Named(String),
 }
 
@@ -197,6 +198,7 @@ impl IrElementKind {
             IrElementKind::Row => "div",
             IrElementKind::Text => "span",
             IrElementKind::Button => "button",
+            IrElementKind::TextField => "input",
             IrElementKind::Named(_) => "div",
         }
     }
@@ -240,4 +242,8 @@ pub enum IrBindingValue {
     String(String),
     EventRef(String),
     Role(IrRole),
+    /// `value: <state-field>` — a one-way binding to a state field.
+    /// Tier 5: used for `TextField` so the value reflects the
+    /// current state on every re-render.
+    StateRef(String),
 }

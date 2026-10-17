@@ -615,6 +615,7 @@ let current_line = tok.span.start.line;
             "Row" => ElementKind::Row,
             "Text" => ElementKind::Text,
             "Button" => ElementKind::Button,
+            "TextField" => ElementKind::TextField,
             other => ElementKind::Named(other.to_string()),
         };
 
@@ -807,6 +808,21 @@ let current_line = tok.span.start.line;
                     }
                 };
                 Ok(BindingValue::Role(role))
+            }
+            "value" => {
+                // `value: <ident>` — bind to a state field, or
+                // `value: <string>` for a literal initial value.
+                let val_tok = self.bump();
+                match val_tok.token {
+                    Token::Ident(s) => Ok(BindingValue::StateRef(s)),
+                    Token::StringLit(s) => Ok(BindingValue::String(s)),
+                    other => Err(ParseError::Unexpected {
+                        expected: "state field name (identifier) or string literal",
+                        found: other,
+                        line: val_tok.span.start.line,
+                        column: val_tok.span.start.column,
+                    }),
+                }
             }
             _ => {
                 // Default: string literal.

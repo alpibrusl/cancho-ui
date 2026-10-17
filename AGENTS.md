@@ -56,12 +56,26 @@ component Counter {
 
     view {
         Column {
-            Text("Count: {count}")
-            Button(label: "Increment", on: Increment)
+            Text { "Count: {count}" }
+            Button { label: "Increment" on: Increment }
         }
     }
 }
 ```
+
+For two-way input, `TextField` takes a one-way `value:` binding to a
+state field and an `on:` handler that receives the new value:
+
+```cancho-ui
+on Change(value) { query = value; }
+view {
+    TextField { value: query on: Change }
+}
+```
+
+`value` is a parameter — not a state field — and the JS emitter
+passes `e.target.value` to the handler on every input event. A
+re-render reflects the new value.
 
 **What the rules guarantee.** `count` is owned by `Counter`.
 The compiler refuses a transition that updates `count` from

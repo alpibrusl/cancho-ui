@@ -318,6 +318,7 @@ fn lower_kind(k: &ElementKind) -> IrElementKind {
         ElementKind::Row => IrElementKind::Row,
         ElementKind::Text => IrElementKind::Text,
         ElementKind::Button => IrElementKind::Button,
+        ElementKind::TextField => IrElementKind::TextField,
         ElementKind::Named(s) => IrElementKind::Named(s.clone()),
     }
 }
@@ -343,6 +344,7 @@ fn lower_binding(b: &Binding) -> Result<IrBinding, LowerError> {
         BindingValue::String(s) => IrBindingValue::String(s.clone()),
         BindingValue::EventRef(name) => IrBindingValue::EventRef(name.clone()),
         BindingValue::Role(r) => IrBindingValue::Role(lower_role(r)),
+        BindingValue::StateRef(name) => IrBindingValue::StateRef(name.clone()),
     };
     Ok(IrBinding {
         key: b.key.clone(),

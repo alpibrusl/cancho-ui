@@ -246,3 +246,67 @@ component Ticker {
         cancho_ui_types::CheckError::CapabilityMissing { .. }
     ));
 }
+
+#[test]
+fn textfield_emits_input_element() {
+    // Tier 5: `TextField` is the new interactive primitive.
+    let src = "\
+component T {
+    state q: String = \"\";
+    view { TextField { value: q } }
+}
+";
+    let js = compile_str(src);
+    // TextField lowers to <input type="text">.
+    assert!(js.contains("createElement('input')"));
+    assert!(js.contains("setAttribute('type', 'text')"));
+    // The state field is read through the `__state_` prefix.
+    assert!(js.contains("__state_q"));
+}
+
+#[test]
+fn textfield_with_event_handler_passes_param() {
+    // Tier 5: `on: Change(value)` declares a parameter; the JS
+    // emitter passes `e.target.value` to the handler so the body
+    // sees the new value as a bare identifier, not a state field.
+    let src = "\
+component T {
+    state q: String = \"\";
+    on Change(value) { q = value; }
+    view { TextField { value: q on: Change } }
+}
+";
+    let js = compile_str(src);
+    assert!(js.contains("function __on_Change(value)"));
+    assert!(js.contains("__state_q = value;"));
+    assert!(js.contains("addEventListener('input', function (e) { __on_Change(e.target.value); })"));
+}
+
+#[test]
+fn searchable_list_compiles_with_textfield_and_clock() {
+    // Tier 5: the proposal §9.3 searchable-list demo, Tier 5
+    // synchronous form. TextField drives a query state field,
+    // an event handler updates it, and the Clock capability
+    // records the time of the last input.
+    let src = "\
+component Search {
+    requires Clock;
+    state query: String = \"\";
+    state last_searched: Int = 0;
+    on Change(value) { query = value; last_searched = clock.now(); }
+    view {
+        Column {
+            TextField { value: query on: Change }
+            Text { role: status \"Searching for: {query}\" }
+        }
+    }
+}
+";
+    let js = compile_str(src);
+    assert!(js.contains("function mount_Search"));
+    assert!(js.contains("__on_Change(value)"));
+    assert!(js.contains("__state_query = value;"));
+    assert!(js.contains("__state_last_searched = __cui_clock_now();"));
+    assert!(js.contains("String(__state_query)"));
+    assert!(js.contains("addEventListener('input'"));
+}

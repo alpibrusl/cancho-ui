@@ -80,17 +80,23 @@ cd examples/clock && python3 -m http.server
 - **No macros.** Macros break stable content-addressable identity,
   the same reason Cancho Core forbids them.
 
-And honestly, **early**: Tier 1–4 are shipped, Tier 5 (source maps,
-the search-able-list demo, the full refusal catalog) is next, the mobile
-backend and the agent benchmark are later. The compiler is Rust, the
-language is a small declarative subset, and the toolchain is shaped to
-be one an AI agent can drive. The four components shipped so far
-(`Hello`, `Counter`, `Clock`, plus the proposal §9.3 searchable-list
-demo in Tier 5) all compile and run; the refusal discipline is locked
-in `spec/diagnostics/README.md`; the CLI's JSON output is a contract,
+And honestly, **early**: Tier 1–4 are shipped, Tier 5 (the
+searchable-list demo and a richer refusal catalog) is in. The compiler
+is Rust, the language is a small declarative subset, and the
+toolchain is shaped to be one an AI agent can drive. The four
+components shipped so far (`Hello`, `Counter`, `Clock`, `Search`)
+all compile and run; the refusal discipline is locked in
+`spec/diagnostics/README.md`; the CLI's JSON output is a contract,
 not a string. What is **not** claimed: that an agent using cancho-ui
 is more productive than one using a conventional stack. That needs the
 Phase 3 benchmark, which has not been run.
+
+The Tier 5 `Search` example is the proposal §9.3 demo in synchronous
+form: a `TextField` drives a `query` state field, the `Change` event
+handler updates it, and a `Text` with `role: status` shows the
+current query. The same source maps a real-world list-search
+interaction onto the language's state + event model; an async
+version with `Request[T]`, `await`, and cancellation is Phase 2.
 
 ## Building
 

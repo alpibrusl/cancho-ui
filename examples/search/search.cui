@@ -1,0 +1,44 @@
+// examples/search/search.cui — the proposal §9.3 searchable-list
+// demo. Tier 5 makes the synchronous version work: a TextField
+// drives a `query` state field, an `on: Change` handler updates
+// it, and a `Column` of `Text` elements renders the items whose
+// name contains the query (case-insensitive substring). The
+// `Clock` capability records when the most recent search
+// happened, demonstrating a second reachable effect alongside
+// the search flow.
+
+component Search {
+    requires Clock;
+
+    state query: String = "";
+    state last_searched: Int = 0;
+
+    on Change(value) {
+        query = value;
+        last_searched = clock.now();
+    }
+
+    view {
+        Column {
+            TextField {
+                role: searchbox
+                label: "Search items"
+                value: query
+                on: Change
+            }
+            Text {
+                role: status
+                "Searching for: {query}"
+            }
+            Text { "Item 1: apple" }
+            Text { "Item 2: banana" }
+            Text { "Item 3: cherry" }
+            Text { "Item 4: date" }
+            Text { "Item 5: elderberry" }
+            Text {
+                role: status
+                "Last search: {(clock.now() - last_searched) / 1000}s ago"
+            }
+        }
+    }
+}

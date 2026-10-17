@@ -144,6 +144,8 @@ pub enum ElementKind {
     Row,
     Text,
     Button,
+    /// An editable text input. Tier 5 primitive.
+    TextField,
     Named(String),
 }
 
@@ -178,6 +180,10 @@ pub enum BindingValue {
     EventRef(String),
     /// `role: heading` etc.
     Role(Role),
+    /// `value: query` — reference to a state field. Tier 5
+    /// supports this for `TextField`; other primitives may use it
+    /// in Phase 2.
+    StateRef(String),
 }
 
 #[derive(Debug, Clone, PartialEq)]
