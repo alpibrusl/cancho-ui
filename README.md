@@ -80,9 +80,10 @@ cd examples/clock && python3 -m http.server
 - **No macros.** Macros break stable content-addressable identity,
   the same reason Cancho Core forbids them.
 
-And honestly, **early**: Tier 1–9 are shipped (the async slice,
-`Option[T]`/`List[T]` with `For`, and the `Network` capability with
-`net.search`). The compiler is Rust, the language is a small
+And honestly, **early**: Tier 1–10 are shipped (the async slice,
+`Option[T]`/`List[T]` with `For`, the `Network` capability with
+`net.search`, and runtime cancellation with stale-result
+protection). The compiler is Rust, the language is a small
 declarative subset, and the toolchain is shaped to be one an AI
 agent can drive. The seven components shipped so far (`Hello`,
 `Counter`, `Clock`, `Search`, `Match`, `Ticker`, `Roster`) all
@@ -99,17 +100,19 @@ awaited request dispatches across the `Ok(_) | Err(_) | Cancelled`
 arms, assigning the matched list into `results`. `For` renders one
 row per result, and a query that matches nothing shows the empty
 state with zero rows. The Tier 9 `net.search` stub filters a fixed
-corpus by substring, so the demo is fully interactive offline; a
-real adapter keeps the same resolve channel. Cancellation
-(stale-result protection when a request should be dropped) is the
-next Phase 2 item.
+corpus by substring and its simulated delay grows with the query
+length — so Tier 10 cancellation is demonstrably needed: a slow
+stale request resolves after a fast newer one, and the runtime
+drops the superseded continuation at the await instead of letting
+it clobber the fresh results. A real adapter keeps the same
+resolve channel.
 
 ## Building
 
 ```sh
 git clone https://github.com/alpibrusl/cancho-ui
 cd cancho-ui
-cargo test --workspace   # the whole gate: 44 unit + integration tests
+cargo test --workspace   # the whole gate: 45 unit + integration tests
 ```
 
 The browser harness for the end-to-end DOM smoke tests (`/tmp/test-*.js`)
@@ -184,10 +187,10 @@ IR schema, the diagnostic format, and the grammar are the contracts the
 compiler meets.
 
 [`docs/proposal.md`](docs/proposal.md) — the original MVP proposal. The
-implementation matches Tier 1–9 of the proposal's roadmap (the async
-slice, the `Option`/`List` generics, and the `Network` capability
-included), plus the Phase 2 compile-time `match-non-exhaustive`
-rule. The remaining Phase 2 items (`Cancelled` at runtime, list
+implementation matches Tier 1–10 of the proposal's roadmap (the async
+slice, the `Option`/`List` generics, the `Network` capability, and
+runtime cancellation included), plus the Phase 2 compile-time
+`match-non-exhaustive` rule. The remaining Phase 2 items (list
 operations like `filter`, `foreign`/`target` blocks) and beyond
 are still ahead; the roadmap rows record what each shipped and
 what was found.

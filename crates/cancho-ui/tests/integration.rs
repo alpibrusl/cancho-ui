@@ -415,10 +415,18 @@ component Ticker {
     let js = compile_str(src);
     // Handlers are async so `await` can suspend.
     assert!(js.contains("async function __on_Tick"));
-    // `await(sleep(50))` is lowered to the runtime adapter.
-    assert!(js.contains("await (__cui_sleep_ms(50))"));
+    // `await(sleep(50))` is lowered to the cancellation-tracked
+    // runtime call (Tier 10): the `sleep_ms` group cancels a
+    // still-pending previous request.
+    assert!(js.contains(
+        "await __cui_call(\"sleep\", function () { return __cui_sleep_ms(50); })"
+    ));
     // The sleep adapter is emitted when the body uses sleep.
     assert!(js.contains("function __cui_sleep_ms(ms)"));
+    // The `__cui_cancelled` sentinel is thrown when a superseded
+    // request resolves, and the handler's try/catch swallows it.
+    assert!(js.contains("const __cui_cancelled = Symbol"));
+    assert!(js.contains("if (e !== __cui_cancelled) { throw e; }"));
     // `Cancelled` is a unit-variant pattern: tag test, no payload.
     assert!(js.contains("__cui_tag === \"Cancelled\""));
 }
@@ -727,12 +735,87 @@ component Search {
     // reachable.
     assert!(js.contains("function __cui_net_search(q)"));
     assert!(js.contains("__CUI_CORPUS"));
-    // The awaited call form.
-    assert!(js.contains("await (__cui_net_search(__state_query))"));
+    // The awaited call form: a cancellation-tracked `__cui_call`
+    // in the `net_search` group (Tier 10).
+    assert!(js.contains(
+        "await __cui_call(\"net_search\", function () { return __cui_net_search(__state_query); })"
+    ));
     // The loading status paints before the handler suspends.
-    assert!(js.contains("__state_status = \"loading\";\n            __render();"));
+    assert!(js.contains("__state_status = \"loading\";\n                __render();"));
+    // The handler body is wrapped in the cancelled-swallowing
+    // try/catch (Tier 10 drop semantics).
+    assert!(js.contains("if (e !== __cui_cancelled) { throw e; }"));
     // Ok arm passes the found list straight through.
     assert!(js.contains("var found = __cui_match_"));
     // Rows render via for..of.
     assert!(js.contains("for (const n of __state_results)"));
+}
+
+#[test]
+fn stale_requests_are_cancelled_not_clobbered() {
+    // Tier 10: two awaited net.search calls in the same handler
+    // group. The first (slow) request is superseded by the second
+    // (fast) one; when the slow request later resolves, its
+    // resolution throws the `__cui_cancelled` sentinel, which the
+    // handler's try/catch swallows — so the stale continuation
+    // (its Ok arm, its status and results assignments) never
+    // runs. The emitted JS must contain the exact pieces of that
+    // protocol:
+    //   - the per-await cancellation-tracked call,
+    //   - the throw on a cancelled request resolving,
+    //   - the swallow-and-drop catch in the handler,
+    //   - and the Ok-arm assignment AFTER the await (the part
+    //     being protected).
+    let src = "\
+component Search {
+    requires Network;
+    state query: String = \"\";
+    state status: String = \"idle\";
+    state r: Result[List[String], String] = Ok([]);
+    state results: List[String] = [];
+    on Change(value) { query = value; }
+    on Submit {
+        status = \"loading\";
+        r = await(net.search(query));
+        status = match r {
+            Ok(_) => { \"done\" }
+            Err(_) => { \"error\" }
+            Cancelled => { \"cancelled\" }
+        };
+        results = match r {
+            Ok(found) => { found }
+            Err(_) => { [] }
+            Cancelled => { [] }
+        };
+    }
+    view {
+        Column {
+            TextField {
+                label: \"Search query\"
+                value: query
+                on: Change
+            }
+            Button { label: \"Search\" on: Submit }
+            For {
+                over: results
+                as: n
+                Text { \"row: {n}\" }
+            }
+        }
+    }
+}
+";
+    let js = compile_str(src);
+    assert!(js.contains(
+        "await __cui_call(\"net_search\", function () { return __cui_net_search(__state_query); })"
+    ));
+    assert!(js.contains("if (token.cancelled) { throw __cui_cancelled; }"));
+    // The drop: the statements after the await sit inside the
+    // swallowing catch, so a cancelled resolution never reaches
+    // them.
+    let catch_at = js.find("} catch (e) {").expect("handler catch");
+    let results_assign = js.find("__state_results = ((").expect("results assignment");
+    assert!(catch_at < results_assign);
+    // Sanity: the sentinel adapter ships with it.
+    assert!(js.contains("const __cui_cancelled = Symbol"));
 }

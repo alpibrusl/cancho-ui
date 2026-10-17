@@ -138,16 +138,29 @@ Core refuses a function that over-declares its effect row.
 ## 3. Effects return a result token; results are correlated (placeholder)
 
 An effect returns a `Request[T]`. Awaiting it produces
-`Ok(T) | Err(reason) | Cancelled`. The `Cancelled` variant is
-delivered when the component has been disposed; the language
-drops the result and the `state-after-dispose` rule applies.
+`Ok(T) | Err(reason) | Cancelled` — that is the static type. At
+runtime, Tier 10 delivers `Cancelled` as a **drop**: each
+`await(...)` is a cancellation-tracked call in the group of its
+effect (`net.search` → group `net_search`), starting a call
+cancels the group's still-pending request, and a superseded
+request resolving later throws a sentinel that the handler's
+try/catch swallows — the rest of that handler never runs, so a
+slow stale request cannot clobber a newer one's state
+(state-after-dispose semantics, one granularity finer: per
+supersede rather than per dispose). Because the drop happens at
+the await, the `Cancelled` match arm is not dispatched in Tier
+10 — but it remains **required**: the match must be exhaustive
+by construction, so later tiers that deliver `Cancelled` to the
+arm (component disposal, deadlines) find a program that already
+handles it.
 
 `Result[T, E]` is two constructors: `Ok(value)` and `Err(reason)`.
 A `Request[T]` is awaited with `await(r)` and resolves to
 `Ok | Err | Cancelled` — three constructors. `match` on any of
 these must cover every variant. Missing an arm is a refusal with
-`match-non-exhaustive` at compile time (Phase 2); without
-compile-time coverage the runtime throws `no match arm matched`.
+`match-non-exhaustive` at compile time; without
+compile-time coverage (a non-state scrutinee) the runtime throws
+`no match arm matched`.
 
 ```cancho-ui
 component Half {

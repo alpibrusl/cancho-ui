@@ -49,6 +49,7 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
     let mut any_clock = false;
     let mut any_sleep = false;
     let mut any_network = false;
+    let mut any_cancel = false;
     for c in &ir.components {
         for e in &c.reachable_effects {
             if e.capability == "Clock" {
@@ -66,6 +67,13 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
         if view_node_uses_await_or_sleep(&c.view.body) {
             any_sleep = true;
         }
+        // Tier 10: any `await(...)` anywhere needs the
+        // cancellation runtime (`__cui_call`, sentinel).
+        if c.events.iter().any(|e| e.body.iter().any(body_uses_await))
+            || view_node_uses_await_or_sleep(&c.view.body)
+        {
+            any_cancel = true;
+        }
     }
     if any_clock {
         out.push_str(CLOCK_ADAPTER_JS);
@@ -77,6 +85,10 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
     }
     if any_network {
         out.push_str(NETWORK_ADAPTER_JS);
+        out.push('\n');
+    }
+    if any_cancel {
+        out.push_str(CANCEL_ADAPTER_JS);
         out.push('\n');
     }
 
@@ -127,10 +139,11 @@ const NETWORK_ADAPTER_JS: &str = "\
 // `net.search(q)` returns a Promise that resolves to
 // `{__cui_tag: \"Ok\", value: [...]}` after a simulated network
 // delay. Tier 9 stub: the search filters a fixed corpus by
-// substring, so the demo is fully interactive offline. A real
-// adapter performs the HTTP request and keeps the same resolve
-// channel; a failing deadline resolves with
-// `{__cui_tag: \"Err\", reason}` instead.
+// substring, so the demo is fully interactive offline. The delay
+// grows with the query length so slow requests demonstrably
+// return AFTER fast ones — which is exactly what Tier 10
+// cancellation protects against. A failing deadline resolves
+// with `{__cui_tag: \"Err\", reason}` instead.
 const __CUI_CORPUS = [
     \"Ada Lovelace\", \"Grace Hopper\", \"Linus Torvalds\",
     \"Andrey Kolmogorov\", \"Bertrand Russell\", \"Ada Marrero\",
@@ -143,7 +156,36 @@ function __cui_net_search(q) {
                 return item.toLowerCase().indexOf(needle) !== -1;
             });
             resolve({__cui_tag: \"Ok\", value: value});
-        }, 120);
+        }, 60 + 45 * String(q).length);
+    });
+}
+";
+
+const CANCEL_ADAPTER_JS: &str = "\
+// Platform adapter: runtime cancellation (Tier 10).
+// `await(expr)` lowers to `__cui_call(group, start)`:
+//   - starting a call cancels the group's still-pending request
+//     (stale-result protection: a newer search supersedes an
+//     older one);
+//   - a superseded request resolving later throws the
+//     `__cui_cancelled` sentinel; the handler's try/catch
+//     swallows it, so the rest of that handler is dropped.
+// The `Cancelled` variant of a `RequestResult[T]` is still a
+// required arm — the match must be exhaustive by construction —
+// but Tier 10 delivers the drop at the await, before the arm
+// could dispatch. Component disposal will deliver it the same
+// way in a later tier.
+const __cui_cancelled = Symbol(\"__cui_cancelled\");
+const __cui_inflight = { };
+function __cui_call(group, start) {
+    const prev = __cui_inflight[group];
+    if (prev) { prev.cancelled = true; }
+    const token = { cancelled: false };
+    __cui_inflight[group] = token;
+    return start().then(function (res) {
+        if (token.cancelled) { throw __cui_cancelled; }
+        if (__cui_inflight[group] === token) { __cui_inflight[group] = null; }
+        return res;
     });
 }
 ";
@@ -260,16 +302,28 @@ fn emit_component(c: &IrComponent) -> String {
         // synchronous `__render()` after the statements that
         // precede the first await. (The final `__render()` at the
         // end of the handler repaints the post-resolution state.)
+        //
+        // The whole body sits in a try/catch that swallows the
+        // `__cui_cancelled` sentinel: when a request is
+        // superseded, its resolution throws the sentinel out of
+        // the awaiting statement and the *rest of the handler*
+        // never runs — the stale continuation is dropped, so a
+        // slower old request cannot clobber the newer one's
+        // state. Other exceptions rethrow.
         let first_await = e.body.iter().position(body_uses_await);
+        out.push_str("            try {\n");
         for (i, s) in e.body.iter().enumerate() {
-            out.push_str("            ");
+            out.push_str("                ");
             out.push_str(&emit_stmt(s, &param_set));
             out.push('\n');
             if Some(i + 1) == first_await {
-                out.push_str("            __render();\n");
+                out.push_str("                __render();\n");
             }
         }
-        out.push_str("            __render();\n");
+        out.push_str("                __render();\n");
+        out.push_str("            } catch (e) {\n");
+        out.push_str("                if (e !== __cui_cancelled) { throw e; }\n");
+        out.push_str("            }\n");
         out.push_str("        }\n");
     }
 
@@ -391,14 +445,25 @@ fn emit_expr_runtime(e: &IrExpr, params: &[&str]) -> String {
                 + "})"
         }
         IrExpr::Await { request, .. } => {
-            // `await(expr)` becomes a JS `await expr`. The
-            // enclosing function is generated as `async function`
-            // (see emit_component). The expression inside the
-            // parens is evaluated as a Promise; the `await`
-            // suspends until the Promise resolves, and the
-            // resolved value flows into the surrounding statement.
+            // `await(expr)` becomes a cancellation tracked call:
+            //  - the request's effect kind is the cancellation
+            //    group (`net.search` -> "net_search");
+            //  - starting a call cancels the group's still-pending
+            //    one (stale-result protection);
+            //  - if a cancelled request resolves, the chain throws
+            //    the `__cui_cancelled` sentinel, which the handler
+            //    body's try/catch swallows — the rest of the
+            //    handler is dropped, so a superseded continuation
+            //    cannot write state after a newer call completed.
+            //  (The enclosing function is generated as `async
+            //  function`; see emit_component.)
+            let group = match request.as_ref() {
+                IrExpr::Call { path, .. } if !path.is_empty() => path.join("_"),
+                _ => "default".to_string(),
+            };
             format!(
-                "await ({})",
+                "await __cui_call(\"{}\", function () {{ return {}; }})",
+                group,
                 emit_expr_runtime(request, params)
             )
         }
