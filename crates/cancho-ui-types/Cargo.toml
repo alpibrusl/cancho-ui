@@ -6,4 +6,5 @@ license.workspace = true
 
 [dependencies]
 cancho-ui-syntax = { workspace = true }
-thiserror = { workspace = true }
+cancho-ui-ir     = { workspace = true }
+thiserror        = { workspace = true }

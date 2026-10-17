@@ -28,7 +28,6 @@ name = "cancho-ui-ir"
 version = "0.1.0"
 dependencies = [
  "cancho-ui-syntax",
- "cancho-ui-types",
  "serde",
  "serde_json",
  "thiserror",
@@ -45,6 +44,7 @@ dependencies = [
 name = "cancho-ui-types"
 version = "0.1.0"
 dependencies = [
+ "cancho-ui-ir",
  "cancho-ui-syntax",
  "thiserror",
 ]

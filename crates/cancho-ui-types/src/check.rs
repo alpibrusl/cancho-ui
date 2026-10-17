@@ -1,9 +1,17 @@
-//! Phase 1 validation passes. Phase 1 is deliberately thin — it
-//! checks that the AST is a well-formed Tier 1 file (one or more
-//! components, each with a single `view` clause, no reserved words
-//! used as component names, no duplicate component names in one
-//! file). Phase 2 layers on the capability checker and the full
-//! semantic model from `docs/semantics.md`.
+//! Phase 1 / Tier 4 validation: type checking.
+//!
+//! Two responsibilities:
+//! 1. **Shape** — PascalCase component names, reserved words, no
+//!    duplicate components in one file.
+//! 2. **Capability** — every reachable effect's capability must
+//!    appear in the component's `requires` list; every declared
+//!    capability must have at least one reachable use.
+//!
+//! The capability check is implemented in `cancho-ui-ir` because
+//! it operates on the lowered IR (so `types` does not need to
+//! depend on `ir`, and `ir` does not need to depend on `types` —
+//! avoiding the cycle). `check_file` runs shape first, then calls
+//! `lower_file` for the capability pass.
 
 use cancho_ui_syntax::{
     ast::{Accessibility, Binding, Component, ElementKind, File, Role, ViewNode},
@@ -29,17 +37,76 @@ pub enum TypeError {
     #[error("component name `{name}` is not PascalCase; component names must start with an uppercase letter")]
     NotPascalCase { name: String, span: Span },
 
-    #[error("element kind `{name}` is not PascalCase; built-in primitives are PascalCase and user components must match")]
+    #[error("element kind `{name}` is not PascalCase; element kinds must match a built-in primitive or a PascalCase component name")]
     NotPascalCaseKind { name: String, span: Span },
 }
 
-/// Run the Phase 1 validation pass over a parsed file. Returns the
-/// first error encountered; Phase 2 will batch every independent
-/// error per `spec/diagnostics/README.md`.
-pub fn check_file(file: &File) -> Result<(), TypeError> {
+/// What `check_file` can produce. The shape pass (PascalCase,
+/// reserved words, duplicates) lives in this crate. The
+/// capability pass lives in `cancho-ui-ir` (against the lowered
+/// IR) and is exposed here so the type crate's tests can match
+/// on either kind of refusal.
+#[derive(Debug, Clone, Error, PartialEq)]
+pub enum CheckError {
+    #[error(transparent)]
+    Shape(TypeError),
+
+    #[error("component `{component}` performs `{call_path}` which requires the `{capability}` capability, but `requires {capability}` is not declared")]
+    CapabilityMissing {
+        component: String,
+        capability: String,
+        call_path: String,
+        span: Span,
+    },
+
+    #[error("component `{component}` declares `requires {capability};` but no reachable effect uses it")]
+    CapabilityUnused {
+        component: String,
+        capability: String,
+        span: Span,
+    },
+}
+
+/// Run the shape pass + the capability pass. Returns the first
+/// error. Phase 2 will batch every independent error per
+/// `spec/diagnostics/README.md`.
+pub fn check_file(file: &File) -> Result<(), CheckError> {
+    check_shape(file).map_err(CheckError::Shape)?;
+    match cancho_ui_ir::lower_file(file) {
+        Ok(_) => Ok(()),
+        Err(cancho_ui_ir::lower::LowerError::EmptySpan { .. }) => {
+            Err(CheckError::Shape(TypeError::MissingView {
+                name: "<file>".into(),
+                span: file.span,
+            }))
+        }
+        Err(cancho_ui_ir::lower::LowerError::CapabilityMissing {
+            component,
+            capability,
+            call_path,
+            span,
+        }) => Err(CheckError::CapabilityMissing {
+            component,
+            capability,
+            call_path,
+            span,
+        }),
+        Err(cancho_ui_ir::lower::LowerError::CapabilityUnused {
+            component,
+            capability,
+            span,
+        }) => Err(CheckError::CapabilityUnused {
+            component,
+            capability,
+            span,
+        }),
+    }
+}
+
+fn check_shape(file: &File) -> Result<(), TypeError> {
     let mut seen: Vec<(&str, Span)> = Vec::new();
     for c in &file.components {
-        check_component(c)?;
+        check_component_shape(c)?;
 
         if is_reserved_word(&c.name) {
             return Err(TypeError::ReservedComponentName {
@@ -68,11 +135,11 @@ pub fn check_file(file: &File) -> Result<(), TypeError> {
     Ok(())
 }
 
-fn check_component(c: &Component) -> Result<(), TypeError> {
-    check_view_node(&c.name, &c.view.body)
+fn check_component_shape(c: &Component) -> Result<(), TypeError> {
+    check_view_node_shape(&c.view.body)
 }
 
-fn check_view_node(_component: &str, node: &ViewNode) -> Result<(), TypeError> {
+fn check_view_node_shape(node: &ViewNode) -> Result<(), TypeError> {
     match node {
         ViewNode::Element { kind, accessibility, children, bindings, span } => {
             if let ElementKind::Named(name) = kind {
@@ -83,12 +150,12 @@ fn check_view_node(_component: &str, node: &ViewNode) -> Result<(), TypeError> {
                     });
                 }
             }
-            check_accessibility(accessibility);
+            check_accessibility_shape(accessibility);
             for c in children {
-                check_view_node(_component, c)?;
+                check_view_node_shape(c)?;
             }
             for b in bindings {
-                check_binding(b)?;
+                check_binding_shape(b)?;
             }
         }
         ViewNode::Text { .. } => {}
@@ -96,24 +163,15 @@ fn check_view_node(_component: &str, node: &ViewNode) -> Result<(), TypeError> {
     Ok(())
 }
 
-fn check_binding(_b: &Binding) -> Result<(), TypeError> {
-    // Phase 2 enforces binding types (e.g. `on:` must reference a
-    // declared event; `role:` must be one of the built-in roles;
-    // `label:` must be non-empty for interactive primitives). For
-    // now, the parser accepts and the type checker passes through.
+fn check_binding_shape(_b: &Binding) -> Result<(), TypeError> {
     Ok(())
 }
 
-fn check_accessibility(_acc: &Accessibility) {
-    // Phase 1 records accessibility; Phase 2 enforces it. For now,
-    // `role` and `label` are accepted at the parse level and
-    // passed through to the IR.
+fn check_accessibility_shape(_acc: &Accessibility) {
     let _ = Role::Text;
 }
 
 /// The reserved-word set. Source: `spec/grammar/README.md` §2.
-/// Names in this set are refused as component / element-kind /
-/// state-field / capability names per the `name-reserved` rule.
 pub fn is_reserved_word(name: &str) -> bool {
     matches!(
         name,
@@ -166,20 +224,16 @@ mod tests {
 
     #[test]
     fn reserved_name_refused() {
-        // `effect` is reserved at the language level (per the rule
-        // catalog in `spec/diagnostics/README.md`) but is not a hard
-        // keyword in the lexer, so it lexes as an identifier and
-        // the reserved-word check fires here.
         let f = parse_ok("component effect { view { Text { \"hi\" } } }\n");
         let err = check_file(&f).unwrap_err();
-        assert!(matches!(err, TypeError::ReservedComponentName { .. }));
+        assert!(matches!(err, CheckError::Shape(TypeError::ReservedComponentName { .. })));
     }
 
     #[test]
     fn lowercase_name_refused() {
         let f = parse_ok("component hello { view { Text { \"hi\" } } }\n");
         let err = check_file(&f).unwrap_err();
-        assert!(matches!(err, TypeError::NotPascalCase { .. }));
+        assert!(matches!(err, CheckError::Shape(TypeError::NotPascalCase { .. })));
     }
 
     #[test]
@@ -188,6 +242,47 @@ mod tests {
             "component X { view { Text { \"a\" } } }\ncomponent X { view { Text { \"b\" } } }\n",
         );
         let err = check_file(&f).unwrap_err();
-        assert!(matches!(err, TypeError::DuplicateComponent { .. }));
+        assert!(matches!(err, CheckError::Shape(TypeError::DuplicateComponent { .. })));
+    }
+
+    #[test]
+    fn capability_missing_refused() {
+        let src = "\
+component Ticker {
+    state n: Int = 0;
+    on Tick { n = clock.now(); }
+    view { Text { \"hi\" } }
+}
+";
+        let f = parse_ok(src);
+        let err = check_file(&f).unwrap_err();
+        assert!(matches!(err, CheckError::CapabilityMissing { .. }));
+    }
+
+    #[test]
+    fn capability_unused_refused() {
+        let src = "\
+component Unused {
+    requires Clock;
+    view { Text { \"hi\" } }
+}
+";
+        let f = parse_ok(src);
+        let err = check_file(&f).unwrap_err();
+        assert!(matches!(err, CheckError::CapabilityUnused { .. }));
+    }
+
+    #[test]
+    fn capability_clock_check_passes() {
+        let src = "\
+component Ticker {
+    requires Clock;
+    state n: Int = 0;
+    on Tick { n = clock.now(); }
+    view { Text { \"hi\" } }
+}
+";
+        let f = parse_ok(src);
+        check_file(&f).expect("check");
     }
 }

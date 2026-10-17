@@ -21,8 +21,24 @@ pub struct IrComponent {
     pub name: String,
     pub state: Vec<IrStateField>,
     pub requires: Vec<IrCapabilityRef>,
+    pub reachable_effects: Vec<IrReachableEffect>,
     pub events: Vec<IrEventHandler>,
     pub view: IrViewBlock,
+    pub span: Span,
+}
+
+/// An effect that is reachable from this component's expressions.
+/// Populated by the lowering pass; the type checker verifies each
+/// one against the component's `requires` list.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IrReachableEffect {
+    /// The capability that authorises this effect, e.g. `Clock`,
+    /// `Network`. Phase 2 will populate `capability` precisely;
+    /// Tier 4 hard-codes `Clock` for `clock.now()`.
+    pub capability: String,
+    /// The call path, e.g. `["clock", "now"]`. Phase 2 will also
+    /// store the foreign symbol it lowers to.
+    pub path: Vec<String>,
     pub span: Span,
 }
 
@@ -76,6 +92,15 @@ pub enum IrExpr {
     StringLit { value: String, span: Span },
     BoolLit { value: bool, span: Span },
     Ident { name: String, span: Span },
+    /// A builtin call: `path(args)`. The capability that authorises
+    /// it lives on the enclosing `IrComponent::reachable_effects`,
+    /// not on the call itself, so the same call path can be authorised
+    /// by different capabilities in different components.
+    Call {
+        path: Vec<String>,
+        args: Vec<IrExpr>,
+        span: Span,
+    },
     Binary {
         op: IrBinOp,
         lhs: Box<IrExpr>,

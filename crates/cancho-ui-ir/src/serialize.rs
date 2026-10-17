@@ -56,13 +56,25 @@ impl Serialize for IrFile {
 impl Serialize for IrComponent {
     fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
-        let mut s = ser.serialize_struct("IrComponent", 6)?;
+        let mut s = ser.serialize_struct("IrComponent", 7)?;
         s.serialize_field("id", &self.id.0)?;
         s.serialize_field("name", &self.name)?;
         s.serialize_field("state", &self.state)?;
         s.serialize_field("requires", &self.requires)?;
+        s.serialize_field("reachable_effects", &self.reachable_effects)?;
         s.serialize_field("events", &self.events)?;
         s.serialize_field("view", &self.view)?;
+        s.serialize_field("span", &IrSpan::from(self.span))?;
+        s.end()
+    }
+}
+
+impl Serialize for IrReachableEffect {
+    fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut s = ser.serialize_struct("IrReachableEffect", 3)?;
+        s.serialize_field("capability", &self.capability)?;
+        s.serialize_field("path", &self.path)?;
         s.serialize_field("span", &IrSpan::from(self.span))?;
         s.end()
     }
@@ -166,6 +178,13 @@ impl Serialize for IrExpr {
             IrExpr::Ident { name, span } => {
                 let mut s = ser.serialize_struct("IrExpr::Ident", 2)?;
                 s.serialize_field("name", name)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
+            IrExpr::Call { path, args, span } => {
+                let mut s = ser.serialize_struct("IrExpr::Call", 3)?;
+                s.serialize_field("path", path)?;
+                s.serialize_field("args", args)?;
                 s.serialize_field("span", &IrSpan::from(*span))?;
                 s.end()
             }

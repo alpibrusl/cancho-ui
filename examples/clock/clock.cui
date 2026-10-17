@@ -1,0 +1,40 @@
+// examples/clock/clock.cui — the Tier 4 capability example.
+// Demonstrates `requires Clock;` + `clock.now()`. The state field
+// `started_at` records the moment the user pressed Start; the
+// displayed duration is the difference between `clock.now()` and
+// `started_at` (in seconds, integer-truncated). Reset returns the
+// display to "Press Start".
+
+component Clock {
+    requires Clock;
+
+    state started_at: Int = 0;
+    state ticking: Bool = false;
+
+    on Start {
+        started_at = clock.now();
+        ticking = true;
+    }
+
+    on Stop {
+        ticking = false;
+    }
+
+    on Tick {
+        // No-op for now — the render uses it indirectly via `ticking`.
+        // Phase 2 will add a real timer-driven event via the
+        // platform adapter.
+    }
+
+    view {
+        Column {
+            Text {
+                role: status
+                label: "elapsed time"
+                "Elapsed: {(clock.now() - started_at) / 1000}s"
+            }
+            Button { label: "Start" on: Start }
+            Button { label: "Stop"  on: Stop  }
+        }
+    }
+}

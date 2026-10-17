@@ -203,6 +203,15 @@ pub enum Expr {
     /// A bare identifier — references a state field (in handlers)
     /// or interpolates into text.
     Ident { name: String, span: Span },
+    /// A builtin call: `path(args)` where `path` is one or more
+    /// identifiers separated by `.` (e.g. `clock.now()`). Phase 2+
+    /// will generalize this to user-defined functions, but the AST
+    /// shape already accommodates that.
+    Call {
+        path: Vec<String>,
+        args: Vec<Expr>,
+        span: Span,
+    },
     Binary {
         op: BinOp,
         lhs: Box<Expr>,

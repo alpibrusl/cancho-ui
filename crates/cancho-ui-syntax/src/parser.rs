@@ -434,8 +434,65 @@ impl Parser {
                 Ok(Expr::BoolLit { value: s == "true", span: tok.span })
             }
             Token::Ident(s) => {
-                self.bump();
-                Ok(Expr::Ident { name: s, span: tok.span })
+                // A path: `ident (.ident)*` optionally followed by
+                // `(args)` as a builtin call. Bare single-segment
+                // paths are identifiers; multi-segment paths must
+                // be calls (`clock.now`, not just `clock.now`).
+                let first_tok = self.bump();
+                let first_name = match &first_tok.token {
+                    Token::Ident(s) => s.clone(),
+                    _ => unreachable!(),
+                };
+                let mut path = vec![first_name];
+                while matches!(self.peek().token, Token::Dot) {
+                    self.bump();
+                    let seg = self.bump();
+                    let seg_name = match seg.token {
+                        Token::Ident(s) => s,
+                        other => {
+                            return Err(ParseError::Unexpected {
+                                expected: "identifier after `.`",
+                                found: other,
+                                line: seg.span.start.line,
+                                column: seg.span.start.column,
+                            });
+                        }
+                    };
+                    path.push(seg_name);
+                }
+                if matches!(self.peek().token, Token::LParen) {
+                    let call_start = first_tok.span.start;
+                    self.bump();
+                    let mut args = Vec::new();
+                    if !matches!(self.peek().token, Token::RParen) {
+                        loop {
+                            args.push(self.parse_expr()?);
+                            if matches!(self.peek().token, Token::Comma) {
+                                self.bump();
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+                    let call_end = self.expect(Token::RParen)?.span.end;
+                    Ok(Expr::Call {
+                        path,
+                        args,
+                        span: Span::new(call_start, call_end),
+                    })
+                } else if path.len() == 1 {
+                    Ok(Expr::Ident {
+                        name: path.into_iter().next().unwrap(),
+                        span: first_tok.span,
+                    })
+                } else {
+                    Err(ParseError::Unexpected {
+                        expected: "`(` (call) or `;` (statement boundary)",
+                        found: self.peek().token.clone(),
+                        line: self.peek().span.start.line,
+                        column: self.peek().span.start.column,
+                    })
+                }
             }
             Token::LParen => {
                 self.bump();
@@ -788,6 +845,7 @@ impl Expr {
             | Expr::StringLit { span, .. }
             | Expr::BoolLit { span, .. }
             | Expr::Ident { span, .. }
+            | Expr::Call { span, .. }
             | Expr::Binary { span, .. }
             | Expr::Unary { span, .. } => *span,
         }

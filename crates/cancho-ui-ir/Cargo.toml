@@ -6,7 +6,6 @@ license.workspace = true
 
 [dependencies]
 cancho-ui-syntax = { workspace = true }
-cancho-ui-types  = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

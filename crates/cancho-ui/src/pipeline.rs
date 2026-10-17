@@ -154,9 +154,88 @@ pub fn compile_to_ir(file: &Path) -> Result<cancho_ui_ir::ir::IrFile, PipelineEr
 
     let ast = parse(tokens).map_err(|e| PipelineError::Refused(parse_to_diag(e, file)))?;
 
-    check_file(&ast).map_err(|e| PipelineError::Refused(type_to_diag(&e, file)))?;
+    check_file(&ast).map_err(|e| PipelineError::Refused(check_to_diag(&e, file)))?;
 
     lower_file(&ast).map_err(|e| PipelineError::Refused(lower_to_diag(&e, file)))
+}
+
+fn check_to_diag(e: &cancho_ui_types::CheckError, file: &Path) -> Diagnostic {
+    match e {
+        cancho_ui_types::CheckError::Shape(t) => type_to_diag(t, file),
+        cancho_ui_types::CheckError::CapabilityMissing {
+            component,
+            capability,
+            call_path,
+            span,
+        } => {
+            let (code, severity, tier, subject, message, span) = (
+                "capability-missing",
+                Severity::Error,
+                Tier::Static,
+                Subject::Capability { name: capability.clone() },
+                format!(
+                    "component `{}` performs `{}` which requires the `{}` capability, but `requires {}` is not declared",
+                    component, call_path, capability, capability
+                ),
+                Some(*span),
+            );
+            Diagnostic {
+                code: code.into(),
+                severity,
+                tier,
+                subject,
+                message,
+                span: span.map(|s| SpanOut::from_span(s, file)),
+                expected: None,
+                actual: None,
+                remediation: Some(Remediation {
+                    description: format!("Add `requires {};` to the component header.", capability),
+                    suggestion: None,
+                    confidence: Confidence::High,
+                }),
+                related: Vec::new(),
+                notes: Vec::new(),
+            }
+        }
+        cancho_ui_types::CheckError::CapabilityUnused {
+            component,
+            capability,
+            span,
+        } => {
+            let (code, severity, tier, subject, message, span) = (
+                "capability-unused",
+                Severity::Error,
+                Tier::Static,
+                Subject::Capability { name: capability.clone() },
+                format!(
+                    "component `{}` declares `requires {};` but no reachable effect uses it",
+                    component, capability
+                ),
+                Some(*span),
+            );
+            Diagnostic {
+                code: code.into(),
+                severity,
+                tier,
+                subject,
+                message,
+                span: span.map(|s| SpanOut::from_span(s, file)),
+                expected: None,
+                actual: None,
+                remediation: Some(Remediation {
+                    description: format!(
+                        "Either use `{}` in an event handler or view, or remove the `requires {};` declaration.",
+                        capability_to_example_call(capability),
+                        capability
+                    ),
+                    suggestion: None,
+                    confidence: Confidence::High,
+                }),
+                related: Vec::new(),
+                notes: Vec::new(),
+            }
+        }
+    }
 }
 
 pub fn compile_to_js(file: &Path, target: Option<&str>) -> Result<String, PipelineError> {
@@ -389,7 +468,7 @@ fn type_to_diag(e: &TypeError, file: &Path) -> Diagnostic {
 }
 
 fn lower_to_diag(e: &LowerError, file: &Path) -> Diagnostic {
-    let (code, severity, tier, subject, message, span) = match e {
+    let (code, severity, tier, subject, message, span, remediation) = match e {
         LowerError::EmptySpan { span } => (
             "internal",
             Severity::Error,
@@ -397,6 +476,56 @@ fn lower_to_diag(e: &LowerError, file: &Path) -> Diagnostic {
             Subject::Internal,
             "AST node has empty span (compiler bug)".to_string(),
             Some(*span),
+            None,
+        ),
+        LowerError::CapabilityMissing {
+            component,
+            capability,
+            call_path,
+            span,
+        } => (
+            "capability-missing",
+            Severity::Error,
+            Tier::Static,
+            Subject::Capability {
+                name: capability.clone(),
+            },
+            format!(
+                "component `{}` performs `{}` which requires the `{}` capability, but `requires {}` is not declared",
+                component, call_path, capability, capability
+            ),
+            Some(*span),
+            Some(Remediation {
+                description: format!("Add `requires {};` to the component header.", capability),
+                suggestion: None,
+                confidence: Confidence::High,
+            }),
+        ),
+        LowerError::CapabilityUnused {
+            component,
+            capability,
+            span,
+        } => (
+            "capability-unused",
+            Severity::Error,
+            Tier::Static,
+            Subject::Capability {
+                name: capability.clone(),
+            },
+            format!(
+                "component `{}` declares `requires {};` but no reachable effect uses it",
+                component, capability
+            ),
+            Some(*span),
+            Some(Remediation {
+                description: format!(
+                    "Either use `{}` in an event handler or view, or remove the `requires {};` declaration.",
+                    capability_to_example_call(capability),
+                    capability
+                ),
+                suggestion: None,
+                confidence: Confidence::High,
+            }),
         ),
     };
     Diagnostic {
@@ -408,9 +537,16 @@ fn lower_to_diag(e: &LowerError, file: &Path) -> Diagnostic {
         span: span.map(|s| SpanOut::from_span(s, file)),
         expected: None,
         actual: None,
-        remediation: None,
+        remediation,
         related: Vec::new(),
         notes: Vec::new(),
+    }
+}
+
+fn capability_to_example_call(capability: &str) -> &'static str {
+    match capability {
+        "Clock" => "clock.now()",
+        _ => "an effect requiring this capability",
     }
 }
 
