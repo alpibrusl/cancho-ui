@@ -80,15 +80,17 @@ cd examples/clock && python3 -m http.server
 - **No macros.** Macros break stable content-addressable identity,
   the same reason Cancho Core forbids them.
 
-And honestly, **early**: Tier 1–11 are shipped (the async slice,
+And honestly, **early**: Tier 1–12 are shipped (the async slice,
 `Option[T]`/`List[T]` with `For`, the `Network` capability with
 `net.search`, runtime cancellation with stale-result protection,
-and pure list operations — `filter`/`map`/`len` with derived
-`For` views). The compiler is Rust, the language is a small
+pure list operations — `filter`/`map`/`len` with derived `For`
+views, and same-file component composition with per-instance
+state). The compiler is Rust, the language is a small
 declarative subset, and the toolchain is shaped to be one an AI
-agent can drive. The seven components shipped so far (`Hello`,
-`Counter`, `Clock`, `Search`, `Match`, `Ticker`, `Roster`) all
-compile and run; the refusal discipline is locked in
+agent can drive. The nine components shipped so far (`Hello`,
+`Counter`, `Clock`, `Search`, `Match`, `Ticker`, `Roster`,
+`HelloCard` + `Page` in the `cards` example) all compile and
+run; the refusal discipline is locked in
 `spec/diagnostics/README.md`; the CLI's JSON output is a contract,
 not a string. What is **not** claimed: that an agent using
 cancho-ui is more productive than one using a conventional stack.
@@ -113,7 +115,7 @@ resolve channel.
 ```sh
 git clone https://github.com/alpibrusl/cancho-ui
 cd cancho-ui
-cargo test --workspace   # the whole gate: 49 unit + integration tests
+cargo test --workspace   # the whole gate: 53 unit + integration tests
 ```
 
 The browser harness for the end-to-end DOM smoke tests (`/tmp/test-*.js`)
@@ -188,13 +190,14 @@ IR schema, the diagnostic format, and the grammar are the contracts the
 compiler meets.
 
 [`docs/proposal.md`](docs/proposal.md) — the original MVP proposal. The
-implementation matches Tier 1–11 of the proposal's roadmap (the async
+implementation matches Tier 1–12 of the proposal's roadmap (the async
 slice, the `Option`/`List` generics, the `Network` capability,
-runtime cancellation, and pure list operations included), plus the
-Phase 2 compile-time `match-non-exhaustive` rule. The remaining
-Phase 2 items (component composition, `foreign`/`target` blocks)
-and beyond are still ahead; the roadmap rows record what each
-shipped and what was found.
+runtime cancellation, pure list operations, and same-file
+component composition included), plus the Phase 2 compile-time
+`match-non-exhaustive` rule. The remaining Phase 2 items
+(instance properties, cross-file imports, `foreign`/`target`
+blocks) and beyond are still ahead; the roadmap rows record what
+each shipped and what was found.
 
 [`SESSION-LOG.md`](SESSION-LOG.md) — what Tier 1–4 actually built, the
 bugs found while building them, and how to reproduce the end-to-end DOM

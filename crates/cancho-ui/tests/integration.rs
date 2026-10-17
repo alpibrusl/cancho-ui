@@ -896,3 +896,86 @@ fn derived_for_over_emits_filter_and_len() {
     // The rows bind the loop variable.
     assert!(js.contains("for (const row of ("));
 }
+
+#[test]
+fn component_instance_of_undeclared_kind_is_refused() {
+    // Tier 12: `Ghost` is not a component of this file.
+    let src = "component T {\n    view { Text { \"x\" } }\n}\ncomponent U {\n    view { Column {\n        Text { \"y\" }\n        Ghost {}\n    } }\n}\n";
+    let toks = lex(src).unwrap();
+    let ast = parse(toks).unwrap();
+    match check_file(&ast) {
+        Err(cancho_ui_types::CheckError::Shape(cancho_ui_types::TypeError::UnknownComponentKind { name, .. })) => {
+            assert_eq!(name, "Ghost");
+        }
+        other => panic!("expected UnknownComponentKind, got: {:?}", other.err()),
+    }
+}
+
+#[test]
+fn component_instance_is_opaque() {
+    // Tier 12: the parent configures nothing. Bindings, children,
+    // and role/label on an instance are refused — the child owns
+    // its state, view, and handlers (properties arrive later).
+    let with_binding = "component Card {\n    state n: Int = 0;\n    view { Text { \"card\" } }\n}\ncomponent T {\n    view { Column {\n        Card { value: \"x\" }\n    } }\n}\n";
+    let toks = lex(with_binding).unwrap();
+    let ast = parse(toks).unwrap();
+    match check_file(&ast) {
+        Err(cancho_ui_types::CheckError::Shape(cancho_ui_types::TypeError::InstanceTakesBindings { .. })) => {}
+        other => panic!("expected InstanceTakesBindings, got: {:?}", other.err()),
+    }
+    let with_children = "component Card {\n    state n: Int = 0;\n    view { Text { \"card\" } }\n}\ncomponent T {\n    view { Column {\n        Card { Text { \"x\" } }\n    } }\n}\n";
+    let toks = lex(with_children).unwrap();
+    let ast = parse(toks).unwrap();
+    match check_file(&ast) {
+        Err(cancho_ui_types::CheckError::Shape(cancho_ui_types::TypeError::InstanceTakesChildren { .. })) => {}
+        other => panic!("expected InstanceTakesChildren, got: {:?}", other.err()),
+    }
+}
+
+#[test]
+fn component_instance_cycle_is_refused() {
+    // Tier 12: `Loop` instantiates itself — the emitted mount
+    // would recurse forever at runtime, so it is refused at
+    // compile time.
+    let self_loop = "component Loop {\n    view { Column {\n        Text { \"x\" }\n        Loop {}\n    } }\n}\n";
+    let toks = lex(self_loop).unwrap();
+    let ast = parse(toks).unwrap();
+    match check_file(&ast) {
+        Err(cancho_ui_types::CheckError::Shape(cancho_ui_types::TypeError::ComponentCycle { chain, .. })) => {
+            assert!(chain.contains(&"Loop".to_string()));
+        }
+        other => panic!("expected ComponentCycle, got: {:?}", other.err()),
+    }
+    // An indirect A → B → A cycle is refused the same way.
+    let a_b_a = "component A {\n    view { Column {\n        Text { \"a\" }\n        B {}\n    } }\n}\ncomponent B {\n    view { Column {\n        Text { \"b\" }\n        A {}\n    } }\n}\n";
+    let toks = lex(a_b_a).unwrap();
+    let ast = parse(toks).unwrap();
+    match check_file(&ast) {
+        Err(cancho_ui_types::CheckError::Shape(cancho_ui_types::TypeError::ComponentCycle { .. })) => {}
+        other => panic!("expected ComponentCycle (A→B→A), got: {:?}", other.err()),
+    }
+}
+
+#[test]
+fn composition_emits_independent_mount_calls() {
+    // Tier 12: two `HelloCard` instances in one parent's view
+    // compile into two `mount_HelloCard` calls inside the parent's
+    // `__render` — per-instance state, per-instance handlers.
+    let src = "component HelloCard {\n    state count: Int = 0;\n    on Inc { count = count + 1; }\n    view {\n        Column {\n            Text { \"count: {count}\" }\n            Button { label: \"card +\" on: Inc }\n        }\n    }\n}\ncomponent Page {\n    view {\n        Column {\n            Text { \"page\" }\n            HelloCard {}\n            HelloCard {}\n        }\n    }\n}\n";
+    let js = compile_str(src);
+    // Two `mount_*` calls: the definition (`function
+    // mount_HelloCard(root)`) plus one call per instance.
+    assert_eq!(
+        js.matches("mount_HelloCard(").count(),
+        3,
+        "expected the definition plus exactly two instance mount calls"
+    );
+    assert!(js.contains("function mount_HelloCard(root)"));
+    assert!(js.contains("function mount_Page(root)"));
+    // Each card instance has its own counter state.
+    assert_eq!(js.matches("__state_count").count() >= 4, true);
+    // Cards come BEFORE the page parent's mount in module order (or
+    // are function-hoisted functions — either way both are
+    // declared by the time the page mounts).
+    assert!(js.contains("__on_Inc"));
+}

@@ -1,0 +1,40 @@
+// examples/cards/cards.cui — Tier 12: same-file component
+// composition. `Page` instantiates `HelloCard` twice; each
+// instance is its own unit — separate state, separate handlers —
+// mounted into its own wrapper element. The instance is opaque:
+// no bindings, no children (properties arrive in a later tier),
+// and a cycle like `HelloCard` containing `HelloCard` is refused
+// at compile time (`component-cycle`) because the emitted mount
+// would recurse forever.
+
+component HelloCard {
+    state count: Int = 0;
+
+    on Inc {
+        count = count + 1;
+    }
+
+    view {
+        Column {
+            Text {
+                role: heading
+                "card"
+            }
+            Text { "count: {count}" }
+            Button { label: "card +" on: Inc }
+        }
+    }
+}
+
+component Page {
+    view {
+        Column {
+            Text {
+                role: heading
+                "page"
+            }
+            HelloCard {}
+            HelloCard {}
+        }
+    }
+}

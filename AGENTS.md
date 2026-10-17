@@ -301,7 +301,56 @@ pure expression, not just a state-field name.
 
 ---
 
-## 5. Foreign functions cross a trust boundary (placeholder)
+## 5. Components compose (Tier 12)
+
+A component's view can instantiate **other components of the same
+file**. Each instance is its own unit — separate state, separate
+handlers — mounted into its own wrapper element:
+
+```cancho-ui
+component HelloCard {
+    state count: Int = 0;
+
+    on Inc { count = count + 1; }
+
+    view {
+        Column {
+            Text { "count: {count}" }
+            Button { label: "card +" on: Inc }
+        }
+    }
+}
+
+component Page {
+    view {
+        Column {
+            Text { "page" }
+            HelloCard {}
+            HelloCard {}
+        }
+    }
+}
+```
+
+Two instances are two pieces of state: clicking one card's button
+advances only that card.
+
+An instance is **opaque** — the parent configures nothing yet
+(properties arrive in a later tier):
+
+- bindings on an instance are refused (`instance-opaque` — the
+  same code for `role:`/`label:` and children),
+- an unknown name is refused (`component-kind-unknown`),
+- a cycle — `A` instantiating `B`, `B` instantiating `A` — is
+  refused at compile time (`component-cycle`) because the emitted
+  mount would recurse forever.
+
+Same-file only for now: cross-file `import` and instance
+*properties* are the next composition tiers.
+
+---
+
+## 6. Foreign functions cross a trust boundary (placeholder)
 
 Every call to JavaScript, the DOM, or a native module is a
 declared foreign function. The compiler refuses undeclared
@@ -328,7 +377,7 @@ boundary. Same shape as Cancho Core's
 
 ---
 
-## 6. View primitives carry accessibility metadata (placeholder)
+## 7. View primitives carry accessibility metadata (placeholder)
 
 A `TextField` takes `label:`, `value:` and `on:`. Order matters
 differently per key today: `label:` must come **before** `value:`
@@ -360,7 +409,7 @@ exist at all.
 
 ---
 
-## 7. Reserved words are reserved (placeholder)
+## 8. Reserved words are reserved (placeholder)
 
 `component`, `state`, `view`, `on`, `requires`, `effect`,
 `capability`, `foreign`, `module`, `import`, `pub`, `target`
@@ -377,7 +426,7 @@ component Hover {
 
 ---
 
-## 8. Where to read more (placeholder)
+## 9. Where to read more (placeholder)
 
 The full design is under [`docs/`](../docs/). The Phase 0
 deliverables — semantics, security model, IR schema, diagnostic

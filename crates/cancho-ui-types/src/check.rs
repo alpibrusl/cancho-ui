@@ -39,6 +39,26 @@ pub enum TypeError {
 
     #[error("element kind `{name}` is not PascalCase; element kinds must match a built-in primitive or a PascalCase component name")]
     NotPascalCaseKind { name: String, span: Span },
+
+    /// Tier 12.`{name}` is not a component declared in this file,
+    /// so it cannot be instantiated in a view.
+    #[error("component kind `{name}` is not declared in this file; add a `component {name} {{ ... }}` or use a built-in primitive")]
+    UnknownComponentKind { name: String, span: Span },
+
+    /// Tier 12: a component instance is opaque — it owns its own
+    /// state, view, and handlers; the parent configures nothing
+    /// (properties arrive in a later tier).
+    #[error("component instance `{name}` takes no bindings; it is opaque — its own state and handlers govern it (properties arrive in a later tier)")]
+    InstanceTakesBindings { name: String, span: Span },
+
+    #[error("component instance `{name}` takes no children; its own view governs what renders")]
+    InstanceTakesChildren { name: String, span: Span },
+
+    #[error("component instance `{name}` takes no role/label of its own; the inner components carry their own accessibility")]
+    InstanceTakesAccessibility { name: String, span: Span },
+
+    #[error("component instance chain is cyclic: {} — the emitted mount would recurse forever", chain.join(" → "))]
+    ComponentCycle { chain: Vec<String> },
 }
 
 /// What `check_file` can produce. The shape pass (PascalCase,
@@ -171,7 +191,152 @@ fn check_shape(file: &File) -> Result<(), TypeError> {
         }
         seen.push((&c.name, c.span));
     }
+    // Tier 12: a view may instantiate *other components from
+    // this file* (same-file composition). Each instance must
+    // exist, stay opaque (no bindings, no children, no own
+    // accessibility), and the instance graph must not cycle.
+    for c in &file.components {
+        check_instances(c, file)?;
+    }
+    check_instance_cycle(file)?;
     Ok(())
+}
+
+/// Named kinds in `c`'s view must be declared components of the
+/// same file, and each instance is opaque: the child owns its
+/// state, view, and handlers — the parent configures nothing yet
+/// (properties arrive in a later tier).
+fn check_instances(c: &Component, file: &File) -> Result<(), TypeError> {
+    fn walk(node: &ViewNode, file: &File) -> Result<(), TypeError> {
+        // Reuse the general shape walk but only over Element
+        // nodes; recursion covers nested ones AND For children.
+        match node {
+            ViewNode::Element { kind, bindings, children, accessibility, span } => {
+                if let ElementKind::Named(name) = kind {
+                    if !file.components.iter().any(|d| d.name == *name) {
+                        return Err(TypeError::UnknownComponentKind {
+                            name: name.clone(),
+                            span: *span,
+                        });
+                    }
+                    if !bindings.is_empty() {
+                        return Err(TypeError::InstanceTakesBindings {
+                            name: name.clone(),
+                            span: *span,
+                        });
+                    }
+                    if !children.is_empty() {
+                        return Err(TypeError::InstanceTakesChildren {
+                            name: name.clone(),
+                            span: *span,
+                        });
+                    }
+                    if accessibility.role.is_some() || accessibility.label.is_some() {
+                        return Err(TypeError::InstanceTakesAccessibility {
+                            name: name.clone(),
+                            span: *span,
+                        });
+                    }
+                }
+                for ch in children {
+                    walk(ch, file)?;
+                }
+            }
+            ViewNode::For { children, .. } => {
+                for ch in children {
+                    walk(ch, file)?;
+                }
+            }
+            ViewNode::Text { .. } => {}
+        }
+        Ok(())
+    }
+    walk(&c.view.body, file)
+}
+
+/// A component cannot contain (transitively) an instance of
+/// itself — the emitted mount would recurse forever at runtime,
+/// so the cycle is refused at compile time. References to
+/// undeclared names are already refused by the instance walk;
+/// the DFS treats them as leaves.
+fn check_instance_cycle(file: &File) -> Result<(), TypeError> {
+    const VISITING: u8 = 1;
+    const DONE: u8 = 2;
+
+    /// Which components does the named component's view
+    /// instantiate? (May contain duplicates; the DFS tolerates.)
+    fn adjacency<'a>(name: &str, file: &'a File) -> Vec<String> {
+        let mut uses = Vec::new();
+        for c in file.components.iter().filter(|d| d.name == name) {
+            component_uses(c, &mut uses);
+        }
+        uses
+    }
+
+    fn visit(
+        name: &str,
+        file: &File,
+        color: &mut std::collections::HashMap<String, u8>,
+        chain: &mut Vec<String>,
+    ) -> Result<(), TypeError> {
+        match color.get(name).copied() {
+            Some(VISITING) => {
+                chain.push(name.to_string());
+                return Err(TypeError::ComponentCycle { chain: chain.clone() });
+            }
+            // A fresh node: mark as used by seed first DFS roots.
+            None => {
+                color.insert(name.to_string(), 0);
+            }
+            Some(DONE) => return Ok(()),
+            _ => {}
+        }
+        if file.components.iter().any(|d| d.name == name) {
+            color.insert(name.to_string(), VISITING);
+            chain.push(name.to_string());
+            for dep in adjacency(name, file) {
+                if visit(&dep, file, color, chain).is_err() {
+                    return Err(TypeError::ComponentCycle {
+                        chain: std::mem::take(chain),
+                    });
+                }
+            }
+            chain.pop();
+            color.insert(name.to_string(), DONE);
+        }
+        Ok(())
+    }
+
+    let mut color: std::collections::HashMap<String, u8> = std::collections::HashMap::new();
+    let mut chain: Vec<String> = Vec::new();
+    for c in &file.components {
+        visit(&c.name, file, &mut color, &mut chain)?;
+    }
+    Ok(())
+}
+
+/// The components `c`'s view instantiates, in source order
+/// (duplicates included; the DFS tolerates them).
+fn component_uses(c: &Component, out: &mut Vec<String>) {
+    fn walk(node: &ViewNode, out: &mut Vec<String>) {
+        match node {
+            ViewNode::Element { kind, children, .. } => {
+                if let ElementKind::Named(name) = kind {
+                    out.push(name.clone());
+                }
+                for ch in children {
+                    walk(ch, out);
+                }
+            }
+            ViewNode::For { children, .. } => {
+                for ch in children {
+                    walk(ch, out);
+                }
+            }
+            ViewNode::Text { .. } => {}
+        }
+    }
+    walk(&c.view.body, out);
 }
 
 fn check_component_shape(c: &Component) -> Result<(), TypeError> {

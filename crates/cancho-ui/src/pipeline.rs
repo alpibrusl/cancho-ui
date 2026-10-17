@@ -563,6 +563,61 @@ fn type_to_diag(e: &TypeError, file: &Path) -> Diagnostic {
             ),
             Some(*span),
         ),
+        TypeError::UnknownComponentKind { name, span } => (
+            "component-kind-unknown",
+            Severity::Error,
+            Tier::Static,
+            Subject::Component { name: name.clone() },
+            format!(
+                "component kind `{}` is not declared in this file; add a `component {0} {{ ... }}` or use a built-in primitive",
+                name
+            ),
+            Some(*span),
+        ),
+        TypeError::InstanceTakesBindings { name, span } => (
+            "instance-opaque",
+            Severity::Error,
+            Tier::Static,
+            Subject::Component { name: name.clone() },
+            format!(
+                "component instance `{}` takes no bindings; it is opaque — its own state and handlers govern it (properties arrive in a later tier)",
+                name
+            ),
+            Some(*span),
+        ),
+        TypeError::InstanceTakesChildren { name, span } => (
+            "instance-opaque",
+            Severity::Error,
+            Tier::Static,
+            Subject::Component { name: name.clone() },
+            format!(
+                "component instance `{}` takes no children; its own view governs what renders",
+                name
+            ),
+            Some(*span),
+        ),
+        TypeError::InstanceTakesAccessibility { name, span } => (
+            "instance-opaque",
+            Severity::Error,
+            Tier::Static,
+            Subject::Component { name: name.clone() },
+            format!(
+                "component instance `{}` takes no role/label of its own; the inner components carry their own accessibility",
+                name
+            ),
+            Some(*span),
+        ),
+        TypeError::ComponentCycle { chain } => (
+            "component-cycle",
+            Severity::Error,
+            Tier::Static,
+            Subject::Component { name: chain.first().cloned().unwrap_or_default() },
+            format!(
+                "component instance chain is cyclic: {} — the emitted mount would recurse forever",
+                chain.join(" → ")
+            ),
+            None,
+        ),
     };
     Diagnostic {
         code: code.into(),

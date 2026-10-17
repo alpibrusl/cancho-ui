@@ -92,8 +92,9 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
         out.push('\n');
     }
 
+    let component_names: Vec<String> = ir.components.iter().map(|c| c.name.clone()).collect();
     for c in &ir.components {
-        out.push_str(&emit_component(c));
+        out.push_str(&emit_component(c, &component_names));
         out.push('\n');
     }
 
@@ -261,7 +262,7 @@ fn view_node_uses_await_or_sleep(node: &IrViewNode) -> bool {
 
 const STATE_PREFIX: &str = "__state_";
 
-fn emit_component(c: &IrComponent) -> String {
+fn emit_component(c: &IrComponent, component_names: &[String]) -> String {
     let mut out = String::new();
     out.push_str("// Component: ");
     out.push_str(&c.name);
@@ -330,7 +331,7 @@ fn emit_component(c: &IrComponent) -> String {
     out.push_str("        function __render() {\n");
     out.push_str("            root.textContent = '';\n");
     let mut node_id = 0u32;
-    let view_body = emit_view_node(&mut node_id, "            ", &c.view.body, "root", &[]);
+    let view_body = emit_view_node(&mut node_id, "            ", &c.view.body, "root", &[], component_names);
     out.push_str(&view_body);
     out.push_str("        }\n");
 
@@ -686,6 +687,7 @@ fn emit_view_node(
     node: &IrViewNode,
     parent_var: &str,
     params: &[&str],
+    components: &[String],
 ) -> String {
     match node {
         IrViewNode::Text { parts, .. } => {
@@ -735,6 +737,7 @@ fn emit_view_node(
                     c,
                     parent_var,
                     &local_params,
+                    components,
                 ));
             }
             out.push_str(&format!("{0}}}\n", indent));
@@ -896,7 +899,7 @@ fn emit_view_node(
                     ));
                 }
                 for c in children {
-                    out.push_str(&emit_view_node(next_id, &child_indent, c, &var, params));
+                    out.push_str(&emit_view_node(next_id, &child_indent, c, &var, params, components));
                 }
             }
 
@@ -919,6 +922,24 @@ fn emit_view_node(
                 "{0}{2}.appendChild({1});\n",
                 indent, var, parent_var
             ));
+
+            // Tier 12: a component instance mounts a whole
+            // subcomponent into this wrapper element. Each
+            // instance is its own `mount_<Name>` call — separate
+            // state, separate handlers — and the child re-renders
+            // into the wrapper without touching the parent's DOM
+            // outside it. The shape pass guarantees the name is a
+            // declared component of this file and the instance
+            // graph is acyclic; defensively, an undeclared name
+            // renders as a plain wrapper.
+            if let IrElementKind::Named(name) = kind {
+                if components.iter().any(|d| d == name) {
+                    out.push_str(&format!(
+                        "{0}mount_{1}({2});\n",
+                        indent, name, var
+                    ));
+                }
+            }
 
             // Wire up event handlers.
             if let Some(event_name) = click_handler {
