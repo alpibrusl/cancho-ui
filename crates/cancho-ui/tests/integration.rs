@@ -385,3 +385,64 @@ component T {
     let js = compile_str(src);
     assert!(js.contains("({__cui_tag:\"Ok\",value:42})"));
 }
+#[test]
+fn await_and_request_type_are_recognised() {
+    // Tier 7: `Request[T]` is a generic type, `await(expr)` is an
+    // expression, and `sleep(ms)` is a pure-runtime builtin that
+    // needs no declared capability. Event handlers are generated
+    // as `async function` so the `await` suspends properly.
+    let src = "\
+component Ticker {
+    state status: String = \"Idle\";
+    state r: Result[Int, String] = Ok(0);
+    on Tick {
+        status = \"Waiting\";
+        r = await(sleep(50));
+        status = match r {
+            Ok(v) => { \"Ok\" }
+            Err(e) => { \"Err\" }
+            Cancelled => { \"Cancelled\" }
+        };
+    }
+    view {
+        Text {
+            role: status
+            \"Status: {status}\"
+        }
+    }
+}
+";
+    let js = compile_str(src);
+    // Handlers are async so `await` can suspend.
+    assert!(js.contains("async function __on_Tick"));
+    // `await(sleep(50))` is lowered to the runtime adapter.
+    assert!(js.contains("await (__cui_sleep_ms(50))"));
+    // The sleep adapter is emitted when the body uses sleep.
+    assert!(js.contains("function __cui_sleep_ms(ms)"));
+    // `Cancelled` is a unit-variant pattern: tag test, no payload.
+    assert!(js.contains("__cui_tag === \"Cancelled\""));
+}
+
+#[test]
+fn err_arm_binds_the_reason_field_not_value() {
+    // Tier 7 fix: the `Err` arm IIFE binds from `.reason` (the
+    // Err constructor stores its payload there), while `Ok` binds
+    // from `.value`.
+    let src = "\
+component T {
+    state x: Result[Int, String] = Ok(0);
+    view {
+        Text {
+            match x {
+                Ok(v) => { \"ok\" }
+                Err(e) => { e }
+            }
+        }
+    }
+}
+";
+    let js = compile_str(src);
+    assert!(js.contains("var e = __cui_match_"));
+    assert!(js.contains(".reason;"));
+    assert!(!js.contains("var e = __cui_match_0.value"));
+}

@@ -1,0 +1,31 @@
+// examples/await/await.cui — Tier 7: the `await(...)` expression
+// on a `Request[T]`. The `Clock.Tick` event handler kicks off
+// `sleep(50)` and waits for it; when the promise resolves, the
+// match picks `Ok`, `Err`, or `Cancelled`. The `Waiting` state
+// shows during the wait; clicking `Reset` while waiting has no
+// effect (cancellation is a Phase 2 feature).
+
+component Ticker {
+    state status: String = "Idle";
+    state r: Result[Int, String] = Ok(0);
+
+    on Tick {
+        status = "Waiting";
+        r = await(sleep(50));
+        status = match r {
+            Ok(v) => { "Ok" }
+            Err(e) => { "Err" }
+            Cancelled => { "Cancelled" }
+        };
+    }
+
+    view {
+        Column {
+            Text {
+                role: status
+                "Status: {status}"
+            }
+            Button { label: "Tick" on: Tick }
+        }
+    }
+}

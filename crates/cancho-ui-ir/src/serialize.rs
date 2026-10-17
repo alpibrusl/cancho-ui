@@ -106,6 +106,12 @@ impl Serialize for IrType {
                 s.serialize_field("err", err.as_ref())?;
                 s.end()
             }
+            IrType::Request { payload } => {
+                use serde::ser::SerializeStruct;
+                let mut s = ser.serialize_struct("IrType::Request", 1)?;
+                s.serialize_field("payload", payload.as_ref())?;
+                s.end()
+            }
         }
     }
 }
@@ -229,6 +235,17 @@ impl Serialize for IrExpr {
                 s.serialize_field("span", &IrSpan::from(*span))?;
                 s.end()
             }
+            IrExpr::Await { request, span } => {
+                let mut s = ser.serialize_struct("IrExpr::Await", 2)?;
+                s.serialize_field("request", request.as_ref())?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
+            IrExpr::Cancelled { span } => {
+                let mut s = ser.serialize_struct("IrExpr::Cancelled", 1)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
         }
     }
 }
@@ -263,6 +280,12 @@ impl Serialize for IrPattern {
                 let mut s = ser.serialize_struct("IrPattern::Variant", 3)?;
                 s.serialize_field("name", name)?;
                 s.serialize_field("binding", binding)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
+            IrPattern::UnitVariant { name, span } => {
+                let mut s = ser.serialize_struct("IrPattern::UnitVariant", 2)?;
+                s.serialize_field("name", name)?;
                 s.serialize_field("span", &IrSpan::from(*span))?;
                 s.end()
             }

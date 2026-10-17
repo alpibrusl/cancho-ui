@@ -135,8 +135,12 @@ delivered when the component has been disposed; the language
 drops the result and the `state-after-dispose` rule applies.
 
 `Result[T, E]` is two constructors: `Ok(value)` and `Err(reason)`.
-`match` is exhaustive — every `Result` match needs both arms, every
-`Option` match needs both arms, and missing one is a refusal:
+A `Request[T]` is awaited with `await(r)` and resolves to
+`Ok | Err | Cancelled` — three constructors. `match` on any of
+these must cover every variant; the runtime throws
+`no match arm matched` when an arm is missing, and the
+`match-non-exhaustive` rule (Phase 2) will surface the same
+issue at compile time:
 
 ```cancho-ui
 component Half {
@@ -158,6 +162,32 @@ component Half {
 A `match` on a `Result` is exhaustive; missing an arm is a
 refusal. Same as
 [Cancho Core's match rule](https://github.com/alpibrusl/cancho/blob/main/AGENTS.md#71-option-result-loops-and-text-what-a-program-that-returns-an-error-needs).
+
+A `Request[T]` is awaited with `await(r)`. The handler becomes an
+`async function`; a state change made before the `await` (a
+loading status) is painted synchronously, and the resolved
+value dispatches through `match`:
+
+```cancho-ui
+component Ticker {
+    state status: String = "Idle";
+    state r: Result[Int, String] = Ok(0);
+
+    on Tick {
+        status = "Waiting";
+        r = await(sleep(50));
+        status = match r {
+            Ok(v) => { "Ok" }
+            Err(e) => { "Err" }
+            Cancelled => { "Cancelled" }
+        };
+    }
+
+    view {
+        Text { role: status "Status: {status}" }
+    }
+}
+```
 
 ---
 

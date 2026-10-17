@@ -47,15 +47,28 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
     // files (the "platform adapter" example in the proposal). For
     // Tier 4 we emit them inline so the binary is self-contained.
     let mut any_clock = false;
+    let mut any_sleep = false;
     for c in &ir.components {
         for e in &c.reachable_effects {
             if e.capability == "Clock" {
                 any_clock = true;
             }
         }
+        for arm in c.events.iter().flat_map(|e| e.body.iter()) {
+            if body_uses_await(arm) || body_uses_sleep(arm) {
+                any_sleep = true;
+            }
+        }
+        if view_node_uses_await_or_sleep(&c.view.body) {
+            any_sleep = true;
+        }
     }
     if any_clock {
         out.push_str(CLOCK_ADAPTER_JS);
+        out.push('\n');
+    }
+    if any_sleep {
+        out.push_str(SLEEP_ADAPTER_JS);
         out.push('\n');
     }
 
@@ -86,6 +99,86 @@ function __cui_clock_now() {
 }
 ";
 
+const SLEEP_ADAPTER_JS: &str = "\
+// Platform adapter: async sleep (Tier 7).
+// `sleep(ms)` returns a Promise that resolves to
+// `{__cui_tag: \"Ok\", value: undefined}` after `ms` milliseconds.
+// The `await(...)` expression in cancho-ui lowers to `await expr`
+// in JS, so the resolved value flows into the surrounding
+// statement. Tier 7 does not implement cancellation yet — the
+// `Cancelled` variant is matched but never produced.
+function __cui_sleep_ms(ms) {
+    return new Promise(function (resolve) {
+        setTimeout(function () { resolve({__cui_tag: \"Ok\", value: undefined}); }, ms);
+    });
+}
+";
+
+/// Recursive helper: does this statement contain an `await`
+/// expression? Used to decide whether to emit the async helper.
+fn body_uses_await(s: &IrStmt) -> bool {
+    match s {
+        IrStmt::Assign { value, .. } => expr_uses_await(value),
+        IrStmt::Expr { expr, .. } => expr_uses_await(expr),
+    }
+}
+
+fn expr_uses_await(e: &IrExpr) -> bool {
+    match e {
+        IrExpr::Await { .. } => true,
+        IrExpr::Binary { lhs, rhs, .. } => expr_uses_await(lhs) || expr_uses_await(rhs),
+        IrExpr::Unary { operand, .. } => expr_uses_await(operand),
+        IrExpr::Call { args, .. } => args.iter().any(expr_uses_await),
+        IrExpr::Ok { value, .. } => expr_uses_await(value),
+        IrExpr::Err { reason, .. } => expr_uses_await(reason),
+        IrExpr::Match { scrutinee, arms, .. } => {
+            expr_uses_await(scrutinee) || arms.iter().any(|a| expr_uses_await(&a.body))
+        }
+        _ => false,
+    }
+}
+
+/// Recursive helper: does this statement contain a call to
+/// `sleep(...)`? Used to decide whether to emit the sleep adapter.
+fn body_uses_sleep(s: &IrStmt) -> bool {
+    match s {
+        IrStmt::Assign { value, .. } => expr_uses_sleep(value),
+        IrStmt::Expr { expr, .. } => expr_uses_sleep(expr),
+    }
+}
+
+fn expr_uses_sleep(e: &IrExpr) -> bool {
+    match e {
+        IrExpr::Call { path, args, .. } => {
+            (path.len() == 1 && path[0] == "sleep")
+                || args.iter().any(expr_uses_sleep)
+        }
+        IrExpr::Binary { lhs, rhs, .. } => {
+            expr_uses_sleep(lhs) || expr_uses_sleep(rhs)
+        }
+        IrExpr::Unary { operand, .. } => expr_uses_sleep(operand),
+        IrExpr::Ok { value, .. } => expr_uses_sleep(value),
+        IrExpr::Err { reason, .. } => expr_uses_sleep(reason),
+        IrExpr::Match { scrutinee, arms, .. } => {
+            expr_uses_sleep(scrutinee)
+                || arms.iter().any(|a| expr_uses_sleep(&a.body))
+        }
+        _ => false,
+    }
+}
+
+fn view_node_uses_await_or_sleep(node: &IrViewNode) -> bool {
+    match node {
+        IrViewNode::Element { children, .. } => {
+            children.iter().any(view_node_uses_await_or_sleep)
+        }
+        IrViewNode::Text { parts, .. } => parts.iter().any(|p| match p {
+            IrTextPart::Literal(_) => false,
+            IrTextPart::Expr(e) => expr_uses_await(e) || expr_uses_sleep(e),
+        }),
+    }
+}
+
 const STATE_PREFIX: &str = "__state_";
 
 fn emit_component(c: &IrComponent) -> String {
@@ -110,16 +203,33 @@ fn emit_component(c: &IrComponent) -> String {
     }
 
     for e in &c.events {
-        out.push_str("        function __on_");
+        // Event handlers are emitted as `async function` so that
+        // `await(...)` can suspend until a `Request[T]` resolves
+        // and the rest of the body runs with the resolved value.
+        // Handlers that never use `await` pay one microtask
+        // (the same cost as a resolved Promise). Tier 7 keeps
+        // this uniform; Phase 2 can special-case sync-only
+        // handlers.
+        out.push_str("        async function __on_");
         out.push_str(&e.name);
         out.push_str("(");
         out.push_str(&e.params.join(", "));
         out.push_str(") {\n");
         let param_set: Vec<&str> = e.params.iter().map(|s| s.as_str()).collect();
-        for s in &e.body {
+        // If the body awaits, paint the pre-await state first: a
+        // loading status set before `await(...)` must reach the
+        // DOM while the handler is suspended, so emit a
+        // synchronous `__render()` after the statements that
+        // precede the first await. (The final `__render()` at the
+        // end of the handler repaints the post-resolution state.)
+        let first_await = e.body.iter().position(body_uses_await);
+        for (i, s) in e.body.iter().enumerate() {
             out.push_str("            ");
             out.push_str(&emit_stmt(s, &param_set));
             out.push('\n');
+            if Some(i + 1) == first_await {
+                out.push_str("            __render();\n");
+            }
         }
         out.push_str("            __render();\n");
         out.push_str("        }\n");
@@ -180,6 +290,10 @@ fn emit_expr_init(e: &IrExpr) -> String {
         // expression is a runtime construct, not a value). Phase 2
         // can lift this if a use case arrives.
         IrExpr::Match { .. } => "undefined".into(),
+        // `await(...)` is a runtime construct, not a value — same
+        // reasoning as `match`. Phase 2 may lift this if a use case
+        // arrives (e.g. a lazy-initialised state).
+        IrExpr::Await { .. } | IrExpr::Cancelled { .. } => "undefined".into(),
     }
 }
 
@@ -222,6 +336,19 @@ fn emit_expr_runtime(e: &IrExpr, params: &[&str]) -> String {
                 + &emit_expr_runtime(reason, params)
                 + "})"
         }
+        IrExpr::Await { request, .. } => {
+            // `await(expr)` becomes a JS `await expr`. The
+            // enclosing function is generated as `async function`
+            // (see emit_component). The expression inside the
+            // parens is evaluated as a Promise; the `await`
+            // suspends until the Promise resolves, and the
+            // resolved value flows into the surrounding statement.
+            format!(
+                "await ({})",
+                emit_expr_runtime(request, params)
+            )
+        }
+        IrExpr::Cancelled { .. } => "({__cui_tag:\"Cancelled\"})".to_string(),
         IrExpr::Match { scrutinee, arms, .. } => {
             // Lower to nested ternaries. For Tier 6 the scrutinee
             // is expected to be a `Result` (Ok/Err) or `Option`
@@ -286,6 +413,13 @@ fn pattern_guard(p: &IrPattern, scrutinee_var: &str) -> String {
         IrPattern::Variant { name, .. } => {
             format!("({0}.__cui_tag === \"{1}\")", scrutinee_var, name)
         }
+        IrPattern::UnitVariant { name, .. } => {
+            // Zero-payload variant (e.g. `Cancelled`). Matches if
+            // the runtime tag equals the variant name. The variant
+            // carries no value, so the arm body cannot bind a
+            // payload — `Cancelled =>` is a no-arg pattern.
+            format!("({0}.__cui_tag === \"{1}\")", scrutinee_var, name)
+        }
     }
 }
 
@@ -299,28 +433,39 @@ fn emit_arm_body(
         IrPattern::Wildcard { .. } | IrPattern::Ident { .. } => {
             emit_expr_runtime(body, params)
         }
-        IrPattern::Variant { name: _, binding, .. } => {
-            // IIFE that binds the payload to `binding` so the body
-            // can refer to it as a bare identifier. `var` (not `let`)
-            // so multiple arms with the same binding name don't
-            // shadow each other in a single nested ternary.
+        IrPattern::Variant { name, binding, .. } => {
             let mut local_params: Vec<&str> = params.to_vec();
             local_params.push(binding.as_str());
             let body_with_param = emit_expr_runtime(body, &local_params);
+            // The payload field depends on the variant: `Ok`
+            // stores its under `value`, `Err` under `reason` (see
+            // the tagged constructor emitters).
+            let field = if name == "Err" { "reason" } else { "value" };
             format!(
-                "(function () {{ var {0} = {1}.value; return {2}; }})()",
-                binding, scrutinee_var, body_with_param
+                "(function () {{ var {0} = {1}.{2}; return {3}; }})()",
+                binding, scrutinee_var, field, body_with_param
             )
+        }
+        IrPattern::UnitVariant { .. } => {
+            // No payload to bind. Just emit the body.
+            emit_expr_runtime(body, params)
         }
     }
 }
 
 /// Lower a builtin call to its JavaScript form. The capability
-/// that authorises the call has already been verified by the type
+/// that authorises the call has already been verified by the
 /// checker; this function only picks the symbol to call.
 fn emit_call_runtime(path: &[String], args: &[IrExpr], params: &[&str]) -> String {
     if path.len() == 2 && path[0] == "clock" && path[1] == "now" {
         return "__cui_clock_now()".to_string();
+    }
+    if path.len() == 1 && path[0] == "sleep" {
+        // Tier 7: `sleep(ms)` resolves to
+        // `{__cui_tag:"Ok",value:undefined}` after `ms` ms.
+        let rendered_args: Vec<String> =
+            args.iter().map(|a| emit_expr_runtime(a, params)).collect();
+        return format!("__cui_sleep_ms({})", rendered_args.join(", "));
     }
     let rendered_args: Vec<String> = args.iter().map(|a| emit_expr_runtime(a, params)).collect();
     format!(

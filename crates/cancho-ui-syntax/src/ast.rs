@@ -72,6 +72,10 @@ pub enum Type {
     /// `Err(reason)`. The `match` on a `Result` must have both
     /// arms; missing one is the `match-non-exhaustive` refusal.
     Result { ok: Box<Type>, err: Box<Type> },
+    /// `Request[T]` — Tier 7. The payload of an asynchronous
+    /// effect call. `await(r)` resolves it to a
+    /// `RequestResult[T]` (`Ok | Err | Cancelled`).
+    Request { payload: Box<Type> },
 }
 
 impl Type {
@@ -251,6 +255,15 @@ pub enum Expr {
     Ok { value: Box<Expr>, span: Span },
     /// `Err(reason)` — see `Ok` for the type-inference caveat.
     Err { reason: Box<Expr>, span: Span },
+    /// `await(expr)` — Tier 7. Awaits a `Request[T]` and resolves
+    /// to a `RequestResult[T]`. The runtime representation is a
+    /// Promise-based chain.
+    Await { request: Box<Expr>, span: Span },
+    /// `Cancelled` — Tier 7. The third variant of a
+    /// `RequestResult[T]`. Constructed only by the runtime when a
+    /// request is dropped; users do not write `Cancelled(...)`
+    /// (the constructor takes no payload).
+    Cancelled { span: Span },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -274,6 +287,12 @@ pub enum Pattern {
     /// only single-payload variants (`Ok(v)`, `Err(e)`,
     /// `Some(v)`).
     Variant { name: String, binding: String, span: Span },
+    /// `Name` — matches the zero-payload variant `Name`. Tier 7
+    /// uses this for `Cancelled` (which carries no payload).
+    /// Disambiguated from `Ident` by the fact that a constructor
+    /// pattern has no `(binding)`; the parser must already know
+    /// whether the name is a unit constructor or an identifier.
+    UnitVariant { name: String, span: Span },
 }
 
 impl Pattern {
@@ -282,6 +301,7 @@ impl Pattern {
             Pattern::Wildcard { span } => *span,
             Pattern::Ident { span, .. } => *span,
             Pattern::Variant { span, .. } => *span,
+            Pattern::UnitVariant { span, .. } => *span,
         }
     }
 }
@@ -299,7 +319,9 @@ impl Expr {
             | Expr::Unary { span, .. }
             | Expr::Match { span, .. }
             | Expr::Ok { span, .. }
-            | Expr::Err { span, .. } => *span,
+            | Expr::Err { span, .. }
+            | Expr::Await { span, .. }
+            | Expr::Cancelled { span, .. } => *span,
         }
     }
 }

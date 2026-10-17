@@ -57,6 +57,7 @@ pub enum IrType {
     Bool,
     String,
     Result { ok: Box<IrType>, err: Box<IrType> },
+    Request { payload: Box<IrType> },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -129,6 +130,14 @@ pub enum IrExpr {
     Ok { value: Box<IrExpr>, span: Span },
     /// `Err(reason)` — see `Ok`.
     Err { reason: Box<IrExpr>, span: Span },
+    /// `await(r)` — Tier 7. Awaits a `Request[T]`; the lowering
+    /// lowers it to a JS Promise chain that resolves to a
+    /// `RequestResult[T]` (`Ok | Err | Cancelled`).
+    Await { request: Box<IrExpr>, span: Span },
+    /// `Cancelled` — Tier 7. The third variant of a
+    /// `RequestResult[T]`. The runtime produces it when a request
+    /// is dropped; user code matches against it.
+    Cancelled { span: Span },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -143,6 +152,7 @@ pub enum IrPattern {
     Wildcard { span: Span },
     Ident { name: String, span: Span },
     Variant { name: String, binding: String, span: Span },
+    UnitVariant { name: String, span: Span },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

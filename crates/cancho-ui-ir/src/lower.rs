@@ -113,6 +113,9 @@ fn lower_type(t: &Type) -> IrType {
             ok: Box::new(lower_type(ok)),
             err: Box::new(lower_type(err)),
         },
+        Type::Request { payload } => IrType::Request {
+            payload: Box::new(lower_type(payload)),
+        },
     }
 }
 
@@ -288,6 +291,20 @@ fn lower_expr_with_effects(
                 e,
             ))
         }
+        Expr::Await { request, span } => {
+            let (ir_request, e) = lower_expr_with_effects(request)?;
+            Ok((
+                IrExpr::Await {
+                    request: Box::new(ir_request),
+                    span: *span,
+                },
+                e,
+            ))
+        }
+        Expr::Cancelled { span } => Ok((
+            IrExpr::Cancelled { span: *span },
+            Vec::new(),
+        )),
     }
 }
 
@@ -303,6 +320,10 @@ fn lower_pattern(p: &Pattern) -> IrPattern {
             binding: binding.clone(),
             span: *span,
         },
+        Pattern::UnitVariant { name, span } => IrPattern::UnitVariant {
+            name: name.clone(),
+            span: *span,
+        },
     }
 }
 
@@ -313,6 +334,11 @@ fn lower_pattern(p: &Pattern) -> IrPattern {
 fn builtin_capability(path: &[String]) -> Option<&'static str> {
     if path.len() == 2 && path[0] == "clock" && path[1] == "now" {
         Some("Clock")
+    } else if path.len() == 1 && path[0] == "sleep" {
+        // Tier 7: `sleep(ms)` is a pure-runtime wait. It does
+        // not need a user-declared capability; the runtime
+        // scheduler is its capability.
+        None
     } else {
         None
     }

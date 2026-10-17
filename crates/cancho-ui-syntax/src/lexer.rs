@@ -22,6 +22,7 @@ pub enum Token {
     Requires,
     Let,
     Match,
+    Await,
 
     // Punctuation
     LBrace,    // {
@@ -73,6 +74,7 @@ impl Token {
                 | Token::Requires
                 | Token::Let
                 | Token::Match
+                | Token::Await
         )
     }
 }
@@ -388,6 +390,7 @@ impl Lexer {
             "requires" => Token::Requires,
             "let" => Token::Let,
             "match" => Token::Match,
+            "await" => Token::Await,
             // Note: `Text`, `Column`, `Row`, `Button` are
             // intentionally NOT keywords. They are element kinds
             // in the parser, and an agent or human is free to

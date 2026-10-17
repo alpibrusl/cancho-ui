@@ -233,7 +233,7 @@ impl Parser {
 
     /// Parse a type expression. Tier 6 supports plain type
     /// identifiers (`Int`, `Float`, `Bool`, `String`) and the
-    /// generic `Result[T, E]`.
+    /// generic `Result[T, E]`. Tier 7 adds `Request[T]`.
     fn parse_type(&mut self) -> Result<Type, ParseError> {
         let start = self.peek().span;
         let name_tok = self.bump();
@@ -249,7 +249,6 @@ impl Parser {
             }
         };
         if name == "Result" {
-            // `Result[T, E]`
             self.expect(Token::LBracket)?;
             let ok = self.parse_type()?;
             self.expect(Token::Comma)?;
@@ -260,8 +259,16 @@ impl Parser {
                 err: Box::new(err),
             });
         }
+        if name == "Request" {
+            self.expect(Token::LBracket)?;
+            let payload = self.parse_type()?;
+            self.expect(Token::RBracket)?;
+            return Ok(Type::Request {
+                payload: Box::new(payload),
+            });
+        }
         Type::from_ident(&name).ok_or_else(|| ParseError::Unexpected {
-            expected: "type (`Int`, `Float`, `Bool`, `String`, or `Result[T, E]`)",
+            expected: "type (`Int`, `Float`, `Bool`, `String`, `Result[T, E]`, or `Request[T]`)",
             found: Token::Ident(name.clone()),
             line: start.start.line,
             column: start.start.column,
@@ -421,6 +428,9 @@ impl Parser {
         if matches!(self.peek().token, Token::Match) {
             return self.parse_match();
         }
+        if matches!(self.peek().token, Token::Await) {
+            return self.parse_await();
+        }
         let start = self.peek().span.start;
         if matches!(self.peek().token, Token::Minus) {
             self.bump();
@@ -438,7 +448,21 @@ impl Parser {
         self.parse_primary()
     }
 
-    fn parse_match(&mut self) -> Result<Expr, ParseError> {
+    fn parse_await(&mut self) -> Result<Expr, ParseError> {
+    // `await(expr)` — awaits a `Request[T]`, returns the
+    // resolved `RequestResult[T]`. The parens are required so
+    // `await foo` (a missing-paren error) is unambiguous.
+    let kw = self.expect(Token::Await)?;
+    self.expect(Token::LParen)?;
+    let request = self.parse_expr()?;
+    let close = self.expect(Token::RParen)?;
+    Ok(Expr::Await {
+        request: Box::new(request),
+        span: Span::new(kw.span.start, close.span.end),
+    })
+}
+
+fn parse_match(&mut self) -> Result<Expr, ParseError> {
     let kw = self.expect(Token::Match)?;
     let scrutinee = self.parse_expr()?;
     self.expect(Token::LBrace)?;
@@ -498,6 +522,15 @@ fn parse_pattern(&mut self) -> Result<Pattern, ParseError> {
             });
         }
     };
+    // `Cancelled` is a known zero-payload variant. Other bare
+    // identifiers are still bindings (`Ident` pattern); the
+    // match arm body decides whether to use them.
+    if name == "Cancelled" && !matches!(self.peek().token, Token::LParen) {
+        return Ok(Pattern::UnitVariant {
+            name,
+            span: name_tok.span,
+        });
+    }
     // `Name(binding)` — a constructor pattern.
     if matches!(self.peek().token, Token::LParen) {
         self.bump();
@@ -545,7 +578,7 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
                 self.bump();
                 Ok(Expr::BoolLit { value: s == "true", span: tok.span })
             }
-            Token::Ident(s) => {
+            Token::Ident(_) => {
                 // A path: `ident (.ident)*` optionally followed by
                 // `(args)` as a builtin call. Bare single-segment
                 // paths are identifiers; multi-segment paths must
@@ -554,8 +587,7 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
                 let first_name = match &first_tok.token {
                     Token::Ident(s) => s.clone(),
                     _ => unreachable!(),
-                };
-                let mut path = vec![first_name];
+                };                let mut path = vec![first_name];
                 while matches!(self.peek().token, Token::Dot) {
                     self.bump();
                     let seg = self.bump();
@@ -620,6 +652,18 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
                         let v = args.into_iter().next().unwrap();
                         return Ok(Expr::Err {
                             reason: Box::new(v),
+                            span: Span::new(call_start, call_end),
+                        });
+                    }
+                    // `Cancelled` is a zero-payload variant
+                    // produced by the runtime when a request is
+                    // dropped; the language does not expose it as a
+                    // constructor expression. If the user writes
+                    // `Cancelled(...)`, treat it as a regular call
+                    // — but a `Cancelled` token is unusual, so this
+                    // is rare.
+                    if path.len() == 1 && path[0] == "Cancelled" && args.is_empty() {
+                        return Ok(Expr::Cancelled {
                             span: Span::new(call_start, call_end),
                         });
                     }
@@ -796,7 +840,7 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
         loop {
             match &self.peek().token {
                 Token::Ident(name) if name == "role" => {
-                    let kw = self.bump();
+                    self.bump();
                     self.expect(Token::DotDot)?;
                     let role_tok = self.bump();
                     let role = match role_tok.token {
@@ -1028,6 +1072,7 @@ fn token_kind_name(t: &Token) -> &'static str {
         Token::Requires => "`requires`",
         Token::Let => "`let`",
         Token::Match => "`match`",
+        Token::Await => "`await`",
         Token::LBrace => "`{`",
         Token::RBrace => "`}`",
         Token::LParen => "`(`",
