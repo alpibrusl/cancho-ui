@@ -21,6 +21,7 @@ pub enum Token {
     On,
     Requires,
     Let,
+    Match,
 
     // Punctuation
     LBrace,    // {
@@ -41,6 +42,7 @@ pub enum Token {
     Slash,     // /
     Eq,        // =
     EqEq,      // ==
+    FatArrow,  // =>
     BangEq,    // !=
     Lt,        // <
     LtEq,      // <=
@@ -70,6 +72,7 @@ impl Token {
                 | Token::On
                 | Token::Requires
                 | Token::Let
+                | Token::Match
         )
     }
 }
@@ -240,7 +243,15 @@ impl Lexer {
                 self.bump();
                 if self.peek() == Some('=') {
                     self.bump();
-                    Ok(Token::EqEq)
+                    if self.peek() == Some('>') {
+                        self.bump();
+                        Ok(Token::FatArrow)
+                    } else {
+                        Ok(Token::EqEq)
+                    }
+                } else if self.peek() == Some('>') {
+                    self.bump();
+                    Ok(Token::FatArrow)
                 } else {
                     Ok(Token::Eq)
                 }
@@ -376,6 +387,7 @@ impl Lexer {
             "on" => Token::On,
             "requires" => Token::Requires,
             "let" => Token::Let,
+            "match" => Token::Match,
             // Note: `Text`, `Column`, `Row`, `Button` are
             // intentionally NOT keywords. They are element kinds
             // in the parser, and an agent or human is free to

@@ -134,19 +134,23 @@ An effect returns a `Request[T]`. Awaiting it produces
 delivered when the component has been disposed; the language
 drops the result and the `state-after-dispose` rule applies.
 
-```cancho-ui-refused
-//~ RULE match-non-exhaustive
-component Half {
-    fn halved_or_zero(n: Int) -> Int {
-        match halve(n) {
-            Ok(v) => { return v }
-            // Err arm missing
-        }
-        return 0
-    }
+`Result[T, E]` is two constructors: `Ok(value)` and `Err(reason)`.
+`match` is exhaustive — every `Result` match needs both arms, every
+`Option` match needs both arms, and missing one is a refusal:
 
-    fn halve(n: Int) -> Result[Int, String] {
-        return Ok(n / 2)
+```cancho-ui
+component Half {
+    state result: Result[Int, String] = Ok(0);
+
+    on Tick { result = Ok(42); }
+
+    view {
+        Text {
+            match result {
+                Ok(v) => { "value: {v}" }
+                Err(e) => { "error: {e}" }
+            }
+        }
     }
 }
 ```

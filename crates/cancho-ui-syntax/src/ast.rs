@@ -68,6 +68,10 @@ pub enum Type {
     Float,
     Bool,
     String,
+    /// `Result[T, E]` — Tier 6. Two constructors: `Ok(value)` and
+    /// `Err(reason)`. The `match` on a `Result` must have both
+    /// arms; missing one is the `match-non-exhaustive` refusal.
+    Result { ok: Box<Type>, err: Box<Type> },
 }
 
 impl Type {
@@ -229,6 +233,75 @@ pub enum Expr {
         operand: Box<Expr>,
         span: Span,
     },
+    /// `match scrutinee { arms }`. Tier 6. Each arm has a pattern
+    /// and a body; the body is a single expression for now. The
+    /// arms' patterns must be exhaustive over the scrutinee's
+    /// type (the `match-non-exhaustive` refusal); the first
+    /// matching arm is taken.
+    Match {
+        scrutinee: Box<Expr>,
+        arms: Vec<MatchArm>,
+        span: Span,
+    },
+    /// `Ok(value)` — constructs the `Ok` variant of `Result[T, E]`.
+    /// The type of `value` is `T`; the surrounding context must
+    /// determine `E` (Phase 2 will thread it through type
+    /// inference). Tier 6: the constructed IR uses a discriminated
+    /// pair of `kind` (`"Ok"` or `"Err"`) and `value`.
+    Ok { value: Box<Expr>, span: Span },
+    /// `Err(reason)` — see `Ok` for the type-inference caveat.
+    Err { reason: Box<Expr>, span: Span },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct MatchArm {
+    pub pattern: Pattern,
+    pub body: Expr,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Pattern {
+    /// `_` — matches anything, binds nothing.
+    Wildcard { span: Span },
+    /// `name` — matches anything, binds the matched value to `name`.
+    /// Tier 6 only: a name that *is* a variant name like `Ok` or
+    /// `Err` is still a binding; the constructor pattern below is
+    /// the way to destructure.
+    Ident { name: String, span: Span },
+    /// `Name(binding)` — matches the variant `Name` with one
+    /// payload, binds the payload to `binding`. Tier 6 supports
+    /// only single-payload variants (`Ok(v)`, `Err(e)`,
+    /// `Some(v)`).
+    Variant { name: String, binding: String, span: Span },
+}
+
+impl Pattern {
+    pub fn span(&self) -> Span {
+        match self {
+            Pattern::Wildcard { span } => *span,
+            Pattern::Ident { span, .. } => *span,
+            Pattern::Variant { span, .. } => *span,
+        }
+    }
+}
+
+impl Expr {
+    pub fn span(&self) -> Span {
+        match self {
+            Expr::IntLit { span, .. }
+            | Expr::FloatLit { span, .. }
+            | Expr::StringLit { span, .. }
+            | Expr::BoolLit { span, .. }
+            | Expr::Ident { span, .. }
+            | Expr::Call { span, .. }
+            | Expr::Binary { span, .. }
+            | Expr::Unary { span, .. }
+            | Expr::Match { span, .. }
+            | Expr::Ok { span, .. }
+            | Expr::Err { span, .. } => *span,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

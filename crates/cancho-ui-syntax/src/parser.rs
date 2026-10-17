@@ -219,23 +219,7 @@ impl Parser {
             }
         };
         self.expect(Token::DotDot)?;
-        let ty_tok = self.bump();
-        let ty = match ty_tok.token {
-            Token::Ident(s) => Type::from_ident(&s).ok_or_else(|| ParseError::Unexpected {
-                expected: "type (`Int`, `Float`, `Bool`, `String`)",
-                found: Token::Ident(s),
-                line: ty_tok.span.start.line,
-                column: ty_tok.span.start.column,
-            })?,
-            other => {
-                return Err(ParseError::Unexpected {
-                    expected: "type",
-                    found: other,
-                    line: ty_tok.span.start.line,
-                    column: ty_tok.span.start.column,
-                });
-            }
-        };
+        let ty = self.parse_type()?;
         self.expect(Token::Eq)?;
         let initial = self.parse_expr()?;
         let end_tok = self.expect(Token::Semi)?;
@@ -244,6 +228,43 @@ impl Parser {
             ty,
             initial,
             span: Span::new(kw.span.start, end_tok.span.end),
+        })
+    }
+
+    /// Parse a type expression. Tier 6 supports plain type
+    /// identifiers (`Int`, `Float`, `Bool`, `String`) and the
+    /// generic `Result[T, E]`.
+    fn parse_type(&mut self) -> Result<Type, ParseError> {
+        let start = self.peek().span;
+        let name_tok = self.bump();
+        let name = match name_tok.token {
+            Token::Ident(s) => s,
+            other => {
+                return Err(ParseError::Unexpected {
+                    expected: "type",
+                    found: other,
+                    line: name_tok.span.start.line,
+                    column: name_tok.span.start.column,
+                });
+            }
+        };
+        if name == "Result" {
+            // `Result[T, E]`
+            self.expect(Token::LBracket)?;
+            let ok = self.parse_type()?;
+            self.expect(Token::Comma)?;
+            let err = self.parse_type()?;
+            self.expect(Token::RBracket)?;
+            return Ok(Type::Result {
+                ok: Box::new(ok),
+                err: Box::new(err),
+            });
+        }
+        Type::from_ident(&name).ok_or_else(|| ParseError::Unexpected {
+            expected: "type (`Int`, `Float`, `Bool`, `String`, or `Result[T, E]`)",
+            found: Token::Ident(name.clone()),
+            line: start.start.line,
+            column: start.start.column,
         })
     }
 
@@ -397,6 +418,9 @@ impl Parser {
     }
 
     fn parse_unary(&mut self) -> Result<Expr, ParseError> {
+        if matches!(self.peek().token, Token::Match) {
+            return self.parse_match();
+        }
         let start = self.peek().span.start;
         if matches!(self.peek().token, Token::Minus) {
             self.bump();
@@ -414,7 +438,95 @@ impl Parser {
         self.parse_primary()
     }
 
-    fn parse_primary(&mut self) -> Result<Expr, ParseError> {
+    fn parse_match(&mut self) -> Result<Expr, ParseError> {
+    let kw = self.expect(Token::Match)?;
+    let scrutinee = self.parse_expr()?;
+    self.expect(Token::LBrace)?;
+    let mut arms = Vec::new();
+    while !matches!(self.peek().token, Token::RBrace) {
+        let pattern = self.parse_pattern()?;
+        self.expect(Token::FatArrow)?;
+        // The arm body is a single expression, optionally wrapped
+        // in braces (`{ expr }`). The braces are just for visual
+        // grouping — they don't introduce a new scope. Tier 6
+        // doesn't have block expressions with statements; for
+        // that, Phase 2 lands.
+        let (_open_brace, body) = if matches!(self.peek().token, Token::LBrace) {
+            let open = self.bump();
+            let inner = self.parse_expr()?;
+            let _close = self.expect(Token::RBrace)?;
+            (Some((open, _close)), inner)
+        } else {
+            (None, self.parse_expr()?)
+        };
+        let arm_span_start = pattern.span().start;
+        let arm_span_end = body.span().end;
+        arms.push(MatchArm {
+            pattern,
+            body,
+            span: Span::new(arm_span_start, arm_span_end),
+        });
+        // A trailing comma is allowed but not required — the next
+        // arm can be on a new line. Whitespace separates arms.
+        if matches!(self.peek().token, Token::Comma) {
+            self.bump();
+        }
+    }
+    let close = self.expect(Token::RBrace)?;
+    Ok(Expr::Match {
+        scrutinee: Box::new(scrutinee),
+        arms,
+        span: Span::new(kw.span.start, close.span.end),
+    })
+}
+
+fn parse_pattern(&mut self) -> Result<Pattern, ParseError> {
+    let start = self.peek().span.start;
+    if matches!(&self.peek().token, Token::Ident(s) if s == "_") {
+        self.bump();
+        return Ok(Pattern::Wildcard { span: Span::new(start, start) });
+    }
+    let name_tok = self.bump();
+    let name = match name_tok.token {
+        Token::Ident(s) => s,
+        other => {
+            return Err(ParseError::Unexpected {
+                expected: "pattern (identifier, `_`, or `Name(binding)`)",
+                found: other,
+                line: name_tok.span.start.line,
+                column: name_tok.span.start.column,
+            });
+        }
+    };
+    // `Name(binding)` — a constructor pattern.
+    if matches!(self.peek().token, Token::LParen) {
+        self.bump();
+        let binding_tok = self.bump();
+        let binding = match binding_tok.token {
+            Token::Ident(s) => s,
+            other => {
+                return Err(ParseError::Unexpected {
+                    expected: "identifier in `Name(binding)` pattern",
+                    found: other,
+                    line: binding_tok.span.start.line,
+                    column: binding_tok.span.start.column,
+                });
+            }
+        };
+        let close = self.expect(Token::RParen)?;
+        return Ok(Pattern::Variant {
+            name,
+            binding,
+            span: Span::new(name_tok.span.start, close.span.end),
+        });
+    }
+    Ok(Pattern::Ident {
+        name,
+        span: name_tok.span,
+    })
+}
+
+fn parse_primary(&mut self) -> Result<Expr, ParseError> {
         let tok = self.peek().clone();
         match tok.token {
             Token::IntLit(v) => {
@@ -475,6 +587,42 @@ impl Parser {
                         }
                     }
                     let call_end = self.expect(Token::RParen)?.span.end;
+                    // `Ok(value)` and `Err(reason)` are constructor
+                    // expressions for the `Result` type. They look
+                    // like calls with a single-segment path, so we
+                    // detect them here and lift them to dedicated
+                    // AST variants so the type checker and IR can
+                    // see them as constructors.
+                    if path.len() == 1 && path[0] == "Ok" {
+                        if args.len() != 1 {
+                            return Err(ParseError::Unexpected {
+                                expected: "exactly one argument to `Ok(...)`",
+                                found: Token::LParen,
+                                line: call_start.line,
+                                column: call_start.column,
+                            });
+                        }
+                        let v = args.into_iter().next().unwrap();
+                        return Ok(Expr::Ok {
+                            value: Box::new(v),
+                            span: Span::new(call_start, call_end),
+                        });
+                    }
+                    if path.len() == 1 && path[0] == "Err" {
+                        if args.len() != 1 {
+                            return Err(ParseError::Unexpected {
+                                expected: "exactly one argument to `Err(...)`",
+                                found: Token::LParen,
+                                line: call_start.line,
+                                column: call_start.column,
+                            });
+                        }
+                        let v = args.into_iter().next().unwrap();
+                        return Ok(Expr::Err {
+                            reason: Box::new(v),
+                            span: Span::new(call_start, call_end),
+                        });
+                    }
                     Ok(Expr::Call {
                         path,
                         args,
@@ -536,72 +684,85 @@ impl Parser {
     }
 
     fn parse_text_node(&mut self) -> Result<ViewNode, ParseError> {
-        let tok = self.bump();
-        let value = match tok.token {
-            Token::StringLit(s) => s,
-            _ => unreachable!("parse_text_node called without string"),
-        };
-        // Parse `{expr}` interpolations from the raw string.
-        let mut parts = Vec::new();
-        let mut buf = String::new();
-        let mut chars = value.chars().peekable();
-let current_line = tok.span.start.line;
+        // Text body: either a string literal (with `{expr}`
+        // interpolations) or a general expression whose result
+        // becomes the text. Tier 6 supports both because
+        // `Text { match result { ... } }` needs the expression
+        // form to render a `Result` value conditionally.
+        if matches!(self.peek().token, Token::StringLit(_)) {
+            let tok = self.bump();
+            let value = match tok.token {
+                Token::StringLit(s) => s,
+                _ => unreachable!(),
+            };
+            let mut parts = Vec::new();
+            let mut buf = String::new();
+            let current_line = tok.span.start.line;
+            let mut chars = value.chars().peekable();
             while let Some(c) = chars.next() {
-            if c == '{' {
-                if !buf.is_empty() {
-                    parts.push(TextPart::Literal(std::mem::take(&mut buf)));
-                }
-                // Read until the matching `}`.
-                let mut expr_src = String::new();
-                let mut depth = 1;
-                while let Some(&nc) = chars.peek() {
-                    if nc == '{' { depth += 1; }
-                    if nc == '}' {
-                        depth -= 1;
-                        if depth == 0 { break; }
+                if c == '{' {
+                    if !buf.is_empty() {
+                        parts.push(TextPart::Literal(std::mem::take(&mut buf)));
                     }
-                    expr_src.push(nc);
+                    let mut expr_src = String::new();
+                    let mut depth = 1;
+                    while let Some(&nc) = chars.peek() {
+                        if nc == '{' { depth += 1; }
+                        if nc == '}' {
+                            depth -= 1;
+                            if depth == 0 { break; }
+                        }
+                        expr_src.push(nc);
+                        chars.next();
+                    }
                     chars.next();
-                }
-                chars.next(); // consume the closing }
-                if depth != 0 {
-                    return Err(ParseError::Unexpected {
-                        expected: "closing `}` in interpolation",
-                        found: Token::Eof,
-                        line: current_line,
-                        column: 0,
-                    });
-                }
-                // Parse the expression in a mini-recursive-descent.
-                let interp_tokens = crate::lexer::lex(&expr_src).map_err(|e| {
-                    ParseError::InvalidNumber {
+                    if depth != 0 {
+                        return Err(ParseError::Unexpected {
+                            expected: "closing `}` in interpolation",
+                            found: Token::Eof,
+                            line: current_line,
+                            column: 0,
+                        });
+                    }
+                    let interp_tokens = crate::lexer::lex(&expr_src).map_err(|e| {
+                        ParseError::InvalidNumber {
+                            raw: format!("{:?}", e),
+                            line: current_line,
+                            column: 0,
+                        }
+                    })?;
+                    let mut sub = Parser { tokens: interp_tokens, pos: 0 };
+                    let expr = sub.parse_expr().map_err(|e| ParseError::InvalidNumber {
                         raw: format!("{:?}", e),
                         line: current_line,
                         column: 0,
-                    }
-                })?;
-                let mut sub = Parser {
-                    tokens: interp_tokens,
-                    pos: 0,
-                };
-                let expr = sub.parse_expr().map_err(|e| ParseError::InvalidNumber {
-                    raw: format!("{:?}", e),
-                    line: current_line,
-                    column: 0,
-                })?;
-                parts.push(TextPart::Expr { expr, span: tok.span });
-                let _ = current_line;
-            } else {
-                buf.push(c);
+                    })?;
+                    parts.push(TextPart::Expr { expr, span: tok.span });
+                } else {
+                    buf.push(c);
+                }
             }
+            if !buf.is_empty() {
+                parts.push(TextPart::Literal(buf));
+            }
+            Ok(ViewNode::Text {
+                value: TextValue::Interpolated(parts),
+                span: tok.span,
+            })
+        } else {
+            // The body is a general expression. Render it as a Text
+            // with a single Expr part.
+            let start = self.peek().span.start;
+            let expr = self.parse_expr()?;
+            let end = expr.span().end;
+            Ok(ViewNode::Text {
+                value: TextValue::Interpolated(vec![TextPart::Expr {
+                    expr,
+                    span: Span::new(start, end),
+                }]),
+                span: Span::new(start, end),
+            })
         }
-        if !buf.is_empty() {
-            parts.push(TextPart::Literal(buf));
-        }
-        Ok(ViewNode::Text {
-            value: TextValue::Interpolated(parts),
-            span: tok.span,
-        })
     }
 
     fn parse_element_node(&mut self) -> Result<ViewNode, ParseError> {
@@ -675,6 +836,7 @@ let current_line = tok.span.start.line;
                 Token::StringLit(_) => break,
                 Token::Ident(_) => break,
                 Token::On => break,
+                Token::Match => break,
                 other => {
                     return Err(ParseError::Unexpected {
                         expected: "accessibility key, binding, view node, or `}`",
@@ -691,13 +853,17 @@ let current_line = tok.span.start.line;
         // elements take bindings (label:, on:, ...) and children.
         let kind_is_text = matches!(kind, ElementKind::Text);
         if kind_is_text {
-            // After accessibility, expect a single string literal.
+            // After accessibility, expect a string literal
+            // (with `{expr}` interpolations) OR a general
+            // expression whose result becomes the text. Tier 6
+            // supports the expression form so `Text { match
+            // result { ... } }` works.
             match &self.peek().token {
-                Token::StringLit(_) => {
+                Token::StringLit(_) | Token::Ident(_) | Token::IntLit(_) | Token::FloatLit(_)
+                | Token::LParen | Token::Minus | Token::Match => {
                     children.push(self.parse_text_node()?);
                 }
                 Token::RBrace => {
-                    // Empty body — render an empty text node.
                     let span = self.peek().span;
                     children.push(ViewNode::Text {
                         value: TextValue::Interpolated(vec![TextPart::Literal(String::new())]),
@@ -706,7 +872,7 @@ let current_line = tok.span.start.line;
                 }
                 other => {
                     return Err(ParseError::Unexpected {
-                        expected: "string literal (text content)",
+                        expected: "string literal (text content) or expression",
                         found: other.clone(),
                         line: self.peek().span.start.line,
                         column: self.peek().span.start.column,
@@ -853,21 +1019,6 @@ fn parse_role(s: &str) -> Role {
     }
 }
 
-impl Expr {
-    pub fn span(&self) -> Span {
-        match self {
-            Expr::IntLit { span, .. }
-            | Expr::FloatLit { span, .. }
-            | Expr::StringLit { span, .. }
-            | Expr::BoolLit { span, .. }
-            | Expr::Ident { span, .. }
-            | Expr::Call { span, .. }
-            | Expr::Binary { span, .. }
-            | Expr::Unary { span, .. } => *span,
-        }
-    }
-}
-
 fn token_kind_name(t: &Token) -> &'static str {
     match t {
         Token::Component => "`component`",
@@ -876,6 +1027,7 @@ fn token_kind_name(t: &Token) -> &'static str {
         Token::On => "`on`",
         Token::Requires => "`requires`",
         Token::Let => "`let`",
+        Token::Match => "`match`",
         Token::LBrace => "`{`",
         Token::RBrace => "`}`",
         Token::LParen => "`(`",
@@ -892,6 +1044,7 @@ fn token_kind_name(t: &Token) -> &'static str {
         Token::Slash => "`/`",
         Token::Eq => "`=`",
         Token::EqEq => "`==`",
+        Token::FatArrow => "`=>`",
         Token::BangEq => "`!=`",
         Token::Lt => "`<`",
         Token::LtEq => "`<=`",

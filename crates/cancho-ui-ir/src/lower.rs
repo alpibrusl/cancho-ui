@@ -11,7 +11,7 @@
 
 use cancho_ui_syntax::ast::{
     Binding, BindingValue, BinOp, CapabilityRef, Component, ElementKind, EventHandler, Expr, File,
-    Role, Stmt, StmtBlock, StateField, TextPart, TextValue, Type, UnOp, ViewNode,
+    MatchArm, Pattern, Role, Stmt, StmtBlock, StateField, TextPart, TextValue, Type, UnOp, ViewNode,
 };
 use cancho_ui_syntax::span::{Position, Span};
 use std::collections::BTreeSet;
@@ -109,6 +109,10 @@ fn lower_type(t: &Type) -> IrType {
         Type::Float => IrType::Float,
         Type::Bool => IrType::Bool,
         Type::String => IrType::String,
+        Type::Result { ok, err } => IrType::Result {
+            ok: Box::new(lower_type(ok)),
+            err: Box::new(lower_type(err)),
+        },
     }
 }
 
@@ -242,6 +246,63 @@ fn lower_expr_with_effects(
                 e,
             ))
         }
+        Expr::Match { scrutinee, arms, span } => {
+            let (ir_scrutinee, mut effects) = lower_expr_with_effects(scrutinee)?;
+            let mut ir_arms = Vec::with_capacity(arms.len());
+            for MatchArm { pattern, body, span: arm_span } in arms {
+                let ir_pattern = lower_pattern(pattern);
+                let (ir_body, mut e) = lower_expr_with_effects(body)?;
+                effects.append(&mut e);
+                ir_arms.push(IrMatchArm {
+                    pattern: ir_pattern,
+                    body: ir_body,
+                    span: *arm_span,
+                });
+            }
+            Ok((
+                IrExpr::Match {
+                    scrutinee: Box::new(ir_scrutinee),
+                    arms: ir_arms,
+                    span: *span,
+                },
+                effects,
+            ))
+        }
+        Expr::Ok { value, span } => {
+            let (ir_value, e) = lower_expr_with_effects(value)?;
+            Ok((
+                IrExpr::Ok {
+                    value: Box::new(ir_value),
+                    span: *span,
+                },
+                e,
+            ))
+        }
+        Expr::Err { reason, span } => {
+            let (ir_reason, e) = lower_expr_with_effects(reason)?;
+            Ok((
+                IrExpr::Err {
+                    reason: Box::new(ir_reason),
+                    span: *span,
+                },
+                e,
+            ))
+        }
+    }
+}
+
+fn lower_pattern(p: &Pattern) -> IrPattern {
+    match p {
+        Pattern::Wildcard { span } => IrPattern::Wildcard { span: *span },
+        Pattern::Ident { name, span } => IrPattern::Ident {
+            name: name.clone(),
+            span: *span,
+        },
+        Pattern::Variant { name, binding, span } => IrPattern::Variant {
+            name: name.clone(),
+            binding: binding.clone(),
+            span: *span,
+        },
     }
 }
 

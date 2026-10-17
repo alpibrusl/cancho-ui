@@ -374,6 +374,8 @@ fn token_name(t: &cancho_ui_syntax::Token) -> &'static str {
         Token::On => "`on`",
         Token::Requires => "`requires`",
         Token::Let => "`let`",
+        Token::Match => "`match`",
+        Token::FatArrow => "`=>`",
         Token::LBrace => "`{`",
         Token::RBrace => "`}`",
         Token::LParen => "`(`",

@@ -99,6 +99,13 @@ impl Serialize for IrType {
             IrType::Float => ser.serialize_unit_variant("IrType", 1, "Float"),
             IrType::Bool => ser.serialize_unit_variant("IrType", 2, "Bool"),
             IrType::String => ser.serialize_unit_variant("IrType", 3, "String"),
+            IrType::Result { ok, err } => {
+                use serde::ser::SerializeStruct;
+                let mut s = ser.serialize_struct("IrType::Result", 2)?;
+                s.serialize_field("ok", ok.as_ref())?;
+                s.serialize_field("err", err.as_ref())?;
+                s.end()
+            }
         }
     }
 }
@@ -200,6 +207,62 @@ impl Serialize for IrExpr {
                 let mut s = ser.serialize_struct("IrExpr::Unary", 3)?;
                 s.serialize_field("op", op)?;
                 s.serialize_field("operand", operand)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
+            IrExpr::Match { scrutinee, arms, span } => {
+                let mut s = ser.serialize_struct("IrExpr::Match", 3)?;
+                s.serialize_field("scrutinee", scrutinee.as_ref())?;
+                s.serialize_field("arms", arms)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
+            IrExpr::Ok { value, span } => {
+                let mut s = ser.serialize_struct("IrExpr::Ok", 2)?;
+                s.serialize_field("value", value.as_ref())?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
+            IrExpr::Err { reason, span } => {
+                let mut s = ser.serialize_struct("IrExpr::Err", 2)?;
+                s.serialize_field("reason", reason.as_ref())?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
+        }
+    }
+}
+
+impl Serialize for IrMatchArm {
+    fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut s = ser.serialize_struct("IrMatchArm", 3)?;
+        s.serialize_field("pattern", &self.pattern)?;
+        s.serialize_field("body", &self.body)?;
+        s.serialize_field("span", &IrSpan::from(self.span))?;
+        s.end()
+    }
+}
+
+impl Serialize for IrPattern {
+    fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        match self {
+            IrPattern::Wildcard { span } => {
+                let mut s = ser.serialize_struct("IrPattern::Wildcard", 1)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
+            IrPattern::Ident { name, span } => {
+                let mut s = ser.serialize_struct("IrPattern::Ident", 2)?;
+                s.serialize_field("name", name)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
+            IrPattern::Variant { name, binding, span } => {
+                let mut s = ser.serialize_struct("IrPattern::Variant", 3)?;
+                s.serialize_field("name", name)?;
+                s.serialize_field("binding", binding)?;
                 s.serialize_field("span", &IrSpan::from(*span))?;
                 s.end()
             }

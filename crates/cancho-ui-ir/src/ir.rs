@@ -56,6 +56,7 @@ pub enum IrType {
     Float,
     Bool,
     String,
+    Result { ok: Box<IrType>, err: Box<IrType> },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -112,6 +113,36 @@ pub enum IrExpr {
         operand: Box<IrExpr>,
         span: Span,
     },
+    /// `match scrutinee { arms }`. Tier 6. Each arm's pattern is
+    /// matched against the scrutinee at runtime; the first match
+    /// wins and its body is evaluated. Patterns are kept as a
+    /// separate IR enum so the type checker can reason about
+    /// exhaustiveness and the JS emitter can desugar to JS.
+    Match {
+        scrutinee: Box<IrExpr>,
+        arms: Vec<IrMatchArm>,
+        span: Span,
+    },
+    /// `Ok(value)` — a `Result[T, E]` constructor with payload.
+    /// The runtime representation is a discriminated pair:
+    /// `{ __cui_tag: "Ok", value: <v> }`.
+    Ok { value: Box<IrExpr>, span: Span },
+    /// `Err(reason)` — see `Ok`.
+    Err { reason: Box<IrExpr>, span: Span },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct IrMatchArm {
+    pub pattern: IrPattern,
+    pub body: IrExpr,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum IrPattern {
+    Wildcard { span: Span },
+    Ident { name: String, span: Span },
+    Variant { name: String, binding: String, span: Span },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

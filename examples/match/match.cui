@@ -1,0 +1,25 @@
+// examples/match/match.cui — Tier 6: the `match` expression on
+// `Result[Int, String]`. Two events (`Set` / `Fail`) toggle
+// between `Ok` and `Err`; the view renders one of three
+// `Text` lines based on which arm the scrutinee matches.
+
+component Half {
+    state result: Result[Int, String] = Ok(0);
+
+    on Set(value) { result = Ok(value); }
+    on Fail { result = Err("out of range"); }
+
+    view {
+        Column {
+            Text { role: status "Match demo" }
+            Text {
+                match result {
+                    Ok(v) => { "ok" }
+                    Err(e) => { "err" }
+                }
+            }
+            Button { label: "Set 5"  on: Set }
+            Button { label: "Fail"   on: Fail }
+        }
+    }
+}

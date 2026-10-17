@@ -22,3 +22,15 @@ pub use span::{Position, Span};
 /// The supported source-language version for Phase 1.
 pub const SCHEMA_VERSION: &str = "cancho-ui-source";
 pub const SOURCE_VERSION: &str = "0.1.0";
+
+#[cfg(test)]
+mod tests {
+    use super::lexer::lex;
+
+    #[test]
+    fn lex_fat_arrow() {
+        let toks = lex("=>").unwrap();
+        assert!(matches!(toks[0].token, super::Token::FatArrow));
+        assert!(matches!(toks[1].token, super::Token::Eof));
+    }
+}

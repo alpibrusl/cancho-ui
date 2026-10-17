@@ -310,3 +310,78 @@ component Search {
     assert!(js.contains("String(__state_query)"));
     assert!(js.contains("addEventListener('input'"));
 }
+
+#[test]
+fn match_emits_nested_ternaries_with_tag_dispatch() {
+    // Tier 6: a match on a `Result[Int, String]` is lowered to
+    // nested ternaries that dispatch on the `__cui_tag` runtime
+    // tag. Each arm body sees its bound name as a bare
+    // identifier (the body's local scope binds it).
+    let src = "\
+component Half {
+    state result: Result[Int, String] = Ok(0);
+    on Set(n) { result = Ok(n); }
+    on Fail { result = Err(\"bad\"); }
+    view {
+        Text {
+            match result {
+                Ok(v) => { \"value: ok\" }
+                Err(e) => { \"value: bad\" }
+            }
+        }
+    }
+}
+";
+    let js = compile_str(src);
+    // Initial value: Ok(0).
+    assert!(js.contains("({__cui_tag:\"Ok\",value:0})"));
+    // Event handlers construct the right tag.
+    assert!(js.contains("({__cui_tag:\"Ok\",value:n})"));
+    assert!(js.contains("({__cui_tag:\"Err\",reason:\"bad\"})"));
+    // Match dispatch on the tag.
+    assert!(js.contains("__cui_tag === \"Ok\""));
+    assert!(js.contains("__cui_tag === \"Err\""));
+    // Bindings become local var in IIFEs.
+    assert!(js.contains("var v = __cui_match_"));
+    assert!(js.contains("var e = __cui_match_"));
+}
+
+#[test]
+fn match_supports_constructor_wildcard_and_ident_patterns() {
+    // Tier 6: three pattern shapes:
+    //   - `Ok(v)` (constructor + binding),
+    //   - `_`     (wildcard),
+    //   - `name`  (binds the whole value).
+    let src = "\
+component T {
+    state x: Result[Int, String] = Ok(0);
+    view {
+        Text {
+            match x {
+                Ok(v) => { v }
+                _ => { 0 }
+            }
+        }
+    }
+}
+";
+    let js = compile_str(src);
+    assert!(js.contains("var v = __cui_match_"));
+    // The wildcard arm body is the literal 0.
+    assert!(js.contains("? 0 :"));
+}
+
+#[test]
+fn ok_and_err_are_constructors_in_expressions() {
+    // `Ok(value)` and `Err(reason)` are constructor expressions
+    // for the `Result` type; the parser lifts them to dedicated
+    // AST variants and the IR has corresponding nodes.
+    let src = "\
+component T {
+    state x: Result[Int, String] = Ok(42);
+    view { Text { \"x set\" } }
+}
+";
+    let js = compile_str(src);
+    assert!(js.contains("({__cui_tag:\"Ok\",value:42})"));
+}

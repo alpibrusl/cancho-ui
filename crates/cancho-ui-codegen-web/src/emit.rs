@@ -160,6 +160,26 @@ fn emit_expr_init(e: &IrExpr) -> String {
                 + &emit_expr_init(rhs)
                 + ")"
         }
+        // State-field initial values can be `Ok(value)` or
+        // `Err(reason)` constructors — Tier 6 lifted the
+        // restriction that initial values must be literals. The
+        // runtime representation is a tagged object:
+        //   {__cui_tag:"Ok", value:v} or {__cui_tag:"Err", reason:r}.
+        IrExpr::Ok { value, .. } => {
+            "({__cui_tag:\"Ok\",value:".to_string()
+                + &emit_expr_init(value)
+                + "})"
+        }
+        IrExpr::Err { reason, .. } => {
+            "({__cui_tag:\"Err\",reason:".to_string()
+                + &emit_expr_init(reason)
+                + "})"
+        }
+        // `match` is not a legal state-field initial value in Tier 6
+        // (a state field's initial is an expression but a match
+        // expression is a runtime construct, not a value). Phase 2
+        // can lift this if a use case arrives.
+        IrExpr::Match { .. } => "undefined".into(),
     }
 }
 
@@ -191,6 +211,106 @@ fn emit_expr_runtime(e: &IrExpr, params: &[&str]) -> String {
                 + " "
                 + &emit_expr_runtime(rhs, params)
                 + ")"
+        }
+        IrExpr::Ok { value, .. } => {
+            "({__cui_tag:\"Ok\",value:".to_string()
+                + &emit_expr_runtime(value, params)
+                + "})"
+        }
+        IrExpr::Err { reason, .. } => {
+            "({__cui_tag:\"Err\",reason:".to_string()
+                + &emit_expr_runtime(reason, params)
+                + "})"
+        }
+        IrExpr::Match { scrutinee, arms, .. } => {
+            // Lower to nested ternaries. For Tier 6 the scrutinee
+            // is expected to be a `Result` (Ok/Err) or `Option`
+            // (Some/None). Phase 2 may emit a switch table or a
+            // decision tree; ternaries are correct and the
+            // smallest thing that works.
+            emit_match_as_ternary(scrutinee.as_ref(), arms, params)
+        }
+    }
+}
+
+/// Lower a `match` expression to a single ternary chain. The
+/// scrutinee is evaluated once into a `__cui_match_<i>` local so
+/// each arm's guard and body can refer to it as both a tag
+/// (`__cui_match_<i>.__cui_tag`) and a payload
+/// (`__cui_match_<i>.value`).
+fn emit_match_as_ternary(
+    scrutinee: &IrExpr,
+    arms: &[IrMatchArm],
+    params: &[&str],
+) -> String {
+    use std::cell::Cell;
+    thread_local! {
+        static COUNTER: Cell<u32> = Cell::new(0);
+    }
+    let id = COUNTER.with(|c| {
+        let n = c.get() + 1;
+        c.set(n);
+        n
+    });
+    let scrutinee_var = format!("__cui_match_{}", id);
+    let scrutinee_js = emit_expr_runtime(scrutinee, params);
+    let mut out = format!("((function () {{ var {0} = {1}; ", scrutinee_var, scrutinee_js);
+
+    for (i, arm) in arms.iter().enumerate() {
+        let guard = pattern_guard(&arm.pattern, &scrutinee_var);
+        let body = emit_arm_body(&arm.pattern, &scrutinee_var, &arm.body, params);
+        let sep = if i == 0 { "return " } else { "      " };
+        out.push_str(sep);
+        out.push_str(&guard);
+        out.push_str(" ? ");
+        out.push_str(&body);
+        if i + 1 < arms.len() {
+            out.push_str(" : ");
+        } else {
+            // Last arm — if no arm matches, this should be
+            // unreachable (the type checker refused an
+            // incomplete match). Emit a value that throws so
+            // bugs surface immediately rather than silently
+            // returning undefined.
+            out.push_str(" : (function () { throw new Error(\"no match arm matched (non-exhaustive match in source)\"); })()");
+        }
+    }
+    out.push_str("; })())");
+    out
+}
+
+fn pattern_guard(p: &IrPattern, scrutinee_var: &str) -> String {
+    match p {
+        IrPattern::Wildcard { .. } => "true".to_string(),
+        IrPattern::Ident { .. } => "true".to_string(),
+        IrPattern::Variant { name, .. } => {
+            format!("({0}.__cui_tag === \"{1}\")", scrutinee_var, name)
+        }
+    }
+}
+
+fn emit_arm_body(
+    p: &IrPattern,
+    scrutinee_var: &str,
+    body: &IrExpr,
+    params: &[&str],
+) -> String {
+    match p {
+        IrPattern::Wildcard { .. } | IrPattern::Ident { .. } => {
+            emit_expr_runtime(body, params)
+        }
+        IrPattern::Variant { name: _, binding, .. } => {
+            // IIFE that binds the payload to `binding` so the body
+            // can refer to it as a bare identifier. `var` (not `let`)
+            // so multiple arms with the same binding name don't
+            // shadow each other in a single nested ternary.
+            let mut local_params: Vec<&str> = params.to_vec();
+            local_params.push(binding.as_str());
+            let body_with_param = emit_expr_runtime(body, &local_params);
+            format!(
+                "(function () {{ var {0} = {1}.value; return {2}; }})()",
+                binding, scrutinee_var, body_with_param
+            )
         }
     }
 }
