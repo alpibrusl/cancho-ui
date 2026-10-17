@@ -1,112 +1,199 @@
+<p align="center"><img src="docs/assets/cancho-ui-logo-256.png" alt="cancho-ui" width="200"></p>
+
 # cancho-ui
 
-A declarative UI language and toolchain for applications whose
-behavior, capabilities, and trust boundaries an AI agent can read and
-verify. Compiles one source model to a web backend first and a mobile
-backend later, on top of an existing browser, runtime, and platform
-ecosystem — not as a replacement for them.
+A **declarative UI language and toolchain whose programs compile to
+JavaScript + DOM, with capabilities, refusal discipline, and machine-readable
+diagnostics modelled on [cancho](https://github.com/alpibrusl/cancho)**.
+Components own state, declare the capabilities they need, and have their
+authority and reachable effects exposed as data — the same authority model
+Cancho uses at the systems level, lifted to the UI level.
 
-## Position
-
-> A UI language and toolchain for applications that AI agents can
-> change with explicit behavioral contracts and verifiable evidence.
-
-This is a **research-backed compiler and agent-workflow project**, not
-initially a broad UI framework. The first proof is narrow and
-falsifiable — an agent modifies a small application, the compiler
-checks state and authority constraints, tests replay the relevant
-behavior, and the evidence report clearly identifies what is and is
-not guaranteed.
-
-The proposal itself is honest about what this is not:
-
-- Not a replacement for JavaScript, TypeScript, Swift, or Kotlin.
-- Not a system that proves third-party or native code safe.
-- Not a cross-platform solution that is equivalent merely because it
-  shares source code.
-
-The strongest product story is not "AI writes this language better."
-It is: **the toolchain gives AI agents a smaller, more explicit
-space in which to make changes — and gives humans evidence about
-what those changes can do.** That claim is meaningful only if a
-benchmark supports it.
-
-## Where this sits
+## An example
 
 ```
-                  cancho (systems language)
-                  ─────────────────────────
-                  capabilities, effect rows, IR,
-                  authority reports, rule-tagged refusals
-                            │
-                            │  documented, versioned
-                            │  integration contract
-                            │
-                  cancho-ui (UI language)
-                  ─────────────────────────
-                  components, state, events, effects,
-                  capabilities, lifecycle, typed UI IR
-                            │
-                  ┌─────────┴─────────┐
-                  │                   │
-            web backend          mobile backend
-         (DOM + browser)      (cross-platform runtime
-                               or explicit native codegen)
+component Clock {
+    requires Clock;
+
+    state started_at: Int = 0;
+    state ticking: Bool = false;
+
+    on Start {
+        started_at = clock.now();
+        ticking = true;
+    }
+
+    on Stop {
+        ticking = false;
+    }
+
+    view {
+        Column {
+            Text {
+                role: status
+                label: "elapsed time"
+                "Elapsed: {(clock.now() - started_at) / 1000}s"
+            }
+            Button { label: "Start" on: Start }
+            Button { label: "Stop"  on: Stop  }
+        }
+    }
+}
 ```
 
-Cancho-UI depends on [cancho](https://github.com/alpibrusl/cancho)'s
-type/effect semantics, capability model, and machine-readable
-diagnostic format, through a versioned contract rather than unstable
-compiler internals.
+`requires Clock;` is the only way `clock.now()` is reachable. The compiler
+checks every reachable effect against the declared capabilities and refuses
+the program with `capability-missing` or `capability-unused` — the same
+exact-row rule Cancho uses for its effect rows, applied to UI.
 
-## Status
+Run it:
 
-**Phase 0 — design contract.** This repository is currently
-proposal- and design-stage. No compiler, runtime, or backend exists
-yet. The exit gate is the four documents under
-[`docs/`](docs/README.md), a written-down set of valid and invalid
-examples under [`examples/`](examples/), the typed UI IR sketch under
-[`spec/ir-schema/`](spec/ir-schema/), the machine-readable diagnostic
-format under [`spec/diagnostics/`](spec/diagnostics/), and an explicit
-guarantees/non-guarantees table in
-[`docs/semantics.md`](docs/semantics.md).
+```sh
+cancho-ui build examples/clock/clock.cui -o examples/clock/clock.js
+cd examples/clock && python3 -m http.server
+# open http://localhost:8000/clock.html, click Start
+```
 
-Phase 1 (parser + minimal type checker + typed UI IR + Counter-style
-demo on the web backend) does not start until those exist and the
-cancho integration contract is real. See
-[`ROADMAP.md`](ROADMAP.md) for the phasing, exit criteria, and
-stop/rethink conditions.
+## What's deliberately not here
+
+- **No virtual DOM.** cancho-ui compiles straight to DOM ops
+  (`createElement`, `setAttribute`, `createTextNode`, `appendChild`).
+  The IR's view tree is data, lowered 1:1 to DOM. Adding a virtual DOM
+  would mean two trees for the compiler to reason about, and the
+  language model already has finer-grained reactivity available
+  (state reads, state writes, view rebuilds) without it.
+- **No JSX.** cancho-ui source is block-structured
+  (`Text { role: status "hi" }`), not expression-templated. Block-style
+  composes more cleanly with `role:` / `label:` accessibility blocks
+  and with multi-line children.
+- **No CSS-in-language.** cancho-ui emits `cui-col`, `cui-row` and
+  semantic tags; styling is the host page's job. Phase 6 may add a
+  scoped stylesheet story; for now the design is **the language
+  owns behavior and accessibility, the page owns presentation.**
+- **No implicit anything.** No implicit conversions, no operator
+  overloading, no ambient authority: a component that calls
+  `clock.now()` without `requires Clock;` does not compile.
+- **No foreign untyped imports.** Every effect call is declared in
+  the IR as an `IrReachableEffect`; the evidence report lists every
+  trust boundary. A foreign function reached without a `foreign` block
+  is a refusal, not a hidden capability.
+- **No macros.** Macros break stable content-addressable identity,
+  the same reason Cancho Core forbids them.
+
+And honestly, **early**: Tier 1–4 are shipped, Tier 5 (source maps,
+the search-able-list demo, the full refusal catalog) is next, the mobile
+backend and the agent benchmark are later. The compiler is Rust, the
+language is a small declarative subset, and the toolchain is shaped to
+be one an AI agent can drive. The four components shipped so far
+(`Hello`, `Counter`, `Clock`, plus the proposal §9.3 searchable-list
+demo in Tier 5) all compile and run; the refusal discipline is locked
+in `spec/diagnostics/README.md`; the CLI's JSON output is a contract,
+not a string. What is **not** claimed: that an agent using cancho-ui
+is more productive than one using a conventional stack. That needs the
+Phase 3 benchmark, which has not been run.
 
 ## Building
 
-**There is nothing to build yet.** The repository is docs only. Once
-Phase 1 lands:
+```sh
+git clone https://github.com/alpibrusl/cancho-ui
+cd cancho-ui
+cargo test --workspace   # the whole gate: 26 unit + integration tests
+```
+
+The browser harness for the end-to-end DOM smoke tests (`/tmp/test-*.js`)
+needs [`jsdom`](https://www.npmjs.com/package/jsdom):
 
 ```sh
-# (placeholder — will land with Phase 1)
-cancho-ui check <file.cui>...                 # refuse, or say nothing
-cancho-ui build --target web <file.cui>       # produce JS+DOM output
-cancho-ui test <file.cui>...                  # deterministic replay
-cancho-ui inspect component <id>              # machine-readable
-cancho-ui inspect effects <id>                # machine-readable
-cancho-ui diff <base> <candidate>             # semantic diff
-cancho-ui report                              # evidence report
+cd /tmp && npm install jsdom
+node /tmp/test-counter.js   # expects "OK: counter works"
+node /tmp/test-clock.js    # expects "OK: clock works"
+node /tmp/test-hello.js     # expects "OK: hello world rendered correctly"
 ```
+
+Linux-x86_64 and darwin-aarch64 are green in CI; the binary is a single
+release-mode artifact (~540 KB).
+
+## The toolchain's whole surface
+
+```sh
+cancho-ui check <file.cui>... [--output json]
+cancho-ui build <file.cui>... [-o <path>] [--target web] [--output json]
+cancho-ui inspect component <file.cui> <name> [--output json]
+cancho-ui inspect effects   <file.cui> <name> [--output json]
+cancho-ui inspect ir       <file.cui>          [--output json]
+cancho-ui report           <file.cui>...       [--output json]
+cancho-ui skill [--output json] [<out-file>]
+cancho-ui introspect [--output json]
+cancho-ui --version
+cancho-ui --help
+```
+
+Exit codes match cancho Core: `0` success, `1` refused with a
+located diagnostic, `2` command line wrong, `3` environment failed.
+
+`--output json` is the agent-facing surface. Consumers match on the
+stable `code` field (`type-not-pascal-case`, `capability-missing`,
+`lex-unexpected-char`, ...), not on prose. The shape is locked in
+[`spec/diagnostics/README.md`](../spec/diagnostics/README.md) §4.
+
+`inspect effects` is the one worth trying on something you did not
+write — it lists the capabilities a component declares and the
+reachable effects that need them, with the source span for each:
+
+```sh
+$ cancho-ui inspect effects examples/clock/clock.cui Clock --output json | jq .
+{
+  "component": "Clock",
+  "reachable_effects": [
+    {
+      "capability": "Clock",
+      "path": ["clock", "now"],
+      "span": { "file": "examples/clock/clock.cui", "start": {"line": 11, "column": 24}, "end": {...} }
+    }
+  ],
+  "requires": [
+    { "name": "Clock", "span": {...} }
+  ]
+}
+```
+
+A `requires Clock;` with no reachable effect is refused with
+`capability-unused`. A `clock.now()` without `requires Clock;` is
+refused with `capability-missing`. Both come back as locked-shape
+JSON; both carry the source span and a remediation hint with high
+confidence.
 
 ## Docs
 
-[`docs/README.md`](docs/README.md) is the index. Start there.
+[`docs/README.md`](docs/README.md) — every design document, one per
+page, in order. Start with the proposal; the language design, the
+semantics, the security model, and the platform model are next; the
+IR schema, the diagnostic format, and the grammar are the contracts the
+compiler meets.
 
-Every design document cites the cancho Core documents it depends on,
-so a reader can see which guarantees are inherited, which are
-re-stated, and which are net-new for cancho-ui.
+[`docs/proposal.md`](docs/proposal.md) — the original MVP proposal. The
+implementation matches Tier 1–4 of the proposal's roadmap. Tier 5
+(source maps, the searchable-list demo, the full refusal catalog) and
+beyond are still ahead; the roadmap rows record what each shipped and
+what was found.
 
-## Licence
-
-[EUPL-1.2](LICENSE), matching the rest of the ecosystem.
+[`SESSION-LOG.md`](SESSION-LOG.md) — what Tier 1–4 actually built, the
+bugs found while building them, and how to reproduce the end-to-end DOM
+tests.
 
 ## Contributing
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) — the gate, the file budget,
-and the conventions. A claim that turns out false is corrected in
-place in the document that made it, rather than quietly edited.
+[`CONTRIBUTING.md`](CONTRIBUTING.md) — the gate, the file budget, the
+conventions. [`AGENTS.md`](AGENTS.md) is the one page for writing
+cancho-ui **source** (not the compiler); it has the runtime loop and
+the rule catalog cross-references a writer needs.
+
+Design lands in `docs/` **before** the code that implements it, and a
+claim that turns out wrong is corrected in place there rather than
+quietly edited — the roadmap says which.
+
+## Licence
+
+[EUPL-1.2](LICENSE), matching Cancho Core and the rest of the
+ecosystem. See `LICENSE` for the notice and where to obtain the full
+text in any of the 23 EU languages.
