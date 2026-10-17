@@ -80,16 +80,17 @@ cd examples/clock && python3 -m http.server
 - **No macros.** Macros break stable content-addressable identity,
   the same reason Cancho Core forbids them.
 
-And honestly, **early**: Tier 1–6 are shipped, Tier 7 (async effects:
-`Request[T]`, `await`, the `Cancelled` arm) is in. The compiler
+And honestly, **early**: Tier 1–8 are shipped (the async slice plus
+`Option[T]`/`List[T]` and the `For` row repetition). The compiler
 is Rust, the language is a small declarative subset, and the
-toolchain is shaped to be one an AI agent can drive. The six
+toolchain is shaped to be one an AI agent can drive. The seven
 components shipped so far (`Hello`, `Counter`, `Clock`, `Search`,
-`Match`, `Ticker`) all compile and run; the refusal discipline is
-locked in `spec/diagnostics/README.md`; the CLI's JSON output is a
-contract, not a string. What is **not** claimed: that an agent using
-cancho-ui is more productive than one using a conventional stack.
-That needs the Phase 3 benchmark, which has not been run.
+`Match`, `Ticker`, `Roster`) all compile and run; the refusal
+discipline is locked in `spec/diagnostics/README.md`; the CLI's
+JSON output is a contract, not a string. What is **not** claimed:
+that an agent using cancho-ui is more productive than one using a
+conventional stack. That needs the Phase 3 benchmark, which has not
+been run.
 
 The Tier 5 `Search` example is the proposal §9.3 demo: a `TextField`
 drives a `query` state field, the `Change` event handler updates it,
@@ -105,7 +106,7 @@ state is painted synchronously before the handler suspends. Cancellation
 ```sh
 git clone https://github.com/alpibrusl/cancho-ui
 cd cancho-ui
-cargo test --workspace   # the whole gate: 35 unit + integration tests
+cargo test --workspace   # the whole gate: 42 unit + integration tests
 ```
 
 The browser harness for the end-to-end DOM smoke tests (`/tmp/test-*.js`)
@@ -180,11 +181,12 @@ IR schema, the diagnostic format, and the grammar are the contracts the
 compiler meets.
 
 [`docs/proposal.md`](docs/proposal.md) — the original MVP proposal. The
-implementation matches Tier 1–7 of the proposal's roadmap (the async
-slice included), plus the Phase 2 compile-time `match-non-exhaustive`
-rule. The remaining Phase 2 items (`Option[T]`/`List[T]`,
-`Cancelled` at runtime, `foreign`/`target` blocks) and beyond are
-still ahead; the roadmap rows record what each shipped and
+implementation matches Tier 1–8 of the proposal's roadmap (the async
+slice and the `Option`/`List` generics included), plus the Phase 2
+compile-time `match-non-exhaustive` rule. The remaining Phase 2
+items (`Cancelled` at runtime, `Network` + `net.search`,
+list operations like `filter`, `foreign`/`target` blocks) and beyond
+are still ahead; the roadmap rows record what each shipped and
 what was found.
 
 [`SESSION-LOG.md`](SESSION-LOG.md) — what Tier 1–4 actually built, the

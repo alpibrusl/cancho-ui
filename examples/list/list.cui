@@ -1,0 +1,37 @@
+// examples/list/list.cui — Tier 8: `Option[T]`, `List[T]`, and the
+// `For` row repetition. `names` is a `List[String]` rendered once
+// per element through `For { over: names as: n ... }`; `picked` is
+// an `Option[String]` match that requires both the `Some` and the
+// `None` arm at compile time (the `match-non-exhaustive` rule).
+//
+// Note: `{n}` inside the `For` body interpolates the loop binding,
+// but string interpolation does NOT apply inside `match` arm
+// bodies — an arm body is a plain expression, so the `picked:` row
+// builds its sentence with `+`.
+
+component Roster {
+    state names: List[String] = ["Ada", "Grace", "Lin"];
+    state picked: Option[String] = None;
+
+    on Pick { picked = Some("Ada"); }
+    on Clear { picked = None; }
+
+    view {
+        Column {
+            Text {
+                role: status
+                match picked {
+                    Some(who) => { "picked: " + who }
+                    None => { "picked: none" }
+                }
+            }
+            For {
+                over: names
+                as: n
+                Text { "row: {n}" }
+            }
+            Button { label: "Pick" on: Pick }
+            Button { label: "Clear" on: Clear }
+        }
+    }
+}

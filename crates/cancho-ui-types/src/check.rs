@@ -178,6 +178,13 @@ fn check_view_node_shape(node: &ViewNode) -> Result<(), TypeError> {
             }
         }
         ViewNode::Text { .. } => {}
+        // Tier 8: `For` brings its own children into scope as a
+        // loop binding; nothing to shape-check per-child yet.
+        ViewNode::For { children, .. } => {
+            for c in children {
+                check_view_node_shape(c)?;
+            }
+        }
     }
     Ok(())
 }

@@ -76,6 +76,12 @@ pub enum Type {
     /// effect call. `await(r)` resolves it to a
     /// `RequestResult[T]` (`Ok | Err | Cancelled`).
     Request { payload: Box<Type> },
+    /// `Option[T]` — Tier 8. Two constructors: `Some(value)` and
+    /// `None`.
+    Option { some: Box<Type> },
+    /// `List[T]` — Tier 8. A list literal is `[a, b, c]`; the
+    /// view renders it with `For { over: list as: x ... }`.
+    List { elem: Box<Type> },
 }
 
 impl Type {
@@ -109,6 +115,9 @@ impl ViewBlock {
                             .all(|p| matches!(p, TextPart::Literal(s) if s.is_empty()))
                 }
             },
+            // `For` is never empty by definition — it repeats its
+            // children at least once per list item.
+            ViewNode::For { .. } => false,
         }
     }
 }
@@ -124,6 +133,16 @@ pub enum ViewNode {
     },
     Text {
         value: TextValue,
+        span: Span,
+    },
+    /// `For { over: list as: item ... }` — Tier 8. Renders the
+    /// children once per element of the `over` list; inside the
+    /// children, `item` is a read of the current element. The
+    /// `over` value is a state-field name.
+    For {
+        over: String,
+        binding: String,
+        children: Vec<ViewNode>,
         span: Span,
     },
 }
@@ -264,6 +283,12 @@ pub enum Expr {
     /// request is dropped; users do not write `Cancelled(...)`
     /// (the constructor takes no payload).
     Cancelled { span: Span },
+    /// `Some(value)` — Tier 8. `Option[T]` value constructor.
+    Some { value: Box<Expr>, span: Span },
+    /// `None` — Tier 8. The zero-payload `Option[T]` constructor.
+    None { span: Span },
+    /// `[a, b, c]` — Tier 8. A `List[T]` literal.
+    ListLit { items: Vec<Expr>, span: Span },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -321,7 +346,10 @@ impl Expr {
             | Expr::Ok { span, .. }
             | Expr::Err { span, .. }
             | Expr::Await { span, .. }
-            | Expr::Cancelled { span, .. } => *span,
+            | Expr::Cancelled { span, .. }
+            | Expr::Some { span, .. }
+            | Expr::None { span, .. }
+            | Expr::ListLit { span, .. } => *span,
         }
     }
 }

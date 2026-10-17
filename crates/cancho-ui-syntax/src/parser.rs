@@ -267,6 +267,24 @@ impl Parser {
                 payload: Box::new(payload),
             });
         }
+        if name == "Option" {
+            // `Option[T]`
+            self.expect(Token::LBracket)?;
+            let some = self.parse_type()?;
+            self.expect(Token::RBracket)?;
+            return Ok(Type::Option {
+                some: Box::new(some),
+            });
+        }
+        if name == "List" {
+            // `List[T]`
+            self.expect(Token::LBracket)?;
+            let elem = self.parse_type()?;
+            self.expect(Token::RBracket)?;
+            return Ok(Type::List {
+                elem: Box::new(elem),
+            });
+        }
         Type::from_ident(&name).ok_or_else(|| ParseError::Unexpected {
             expected: "type (`Int`, `Float`, `Bool`, `String`, `Result[T, E]`, or `Request[T]`)",
             found: Token::Ident(name.clone()),
@@ -431,6 +449,10 @@ impl Parser {
         if matches!(self.peek().token, Token::Await) {
             return self.parse_await();
         }
+        // `[a, b, c]` — a `List[T]` literal. Tier 8.
+        if matches!(self.peek().token, Token::LBracket) {
+            return self.parse_list_lit();
+        }
         let start = self.peek().span.start;
         if matches!(self.peek().token, Token::Minus) {
             self.bump();
@@ -459,6 +481,29 @@ impl Parser {
     Ok(Expr::Await {
         request: Box::new(request),
         span: Span::new(kw.span.start, close.span.end),
+    })
+}
+
+fn parse_list_lit(&mut self) -> Result<Expr, ParseError> {
+    // `[a, b, c]` — a `List[T]` literal. Items are plain
+    // expressions; trailing commas are not accepted.
+    let open = self.expect(Token::LBracket)?;
+    let mut items = Vec::new();
+    loop {
+        if matches!(self.peek().token, Token::RBracket) {
+            break;
+        }
+        items.push(self.parse_expr()?);
+        if matches!(self.peek().token, Token::Comma) {
+            self.bump();
+        } else {
+            break;
+        }
+    }
+    let close = self.expect(Token::RBracket)?;
+    Ok(Expr::ListLit {
+        items,
+        span: Span::new(open.span.start, close.span.end),
     })
 }
 
@@ -522,10 +567,10 @@ fn parse_pattern(&mut self) -> Result<Pattern, ParseError> {
             });
         }
     };
-    // `Cancelled` is a known zero-payload variant. Other bare
-    // identifiers are still bindings (`Ident` pattern); the
+    // `Cancelled` and `None` are known zero-payload variants. Other
+    // bare identifiers are still bindings (`Ident` pattern); the
     // match arm body decides whether to use them.
-    if name == "Cancelled" && !matches!(self.peek().token, Token::LParen) {
+    if (name == "Cancelled" || name == "None") && !matches!(self.peek().token, Token::LParen) {
         return Ok(Pattern::UnitVariant {
             name,
             span: name_tok.span,
@@ -667,14 +712,56 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
                             span: Span::new(call_start, call_end),
                         });
                     }
+                    // `Some(value)` — Tier 8. `Option[T]` value
+                    // constructor, lifted here (single-segment
+                    // path with exactly one argument), exactly like
+                    // `Ok(...)` above.
+                    if path.len() == 1 && path[0] == "Some" {
+                        if args.len() != 1 {
+                            return Err(ParseError::Unexpected {
+                                expected: "exactly one argument to `Some(...)`",
+                                found: Token::LParen,
+                                line: call_start.line,
+                                column: call_start.column,
+                            });
+                        }
+                        let v = args.into_iter().next().unwrap();
+                        return Ok(Expr::Some {
+                            value: Box::new(v),
+                            span: Span::new(call_start, call_end),
+                        });
+                    }
+                    // `None` — Tier 8. The zero-payload `Option`
+                    // constructor. `None(...)` with arguments is
+                    // refused; you cannot construct a payloaded
+                    // None.
+                    if path.len() == 1 && path[0] == "None" {
+                        if !args.is_empty() {
+                            return Err(ParseError::Unexpected {
+                                expected: "`None` takes no arguments",
+                                found: Token::LParen,
+                                line: call_start.line,
+                                column: call_start.column,
+                            });
+                        }
+                        return Ok(Expr::None {
+                            span: Span::new(call_start, call_end),
+                        });
+                    }
                     Ok(Expr::Call {
                         path,
                         args,
                         span: Span::new(call_start, call_end),
                     })
                 } else if path.len() == 1 {
+                    let name = path.into_iter().next().unwrap();
+                    // A bare `None` is the zero-payload `Option`
+                    // constructor, not an identifier binding.
+                    if name == "None" {
+                        return Ok(Expr::None { span: first_tok.span });
+                    }
                     Ok(Expr::Ident {
-                        name: path.into_iter().next().unwrap(),
+                        name,
                         span: first_tok.span,
                     })
                 } else {
@@ -717,7 +804,21 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
     fn parse_view_node(&mut self) -> Result<ViewNode, ParseError> {
         match &self.peek().token {
             Token::StringLit(_) => self.parse_text_node(),
-            Token::Ident(_) => self.parse_element_node(),
+            Token::Ident(_) => {
+                // `For { ... }` — Tier 8 row-repetition node. (The
+                // name `For` is therefore not usable as a component
+                // kind; it is reserved for this shape.)
+                let is_for = matches!(&self.peek().token, Token::Ident(s) if s == "For");
+                let followed_by_brace = matches!(
+                    self.tokens.get(self.pos + 1).map(|t| &t.token),
+                    Some(Token::LBrace)
+                );
+                if is_for && followed_by_brace {
+                    let kw_tok = self.bump();
+                    return self.parse_for_node(kw_tok.span);
+                }
+                self.parse_element_node()
+            }
             other => Err(ParseError::Unexpected {
                 expected: "view node (string literal or element)",
                 found: other.clone(),
@@ -725,6 +826,98 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
                 column: self.peek().span.start.column,
             }),
         }
+    }
+
+    /// `For { over: list as: item ... }` — Tier 8 row repetition.
+    /// `over:` names the state-field list; `as:` names the loop
+    /// binding visible inside the children. Children are ordinary
+    /// view nodes. The `For` token is already consumed by the
+    /// caller; `kw_span` is its span.
+    fn parse_for_node(&mut self, kw_span: crate::span::Span) -> Result<ViewNode, ParseError> {
+        self.expect(Token::LBrace)?;
+        let mut over: Option<String> = None;
+        let mut binding: Option<String> = None;
+        loop {
+            if let Token::Ident(name) = &self.peek().token {
+                let key = name.clone();
+                if key == "over" || key == "as" {
+                    let key_tok = self.bump();
+                    self.expect(Token::DotDot)?;
+                    let val_tok = self.bump();
+                    let val = match val_tok.token {
+                        Token::Ident(s) => s,
+                        other => {
+                            return Err(ParseError::Unexpected {
+                                expected: "state field name after `over:` or binding name after `as:`",
+                                found: other,
+                                line: val_tok.span.start.line,
+                                column: val_tok.span.start.column,
+                            });
+                        }
+                    };
+                    if key == "over" {
+                        over = Some(val);
+                    } else {
+                        binding = Some(val);
+                    }
+                    let _ = key_tok;
+                    continue;
+                }
+            }
+            break;
+        }
+        let over = over.ok_or_else(|| ParseError::Unexpected {
+            expected: "`over: <state field name>` in For block",
+            found: Token::Eof,
+            line: kw_span.start.line,
+            column: kw_span.start.column,
+        })?;
+        let binding = binding.ok_or_else(|| ParseError::Unexpected {
+            expected: "`as: <binding name>` in For block",
+            found: Token::Eof,
+            line: kw_span.start.line,
+            column: kw_span.start.column,
+        })?;
+        let mut children = Vec::new();
+        // Children: only elements (`Child { ... }`) and string/text
+        // bodies. No further bindings after `over:`/`as:`.
+        loop {
+            match &self.peek().token {
+                Token::RBrace => break,
+                Token::StringLit(_) => children.push(self.parse_text_node()?),
+                Token::Ident(_) => {
+                    // Lookahead `{` next -> child element.
+                    let is_element = matches!(
+                        self.tokens.get(self.pos + 1).map(|t| &t.token),
+                        Some(Token::LBrace)
+                    );
+                    if !is_element {
+                        return Err(ParseError::Unexpected {
+                            expected: "child element (`Name { ... }`) or text",
+                            found: self.peek().token.clone(),
+                            line: self.peek().span.start.line,
+                            column: self.peek().span.start.column,
+                        });
+                    }
+                    children.push(self.parse_element_node()?);
+                }
+                other => {
+                    return Err(ParseError::Unexpected {
+                        expected: "child element, text, or `}`",
+                        found: other.clone(),
+                        line: self.peek().span.start.line,
+                        column: self.peek().span.start.column,
+                    });
+                }
+            }
+        }
+        let close = self.bump(); // }
+        Ok(ViewNode::For {
+            over,
+            binding,
+            children,
+            span: Span::new(kw_span.start, close.span.end),
+        })
     }
 
     fn parse_text_node(&mut self) -> Result<ViewNode, ParseError> {
@@ -815,6 +1008,13 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
             Token::Ident(s) => s,
             _ => unreachable!("parse_element_node called without ident"),
         };
+        // `For { ... }` can appear anywhere a normal element can
+        // (including as a child of another element). Route it to
+        // the Tier 8 loop parser. The name token is already
+        // consumed here.
+        if name == "For" {
+            return self.parse_for_node(name_tok.span);
+        }
         let kind = match name.as_str() {
             "Column" => ElementKind::Column,
             "Row" => ElementKind::Row,

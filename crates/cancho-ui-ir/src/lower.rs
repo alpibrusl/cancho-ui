@@ -127,6 +127,12 @@ fn lower_type(t: &Type) -> IrType {
         Type::Request { payload } => IrType::Request {
             payload: Box::new(lower_type(payload)),
         },
+        Type::Option { some } => IrType::Option {
+            some: Box::new(lower_type(some)),
+        },
+        Type::List { elem } => IrType::List {
+            elem: Box::new(lower_type(elem)),
+        },
     }
 }
 
@@ -316,6 +322,27 @@ fn lower_expr_with_effects(
             IrExpr::Cancelled { span: *span },
             Vec::new(),
         )),
+        Expr::Some { value, span } => {
+            let (ir_value, e) = lower_expr_with_effects(value)?;
+            Ok((
+                IrExpr::Some {
+                    value: Box::new(ir_value),
+                    span: *span,
+                },
+                e,
+            ))
+        }
+        Expr::None { span } => Ok((IrExpr::None { span: *span }, Vec::new())),
+        Expr::ListLit { items, span } => {
+            let mut ir_items = Vec::with_capacity(items.len());
+            let mut effects = Vec::new();
+            for item in items {
+                let (ir, mut e) = lower_expr_with_effects(item)?;
+                effects.append(&mut e);
+                ir_items.push(ir);
+            }
+            Ok((IrExpr::ListLit { items: ir_items, span: *span }, effects))
+        }
     }
 }
 
@@ -406,6 +433,29 @@ fn lower_view_node_with_effects(
                 }
             };
             Ok((IrViewNode::Text { parts, span: *span }, effects))
+        }
+        ViewNode::For { over, binding, children, span } => {
+            // `over:` names a state field holding the list; lower
+            // it as an Ident read. (Tier 8 keeps this narrow — a
+            // general-expression `over` arrives with full type
+            // inference.)
+            let ir_over = IrExpr::Ident { name: over.clone(), span: *span };
+            let mut lowered_children = Vec::with_capacity(children.len());
+            let mut effects = Vec::new();
+            for ch in children {
+                let (n, mut e) = lower_view_node_with_effects(ch)?;
+                lowered_children.push(n);
+                effects.append(&mut e);
+            }
+            Ok((
+                IrViewNode::For {
+                    over: ir_over,
+                    binding: binding.clone(),
+                    children: lowered_children,
+                    span: *span,
+                },
+                effects,
+            ))
         }
     }
 }
@@ -585,7 +635,13 @@ fn expr_matches<'a>(e: &'a IrExpr, out: &mut Vec<&'a IrExpr>) {
         }
         IrExpr::Ok { value, .. } => expr_matches(value, out),
         IrExpr::Err { reason, .. } => expr_matches(reason, out),
+        IrExpr::Some { value, .. } => expr_matches(value, out),
         IrExpr::Await { request, .. } => expr_matches(request, out),
+        IrExpr::ListLit { items, .. } => {
+            for i in items {
+                expr_matches(i, out);
+            }
+        }
         _ => {}
     }
 }
@@ -602,6 +658,12 @@ fn view_matches<'a>(node: &'a IrViewNode, out: &mut Vec<&'a IrExpr>) {
                 if let IrTextPart::Expr(e) = p {
                     expr_matches(e, out);
                 }
+            }
+        }
+        IrViewNode::For { over, children, .. } => {
+            expr_matches(over, out);
+            for ch in children {
+                view_matches(ch, out);
             }
         }
     }
@@ -634,6 +696,7 @@ fn expr_contains_await(e: &IrExpr) -> bool {
         IrExpr::Call { args, .. } => args.iter().any(expr_contains_await),
         IrExpr::Ok { value, .. } => expr_contains_await(value),
         IrExpr::Err { reason, .. } => expr_contains_await(reason),
+        IrExpr::Some { value, .. } => expr_contains_await(value),
         IrExpr::Match { scrutinee, arms, .. } => {
             expr_contains_await(scrutinee) || arms.iter().any(|a| expr_contains_await(&a.body))
         }
@@ -659,9 +722,14 @@ fn check_one_match(
         Some(t) => *t,
         None => return Ok(()),
     };
-    if !matches!(ty, IrType::Result { .. }) {
-        return Ok(());
-    }
+    // Tier 8: `Result` needs {Ok, Err}, `Option` needs
+    // {Some, None}. `List` has no patterns and is not matched.
+    let mut required: Vec<&str> = match ty {
+        IrType::Result { .. } => vec!["Ok", "Err"],
+        IrType::Option { .. } => vec!["Some", "None"],
+        IrType::Int | IrType::Float | IrType::Bool | IrType::String | IrType::List { .. }
+        | IrType::Request { .. } => return Ok(()),
+    };
 
     let mut covered: BTreeSet<String> = BTreeSet::new();
     let mut catch_all = false;
@@ -674,16 +742,14 @@ fn check_one_match(
         }
     }
 
-    // An awaited value resolves to all three constructors even
-    // though the declared type says `Result`, so treat the match
-    // as tri-variant. The presence of a `Cancelled` arm is the
-    // programmer announcing the same thing.
+    // An awaited value resolves to all three Result constructors
+    // even though the declared type says `Result`, so treat the
+    // match as tri-variant. The presence of a `Cancelled` arm is
+    // the programmer announcing the same thing.
     let tri_variant = await_driven.contains(field) || covered.contains("Cancelled");
-    let required: Vec<&str> = if tri_variant {
-        vec!["Ok", "Err", "Cancelled"]
-    } else {
-        vec!["Ok", "Err"]
-    };
+    if tri_variant {
+        required.push("Cancelled");
+    }
     let missing: Vec<String> = required
         .iter()
         .filter(|v| !covered.contains(**v))

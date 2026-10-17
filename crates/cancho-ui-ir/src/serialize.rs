@@ -112,6 +112,18 @@ impl Serialize for IrType {
                 s.serialize_field("payload", payload.as_ref())?;
                 s.end()
             }
+            IrType::Option { some } => {
+                use serde::ser::SerializeStruct;
+                let mut s = ser.serialize_struct("IrType::Option", 1)?;
+                s.serialize_field("some", some.as_ref())?;
+                s.end()
+            }
+            IrType::List { elem } => {
+                use serde::ser::SerializeStruct;
+                let mut s = ser.serialize_struct("IrType::List", 1)?;
+                s.serialize_field("elem", elem.as_ref())?;
+                s.end()
+            }
         }
     }
 }
@@ -246,6 +258,23 @@ impl Serialize for IrExpr {
                 s.serialize_field("span", &IrSpan::from(*span))?;
                 s.end()
             }
+            IrExpr::Some { value, span } => {
+                let mut s = ser.serialize_struct("IrExpr::Some", 2)?;
+                s.serialize_field("value", value.as_ref())?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
+            IrExpr::None { span } => {
+                let mut s = ser.serialize_struct("IrExpr::None", 1)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
+            IrExpr::ListLit { items, span } => {
+                let mut s = ser.serialize_struct("IrExpr::ListLit", 2)?;
+                s.serialize_field("items", items)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
         }
     }
 }
@@ -346,6 +375,15 @@ impl Serialize for IrViewNode {
                 use serde::ser::SerializeStruct;
                 let mut s = ser.serialize_struct("IrViewNode::Text", 2)?;
                 s.serialize_field("parts", parts)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
+            IrViewNode::For { over, binding, children, span } => {
+                use serde::ser::SerializeStruct;
+                let mut s = ser.serialize_struct("IrViewNode::For", 4)?;
+                s.serialize_field("over", over)?;
+                s.serialize_field("binding", binding)?;
+                s.serialize_field("children", children)?;
                 s.serialize_field("span", &IrSpan::from(*span))?;
                 s.end()
             }

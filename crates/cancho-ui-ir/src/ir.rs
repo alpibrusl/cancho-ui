@@ -58,6 +58,10 @@ pub enum IrType {
     String,
     Result { ok: Box<IrType>, err: Box<IrType> },
     Request { payload: Box<IrType> },
+    /// `Option[T]` — Tier 8.
+    Option { some: Box<IrType> },
+    /// `List[T]` — Tier 8.
+    List { elem: Box<IrType> },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -138,6 +142,14 @@ pub enum IrExpr {
     /// `RequestResult[T]`. The runtime produces it when a request
     /// is dropped; user code matches against it.
     Cancelled { span: Span },
+    /// `Some(value)` — Tier 8. `Option[T]` value constructor;
+    /// `{__cui_tag: "Some", value: <v>}`.
+    Some { value: Box<IrExpr>, span: Span },
+    /// `None` — Tier 8. The zero-payload `Option[T]`
+    /// constructor; `{__cui_tag: "None"}`.
+    None { span: Span },
+    /// `[a, b, c]` — Tier 8. A `List[T]` literal; a JS array.
+    ListLit { items: Vec<IrExpr>, span: Span },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -212,6 +224,16 @@ pub enum IrViewNode {
     },
     Text {
         parts: Vec<IrTextPart>,
+        span: Span,
+    },
+    /// `For { over: list as: item ... }` — Tier 8. Renders
+    /// `children` once per element of the `over` expression
+    /// (normally an Ident referring to a `List[T]` state field).
+    /// Inside the children, `binding` reads the current element.
+    For {
+        over: IrExpr,
+        binding: String,
+        children: Vec<IrViewNode>,
         span: Span,
     },
 }

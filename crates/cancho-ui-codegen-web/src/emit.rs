@@ -176,6 +176,10 @@ fn view_node_uses_await_or_sleep(node: &IrViewNode) -> bool {
             IrTextPart::Literal(_) => false,
             IrTextPart::Expr(e) => expr_uses_await(e) || expr_uses_sleep(e),
         }),
+        IrViewNode::For { over, children, .. } => {
+            expr_uses_await(over) || expr_uses_sleep(over)
+                || children.iter().any(view_node_uses_await_or_sleep)
+        }
     }
 }
 
@@ -238,7 +242,7 @@ fn emit_component(c: &IrComponent) -> String {
     out.push_str("        function __render() {\n");
     out.push_str("            root.textContent = '';\n");
     let mut node_id = 0u32;
-    let view_body = emit_view_node(&mut node_id, "            ", &c.view.body, "root");
+    let view_body = emit_view_node(&mut node_id, "            ", &c.view.body, "root", &[]);
     out.push_str(&view_body);
     out.push_str("        }\n");
 
@@ -284,6 +288,22 @@ fn emit_expr_init(e: &IrExpr) -> String {
             "({__cui_tag:\"Err\",reason:".to_string()
                 + &emit_expr_init(reason)
                 + "})"
+        }
+        // `Some(value)` and `None` are legal state-field
+        // initial values (Tier 8): tagged objects like the
+        // Result constructors.
+        IrExpr::Some { value, .. } => {
+            "({__cui_tag:\"Some\",value:".to_string()
+                + &emit_expr_init(value)
+                + "})"
+        }
+        IrExpr::None { .. } => "({__cui_tag:\"None\"})".to_string(),
+        // A `List[T]` literal is a plain JS array; the items are
+        // literals or constructor expressions.
+        IrExpr::ListLit { items, .. } => {
+            let rendered: Vec<String> =
+                items.iter().map(emit_expr_init).collect();
+            format!("[{}]", rendered.join(", "))
         }
         // `match` is not a legal state-field initial value in Tier 6
         // (a state field's initial is an expression but a match
@@ -349,6 +369,17 @@ fn emit_expr_runtime(e: &IrExpr, params: &[&str]) -> String {
             )
         }
         IrExpr::Cancelled { .. } => "({__cui_tag:\"Cancelled\"})".to_string(),
+        IrExpr::Some { value, .. } => {
+            "({__cui_tag:\"Some\",value:".to_string()
+                + &emit_expr_runtime(value, params)
+                + "})"
+        }
+        IrExpr::None { .. } => "({__cui_tag:\"None\"})".to_string(),
+        IrExpr::ListLit { items, .. } => {
+            let rendered: Vec<String> =
+                items.iter().map(|i| emit_expr_runtime(i, params)).collect();
+            format!("[{}]", rendered.join(", "))
+        }
         IrExpr::Match { scrutinee, arms, .. } => {
             // Lower to nested ternaries. For Tier 6 the scrutinee
             // is expected to be a `Result` (Ok/Err) or `Option`
@@ -492,6 +523,7 @@ fn emit_view_node(
     indent: &str,
     node: &IrViewNode,
     parent_var: &str,
+    params: &[&str],
 ) -> String {
     match node {
         IrViewNode::Text { parts, .. } => {
@@ -510,7 +542,7 @@ fn emit_view_node(
                     IrTextPart::Expr(e) => {
                         out.push_str(&format!(
                             "{0}{1}.appendChild(document.createTextNode(String({2})));\n",
-                            indent, var, emit_expr_runtime(e, &[])
+                            indent, var, emit_expr_runtime(e, params)
                         ));
                     }
                 }
@@ -519,6 +551,31 @@ fn emit_view_node(
                 "{0}{1}.appendChild({2});\n",
                 indent, var, parent_var
             ));
+            out
+        }
+        IrViewNode::For { over, binding, children, span: _ } => {
+            // Tier 8 row repetition: a `for..of` over the list,
+            // children emitted with `binding` added to the visible
+            // name set so it resolves as the loop variable.
+            let mut local_params: Vec<&str> = params.to_vec();
+            local_params.push(binding.as_str());
+            let mut out = format!(
+                "{0}for (const {1} of {2}) {{\n",
+                indent,
+                binding,
+                emit_expr_runtime(over, params)
+            );
+            let child_indent = format!("{}    ", indent);
+            for c in children {
+                out.push_str(&emit_view_node(
+                    next_id,
+                    &child_indent,
+                    c,
+                    parent_var,
+                    &local_params,
+                ));
+            }
+            out.push_str(&format!("{0}}}\n", indent));
             out
         }
         IrViewNode::Element { kind, accessibility, bindings, children, span: _ } => {
@@ -657,7 +714,7 @@ fn emit_view_node(
                                 IrTextPart::Expr(e) => {
                                     out.push_str(&format!(
                                         "{0}{1}.appendChild(document.createTextNode(String({2})));\n",
-                                        indent, var, emit_expr_runtime(e, &[])
+                                        indent, var, emit_expr_runtime(e, params)
                                     ));
                                 }
                             }
@@ -677,7 +734,7 @@ fn emit_view_node(
                     ));
                 }
                 for c in children {
-                    out.push_str(&emit_view_node(next_id, &child_indent, c, &var));
+                    out.push_str(&emit_view_node(next_id, &child_indent, c, &var, params));
                 }
             }
 

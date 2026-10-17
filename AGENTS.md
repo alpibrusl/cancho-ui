@@ -196,7 +196,60 @@ catch-all arm satisfies exhaustiveness.
 
 ---
 
-## 4. Foreign functions cross a trust boundary (placeholder)
+## 4. `Option`, `List`, and `For` — what a collection needs (Tier 8)
+
+`Option[T]` is two constructors: `Some(value)` and `None`. The
+`match-non-exhaustive` rule applies the same way as `Result`:
+both arms or a `_` catch-all, and a missing arm is a refusal.
+
+```cancho-ui
+component Roster {
+    state picked: Option[String] = None;
+
+    on Pick { picked = Some("Ada"); }
+
+    view {
+        Text {
+            role: status
+            match picked {
+                Some(who) => { "picked: " + who }
+                None => { "picked: none" }
+            }
+        }
+    }
+}
+```
+
+`List[T]` has a literal (`[a, b, c]`) and is rendered with
+`For { over: <state list> as: <item> ... }`. Inside the `For`
+body the `as:` binding is the current element:
+
+```cancho-ui
+state names: List[String] = ["Ada", "Grace"];
+
+view {
+    Column {
+        For {
+            over: names
+            as: n
+            Text { "row: {n}" }
+        }
+    }
+}
+```
+
+Two Tier 8 know-nots:
+
+- Interpolation applies inside `For` bodies (any text body) but
+  **not** inside `match` arm bodies — an arm body is a plain
+  expression, so strings are joined with `+` there.
+- `filter`/`map` do not exist yet; a `For` renders the
+  whole list. Deriving views from a *filtered* list arrives with
+  Tier 9.
+
+---
+
+## 5. Foreign functions cross a trust boundary (placeholder)
 
 Every call to JavaScript, the DOM, or a native module is a
 declared foreign function. The compiler refuses undeclared
@@ -223,7 +276,7 @@ boundary. Same shape as Cancho Core's
 
 ---
 
-## 5. View primitives carry accessibility metadata (placeholder)
+## 6. View primitives carry accessibility metadata (placeholder)
 
 ```cancho-ui
 component SearchInput {
@@ -245,7 +298,7 @@ is refused with `accessibility-keyboard-missing`.
 
 ---
 
-## 6. Reserved words are reserved (placeholder)
+## 7. Reserved words are reserved (placeholder)
 
 `component`, `state`, `view`, `on`, `requires`, `effect`,
 `capability`, `foreign`, `module`, `import`, `pub`, `target`
@@ -262,7 +315,7 @@ component Hover {
 
 ---
 
-## 7. Where to read more (placeholder)
+## 8. Where to read more (placeholder)
 
 The full design is under [`docs/`](../docs/). The Phase 0
 deliverables — semantics, security model, IR schema, diagnostic

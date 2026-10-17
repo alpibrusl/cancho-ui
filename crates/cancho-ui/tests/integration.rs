@@ -552,3 +552,91 @@ component Ticker {
         other => panic!("expected MatchNonExhaustive, got: {:?}", other),
     }
 }
+
+#[test]
+fn option_type_some_and_none_constructors_emit() {
+    // Tier 8: `Option[T]` has two constructors. `None` is a
+    // zero-payload tagged object, `Some(v)` carries its payload
+    // under `value`, and a match over both arms is exhaustive.
+    let src = "\
+component T {
+    state picked: Option[String] = None;
+    state status: String = \"none\";
+    on Pick { picked = Some(\"Ada\"); status = \"some\"; }
+    on Clear { picked = None; status = \"none\"; }
+    view {
+        Text {
+            role: status
+            match picked {
+                Some(who) => { \"picked: \" + who }
+                None => { \"picked: none\" }
+            }
+        }
+    }
+}
+";
+    let js = compile_str(src);
+    assert!(js.contains("({__cui_tag:\"None\"})"));
+    assert!(js.contains("({__cui_tag:\"Some\",value:\"Ada\"})"));
+    assert!(js.contains("__cui_tag === \"Some\""));
+    assert!(js.contains("__cui_tag === \"None\""));
+    // The Some arm binds its payload from `.value`.
+    assert!(js.contains("var who = __cui_match_"));
+}
+
+#[test]
+fn option_match_missing_none_arm_is_a_refusal() {
+    // The `match-non-exhaustive` rule applies to `Option[T]` too:
+    // a match needs both `Some` and `None` (or a catch-all).
+    let src = "\
+component T {
+    state picked: Option[String] = None;
+    view {
+        Text {
+            match picked {
+                Some(who) => { who }
+            }
+        }
+    }
+}
+";
+    let toks = lex(src).unwrap();
+    let ast = parse(toks).unwrap();
+    let err = check_file(&ast).unwrap_err();
+    match err {
+        cancho_ui_types::CheckError::MatchNonExhaustive { missing, .. } => {
+            assert_eq!(missing, vec!["None".to_string()]);
+        }
+        other => panic!("expected MatchNonExhaustive, got: {:?}", other),
+    }
+}
+
+#[test]
+fn for_view_node_renders_list_rows() {
+    // Tier 8: `For { over: <state list> as: <binding> ... }`
+    // renders its children once per element; inside, the binding
+    // resolves as the loop variable (not a state field).
+    let src = "\
+component Roster {
+    state names: List[String] = [\"Ada\", \"Grace\"];
+    view {
+        Column {
+            For {
+                over: names
+                as: n
+                Text { \"row: {n}\" }
+            }
+        }
+    }
+}
+";
+    let js = compile_str(src);
+    // The initial list literal is a plain JS array.
+    assert!(js.contains("let __state_names = [\"Ada\", \"Grace\"];"));
+    // The loop binds the item with `for..of`.
+    assert!(js.contains("for (const n of __state_names)"));
+    // Inside the loop, `n` is the bare loop variable.
+    assert!(js.contains("String(n)"));
+    // Rows append into the enclosing element.
+    assert!(js.contains("__n0.appendChild(__n1)"));
+}
