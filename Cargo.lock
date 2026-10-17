@@ -10,6 +10,7 @@ dependencies = [
  "cancho-ui-ir",
  "cancho-ui-syntax",
  "cancho-ui-types",
+ "serde",
  "serde_json",
  "thiserror",
 ]

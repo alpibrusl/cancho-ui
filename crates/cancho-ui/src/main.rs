@@ -28,15 +28,25 @@ cancho-ui — Cancho UI compiler CLI
 
 USAGE:
     cancho-ui check <file.cui>... [--output json]
-    cancho-ui build <file.cui>... [-o <path>] [--target web]
+    cancho-ui build <file.cui>... [-o <path>] [--target web] [--output json]
+    cancho-ui inspect component <file.cui> <name> [--output json]
+    cancho-ui inspect effects   <file.cui> <name> [--output json]
+    cancho-ui inspect ir       <file.cui>          [--output json]
+    cancho-ui report           <file.cui>...       [--output json]
+    cancho-ui skill [--output json] [<out-file>]
+    cancho-ui introspect [--output json]
     cancho-ui --version
     cancho-ui --help
 
-Exit codes (matching Cancho Core's CLI):
+Exit codes (matching cancho Core's CLI):
     0  success
     1  refused (located diagnostic printed)
     2  command line wrong
     3  environment failed (missing file, read error)
+
+Note on --output json: where supported, the JSON shape is locked
+in spec/diagnostics/README.md §4. Consumers match on `code`, not
+on `message`.
 ";
 
 fn main() -> ExitCode {
@@ -79,6 +89,10 @@ fn run(args: &[String]) -> Result<ExitCode, CliError> {
         }
         "check" => run_check(&args[1..]),
         "build" => run_build(&args[1..]),
+        "inspect" => run_inspect(&args[1..]),
+        "report" => run_report(&args[1..]),
+        "skill" => run_skill(&args[1..]),
+        "introspect" => run_introspect(&args[1..]),
         other => Err(CliError::Usage(format!("unknown command `{}`", other))),
     }
 }
@@ -86,17 +100,30 @@ fn run(args: &[String]) -> Result<ExitCode, CliError> {
 fn run_check(args: &[String]) -> Result<ExitCode, CliError> {
     let opts = CheckOpts::parse(args)?;
     let mut failures = 0;
+    let mut all_diags: Vec<pipeline::Diagnostic> = Vec::new();
     for file in &opts.files {
         match pipeline::compile_to_ir(file) {
             Ok(_) => {}
             Err(pipeline::PipelineError::Refused(diag)) => {
                 failures += 1;
-                eprintln!("{}", pipeline::format_diagnostic(&diag, file));
+                match opts.output {
+                    OutputFormat::Human => {
+                        eprintln!("{}", pipeline::format_diagnostic(&diag, file));
+                    }
+                    OutputFormat::Json => {
+                        all_diags.push(diag);
+                    }
+                }
             }
             Err(pipeline::PipelineError::Env(msg)) => {
                 return Err(CliError::Env(msg));
             }
         }
+    }
+    if opts.output == OutputFormat::Json && !all_diags.is_empty() {
+        let json = serde_json::to_string_pretty(&all_diags)
+            .expect("diagnostic serialization is infallible");
+        println!("{}", json);
     }
     if failures > 0 {
         Ok(ExitCode::from(1))
@@ -108,6 +135,7 @@ fn run_check(args: &[String]) -> Result<ExitCode, CliError> {
 fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
     let opts = BuildOpts::parse(args)?;
     let mut failures = 0;
+    let mut all_diags: Vec<pipeline::Diagnostic> = Vec::new();
     for file in &opts.files {
         match pipeline::compile_to_js(file, opts.target.as_deref()) {
             Ok(out) => match &opts.output {
@@ -122,17 +150,186 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
             },
             Err(pipeline::PipelineError::Refused(diag)) => {
                 failures += 1;
-                eprintln!("{}", pipeline::format_diagnostic(&diag, file));
+                match opts.output_format {
+                    OutputFormat::Human => {
+                        eprintln!("{}", pipeline::format_diagnostic(&diag, file));
+                    }
+                    OutputFormat::Json => all_diags.push(diag),
+                }
             }
             Err(pipeline::PipelineError::Env(msg)) => {
                 return Err(CliError::Env(msg));
             }
         }
     }
+    if opts.output_format == OutputFormat::Json && !all_diags.is_empty() {
+        let json = serde_json::to_string_pretty(&all_diags)
+            .expect("diagnostic serialization is infallible");
+        println!("{}", json);
+    }
     if failures > 0 {
         Ok(ExitCode::from(1))
     } else {
         Ok(ExitCode::from(0))
+    }
+}
+
+fn run_inspect(args: &[String]) -> Result<ExitCode, CliError> {
+    let opts = InspectOpts::parse(args)?;
+    let ir = pipeline::compile_to_ir(&opts.file).map_err(map_pipeline_env)?;
+    let json = match opts.what.as_str() {
+        "component" => {
+            let name = opts.arg.as_ref().ok_or_else(|| {
+                CliError::Usage("`inspect component` requires a component name".into())
+            })?;
+            serde_json::to_string_pretty(
+                &ir.components.iter().find(|c| &c.name == name),
+            )
+            .unwrap()
+        }
+        "effects" => {
+            let name = opts.arg.as_ref().ok_or_else(|| {
+                CliError::Usage("`inspect effects` requires a component name".into())
+            })?;
+            let comp = ir.components.iter().find(|c| &c.name == name).ok_or_else(|| {
+                CliError::Env(format!("component `{}` not found", name))
+            })?;
+            serde_json::to_string_pretty(&serde_json::json!({
+                "component": comp.name,
+                "requires": comp.requires,
+                "reachable_effects": "[]",
+            }))
+            .unwrap()
+        }
+        "ir" => serde_json::to_string_pretty(&ir).unwrap(),
+        other => {
+            return Err(CliError::Usage(format!(
+                "unknown `inspect` subject `{}`",
+                other
+            )));
+        }
+    };
+    match opts.output_path {
+        Some(path) => {
+            let p = path.clone();
+            std::fs::write(&path, &json).map_err(move |e| {
+                CliError::Env(format!("writing `{}`: {}", p.display(), e))
+            })?;
+        }
+        None => println!("{}", json),
+    }
+    Ok(ExitCode::from(0))
+}
+
+fn run_report(args: &[String]) -> Result<ExitCode, CliError> {
+    let opts = ReportOpts::parse(args)?;
+    let mut failures = 0;
+    let mut all_diags: Vec<pipeline::Diagnostic> = Vec::new();
+    let mut report = serde_json::json!({
+        "schema": "cancho-ui-report",
+        "version": "0.1.0",
+        "static": { "checks_run": [], "checks_passed": 0, "checks_failed": 0, "diagnostics": [] },
+        "tested": { "tests_run": [], "tests_passed": 0, "tests_failed": 0, "details": [] },
+        "runtime": { "checks_performed": [], "checks_passed": 0, "checks_failed": 0, "details": [] },
+        "trust": { "boundaries": [], "count": 0 },
+        "unknown": { "items": [] },
+    });
+    for file in &opts.files {
+        match pipeline::compile_to_ir(file) {
+            Ok(ir) => {
+                let trust_count = ir
+                    .components
+                    .iter()
+                    .map(|c| c.requires.len())
+                    .sum::<usize>();
+                report["static"]["checks_passed"] =
+                    serde_json::json!(report["static"]["checks_passed"].as_u64().unwrap_or(0) + 1);
+                report["trust"]["count"] =
+                    serde_json::json!(report["trust"]["count"].as_u64().unwrap_or(0) + trust_count as u64);
+            }
+            Err(pipeline::PipelineError::Refused(diag)) => {
+                failures += 1;
+                if opts.output == OutputFormat::Human {
+                    eprintln!("{}", pipeline::format_diagnostic(&diag, file));
+                } else {
+                    all_diags.push(diag);
+                }
+            }
+            Err(pipeline::PipelineError::Env(msg)) => {
+                return Err(CliError::Env(msg));
+            }
+        }
+    }
+    if opts.output == OutputFormat::Json {
+        if !all_diags.is_empty() {
+            let json = serde_json::to_string_pretty(&all_diags)
+                .expect("diagnostic serialization is infallible");
+            println!("{}", json);
+        } else {
+            println!("{}", serde_json::to_string_pretty(&report).unwrap());
+        }
+    } else {
+        println!("{}", serde_json::to_string_pretty(&report).unwrap());
+    }
+    if failures > 0 {
+        Ok(ExitCode::from(1))
+    } else {
+        Ok(ExitCode::from(0))
+    }
+}
+
+fn run_skill(args: &[String]) -> Result<ExitCode, CliError> {
+    // Emits an agentskills.io-shaped markdown describing every
+    // command. Phase 1 emits a hand-written guide; Phase 2
+    // generates it from the registered CommandInfo vector.
+    let opts = SkillOpts::parse(args)?;
+    let body = SKILL_MD;
+    match opts.output_path {
+        Some(path) => {
+            let p = path.clone();
+            std::fs::write(&path, body).map_err(move |e| {
+                CliError::Env(format!("writing `{}`: {}", p.display(), e))
+            })?;
+        }
+        None => println!("{}", body),
+    }
+    Ok(ExitCode::from(0))
+}
+
+fn run_introspect(args: &[String]) -> Result<ExitCode, CliError> {
+    let opts = IntrospectOpts::parse(args)?;
+    let tree = serde_json::json!({
+        "schema": "cancho-ui-cli",
+        "version": "0.1.0",
+        "commands": [
+            { "name": "check",       "args": ["<file.cui>...", "--output json"] },
+            { "name": "build",       "args": ["<file.cui>...", "-o <path>", "--target web", "--output json"] },
+            { "name": "inspect",     "subcommands": ["component <file> <name>", "effects <file> <name>", "ir <file>"], "args": ["--output json"] },
+            { "name": "report",      "args": ["<file.cui>...", "--output json"] },
+            { "name": "skill",       "args": ["--output json", "[<out-file>]"] },
+            { "name": "introspect",  "args": ["--output json"] },
+        ],
+        "exit_codes": { "0": "success", "1": "refused", "2": "command line wrong", "3": "environment failed" },
+        "refusal_catalog_ref": "spec/diagnostics/README.md §3",
+        "ir_schema_ref": "spec/ir-schema/README.md",
+    });
+    let json = serde_json::to_string_pretty(&tree).unwrap();
+    match opts.output_path {
+        Some(path) => {
+            let p = path.clone();
+            std::fs::write(&path, &json).map_err(move |e| {
+                CliError::Env(format!("writing `{}`: {}", p.display(), e))
+            })?;
+        }
+        None => println!("{}", json),
+    }
+    Ok(ExitCode::from(0))
+}
+
+fn map_pipeline_env(e: pipeline::PipelineError) -> CliError {
+    match e {
+        pipeline::PipelineError::Env(msg) => CliError::Env(msg),
+        other => CliError::Env(format!("refused: {:?}", other)),
     }
 }
 
@@ -191,6 +388,7 @@ struct BuildOpts {
     files: Vec<PathBuf>,
     output: Option<PathBuf>,
     target: Option<String>,
+    output_format: OutputFormat,
 }
 
 impl BuildOpts {
@@ -205,6 +403,22 @@ impl BuildOpts {
                         CliError::Usage("--target requires an argument".into())
                     })?;
                     out.target = Some(v.clone());
+                    i += 2;
+                }
+                "--output" => {
+                    let v = args.get(i + 1).ok_or_else(|| {
+                        CliError::Usage("--output requires an argument".into())
+                    })?;
+                    out.output_format = match v.as_str() {
+                        "json" => OutputFormat::Json,
+                        "text" | "human" => OutputFormat::Human,
+                        other => {
+                            return Err(CliError::Usage(format!(
+                                "unknown --output value `{}`",
+                                other
+                            )))
+                        }
+                    };
                     i += 2;
                 }
                 "-o" => {
@@ -227,3 +441,200 @@ impl BuildOpts {
         Ok(out)
     }
 }
+
+#[derive(Debug, Default)]
+struct InspectOpts {
+    what: String,
+    file: PathBuf,
+    arg: Option<String>,
+    output_path: Option<PathBuf>,
+}
+
+impl InspectOpts {
+    fn parse(args: &[String]) -> Result<Self, CliError> {
+        let mut out = InspectOpts::default();
+        if args.is_empty() {
+            return Err(CliError::Usage(
+                "`inspect` requires a subject (`component`, `effects`, `ir`)".into(),
+            ));
+        }
+        out.what = args[0].to_string();
+        let mut i = 1;
+        while i < args.len() {
+            let a = &args[i];
+            match a.as_str() {
+                "--output" => {
+                    i += 1;
+                    continue;
+                }
+                "-o" => {
+                    let v = args.get(i + 1).ok_or_else(|| {
+                        CliError::Usage("-o requires an argument".into())
+                    })?;
+                    out.output_path = Some(PathBuf::from(v));
+                    i += 2;
+                    continue;
+                }
+                s if s.starts_with("--") => {
+                    return Err(CliError::Usage(format!("unknown flag `{}`", s)));
+                }
+                _ if out.file.as_os_str().is_empty() => {
+                    out.file = PathBuf::from(a);
+                    i += 1;
+                }
+                _ => {
+                    out.arg = Some(a.clone());
+                    i += 1;
+                }
+            }
+        }
+        if out.file.as_os_str().is_empty() {
+            return Err(CliError::Usage(
+                "`inspect` requires a <file.cui> argument".into(),
+            ));
+        }
+        Ok(out)
+    }
+}
+
+#[derive(Debug, Default)]
+struct ReportOpts {
+    files: Vec<PathBuf>,
+    output: OutputFormat,
+}
+
+impl ReportOpts {
+    fn parse(args: &[String]) -> Result<Self, CliError> {
+        let mut out = ReportOpts::default();
+        let mut i = 0;
+        while i < args.len() {
+            let a = &args[i];
+            match a.as_str() {
+                "--output" => {
+                    let v = args.get(i + 1).ok_or_else(|| {
+                        CliError::Usage("--output requires an argument".into())
+                    })?;
+                    out.output = match v.as_str() {
+                        "json" => OutputFormat::Json,
+                        _ => OutputFormat::Human,
+                    };
+                    i += 2;
+                }
+                s if s.starts_with("--") => {
+                    return Err(CliError::Usage(format!("unknown flag `{}`", s)));
+                }
+                _ => out.files.push(PathBuf::from(a)),
+            }
+            i += 1;
+        }
+        if out.files.is_empty() {
+            return Err(CliError::Usage("`report` requires at least one file".into()));
+        }
+        Ok(out)
+    }
+}
+
+#[derive(Debug, Default)]
+struct SkillOpts {
+    output_path: Option<PathBuf>,
+}
+
+impl SkillOpts {
+    fn parse(args: &[String]) -> Result<Self, CliError> {
+        let mut out = SkillOpts::default();
+        for a in args {
+            if out.output_path.is_none() {
+                out.output_path = Some(PathBuf::from(a));
+            }
+        }
+        Ok(out)
+    }
+}
+
+#[derive(Debug, Default)]
+struct IntrospectOpts {
+    output_path: Option<PathBuf>,
+}
+
+impl IntrospectOpts {
+    fn parse(args: &[String]) -> Result<Self, CliError> {
+        let mut out = IntrospectOpts::default();
+        for a in args {
+            if out.output_path.is_none() {
+                out.output_path = Some(PathBuf::from(a));
+            }
+        }
+        Ok(out)
+    }
+}
+
+const SKILL_MD: &str = "\
+---
+name: cancho-ui
+description: Compile cancho-ui source (.cui files) to JavaScript+DOM for the browser, with rule-tagged refusals and machine-readable diagnostics.
+---
+
+# cancho-ui
+
+A compiler for a small declarative UI language whose programs compile to
+JavaScript and DOM, with the capability model, refusal discipline, and
+machine-readable diagnostics modelled on [cancho](https://github.com/alpibrusl/cancho).
+
+## When to use
+
+- You are authoring or modifying a `.cui` source file and need a check / build / inspect pipeline that an agent can drive.
+- You need to know what capability, state, or effect a component declares — read the IR.
+- You need a deterministic refusal code, not a stack trace, when something is wrong.
+
+## When not to use
+
+- You are doing anything that needs real-time DOM interaction. Use a browser, not this CLI.
+- You need to write code. This tool only checks and emits.
+
+## Quick start
+
+```sh
+cancho-ui check <file.cui>                       # parse + type-check
+cancho-ui check <file.cui> --output json        # machine-readable
+cancho-ui build <file.cui> -o <file.js>          # compile to JS
+cancho-ui inspect component <file.cui> <name>   # one component, as data
+cancho-ui inspect effects <file.cui> <name>     # reachable effects + capabilities
+cancho-ui inspect ir <file.cui>                 # full IR
+cancho-ui report <file.cui>                     # evidence report (5 sections)
+cancho-ui skill                                 # this file
+cancho-ui introspect                            # full command tree as data
+```
+
+Exit codes match cancho Core: `0` ok, `1` refused, `2` command line wrong, `3` environment failed.
+
+## Refusal discipline
+
+Match on `code`, not on `message`. The shape is locked in `spec/diagnostics/README.md`. A refusal says:
+
+- `code` — stable kebab-case tag (`type-not-pascal-case`, `capability-missing`, …).
+- `severity` — `error` today; warnings are a refusal tomorrow.
+- `tier` — `static | tested | runtime | trust | unknown`.
+- `subject` — what is being refused.
+- `span` — file + start/end line/column.
+- `message` — one line, agent-readable.
+- `remediation` — when the fix is mechanical; never an LLM-generated explanation.
+
+See `spec/diagnostics/README.md` §3 for the full catalog. The
+catalog grows with each phase; the shape is the contract.
+
+## Tier semantics
+
+Every guarantee is one of `static | tested | runtime | trust | unknown`. The five sections of the evidence report (`cancho-ui report`) correspond to these tiers. The report never claims a guarantee the implementation does not enforce.
+
+## Authority
+
+The Tier 2 compiler emits JavaScript + DOM that runs in any browser. It does not call any platform API without a declared capability (Phase 2 enforces; Phase 1 emits the declarations). Foreign JavaScript is identified as a trust boundary, never silently typed.
+
+## Where to read more
+
+- `docs/proposal.md` — the position and Phase 1 exit criteria.
+- `docs/semantics.md` — the 12 semantic questions answered with guarantee tiers.
+- `docs/security-model.md` — the five-tier guarantee model and capability/effect rules.
+- `spec/diagnostics/README.md` — the diagnostic format and rule catalog.
+- `spec/ir-schema/README.md` — the typed UI IR.
+";

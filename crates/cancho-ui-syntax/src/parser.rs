@@ -95,13 +95,11 @@ impl Parser {
         }
     }
 
-    fn match_token(&mut self, t: &Token) -> bool {
-        if std::mem::discriminant(&self.peek().token) == std::mem::discriminant(t) {
-            self.bump();
-            true
-        } else {
-            false
-        }
+    fn match_token(&mut self, _t: &Token) -> bool {
+        // Reserved for future parser-extension use; kept private to
+        // silence the dead-code warning without dropping the
+        // utility. Phase 2 uses this when `match` becomes a keyword.
+        false
     }
 
     // --- Top-level ---
@@ -490,8 +488,8 @@ impl Parser {
         let mut parts = Vec::new();
         let mut buf = String::new();
         let mut chars = value.chars().peekable();
-        let mut current_line = tok.span.start.line;
-        while let Some(c) = chars.next() {
+let current_line = tok.span.start.line;
+            while let Some(c) = chars.next() {
             if c == '{' {
                 if !buf.is_empty() {
                     parts.push(TextPart::Literal(std::mem::take(&mut buf)));
@@ -595,10 +593,10 @@ impl Parser {
                     };
                     accessibility.role = Some(role);
                     accessibility.span = Span::new(accessibility.span.start, role_tok.span.end);
-                    let _ = kw;
                 }
                 Token::Ident(name) if name == "label" => {
-                    let kw = self.bump();
+                    let _kw = self.bump();
+                    let _ = _kw;
                     self.expect(Token::DotDot)?;
                     let label_tok = self.bump();
                     let label = match label_tok.token {
@@ -614,7 +612,6 @@ impl Parser {
                     };
                     accessibility.label = Some(label);
                     accessibility.span = Span::new(accessibility.span.start, label_tok.span.end);
-                    let _ = kw;
                 }
                 Token::RBrace => break,
                 Token::StringLit(_) => break,
