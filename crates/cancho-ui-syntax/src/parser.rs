@@ -111,16 +111,58 @@ impl Parser {
         } else {
             None
         };
+        let mut imports = Vec::new();
         let mut components = Vec::new();
         while !self.at_eof() {
-            components.push(self.parse_component()?);
+            // Tier 16: `import <module>.<Component>;` — only at the
+            // top level, only before components in practice but the
+            // grammar does not force the order (the pipeline
+            // resolves imports wherever they appear).
+            if matches!(&self.peek().token, Token::Ident(s) if s == "import") {
+                imports.push(self.parse_import()?);
+            } else {
+                components.push(self.parse_component()?);
+            }
         }
         let end = self.peek().span.end;
         Ok(File {
             module,
+            imports,
             components,
             span: Span::new(start, end),
         })
+    }
+
+    fn parse_import(&mut self) -> Result<ImportDecl, ParseError> {
+        let kw = self.bump(); // `import`
+        let module_tok = self.bump();
+        let module = match module_tok.token {
+            Token::Ident(s) => s,
+            other => {
+                return Err(ParseError::Unexpected {
+                    expected: "module name (identifier) after `import`",
+                    found: other,
+                    line: module_tok.span.start.line,
+                    column: module_tok.span.start.column,
+                });
+            }
+        };
+        self.expect(Token::Dot)?;
+        let comp_tok = self.bump();
+        let component = match comp_tok.token {
+            Token::Ident(s) => s,
+            other => {
+                return Err(ParseError::Unexpected {
+                    expected: "component name (identifier) after the dot",
+                    found: other,
+                    line: comp_tok.span.start.line,
+                    column: comp_tok.span.start.column,
+                });
+            }
+        };
+        let semi = self.expect(Token::Semi)?;
+        let span = Span::new(kw.span.start, semi.span.end);
+        Ok(ImportDecl { module, component, span })
     }
 
     fn parse_module(&mut self) -> Result<ModuleDecl, ParseError> {

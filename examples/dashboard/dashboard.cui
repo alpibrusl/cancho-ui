@@ -1,0 +1,42 @@
+// examples/dashboard/dashboard.cui — Tier 16: cross-file `import`.
+// `dashboard.cui` imports `HelloCard` from the sibling module file
+// `cards.cui` (which declares `module cards;`) and instantiates it
+// like any same-file component. The import is compile-time only:
+// the merged module emits one JS file containing both files'
+// components, and the entry file's last component stays the
+// auto-mount target.
+//
+// The same rules cross the file boundary as within one file: the
+// imported component's state fields drive the property checks
+// (`property-unknown-key`, `property-type-mismatch`, Tier 14
+// dynamic sources), a name collision between files is refused
+// (`component-name-collision`), a missing sibling module file is
+// `import-missing-module`, and `title: extra` is a dynamic
+// property re-applied on every parent render — so bumping the
+// page keeps the card's count while the title flows through
+// (Tier 15 slots work across the import too).
+
+module dashboard;
+
+import cards.HelloCard;
+
+component Page {
+    state extra: String = "imported card";
+    state bump: Int = 0;
+
+    on Bump {
+        bump = bump + 1;
+    }
+
+    view {
+        Column {
+            Text {
+                role: heading
+                "dashboard ({bump})"
+            }
+            Button { label: "bump page" on: Bump }
+            HelloCard { title: extra }
+            HelloCard { title: "local card" }
+        }
+    }
+}

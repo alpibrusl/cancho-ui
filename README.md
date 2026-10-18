@@ -80,13 +80,13 @@ cd examples/clock && python3 -m http.server
 - **No macros.** Macros break stable content-addressable identity,
   the same reason Cancho Core forbids them.
 
-And honestly, **early**: Tier 1–15 are shipped (the async slice,
+And honestly, **early**: Tier 1–16 are shipped (the async slice,
 `Option[T]`/`List[T]` with `For`, the `Network` capability with
 `net.search`, runtime cancellation with stale-result protection,
 pure list operations — `filter`/`map`/`len` with derived `For`
-views, and same-file component composition with per-instance
-state, constant and dynamic properties, and instance-identity
-preservation across parent re-renders). The compiler is Rust, the
+views, and component composition with per-instance state, constant
+and dynamic properties, instance-identity preservation across
+parent re-renders, and cross-file `import` of sibling modules). The compiler is Rust, the
 language is a small
 declarative subset, and the toolchain is shaped to be one an AI
 agent can drive. The nine components shipped so far (`Hello`,
@@ -117,7 +117,7 @@ resolve channel.
 ```sh
 git clone https://github.com/alpibrusl/cancho-ui
 cd cancho-ui
-cargo test --workspace   # the whole gate: 61 unit + integration tests
+cargo test --workspace   # the whole gate: 69 unit + integration tests
 ```
 
 The browser harness for the end-to-end DOM smoke tests (`/tmp/test-*.js`)
@@ -129,6 +129,7 @@ node /tmp/test-counter.js   # expects "OK: counter works"
 node /tmp/test-clock.js    # expects "OK: clock works"
 node /tmp/test-hello.js     # expects "OK: hello world rendered correctly"
 node /tmp/test-cards.js     # expects "OK: cards work"
+node /tmp/test-dashboard.js # expects "OK: dashboard works" (Tier 16 import)
 ```
 
 Linux-x86_64 and darwin-aarch64 are green in CI; the binary is a single
@@ -193,13 +194,13 @@ IR schema, the diagnostic format, and the grammar are the contracts the
 compiler meets.
 
 [`docs/proposal.md`](docs/proposal.md) — the original MVP proposal. The
-implementation matches Tier 1–15 of the proposal's roadmap (the async
+implementation matches Tier 1–16 of the proposal's roadmap (the async
 slice, the `Option`/`List` generics, the `Network` capability,
-runtime cancellation, pure list operations, same-file component
-composition, constant plus dynamic properties, and instance-identity
-preservation included), plus the
+runtime cancellation, pure list operations, component composition,
+constant plus dynamic properties, instance-identity
+preservation, and cross-file `import` included), plus the
 Phase 2 compile-time `match-non-exhaustive` rule. The remaining Phase 2
-items (cross-file imports, `foreign`/`target` blocks) and beyond are
+items (`foreign`/`target` blocks) and beyond are
 still ahead; the roadmap rows record what each shipped and what was
 found.
 

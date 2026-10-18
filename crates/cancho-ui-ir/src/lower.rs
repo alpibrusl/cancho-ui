@@ -87,6 +87,21 @@ pub fn lower_file(file: &File) -> Result<IrFile, LowerError> {
     Ok(ir)
 }
 
+/// Tier 16: merge the dependency-ordered per-file IRs into one
+/// module. Imported files come first and the entry last, so the
+/// merged components' final entry — what the emitter auto-mounts
+/// — is the entry file's last component, exactly what the file's
+/// standalone build mounts today.
+pub fn merge_ir_files(files: &[IrFile]) -> IrFile {
+    let last = files.last().expect("at least one IR to merge");
+    IrFile {
+        schema: last.schema.clone(),
+        version: last.version.clone(),
+        module: last.module.clone(),
+        components: files.iter().flat_map(|f| f.components.clone()).collect(),
+    }
+}
+
 fn lower_component(c: &Component, next_id: &mut u32) -> Result<IrComponent, LowerError> {
     if c.span == Span::DUMMY {
         return Err(LowerError::EmptySpan { span: c.span });

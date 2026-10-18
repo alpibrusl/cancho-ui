@@ -1163,3 +1163,212 @@ fn for_without_instances_keeps_plain_for_of() {
     assert!(!js.contains("__cui_slots"));
     assert!(!js.contains("forEach"));
 }
+
+// --- Tier 16: cross-file `import` ------------------------------------
+//
+// Imports resolve sibling `.cui` files, so these tests drive the
+// built CLI binary over a temporary directory instead of
+// `compile_str`.
+
+mod import_tests {
+    use std::fs;
+    use std::path::PathBuf;
+    use std::process::{Command, Output};
+
+    fn temp_dir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("cui-tier16-{}-{}", name, std::process::id()));
+        fs::create_dir_all(&dir).expect("create temp dir");
+        dir
+    }
+
+    fn run(args: &[&str]) -> Output {
+        Command::new(env!("CARGO_BIN_EXE_cancho-ui"))
+            .args(args)
+            .output()
+            .expect("run cancho-ui")
+    }
+
+    fn write(path: &std::path::Path, name: &str, content: &str) -> PathBuf {
+        let file = path.join(name);
+        fs::write(&file, content).expect("write source");
+        file
+    }
+
+    /// Builds a two-file project (main + cards module) and returns
+    /// the emitted JS.
+    fn build_main(main_src: &str, cards_src: &str, name: &str) -> String {
+        let dir = temp_dir(name);
+        write(&dir, "cards.cui", cards_src);
+        let main = write(&dir, "main.cui", main_src);
+        let out_js = dir.join("main.js");
+        let output = run(&[
+            "build",
+            main.to_str().unwrap(),
+            "-o",
+            out_js.to_str().unwrap(),
+        ]);
+        assert!(
+            output.status.success(),
+            "expected build to succeed, stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        fs::read_to_string(&out_js).expect("read emitted js")
+    }
+
+    fn check_json(main_src: &str, name: &str) -> (i32, String) {
+        let dir = temp_dir(name);
+        let main = write(&dir, "main.cui", main_src);
+        let output = run(&["check", main.to_str().unwrap(), "--output", "json"]);
+        (
+            output.status.code().unwrap_or(-1),
+            String::from_utf8_lossy(&output.stdout).to_string(),
+        )
+    }
+
+    const CARDS: &str = "module cards;\ncomponent HelloCard {\n    state title: String = \"card\";\n    state count: Int = 0;\n    on Inc { count = count + 1; }\n    view {\n        Column {\n            Text { role: heading \"{title}\" }\n            Text { \"count: {count}\" }\n            Button { label: \"card +\" on: Inc }\n        }\n    }\n}\n";
+
+    #[test]
+    fn import_inlines_the_module_into_one_emitted_module() {
+        // Tier 16: `import cards.HelloCard;` resolves the sibling
+        // `cards.cui`, type-checks it with its own path, and merges
+        // its IR ahead of the entry's — one emitted JS module whose
+        // auto-mount is still the entry's last component.
+        let main_src = "module dashboard;\nimport cards.HelloCard;\ncomponent Page {\n    state extra: String = \"pulled in\";\n    view {\n        Column {\n            Text { role: heading \"dashboard\" }\n            HelloCard { title: extra }\n            HelloCard { title: \"local one\" }\n        }\n    }\n}\n";
+        let js = build_main(main_src, CARDS, "inlines");
+        // Both the imported and the local component are in the one
+        // module, and the auto-mount target did not change.
+        assert!(js.contains("function mount_HelloCard(root, props)"));
+        assert!(js.contains("function mount_Page(root) {\n"));
+        assert!(js.contains("if (root) { mount_Page(root); }"));
+        // Tier 15 machinery works across the file boundary: the
+        // dynamic property flows parent state into the imported
+        // child, through the slot's update handle.
+        assert!(js.contains("mount_HelloCard(__slot2.el, {title: __state_extra})"));
+        assert!(js.contains("__slot2.inst.__cui_update({title: __state_extra})"));
+    }
+
+    #[test]
+    fn property_checks_apply_to_imported_targets() {
+        // The imported component's state fields drive the same
+        // property refusals as a same-file instance.
+        let dir = temp_dir("property-checks");
+        write(&dir, "cards.cui", CARDS);
+        let bad_type = write(
+            &dir,
+            "main.cui",
+            "module dashboard;\nimport cards.HelloCard;\ncomponent Page {\n    view {\n        Column {\n            HelloCard { title: 3 }\n        }\n    }\n}\n",
+        );
+        let output = run(&["check", bad_type.to_str().unwrap(), "--output", "json"]);
+        let json = String::from_utf8_lossy(&output.stdout);
+        assert_eq!(output.status.code(), Some(1));
+        assert!(json.contains("\"property-type-mismatch\""), "got: {json}");
+
+        let unknown_key = write(
+            &dir,
+            "main2.cui",
+            "module dashboard;\nimport cards.HelloCard;\ncomponent Page {\n    view {\n        Column {\n            HelloCard { nosuch: \"x\" }\n        }\n    }\n}\n",
+        );
+        let output = run(&["check", unknown_key.to_str().unwrap(), "--output", "json"]);
+        let json = String::from_utf8_lossy(&output.stdout);
+        assert_eq!(output.status.code(), Some(1));
+        assert!(json.contains("\"property-unknown-key\""), "got: {json}");
+    }
+
+    #[test]
+    fn missing_module_is_refused() {
+        // The first segment names a sibling file; a missing one is
+        // refused at the import site with remediation.
+        let src = "module dashboard;\nimport voids.Page;\ncomponent Board { view { Column { Text { \"x\" } } } }\n";
+        let (code, json) = check_json(src, "missing-module");
+        assert_eq!(code, 1);
+        assert!(json.contains("\"import-missing-module\""), "got: {json}");
+        assert!(json.contains("resolves to"), "got: {json}");
+    }
+
+    #[test]
+    fn unknown_component_in_module_is_refused() {
+        let src = "module dashboard;\nimport cards.Nothere;\ncomponent Board { view { Column { Text { \"x\" } } } }\n";
+        let dir = temp_dir("unknown-component");
+        write(&dir, "cards.cui", CARDS);
+        let main = write(&dir, "main.cui", src);
+        let output = run(&["check", main.to_str().unwrap(), "--output", "json"]);
+        let json = String::from_utf8_lossy(&output.stdout);
+        assert_eq!(output.status.code(), Some(1));
+        assert!(json.contains("\"import-unknown-component\""), "got: {json}");
+        assert!(json.contains("whose components are: HelloCard"), "got: {json}");
+    }
+
+    #[test]
+    fn import_cycle_is_refused() {
+        // a.cui imports dash2's P; dash2.cui imports a's A. The
+        // resolver walks the chain and refuses the second entry
+        // into a file already on the stack.
+        let dir = temp_dir("cycle");
+        write(&dir, "cards.cui", CARDS);
+        write(&dir, "a.cui", "module a;\nimport dash2.P;\ncomponent A { view { Column { P {} } } }\n");
+        write(&dir, "dash2.cui", "module dash2;\nimport a.A;\ncomponent P { view { Column { A {} } } }\n");
+        let main = write(&dir, "main.cui", "module dash2;\nimport a.A;\ncomponent Board { view { Column { A {} } } }\n");
+        let output = run(&["check", main.to_str().unwrap(), "--output", "json"]);
+        let json = String::from_utf8_lossy(&output.stdout);
+        assert_eq!(output.status.code(), Some(1));
+        assert!(json.contains("\"import-cycle\""), "got: {json}");
+        assert!(json.contains("import chain cycles"), "got: {json}");
+    }
+
+    #[test]
+    fn only_named_imports_are_instantiable() {
+        // Bring what you instantiate: importing one component of a
+        // module does not make the module's *other* components (nor
+        // transitive ones) instantiable from the entry — `Badge`
+        // lives in cards.cui next to the imported HelloCard, but the
+        // import line does not name it.
+        let src = "module dashboard;\nimport cards.HelloCard;\ncomponent Page { view { Column { Badge {} } } }\n";
+        let dir = temp_dir("only-named");
+        write(
+            &dir,
+            "cards.cui",
+            &format!(
+                "{CARDS}component Badge {{ view {{ Column {{ Text {{ \"b\" }} }} }} }}\n"
+            ),
+        );
+        let main = write(&dir, "main.cui", src);
+        let output = run(&["check", main.to_str().unwrap(), "--output", "json"]);
+        let json = String::from_utf8_lossy(&output.stdout);
+        assert_eq!(output.status.code(), Some(1));
+        assert!(json.contains("\"component-kind-unknown\""), "got: {json}");
+    }
+
+    #[test]
+    fn cross_file_name_collision_is_refused() {
+        // The entry declares a component with the same name as an
+        // imported one: two `mount_<Name>` definitions would be
+        // emitted and the second would silently win.
+        let main_src = "module dashboard;\nimport cards.HelloCard;\ncomponent HelloCard { view { Column { Text { \"shadow\" } } } }\ncomponent Page { view { Column { HelloCard { title: \"x\" } } } }\n";
+        let dir = temp_dir("collision");
+        write(&dir, "cards.cui", CARDS);
+        let main = write(&dir, "main.cui", main_src);
+        let output = run(&["check", main.to_str().unwrap(), "--output", "json"]);
+        let json = String::from_utf8_lossy(&output.stdout);
+        assert_eq!(output.status.code(), Some(1));
+        assert!(json.contains("\"component-name-collision\""), "got: {json}");
+        assert!(json.contains("declared in both"), "got: {json}");
+    }
+
+    #[test]
+    fn imported_module_interior_refusals_carry_its_own_path() {
+        // A refusal inside the imported file cites that file, not
+        // the importing one.
+        let main_src = "module dashboard;\nimport broken.Broken;\ncomponent Board { view { Column { Text { \"x\" } } } }\n";
+        let dir = temp_dir("interior");
+        write(
+            &dir,
+            "broken.cui",
+            "module broken;\ncomponent Broken {\n    view {\n        Column {\n            UnknownKind {}\n        }\n    }\n}\n",
+        );
+        let main = write(&dir, "main.cui", main_src);
+        let output = run(&["check", main.to_str().unwrap(), "--output", "json"]);
+        let json = String::from_utf8_lossy(&output.stdout);
+        assert_eq!(output.status.code(), Some(1));
+        assert!(json.contains("broken.cui"), "expected broken.cui in span, got: {json}");
+    }
+}

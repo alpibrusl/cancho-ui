@@ -13,5 +13,5 @@
 pub mod check;
 pub mod types;
 
-pub use check::{CheckError, TypeError, check_file};
+pub use check::{CheckError, ExternalComponent, TypeError, check_file, check_file_with_externals};
 pub use types::{PrimitiveType, Type};

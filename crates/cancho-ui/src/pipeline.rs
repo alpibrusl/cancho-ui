@@ -17,7 +17,7 @@ use cancho_ui_ir::{lower_file, serialize::canonical_json};
 use cancho_ui_syntax::lexer::LexError;
 use cancho_ui_syntax::parser::{parse, ParseError};
 use cancho_ui_syntax::Span;
-use cancho_ui_types::{check_file, TypeError};
+use cancho_ui_types::{check_file, check_file_with_externals, TypeError};
 use serde::Serialize;
 use thiserror::Error;
 
@@ -146,6 +146,182 @@ impl SpanOut {
 }
 
 pub fn compile_to_ir(file: &Path) -> Result<cancho_ui_ir::ir::IrFile, PipelineError> {
+    compile_inner(file).map(|(ir, _)| ir)
+}
+
+/// Tier 16: resolve `import <module>.<Component>;` declarations.
+/// The imported component lives in the sibling file
+/// `<module>.cui` (same directory as the importing file), which
+/// must declare `module <module>;`. Resolution is recursive and
+/// dependency-ordered: an imported module's own imports are
+/// resolved first, a file already on the resolution stack is a
+/// cycle (`import-cycle`), and the entry file comes last so the
+/// merged IR's auto-mount stays the entry's own last component.
+struct ResolvedFile {
+    path: std::path::PathBuf,
+    ast: cancho_ui_syntax::ast::File,
+}
+
+fn import_diag(
+    code: &str,
+    subject_name: String,
+    message: String,
+    span: cancho_ui_syntax::Span,
+    file: &Path,
+    remediation: Option<String>,
+) -> Diagnostic {
+    Diagnostic {
+        code: code.into(),
+        severity: Severity::Error,
+        tier: Tier::Static,
+        subject: Subject::Component { name: subject_name },
+        message,
+        span: Some(SpanOut::from_span(span, file)),
+        expected: None,
+        actual: None,
+        remediation: remediation.map(|description| Remediation {
+            description,
+            suggestion: None,
+            confidence: Confidence::High,
+        }),
+        related: Vec::new(),
+        notes: Vec::new(),
+    }
+}
+
+fn resolve_imports(
+    file: &Path,
+    ast: &cancho_ui_syntax::ast::File,
+    stack: &mut Vec<std::path::PathBuf>,
+) -> Result<Vec<ResolvedFile>, PipelineError> {
+    let canon = fs::canonicalize(file)
+        .unwrap_or_else(|_| file.to_path_buf());
+    if let Some(pos) = stack.iter().position(|p| *p == canon) {
+        let mut chain: Vec<String> = stack[pos..]
+            .iter()
+            .map(|p| p.display().to_string())
+            .collect();
+        chain.push(canon.display().to_string());
+        let last = ast.imports.last();
+        let (msg_span, via): (cancho_ui_syntax::Span, String) = match last {
+            Some(i) => (i.span, format!(" via `import {}.{};`", i.module, i.component)),
+            None => (ast.span, String::new()),
+        };
+        let subject = match last {
+            Some(i) => format!("{}.{}", i.module, i.component),
+            None => "file".to_string(),
+        };
+        return Err(PipelineError::Refused(import_diag(
+            "import-cycle",
+            subject,
+            format!(
+                "the import chain cycles: {}{} — a component cannot reach itself through its imports",
+                chain.join(" -> "),
+                via
+            ),
+            msg_span,
+            file,
+            None,
+        )));
+    }
+    stack.push(canon.clone());
+    let mut resolved: Vec<ResolvedFile> = Vec::new();
+    for imp in &ast.imports {
+        let module_path = match file.parent() {
+            Some(dir) => dir.join(format!("{}.cui", imp.module)),
+            None => std::path::PathBuf::from(format!("{}.cui", imp.module)),
+        };
+        let source = fs::read_to_string(&module_path).map_err(|_| {
+            PipelineError::Refused(import_diag(
+                "import-missing-module",
+                format!("{}.{}", imp.module, imp.component),
+                format!(
+                    "`import {}.{};` resolves to `{}`, which does not exist; an import's first segment must name a sibling `.cui` file that declares `module {};`",
+                    imp.module, imp.component, module_path.display(), imp.module
+                ),
+                imp.span,
+                file,
+                Some(format!("Create `{} {{ ... }}` in a sibling `{}.cui`. Make sure it starts with `module {};`.", imp.component, imp.module, imp.module)),
+            ))
+        })?;
+        let toks = cancho_ui_syntax::lexer::lex(&source)
+            .map_err(|e| PipelineError::Refused(lex_to_diag(e, &module_path)))?;
+        let module_ast = parse(toks)
+            .map_err(|e| PipelineError::Refused(parse_to_diag(e, &module_path)))?;
+        // The file must declare its module name.
+        match &module_ast.module {
+            Some(m) if m.name == imp.module => {}
+            _ => {
+                return Err(PipelineError::Refused(import_diag(
+                    "import-missing-module",
+                    format!("{}.{}", imp.module, imp.component),
+                    format!(
+                        "`{}` does not declare `module {};` — an imported file must declare the module its importers name",
+                        module_path.display(), imp.module
+                    ),
+                    imp.span,
+                    file,
+                    Some(format!("Add `module {};` at the top of `{}.`", imp.module, module_path.display())),
+                )));
+            }
+        }
+        if !module_ast.components.iter().any(|c| c.name == imp.component) {
+            return Err(PipelineError::Refused(import_diag(
+                "import-unknown-component",
+                format!("{}.{}", imp.module, imp.component),
+                format!(
+                    "component `{}` does not exist in `{}` (whose components are: {})",
+                    imp.component,
+                    module_path.display(),
+                    module_ast.components.iter().map(|c| c.name.clone()).collect::<Vec<_>>().join(", ")
+                ),
+                imp.span,
+                file,
+                Some(format!("Import a component the module declares, or declare `component {} {{ ... }}` in `{}.`", imp.component, module_path.display())),
+            )));
+        }
+        // Recurse first: the module's own imports must be resolved
+        // (and cycle-checked) before its interior check runs, so
+        // the check can see components imported from sibling
+        // modules the same way the entry file does.
+        let mut deps = resolve_imports(&module_path, &module_ast, stack)?;
+        // The imported file must itself be valid (its interior
+        // refusals belong to its own path in diagnostics). Its
+        // shape map includes exactly the components its own
+        // `import` lines name.
+        let inner_externals: Vec<cancho_ui_types::ExternalComponent> = module_ast
+            .imports
+            .iter()
+            .filter_map(|inner| {
+                let inner_file = match module_path.parent() {
+                    Some(dir) => dir.join(format!("{}.cui", inner.module)),
+                    None => std::path::PathBuf::from(format!("{}.cui", inner.module)),
+                };
+                let r = deps.iter().find(|r| r.path == inner_file)?;
+                r.ast
+                    .components
+                    .iter()
+                    .find(|c| c.name == inner.component)
+                    .map(|c| cancho_ui_types::ExternalComponent {
+                        name: c.name.clone(),
+                        state: c
+                            .state
+                            .iter()
+                            .map(|s| (s.name.clone(), s.ty.clone()))
+                            .collect(),
+                    })
+            })
+            .collect();
+        check_file_with_externals(&module_ast, &inner_externals)
+            .map_err(|e| PipelineError::Refused(check_to_diag(&e, &module_path)))?;
+        resolved.append(&mut deps);
+        resolved.push(ResolvedFile { path: module_path, ast: module_ast });
+    }
+    stack.pop();
+    Ok(resolved)
+}
+
+fn compile_inner(file: &Path) -> Result<(cancho_ui_ir::ir::IrFile, std::path::PathBuf), PipelineError> {
     let source = fs::read_to_string(file)
         .map_err(|e| PipelineError::Env(format!("reading `{}`: {}", file.display(), e)))?;
 
@@ -154,9 +330,102 @@ pub fn compile_to_ir(file: &Path) -> Result<cancho_ui_ir::ir::IrFile, PipelineEr
 
     let ast = parse(tokens).map_err(|e| PipelineError::Refused(parse_to_diag(e, file)))?;
 
-    check_file(&ast).map_err(|e| PipelineError::Refused(check_to_diag(&e, file)))?;
+    // Tier 16: resolve the entry's imports (dependency order,
+    // checked with their own file paths) and hand the entry a
+    // component-shape view of the imported modules.
+    let resolved = resolve_imports(file, &ast, &mut Vec::new())?;
 
-    lower_file(&ast).map_err(|e| PipelineError::Refused(lower_to_diag(&e, file)))
+    // Dedupe: the same module imported twice resolves once.
+    let mut unique: Vec<ResolvedFile> = Vec::new();
+    for r in resolved {
+        if unique.iter().any(|u| u.path == r.path) {
+            continue;
+        }
+        unique.push(r);
+    }
+    let resolved: Vec<ResolvedFile> = unique;
+
+    // Cross-file name collisions: a component name must be unique
+    // across the whole merged module — the emitted JS otherwise
+    // carries two `mount_<Name>` definitions and the second one
+    // silently wins. `type-duplicate-component` governs the
+    // same-file case; this is its cross-file twin.
+    let mut seen: Vec<(String, std::path::PathBuf)> = Vec::new();
+    let entry_as_resolved = ResolvedFile {
+        path: file.to_path_buf(),
+        ast: cancho_ui_syntax::ast::File {
+            module: ast.module.clone(),
+            imports: Vec::new(),
+            components: ast.components.clone(),
+            span: ast.span,
+        },
+    };
+    let components: Vec<(&cancho_ui_syntax::ast::Component, std::path::PathBuf)> = resolved
+        .iter()
+        .chain(std::iter::once(&entry_as_resolved))
+        .flat_map(|r| r.ast.components.iter().map(move |c| (c, r.path.clone())))
+        .collect();
+    for (c, path) in &components {
+        if let Some((n, other)) = seen.iter().find(|(n, _)| *n == c.name) {
+            let (n, other) = (n.clone(), other.clone());
+            return Err(PipelineError::Refused(import_diag(
+                "component-name-collision",
+                c.name.clone(),
+                format!(
+                    "component `{n}` is declared in both `{other}` and `{path}` — across an import graph every component name must be unique, because both would emit a `mount_{n}`",
+                    n = n,
+                    other = other.display(),
+                    path = path.display(),
+                ),
+                c.span,
+                file,
+                Some(format!("Rename one of the two `component {n}` declarations (and the instantiations that use it).")),
+            )));
+        }
+        seen.push((c.name.clone(), path.clone()));
+    }
+
+    // Shape + capability checks over the entry, with exactly the
+    // imported component shapes known: an entry may instantiate
+    // what it imports by name — not everything reachable through
+    // transitive module imports (those serve the imported
+    // components' own views, checked with their file's own shape).
+    let imports_dir = file.parent().map(|d| d.to_path_buf());
+    let externals: Vec<cancho_ui_types::ExternalComponent> = ast
+        .imports
+        .iter()
+        .filter_map(|imp| {
+            let module_file = match &imports_dir {
+                Some(dir) => dir.join(format!("{}.cui", imp.module)),
+                None => std::path::PathBuf::from(format!("{}.cui", imp.module)),
+            };
+            let r = resolved.iter().find(|r| r.path == module_file)?;
+            r.ast
+                .components
+                .iter()
+                .find(|c| c.name == imp.component)
+                .map(|c| cancho_ui_types::ExternalComponent {
+                    name: c.name.clone(),
+                    state: c
+                        .state
+                        .iter()
+                        .map(|s| (s.name.clone(), s.ty.clone()))
+                        .collect(),
+                })
+        })
+        .collect();
+    check_file_with_externals(&ast, &externals)
+        .map_err(|e| PipelineError::Refused(check_to_diag(&e, file)))?;
+
+    let entry_ir = lower_file(&ast)
+        .map_err(|e| PipelineError::Refused(lower_to_diag(&e, file)))?;
+    let mut irs: Vec<cancho_ui_ir::ir::IrFile> = Vec::new();
+    for r in &resolved {
+        irs.push(lower_file(&r.ast).map_err(|e| PipelineError::Refused(lower_to_diag(&e, &r.path)))?);
+    }
+    irs.push(entry_ir);
+    let merged = cancho_ui_ir::merge_ir_files(&irs);
+    Ok((merged, file.to_path_buf()))
 }
 
 fn check_to_diag(e: &cancho_ui_types::CheckError, file: &Path) -> Diagnostic {

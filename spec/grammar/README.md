@@ -67,13 +67,24 @@ namespace the file is imported under.
 
 ### 3.2 `import_decl`
 
+> **Corrected by Tier 16 (2026-10-18).** The Phase 0 sketch had
+> whole-module imports with an `as` alias. What landed in the
+> parser is a *component import* — one component of one sibling
+> module — because the composition model is per-component
+> instances (Tier 12), and that keeps 1:1 the emitted module a
+> single file with one auto-mount. The `as` alias and whole-module
+> imports return in Phase 6 (packages).
+
 ```ebnf
-import_decl := "import" identifier [ "as" identifier ] ";" ;
+import_decl := "import" identifier "." identifier ";" ;
 ```
 
-Brings a module into the local namespace. The `as` form aliases
-the import. The same rule Cancho Core uses for
-[`docs/modules.md`](https://github.com/alpibrusl/cancho/blob/main/docs/modules.md).
+`import cards.HelloCard;` imports exactly one component from the
+sibling file `cards.cui` (beside the importing file), which must
+declare `module cards;`. The imported component instantiates like
+a same-file one. Component names must be unique across the whole
+import graph (`component-name-collision`) because the merged
+module emits one `mount_<Name>` per component.
 
 ### 3.3 `component_decl`
 

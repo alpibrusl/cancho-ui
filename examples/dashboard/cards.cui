@@ -1,0 +1,27 @@
+// examples/dashboard/cards.cui — the *imported module* of the
+// Tier 16 cross-file demo. It declares `module cards;` and one
+// component; `dashboard.cui` (same directory) does
+// `import cards.HelloCard;` and instantiates it. Its own interior
+// correctness is checked with its own path in diagnostics.
+
+module cards;
+
+component HelloCard {
+    state title: String = "card";
+    state count: Int = 0;
+
+    on Inc {
+        count = count + 1;
+    }
+
+    view {
+        Column {
+            Text {
+                role: heading
+                "{title}"
+            }
+            Text { "count: {count}" }
+            Button { label: "card +" on: Inc }
+        }
+    }
+}

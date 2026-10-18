@@ -19,6 +19,15 @@ use cancho_ui_syntax::{
 };
 use thiserror::Error;
 
+/// Tier 16: an imported component's shape — everything the
+/// instance checks need (its state fields with their declared
+/// types).
+#[derive(Debug, Clone, PartialEq)]
+pub struct ExternalComponent {
+    pub name: String,
+    pub state: Vec<(String, Type)>,
+}
+
 #[derive(Debug, Clone, Error, PartialEq)]
 pub enum TypeError {
     #[error("component `{name}` is declared but has no `view` clause")]
@@ -133,7 +142,21 @@ pub enum CheckError {
 /// error. Phase 2 will batch every independent error per
 /// `spec/diagnostics/README.md`.
 pub fn check_file(file: &File) -> Result<(), CheckError> {
-    check_shape(file).map_err(CheckError::Shape)?;
+    check_file_with_externals(file, &[])
+}
+
+/// Tier 16: like `check_file`, but the file's views may
+/// instantiate components imported from sibling modules. An
+/// `ExternalComponent` carries the shape the instance checks need
+/// (the state fields with their declared types); the imported
+/// component's own interior correctness is the imported file's
+/// own `check_file` concern, and a cross-file import cycle is the
+/// pipeline resolver's concern (`import-cycle`).
+pub fn check_file_with_externals(
+    file: &File,
+    externals: &[ExternalComponent],
+) -> Result<(), CheckError> {
+    check_shape_with(file, externals).map_err(CheckError::Shape)?;
     match cancho_ui_ir::lower_file(file) {
         Ok(_) => Ok(()),
         Err(cancho_ui_ir::lower::LowerError::EmptySpan { .. }) => {
@@ -185,7 +208,7 @@ pub fn check_file(file: &File) -> Result<(), CheckError> {
     }
 }
 
-fn check_shape(file: &File) -> Result<(), TypeError> {
+fn check_shape_with(file: &File, externals: &[ExternalComponent]) -> Result<(), TypeError> {
     let mut seen: Vec<(&str, Span)> = Vec::new();
     for c in &file.components {
         check_component_shape(c)?;
@@ -218,8 +241,21 @@ fn check_shape(file: &File) -> Result<(), TypeError> {
     // this file* (same-file composition). Each instance must
     // exist, stay opaque (no bindings, no children, no own
     // accessibility), and the instance graph must not cycle.
+    // Tier 16: it may also instantiate a component imported from
+    // a sibling module — the shape map includes the externals.
+    let mut shapes: std::collections::HashMap<String, Vec<(String, Type)>> =
+        std::collections::HashMap::new();
     for c in &file.components {
-        check_instances(c, file)?;
+        shapes.insert(
+            c.name.clone(),
+            c.state.iter().map(|s| (s.name.clone(), s.ty.clone())).collect(),
+        );
+    }
+    for e in externals {
+        shapes.insert(e.name.clone(), e.state.clone());
+    }
+    for c in &file.components {
+        check_instances(c, &shapes)?;
     }
     check_instance_cycle(file)?;
     Ok(())
@@ -230,7 +266,7 @@ fn check_shape(file: &File) -> Result<(), TypeError> {
 /// constant initial values for the child's state fields — but is
 /// otherwise opaque (no `on:` handlers, no `role:`/`label:`, no
 /// children).
-fn check_instances(c: &Component, file: &File) -> Result<(), TypeError> {
+fn check_instances(c: &Component, shapes: &std::collections::HashMap<String, Vec<(String, Type)>>) -> Result<(), TypeError> {
     fn is_const(value: &BindingValue, ty: &Type) -> bool {
         // A prop value must be a literal whose kind matches the
         // target state field's declared type. String bindings
@@ -247,17 +283,16 @@ fn check_instances(c: &Component, file: &File) -> Result<(), TypeError> {
 
     fn walk(
         node: &ViewNode,
-        file: &File,
+        shapes: &std::collections::HashMap<String, Vec<(String, Type)>>,
         parent: &Component,
         locals: &mut Vec<String>,
     ) -> Result<(), TypeError> {
         match node {
             ViewNode::Element { kind, bindings, children, accessibility, span } => {
                 if let ElementKind::Named(name) = kind {
-                    let target = file
-                        .components
-                        .iter()
-                        .find(|d| d.name == *name);
+                    // Tier 16: the target shape may come from an
+                    // imported sibling module, not only this file.
+                    let target = shapes.get(name.as_str());
                     if target.is_none() {
                         return Err(TypeError::UnknownComponentKind {
                             name: name.clone(),
@@ -278,6 +313,12 @@ fn check_instances(c: &Component, file: &File) -> Result<(), TypeError> {
                     }
                     let target = target.unwrap();
                     let mut seen_keys: Vec<(&str, Span)> = Vec::new();
+                    // The state shape of the target component: from
+                    // this file or an imported module (Tier 16),
+                    // same `(name, Type)` pair either way.
+                    fn find_state<'a>(states: &'a [(String, Type)], key: &str) -> Option<&'a (String, Type)> {
+                        states.iter().find(|s| s.0 == key)
+                    }
                     for b in bindings {
                         match &b.value {
                             // `on:` — the child owns its handlers;
@@ -303,7 +344,7 @@ fn check_instances(c: &Component, file: &File) -> Result<(), TypeError> {
                                 // type is not tracked yet, so a
                                 // local source skips the type
                                 // match).
-                                let field = match target.state.iter().find(|s| s.name == b.key) {
+                                let field = match find_state(target, &b.key) {
                                     Some(f) => f,
                                     None => {
                                         return Err(TypeError::PropertyUnknownKey {
@@ -329,7 +370,7 @@ fn check_instances(c: &Component, file: &File) -> Result<(), TypeError> {
                                             });
                                         }
                                     };
-                                    if ps.ty != field.ty {
+                                    if ps.ty != field.1 {
                                         return Err(TypeError::PropertyTypeMismatch {
                                             component: name.clone(),
                                             key: b.key.clone(),
@@ -350,7 +391,7 @@ fn check_instances(c: &Component, file: &File) -> Result<(), TypeError> {
                                 seen_keys.push((b.key.as_str(), b.span));
                             }
                             BindingValue::String(_) | BindingValue::Prop(_) => {
-                                let field = match target.state.iter().find(|s| s.name == b.key) {
+                                let field = match find_state(target, &b.key) {
                                     Some(f) => f,
                                     None => {
                                         return Err(TypeError::PropertyUnknownKey {
@@ -360,7 +401,7 @@ fn check_instances(c: &Component, file: &File) -> Result<(), TypeError> {
                                         });
                                     }
                                 };
-                                if !is_const(&b.value, &field.ty) {
+                                if !is_const(&b.value, &field.1) {
                                     return Err(TypeError::PropertyTypeMismatch {
                                         component: name.clone(),
                                         key: b.key.clone(),
@@ -383,7 +424,7 @@ fn check_instances(c: &Component, file: &File) -> Result<(), TypeError> {
                     }
                 }
                 for ch in children {
-                    walk(ch, file, parent, locals)?;
+                    walk(ch, shapes, parent, locals)?;
                 }
             }
             ViewNode::For { binding, children, .. } => {
@@ -391,7 +432,7 @@ fn check_instances(c: &Component, file: &File) -> Result<(), TypeError> {
                 // property values inside the body.
                 locals.push(binding.clone());
                 for ch in children {
-                    walk(ch, file, parent, locals)?;
+                    walk(ch, shapes, parent, locals)?;
                 }
                 locals.pop();
             }
@@ -400,7 +441,7 @@ fn check_instances(c: &Component, file: &File) -> Result<(), TypeError> {
         Ok(())
     }
     let mut locals: Vec<String> = Vec::new();
-    walk(&c.view.body, file, c, &mut locals)
+    walk(&c.view.body, shapes, c, &mut locals)
 }
 
 /// A component cannot contain (transitively) an instance of

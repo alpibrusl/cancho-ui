@@ -419,6 +419,57 @@ Two know-nots remain:
 Same-file only for now: cross-file `import` is the next
 composition tier.
 
+### Cross-file composition: `import` (Tier 16)
+
+A component of a sibling module file can be imported and
+instantiated like a same-file one:
+
+```cancho-ui
+// dashboard.cui — beside cards.cui, which declares `module cards;`
+module dashboard;
+
+import cards.HelloCard;
+
+component Page {
+    view {
+        Column {
+            HelloCard { title: "imported" }
+            HelloCard { title: "local" }
+        }
+    }
+}
+```
+
+The import is compile-time: the imported file's components merge
+into the one emitted JS module (imported first, entry last — the
+auto-mount stays the entry file's last component), and the entry
+file sees the imported component's state fields, so every property
+rule applies identically across the boundary
+(`property-unknown-key`, `property-type-mismatch`, dynamic
+sources). Tier 15 slots work across the boundary too. Resolution
+is a sibling adjacency, deterministic and dependency-ordered:
+
+| rule | misuse |
+|---|---|
+| `import-missing-module` | `import cards.X;` names a sibling `cards.cui` that is missing — or does not declare `module cards;` |
+| `import-unknown-component` | the module file does not declare that component |
+| `import-cycle` | the import chain reaches a file already on the resolution stack |
+| `component-name-collision` | the same component name is declared in two files of the graph — both would emit a `mount_<Name>` |
+
+Refusals inside an imported file cite that file's path in their
+span; refusals at the import site cite the importing file.
+
+Know-nots:
+
+- **No paths, no packages.** `<module>.cui` beside the importing
+  file is the only resolution rule; import directories, `as`
+  aliases, and pub/visibility come with Phase 6.
+- **Bring what you instantiate.** A file may instantiate exactly
+  the components its own `import` lines name — a component used by
+  a transitive module is not reachable from an importing file
+  unless that file imports it by name from its own sibling
+  directory.
+
 ---
 
 ## 6. Foreign functions cross a trust boundary (placeholder)

@@ -20,6 +20,10 @@ use crate::span::Span;
 #[derive(Debug, Clone, PartialEq)]
 pub struct File {
     pub module: Option<ModuleDecl>,
+    /// Tier 16: `import <module>.<Component>;` declarations, in
+    /// source order. Resolution to the sibling `<module>.cui` file
+    /// happens in the CLI pipeline, not here.
+    pub imports: Vec<ImportDecl>,
     pub components: Vec<Component>,
     pub span: Span,
 }
@@ -27,6 +31,15 @@ pub struct File {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ModuleDecl {
     pub name: String,
+    pub span: Span,
+}
+
+/// Tier 16: `import cards.HelloCard;` — imports exactly one
+/// component from the sibling module file `cards.cui`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImportDecl {
+    pub module: String,
+    pub component: String,
     pub span: Span,
 }
 
