@@ -170,29 +170,35 @@ function __cui_net_search(q) {
 ";
 
 const CANCEL_ADAPTER_JS: &str = "\
-// Platform adapter: runtime cancellation (Tier 10).
-// `await(expr)` lowers to `__cui_call(group, start)`:
-//   - starting a call cancels the group's still-pending request
-//     (stale-result protection: a newer search supersedes an
-//     older one);
-//   - a superseded request resolving later throws the
-//     `__cui_cancelled` sentinel; the handler's try/catch
-//     swallows it, so the rest of that handler is dropped.
-// The `Cancelled` variant of a `RequestResult[T]` is still a
-// required arm — the match must be exhaustive by construction —
-// but Tier 10 delivers the drop at the await, before the arm
-// could dispatch. Component disposal will deliver it the same
-// way in a later tier.
+// Platform adapter: runtime cancellation (Tier 10), with per-
+// component disposal (Tier 17).
+// `await(expr)` lowers to `__cui_call(group, start, inflight)`:
+//   - the inflight table is *per component instance*: two
+//     components awaiting the same effect never cancel each
+//     other's requests;
+//   - within one component, starting a call cancels the group's
+//     still-pending request (stale-result protection: a newer
+//     search supersedes an older one) — a superseded request
+//     resolving later throws the `__cui_cancelled` sentinel and
+//     the handler's try/catch swallows it: the rest of that
+//     handler is *dropped* (drop at the await);
+//   - component disposal (a slot removal, or the parent's
+//     disposal) marks the pending token `disposed`, and the
+//     pending await *resolves* to `{__cui_tag:\"Cancelled\"}` —
+//     the `match`'s `Cancelled` arm dispatches. The arm is
+//     compile-time mandatory for an awaited field, so a disposed
+//     component's handler always has the program's cancellation
+//     design to run; it then continues on a detached subtree.
 const __cui_cancelled = Symbol(\"__cui_cancelled\");
-const __cui_inflight = { };
-function __cui_call(group, start) {
-    const prev = __cui_inflight[group];
+function __cui_call(group, start, inflight) {
+    const prev = inflight[group];
     if (prev) { prev.cancelled = true; }
-    const token = { cancelled: false };
-    __cui_inflight[group] = token;
+    const token = { cancelled: false, disposed: false };
+    inflight[group] = token;
     return start().then(function (res) {
         if (token.cancelled) { throw __cui_cancelled; }
-        if (__cui_inflight[group] === token) { __cui_inflight[group] = null; }
+        if (token.disposed) { return {__cui_tag: \"Cancelled\"}; }
+        if (inflight[group] === token) { inflight[group] = null; }
         return res;
     });
 }
@@ -306,7 +312,15 @@ fn emit_component(c: &IrComponent, component_names: &[String], prop_consumers: &
     // carry a slot table — one persistent wrapper per instance
     // site, surviving re-renders so that a child's state survives
     // the parent re-render instead of resetting.
+    // Tier 15: does this view subtree contain a component instance?
     let has_instances = view_has_instance(&c.view.body, component_names);
+    // Tier 17: does any of this component's code await? Awaiting
+    // components get a *per-instance* inflight table (two
+    // components with the same effect keep independent groups) and
+    // a dispose handle that cancels their pending requests.
+    let has_awaits = c.events.iter().any(|e| e.body.iter().any(body_uses_await))
+        || view_node_uses_await_or_sleep(&c.view.body);
+    let needs_dispose = has_awaits || has_instances;
     let mut out = String::new();
     out.push_str("// Component: ");
     out.push_str(&c.name);
@@ -325,7 +339,11 @@ fn emit_component(c: &IrComponent, component_names: &[String], prop_consumers: &
     // (the IIFE's result), so the parent's slot can call
     // `__cui_update` on later re-renders. Children that never
     // receive properties return nothing.
-    if takes_props {
+    // Tier 17: a component that awaits or hosts instances returns
+    // a `__cui_dispose` handle as well — its slot's removal calls
+    // it, and its own disposal cascades to its children.
+    let returns_handle = takes_props || needs_dispose;
+    if returns_handle {
         out.push_str("return ");
     }
     out.push_str("(function () {\n");
@@ -353,6 +371,13 @@ fn emit_component(c: &IrComponent, component_names: &[String], prop_consumers: &
     // with instance sites in their view pay for it.
     if has_instances {
         out.push_str("        const __cui_slots = { };\n");
+    }
+
+    // Tier 17: the per-instance cancellation table. Only an
+    // awaiting component carries one; with it, two components
+    // awaiting the same effect never cancel each other's requests.
+    if has_awaits {
+        out.push_str("        const __cui_inflight = { };\n");
     }
 
     for e in &c.events {
@@ -403,7 +428,7 @@ fn emit_component(c: &IrComponent, component_names: &[String], prop_consumers: &
     out.push_str("        function __render() {\n");
     out.push_str("            root.textContent = '';\n");
     let mut node_id = 0u32;
-    let view_body = emit_view_node(&mut node_id, "            ", &c.view.body, "root", &[], component_names, prop_consumers, has_instances, "\"\"");
+    let view_body = emit_view_node(&mut node_id, "            ", &c.view.body, "root", &[], component_names, prop_consumers, has_instances, "\"\"", None);
     out.push_str(&view_body);
     out.push_str("        }\n");
 
@@ -415,23 +440,59 @@ fn emit_component(c: &IrComponent, component_names: &[String], prop_consumers: &
     // `__cui_update` with the *dynamic* property values only — a
     // constant property is an initial value for the field, so a
     // parent re-render must not clobber a field the child has
-    // changed since mount. Components that never receive
-    // properties return nothing; their slots are re-attached but
-    // never updated.
-    if takes_props {
-        let mut upd = String::new();
-        for s in &c.state {
-            upd.push_str(&format!(
-                "                if (props.{0} !== undefined) {{ __state_{0} = props.{0}; }}\n",
-                s.name
-            ));
+    // changed since mount.
+    // Tier 17: awaiting components also return a `__cui_dispose`
+    // handle — the pending awaits resolve `{Cancelled}` so the
+    // `match`'s `Cancelled` arm dispatches (drop happens for
+    // *supersede*, not disposal).
+    if returns_handle {
+        let mut fields = String::new();
+        if takes_props {
+            let mut upd = String::new();
+            for s in &c.state {
+                upd.push_str(&format!(
+                    "                if (props.{0} !== undefined) {{ __state_{0} = props.{0}; }}\n",
+                    s.name
+                ));
+            }
+            fields.push_str("            __cui_update: function (props) {\n");
+            fields.push_str(&upd);
+            fields.push_str("                __render();\n");
+            fields.push_str("            }");
+        }
+        if needs_dispose {
+            if !fields.is_empty() {
+                fields.push_str(",\n");
+            }
+            fields.push_str("            __cui_dispose: function () {\n");
+            if has_instances {
+                // Cascade first: the children of a disposed
+                // component are disposed too, transitively (the
+                // slot table holds every instance this component
+                // mounted; For sites hold arrays of slots).
+                fields.push_str("                for (const __dk in __cui_slots) {\n");
+                fields.push_str("                    const __ds = __cui_slots[__dk];\n");
+                fields.push_str("                    if (Array.isArray(__ds)) {\n");
+                fields.push_str("                        __ds.forEach(function (x) { if (x.inst) x.inst.__cui_dispose(); });\n");
+                fields.push_str("                    } else if (__ds.inst) {\n");
+                fields.push_str("                        __ds.inst.__cui_dispose();\n");
+                fields.push_str("                    }\n");
+                fields.push_str("                }\n");
+            }
+            if has_awaits {
+                // Then the instance's own pending requests: their
+                // awaits resolve `{Cancelled}` and the awaiting
+                // `match` dispatches the arm.
+                fields.push_str("                for (const g in __cui_inflight) {\n");
+                fields.push_str("                    const t = __cui_inflight[g];\n");
+                fields.push_str("                    if (t) { t.disposed = true; __cui_inflight[g] = null; }\n");
+                fields.push_str("                }\n");
+            }
+            fields.push_str("            }");
         }
         out.push_str("        return {\n");
-        out.push_str("            __cui_update: function (props) {\n");
-        out.push_str(&upd);
-        out.push_str("                __render();\n");
-        out.push_str("            }\n");
-        out.push_str("        };\n");
+        out.push_str(&fields);
+        out.push_str("\n        };\n");
     }
     out.push_str("    })();\n");
     out.push_str("}\n");
@@ -601,8 +662,13 @@ fn emit_expr_runtime(e: &IrExpr, params: &[&str]) -> String {
                 IrExpr::Call { path, .. } if !path.is_empty() => path.join("_"),
                 _ => "default".to_string(),
             };
+            // Tier 17: the third argument is the *component
+            // instance's* inflight table — two components awaiting
+            // the same effect keep independent cancellation groups,
+            // and the instance's `__cui_dispose` cancels its own
+            // table on disposal.
             format!(
-                "await __cui_call(\"{}\", function () {{ return {}; }})",
+                "await __cui_call(\"{}\", function () {{ return {}; }}, __cui_inflight)",
                 group,
                 emit_expr_runtime(request, params)
             )
@@ -808,6 +874,11 @@ fn emit_view_node(
     prop_consumers: &[String],
     has_slots: bool,
     slot_prefix: &str,
+    // Tier 17: inside a slotting `For` body, the LHS expression
+    // (`__arr2[__i2]`) the instance branch assigns each created
+    // slot to, so the For's prune loop can find (and dispose) the
+    // slots beyond the list length. `None` elsewhere.
+    slot_arr: Option<&str>,
 ) -> String {
     match node {
         IrViewNode::Text { parts, .. } => {
@@ -872,15 +943,35 @@ fn emit_view_node(
                     "{0}const {1} = __cui_slots[{2}] || (__cui_slots[{2}] = []);\n",
                     indent, arr_var, key_var
                 ));
+                // Tier 17: slots dropped by a shrink are *disposed*
+                // — their pending awaits resolve Cancelled and the
+                // component's own children dispose transitively —
+                // and their keys are forgotten, so growing the list
+                // later mounts a fresh component instead of
+                // resurrecting a disposed one.
                 out.push_str(&format!(
-                    "{0}{1}.length = Math.min({1}.length, {2}.length);\n",
+                    "{0}while ({1}.length > {2}.length) {{\n",
                     indent, arr_var, list_var
                 ));
+                out.push_str(&format!(
+                    "{0}    const __dead{1} = {2}.pop();\n",
+                    indent, id, arr_var
+                ));
+                out.push_str(&format!(
+                    "{0}    delete __cui_slots[__dead{1}.key];\n",
+                    indent, id
+                ));
+                out.push_str(&format!(
+                    "{0}    if (__dead{1}.inst) {{ __dead{1}.inst.__cui_dispose(); }}\n",
+                    indent, id
+                ));
+                out.push_str(&format!("{0}}}\n", indent));
                 out.push_str(&format!(
                     "{0}{1}.forEach(function ({2}, __i{3}) {{\n",
                     indent, list_var, binding, id
                 ));
                 let child_indent = format!("{}    ", indent);
+                let child_arr = format!("{0}[__i{1}]", arr_var, id);
                 for c in children {
                     out.push_str(&emit_view_node(
                         next_id,
@@ -892,6 +983,7 @@ fn emit_view_node(
                         prop_consumers,
                         has_slots,
                         &child_prefix,
+                        Some(&child_arr),
                     ));
                 }
                 out.push_str(&format!("{0}}});\n", indent));
@@ -915,6 +1007,7 @@ fn emit_view_node(
                     prop_consumers,
                     has_slots,
                     slot_prefix,
+                    None,
                 ));
             }
             out.push_str(&format!("{0}}}\n", indent));
@@ -973,10 +1066,21 @@ fn emit_view_node(
                     "{0}if ({1} === undefined) {{\n",
                     indent, slot_var
                 ));
+                // Tier 17: the slot remembers its own table key so a
+                // For prune can delete the entry (no resurrection of
+                // a disposed slot when the list grows again); inside
+                // a slotting For body the slot is recorded in the
+                // For's per-index array (`__arr2[__i2] = __slot`).
                 out.push_str(&format!(
-                    "{0}    {1} = __cui_slots[{2}] = {{ el: document.createElement('div') }};\n",
+                    "{0}    {1} = __cui_slots[{2}] = {{ el: document.createElement('div'), key: {2} }};\n",
                     indent, slot_var, key_var
                 ));
+                if let Some(arr_lhs) = slot_arr {
+                    out.push_str(&format!(
+                        "{0}    {1} = {2};\n",
+                        indent, arr_lhs, slot_var
+                    ));
+                }
                 if child_takes {
                     let mut all: Vec<(String, &IrExpr)> = props_static.clone();
                     all.extend(props_dynamic.clone());
@@ -1198,7 +1302,7 @@ fn emit_view_node(
                     ));
                 }
                 for c in children {
-                    out.push_str(&emit_view_node(next_id, &child_indent, c, &var, params, components, prop_consumers, has_slots, slot_prefix));
+                    out.push_str(&emit_view_node(next_id, &child_indent, c, &var, params, components, prop_consumers, has_slots, slot_prefix, slot_arr));
                 }
             }
 

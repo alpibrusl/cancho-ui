@@ -1,0 +1,58 @@
+// examples/cancel/cancel.cui — Tier 17: component disposal
+// delivers cancellation *to the arm*. `Board` renders a `Loader`
+// per list row; clicking "shrink page" filters the list down
+// (`filter(items, x => x < 1)`, Tier 11) and the pruned *slot* is
+// disposed: its child's pending `sleep` resolves
+// `{__cui_tag: "Cancelled"}` and the disposed component's own
+// `match` dispatches the mandatory `Cancelled` arm — the handler
+// design the compiler always required finally runs.
+//
+// Two know-nots this heals:
+//  - stale/superseded requests are still dropped at the await
+//    (Tier 10 semantics, unchanged).
+//  - the inflight table is *per component instance* now, so two
+//    loaders awaiting `sleep` never cancel each other.
+
+module cancel;
+
+component Loader {
+    state status: String = "idle";
+    state r: Result[Int, String] = Ok(0);
+
+    on Go {
+        status = "loading";
+        r = await(sleep(400));
+        status = match r {
+            Ok(_) => { "done" }
+            Err(_) => { "error" }
+            Cancelled => { "cancelled" }
+        };
+    }
+
+    view {
+        Column {
+            Text { role: status "status: {status}" }
+            Button { label: "go" on: Go }
+        }
+    }
+}
+
+component Board {
+    state items: List[Int] = [0, 1];
+
+    on Shrink {
+        items = filter(items, x => x < 1);
+    }
+
+    view {
+        Column {
+            Text { role: heading "board" }
+            For {
+                over: items
+                as: it
+                Loader { }
+            }
+            Button { label: "shrink page" on: Shrink }
+        }
+    }
+}

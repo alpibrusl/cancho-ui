@@ -419,8 +419,9 @@ component Ticker {
     // runtime call (Tier 10): the `sleep_ms` group cancels a
     // still-pending previous request.
     assert!(js.contains(
-        "await __cui_call(\"sleep\", function () { return __cui_sleep_ms(50); })"
+        "await __cui_call(\"sleep\", function () { return __cui_sleep_ms(50); }, __cui_inflight)"
     ));
+    assert!(js.contains("const __cui_inflight = { };"));
     // The sleep adapter is emitted when the body uses sleep.
     assert!(js.contains("function __cui_sleep_ms(ms)"));
     // The `__cui_cancelled` sentinel is thrown when a superseded
@@ -738,7 +739,7 @@ component Search {
     // The awaited call form: a cancellation-tracked `__cui_call`
     // in the `net_search` group (Tier 10).
     assert!(js.contains(
-        "await __cui_call(\"net_search\", function () { return __cui_net_search(__state_query); })"
+        "await __cui_call(\"net_search\", function () { return __cui_net_search(__state_query); }, __cui_inflight)"
     ));
     // The loading status paints before the handler suspends.
     assert!(js.contains("__state_status = \"loading\";\n                __render();"));
@@ -807,7 +808,7 @@ component Search {
 ";
     let js = compile_str(src);
     assert!(js.contains(
-        "await __cui_call(\"net_search\", function () { return __cui_net_search(__state_query); })"
+        "await __cui_call(\"net_search\", function () { return __cui_net_search(__state_query); }, __cui_inflight)"
     ));
     assert!(js.contains("if (token.cancelled) { throw __cui_cancelled; }"));
     // The drop: the statements after the await sit inside the
@@ -1105,7 +1106,10 @@ fn dynamic_property_can_read_a_for_binding() {
     // slot array pruned to the current list length.
     assert!(js.contains("const __list1 = __state_names;"));
     assert!(js.contains("__list1.forEach(function (t, __i1)"));
-    assert!(js.contains("__arr1.length = Math.min(__arr1.length, __list1.length);"));
+    // Tier 17: dropped slots are disposed, not just leaked — the
+    // prune loop pops the surplus wrappers and disposes them.
+    assert!(js.contains("while (__arr1.length > __list1.length) {"));
+    assert!(js.contains("if (__dead1.inst) { __dead1.inst.__cui_dispose(); }"));
     // The mount happens inside the loop and reads the loop binding
     // directly — and the re-render updates the same slot.
     assert!(js.contains("mount_Card(__slot2.el, {title: t})"));
@@ -1169,6 +1173,47 @@ fn for_without_instances_keeps_plain_for_of() {
 // Imports resolve sibling `.cui` files, so these tests drive the
 // built CLI binary over a temporary directory instead of
 // `compile_str`.
+
+#[test]
+fn disposal_disposes_pruned_slots_and_cascades() {
+    // Tier 17: a For that shrinks pops the surplus slots and
+    // disposes their instances; a disposed component cascades to
+    // its own children's instances; an awaiting component keeps a
+    // *per-instance* inflight table so two components awaiting the
+    // same effect never cancel each other.
+    let src = "component Loader {\n    state status: String = \"idle\";\n    state r: Result[Int, String] = Ok(0);\n    on Go {\n        status = \"loading\";\n        r = await(sleep(400));\n        status = match r {\n            Ok(v) => { \"done\" }\n            Err(e) => { \"error\" }\n            Cancelled => { \"cancelled\" }\n        };\n    }\n    view {\n        Column {\n            Text { \"status: {status}\" }\n            Button { label: \"go\" on: Go }\n        }\n    }\n}\ncomponent Board {\n    state items: List[Int] = [0, 1];\n    on Shrink {\n        items = filter(items, x => x < 1);\n    }\n    view {\n        Column {\n            For {\n                over: items\n                as: it\n                Loader { }\n            }\n            Button { label: \"shrink page\" on: Shrink }\n        }\n    }\n}\n";
+    let js = compile_str(src);
+    // One inflight table per awaiting *mount function* — the table
+    // is closure-scoped per instance at runtime (two Loader
+    // instances each get their own object).
+    assert_eq!(js.matches("const __cui_inflight = { };").count(), 1);
+    assert!(js.contains(
+        "if (token.disposed) { return {__cui_tag: \"Cancelled\"}; }"
+    ));
+    // The awaiting child returns only a dispose handle (no props
+    // are passed), and the parent's prune calls it.
+    assert!(js.contains("__cui_dispose: function () {"));
+    assert!(js.contains("if (__dead1.inst) { __dead1.inst.__cui_dispose(); }"));
+    // A parent that hosts instances cascades disposal to them —
+    // For slots (arrays) and static slots alike:
+    assert!(js.contains("__ds.forEach(function (x) { if (x.inst) x.inst.__cui_dispose(); });"));
+    // The awaiting child cancels its own pending groups.
+    assert!(js.contains("if (t) { t.disposed = true; __cui_inflight[g] = null; }"));
+    // The `shrink` filter is emitted with the list op runtime.
+    assert!(js.contains("(__state_items).filter(function (x)"));
+}
+
+#[test]
+fn non_awaiting_child_without_instances_has_no_handle() {
+    // A component that neither awaits nor hosts instances and
+    // receives no properties keeps the plain mount shape: no
+    // returned handle at all.
+    let src = "component Plain {\n    state n: Int = 0;\n    view { Text { \"{n}\" } }\n}\n";
+    let js = compile_str(src);
+    assert!(js.contains("function mount_Plain(root) {\n    (function () {"));
+    assert!(!js.contains("__cui_dispose"));
+    assert!(!js.contains("__cui_inflight"));
+}
 
 mod import_tests {
     use std::fs;

@@ -1,8 +1,10 @@
 # ROADMAP.md
 
 > **Status: Phase 0 and Tier 1 of Phase 1 shipped in the initial
-> commit (`42993cd`).** This document records what cancho-ui
-> intends to build, in what order, and how each phase ends. A
+> commit (`42993cd`); Tiers 2–17 and the Phase 2 increments are
+> shipped since — see the "What shipped" table.** This document
+> records what cancho-ui intends to build, in what order, and how
+> each phase ends. A
 > phase that ends is a phase whose exit criteria are met; a phase
 > that stops is one whose stop/rethink conditions fired. Estimates
 > are planning ranges, not commitments — the same caveat
@@ -19,11 +21,22 @@
 |---|---|---|
 | **Phase 0** — design contract | ✅ done | initial commit `42993cd` |
 | **Phase 1 / Tier 1** — static render end-to-end (Hello, world) | ✅ done | initial commit `42993cd` |
-| **Phase 1 / Tier 2** — state + events + Counter works in the browser | ⏳ in progress (Tier 2.1 below) | next commit |
-| **Phase 1 / Tier 3** — `requires` enforcement, capability checker, search-able-list demo | pending | |
-| **Phase 1 / Tier 4** — `match` on `Result`, async with `await`, `foreign` blocks | pending | |
-| **Phase 1 / Tier 5** — source maps, `--output json`, `inspect` / `diff` / `report` / `skill` / `introspect` / `test` | pending | |
-| **Phase 2** — capability/effect reachability, full refusal suite, evidence report | pending | |
+| **Phase 1 / Tier 2** — state + events + Counter works in the browser | ✅ done | per-tier commits |
+| **Phase 1 / Tier 3** — `requires` enforcement, capability checker, searchable-list demo | ✅ done | `examples/search`, per-tier commits |
+| **Phase 1 / Tier 4** — `match` on `Result`, `Option`/`List` + `For` | ✅ done | per-tier commits |
+| **Phase 1 / Tier 5** — clock + async (`Clock`/`await`), `net.search` runtime | ✅ done | per-tier commits |
+| **Phase 1 / Tier 9–11** — Network adapter, cancellation, `filter`/`map`/`len` | ✅ done | per-tier commits |
+| **Phase 1 / Tier 12–14** — composition, properties, dynamic properties | ✅ done | `examples/cards`, per-tier commits |
+| **Phase 1 / Tier 15** — instance-identity preservation (slots) | ✅ done | `5bf5043` |
+| **Phase 1 / Tier 16** — cross-file `import` (Tier 17 = disposal, below) | ✅ done | `2bffe9b`, `examples/dashboard` |
+| **Phase 1 / Tier 17** — component disposal → `Cancelled` to the arm | ✅ done | this commit, `examples/cancel` |
+| **Phase 2** — capability/effect reachability, full refusal suite, evidence report | ✅ done incrementally per tier | `spec/diagnostics/README.md` frozen Phase 0 |
+
+Per-tier rows 2–14 keep their detail in the git history and
+`SESSION-LOG.md`; rows 15–17 and the Phase 2 increment are the
+story of the recent sessions. The plan tiers below (Tier 2.1 …)
+are the historical planning notes — reality diverged positively:
+most landed as Tier 5–14 slices instead.
 
 ### Phase 1 / Tier 1 row
 

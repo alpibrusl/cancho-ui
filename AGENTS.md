@@ -139,20 +139,32 @@ Core refuses a function that over-declares its effect row.
 
 An effect returns a `Request[T]`. Awaiting it produces
 `Ok(T) | Err(reason) | Cancelled` — that is the static type. At
-runtime, Tier 10 delivers `Cancelled` as a **drop**: each
-`await(...)` is a cancellation-tracked call in the group of its
-effect (`net.search` → group `net_search`), starting a call
-cancels the group's still-pending request, and a superseded
-request resolving later throws a sentinel that the handler's
-try/catch swallows — the rest of that handler never runs, so a
-slow stale request cannot clobber a newer one's state
-(state-after-dispose semantics, one granularity finer: per
-supersede rather than per dispose). Because the drop happens at
-the await, the `Cancelled` match arm is not dispatched in Tier
-10 — but it remains **required**: the match must be exhaustive
-by construction, so later tiers that deliver `Cancelled` to the
-arm (component disposal, deadlines) find a program that already
-handles it.
+runtime, cancellation reaches the handler in two ways:
+
+- **Supersede is a drop** (Tier 10, unchanged): each `await(...)`
+  is a cancellation-tracked call in the group of its effect
+  (`net.search` → group `net_search`), starting a call cancels the
+  group's still-pending request, and a superseded request
+  resolving later throws a sentinel that the handler's try/catch
+  swallows — the rest of that handler never runs, so a slow stale
+  request cannot clobber a newer one's state. The `Cancelled` arm
+  is *not* dispatched on supersede — it stays required.
+- **Disposal dispatches the arm** (Tier 17): when a component
+  instance is disposed — its slot pruned from a shrinking `For`, or
+  its parent's disposal cascading to it — its pending await
+  *resolves* `{__cui_tag: "Cancelled"}`, so the mandatory
+  `Cancelled` arm runs: the program's own cancellation design
+  executes, then the rest of the handler continues on the detached
+  subtree (rendering into detached DOM, harmless). The arm is
+  compile-time mandatory for an awaited field, so a disposed
+  component always has that design.
+
+Cancellation groups are **per component instance** (Tier 17): the
+inflight table lives in the mount closure, so two components
+awaiting the same effect never cancel each other's requests, and a
+dispose marks exactly its own table. Superseded-then-disposed
+tokens drop (the sentinel takes precedence); only the *current*
+pending request per group resolves `Cancelled` on disposal.
 
 `Result[T, E]` is two constructors: `Ok(value)` and `Err(reason)`.
 A `Request[T]` is awaited with `await(r)` and resolves to
@@ -405,19 +417,32 @@ component Page {
 }
 ```
 
-Two know-nots remain:
+Three know-nots remain (one healed above):
 
 - **Slot keys are positional.** A `For` slot is keyed by list
   index, not by element identity (there is no `key:` binding
   yet); reordering a list updates the display but keeps the
   per-position state.
-- **Slot removal does not cancel work.** When the list shrinks or
-  a slot is detached, the child's pending awaits are not
-  delivered `Cancelled` — component disposal reaching the
-  `Cancelled` arm is a later tier.
+- ~~**Slot removal does not cancel work.**~~ **Tier 17: it does.**
+  Slots pruned by a shrinking list are *disposed* — their pending
+  awaits resolve `Cancelled` so the component's own `match` arm
+  runs (§3), their children dispose transitively, and their slot
+  keys are **forgotten**: growing the list back mounts a fresh
+  component rather than resurrecting the disposed one.
+- **A `For` body records one instance per index.** The prune
+  disposes the last instance site recorded at an index; two
+  component instances in one `For` body would leave the first
+  un-disposed. Single-instance `For` bodies (the normal shape)
+  are fully covered.
 
-Same-file only for now: cross-file `import` is the next
-composition tier.
+A component that awaits or hosts instances returns a
+`__cui_dispose` handle alongside `__cui_update` (only
+prop-consuming components return the update). A component that
+neither awaits nor hosts instances and receives no properties
+returns nothing — there is nothing to cancel in it, and its
+parent's prune skips it (`if (inst)`).
+
+Cross-file `import` (Tier 16) is below.
 
 ### Cross-file composition: `import` (Tier 16)
 
