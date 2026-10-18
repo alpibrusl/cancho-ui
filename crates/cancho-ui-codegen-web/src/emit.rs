@@ -1029,7 +1029,7 @@ fn emit_view_node(
                             .map(|(k, v)| format!(
                                 "{0}: {1}",
                                 k,
-                                emit_expr_runtime(v, &[])
+                                emit_expr_runtime(v, params)
                             ))
                             .collect();
                         out.push_str(&format!(

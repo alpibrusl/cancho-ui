@@ -619,7 +619,24 @@ fn lower_binding(b: &Binding, kind: Option<&ElementKind>) -> Result<IrBinding, L
         }
         BindingValue::EventRef(name) => IrBindingValue::EventRef(name.clone()),
         BindingValue::Role(r) => IrBindingValue::Role(lower_role(r)),
-        BindingValue::StateRef(name) => IrBindingValue::StateRef(name.clone()),
+        BindingValue::StateRef(name) => {
+            // Tier 14: on a component instance, a `StateRef` value
+            // is a *dynamic property* — the value is a runtime
+            // read of the parent component's state (or an
+            // enclosing `For` binding), evaluated on every parent
+            // render. On primitives it stays the TextField-style
+            // state binding.
+            match kind {
+                Some(ElementKind::Named(_)) => IrBindingValue::Const {
+                    expr: Box::new(IrExpr::Ident {
+                        name: name.clone(),
+                        span: b.span,
+                    }),
+                    span: b.span,
+                },
+                _ => IrBindingValue::StateRef(name.clone()),
+            }
+        }
         BindingValue::Prop(expr) => {
             // Tier 13: a component-instance property. The value is
             // a constant (the parser only produces literal exprs

@@ -60,6 +60,11 @@ pub enum TypeError {
     #[error("property `{key}` of `{component}` does not match the state field's declared type (string property or int/float/bool literal constants only)")]
     PropertyTypeMismatch { component: String, key: String, span: Span },
 
+    /// Tier 14: dynamic property source is not a state field of
+    /// the enclosing component (nor an enclosing `For` binding).
+    #[error("`{key}` is not a state field of `{component}` (and not an enclosing `For` binding); a dynamic property value must be read from the parent's state")]
+    PropertySourceUnknown { component: String, key: String, span: Span },
+
     /// Tier 13: the same property is passed twice on an instance.
     #[error("property `{key}` of `{component}` is passed twice on this instance")]
     DuplicatePropKey {
@@ -240,7 +245,12 @@ fn check_instances(c: &Component, file: &File) -> Result<(), TypeError> {
         }
     }
 
-    fn walk(node: &ViewNode, file: &File) -> Result<(), TypeError> {
+    fn walk(
+        node: &ViewNode,
+        file: &File,
+        parent: &Component,
+        locals: &mut Vec<String>,
+    ) -> Result<(), TypeError> {
         match node {
             ViewNode::Element { kind, bindings, children, accessibility, span } => {
                 if let ElementKind::Named(name) = kind {
@@ -275,20 +285,72 @@ fn check_instances(c: &Component, file: &File) -> Result<(), TypeError> {
                             // `role:` binding value is the same
                             // category (the instance carries no
                             // role of its own).
-                            BindingValue::EventRef(_)
-                            | BindingValue::StateRef(_)
-                            | BindingValue::Role(_) => {
+                            BindingValue::EventRef(_) | BindingValue::Role(_) => {
                                 return Err(TypeError::InstanceTakesBindings {
                                     name: name.clone(),
                                     span: b.span,
                                 });
                             }
+                            BindingValue::StateRef(source) => {
+                                // Tier 14: a *dynamic property* —
+                                // the value is read from the
+                                // parent's state (or an enclosing
+                                // `For` binding) at each render.
+                                // The source must exist; the child
+                                // field's declared type must match
+                                // the source's when the source is
+                                // typed (a `For` binding's element
+                                // type is not tracked yet, so a
+                                // local source skips the type
+                                // match).
+                                let field = match target.state.iter().find(|s| s.name == b.key) {
+                                    Some(f) => f,
+                                    None => {
+                                        return Err(TypeError::PropertyUnknownKey {
+                                            component: name.clone(),
+                                            key: b.key.clone(),
+                                            span: b.span,
+                                        });
+                                    }
+                                };
+                                let is_local = locals.iter().any(|l| l == source);
+                                if !is_local {
+                                    let ps = parent
+                                        .state
+                                        .iter()
+                                        .find(|s| &s.name == source);
+                                    let ps = match ps {
+                                        Some(f) => f,
+                                        None => {
+                                            return Err(TypeError::PropertySourceUnknown {
+                                                component: parent.name.clone(),
+                                                key: source.clone(),
+                                                span: b.span,
+                                            });
+                                        }
+                                    };
+                                    if ps.ty != field.ty {
+                                        return Err(TypeError::PropertyTypeMismatch {
+                                            component: name.clone(),
+                                            key: b.key.clone(),
+                                            span: b.span,
+                                        });
+                                    }
+                                }
+                                for (k, s) in &seen_keys {
+                                    if *k == b.key.as_str() {
+                                        return Err(TypeError::DuplicatePropKey {
+                                            component: name.clone(),
+                                            key: b.key.clone(),
+                                            first_span: *s,
+                                            second_span: b.span,
+                                        });
+                                    }
+                                }
+                                seen_keys.push((b.key.as_str(), b.span));
+                            }
                             BindingValue::String(_) | BindingValue::Prop(_) => {
-                                let field = target
-                                    .state
-                                    .iter()
-                                    .find(|s| s.name == b.key);
-                                let field = match field {
+                                let field = match target.state.iter().find(|s| s.name == b.key) {
                                     Some(f) => f,
                                     None => {
                                         return Err(TypeError::PropertyUnknownKey {
@@ -321,19 +383,24 @@ fn check_instances(c: &Component, file: &File) -> Result<(), TypeError> {
                     }
                 }
                 for ch in children {
-                    walk(ch, file)?;
+                    walk(ch, file, parent, locals)?;
                 }
             }
-            ViewNode::For { children, .. } => {
+            ViewNode::For { binding, children, .. } => {
+                // The `as:` binding is in scope for dynamic
+                // property values inside the body.
+                locals.push(binding.clone());
                 for ch in children {
-                    walk(ch, file)?;
+                    walk(ch, file, parent, locals)?;
                 }
+                locals.pop();
             }
             ViewNode::Text { .. } => {}
         }
         Ok(())
     }
-    walk(&c.view.body, file)
+    let mut locals: Vec<String> = Vec::new();
+    walk(&c.view.body, file, c, &mut locals)
 }
 
 /// A component cannot contain (transitively) an instance of

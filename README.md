@@ -80,12 +80,13 @@ cd examples/clock && python3 -m http.server
 - **No macros.** Macros break stable content-addressable identity,
   the same reason Cancho Core forbids them.
 
-And honestly, **early**: Tier 1–13 are shipped (the async slice,
+And honestly, **early**: Tier 1–14 are shipped (the async slice,
 `Option[T]`/`List[T]` with `For`, the `Network` capability with
 `net.search`, runtime cancellation with stale-result protection,
 pure list operations — `filter`/`map`/`len` with derived `For`
 views, and same-file component composition with per-instance
-state and constant properties). The compiler is Rust, the
+state, constant properties, and dynamic properties read from the
+parent's state or a `For` binding). The compiler is Rust, the
 language is a small
 declarative subset, and the toolchain is shaped to be one an AI
 agent can drive. The nine components shipped so far (`Hello`,
@@ -116,7 +117,7 @@ resolve channel.
 ```sh
 git clone https://github.com/alpibrusl/cancho-ui
 cd cancho-ui
-cargo test --workspace   # the whole gate: 55 unit + integration tests
+cargo test --workspace   # the whole gate: 58 unit + integration tests
 ```
 
 The browser harness for the end-to-end DOM smoke tests (`/tmp/test-*.js`)
@@ -127,6 +128,7 @@ cd /tmp && npm install jsdom
 node /tmp/test-counter.js   # expects "OK: counter works"
 node /tmp/test-clock.js    # expects "OK: clock works"
 node /tmp/test-hello.js     # expects "OK: hello world rendered correctly"
+node /tmp/test-cards.js     # expects "OK: cards work"
 ```
 
 Linux-x86_64 and darwin-aarch64 are green in CI; the binary is a single
@@ -191,14 +193,14 @@ IR schema, the diagnostic format, and the grammar are the contracts the
 compiler meets.
 
 [`docs/proposal.md`](docs/proposal.md) — the original MVP proposal. The
-implementation matches Tier 1–13 of the proposal's roadmap (the async
+implementation matches Tier 1–14 of the proposal's roadmap (the async
 slice, the `Option`/`List` generics, the `Network` capability,
 runtime cancellation, pure list operations, same-file component
-composition, and constant properties included), plus the Phase 2
-compile-time `match-non-exhaustive` rule. The remaining Phase 2
-items (dynamic property values, cross-file imports,
-`foreign`/`target` blocks) and beyond are still ahead; the
-roadmap rows record what each shipped and what was found.
+composition, and constant plus dynamic properties included), plus the
+Phase 2 compile-time `match-non-exhaustive` rule. The remaining Phase 2
+items (cross-file imports, `foreign`/`target` blocks) and beyond are
+still ahead; the roadmap rows record what each shipped and what was
+found.
 
 [`SESSION-LOG.md`](SESSION-LOG.md) — what Tier 1–4 actually built, the
 bugs found while building them, and how to reproduce the end-to-end DOM

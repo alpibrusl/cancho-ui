@@ -339,27 +339,53 @@ advances only that card. Tier 13 adds **properties**: a binding
 whose key names a state field of the child and whose value is a
 constant (`"Adobe"`, `3`, `true`) is the child's *initial value*
 for that field. Each field not passed falls back to the child's
-declared default. Property refusals:
+declared default. Tier 14 adds **dynamic properties**: the value
+may be read from the parent's state — or an enclosing `For`
+binding — and is evaluated on every parent render:
+
+```cancho-ui
+state names: List[String] = ["Ada", "Grace"];
+
+view {
+    Column {
+        For {
+            over: names
+            as: t
+            HelloCard { title: t }
+        }
+    }
+}
+```
+
+Property refusals:
 
 | rule | misuse |
 |---|---|
 | `property-unknown-key` | key is not a state field of the child |
+| `property-source-unknown` | a dynamic value is not a parent state field or `For` binding |
 | `property-type-mismatch` | constant's kind does not match the field's declared type |
 | `duplicate-property-key` | same key passed twice |
 
+Know-not for dynamic sources: a `For` binding's element type is
+not tracked yet, so a local source skips the type match (the
+parent-state field sources are fully type-checked).
+
 What an instance still takes nothing of: an `on:` handler
 (`instance-opaque` — the child wires its own events), children,
-and `role:`/`label:`. Prop values are constants only — no parent
-state, no expressions (a later tier).
+and `role:`/`label:`.
 
 - an unknown name is refused (`component-kind-unknown`),
 - a cycle — `A` instantiating `B`, `B` instantiating `A` — is
   refused at compile time (`component-cycle`) because the emitted
   mount would recurse forever.
 
-Same-file only for now: cross-file `import` and dynamic
-(property-from-parent-state) property values are the next
-composition tiers.
+Know-not: a parent re-render re-mounts its instances — a child's
+state resets when the *parent* renders (the child's own
+interactions re-render only itself). Instance-identity
+preservation across parent renders is a later tier.
+
+Same-file only for now: cross-file `import` is the next
+composition tier.
 
 ---
 

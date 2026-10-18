@@ -1208,7 +1208,7 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
                                 _ => unreachable!(),
                             };
                             self.expect(Token::DotDot)?;
-                            let value = self.parse_binding_value(&key, key_tok.span)?;
+                            let value = self.parse_binding_value(&key, &kind)?;
                             let span = Span::new(key_tok.span.start, self.peek().span.end);
                             bindings.push(Binding { key, value, span });
                         }
@@ -1233,7 +1233,7 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
         })
     }
 
-    fn parse_binding_value(&mut self, key: &str, _span: crate::span::Span) -> Result<BindingValue, ParseError> {
+    fn parse_binding_value(&mut self, key: &str, kind: &ElementKind) -> Result<BindingValue, ParseError> {
         // Currently the only supported binding values are:
         //   - string literal (e.g. `label: "Increment"`),
         //   - `on: EventName` (event reference),
@@ -1292,7 +1292,10 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
                 // String literals stay `String` (plain labels
                 // everywhere else); the shape pass interprets a
                 // `String` value on an instance as a string
-                // property.
+                // property. Tier 14: on an instance, a bare
+                // identifier is a *dynamic property* — the value
+                // is read from the parent component's state (or an
+                // enclosing `For` binding) at each render.
                 let lit_tok = self.bump();
                 match lit_tok.token {
                     Token::StringLit(s) => Ok(BindingValue::String(s)),
@@ -1309,6 +1312,9 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
                             value: k == "true",
                             span: lit_tok.span,
                         }))
+                    }
+                    Token::Ident(s) if matches!(kind, ElementKind::Named(_)) => {
+                        Ok(BindingValue::StateRef(s))
                     }
                     other => Err(ParseError::Unexpected {
                         expected: "string literal (or a constant property value: int/float/bool literal)",

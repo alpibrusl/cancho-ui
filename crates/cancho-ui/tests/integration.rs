@@ -1037,3 +1037,61 @@ fn composition_emits_independent_mount_calls() {
     // declared by the time the page mounts).
     assert!(js.contains("__on_Inc"));
 }
+
+#[test]
+fn dynamic_property_reads_parent_state() {
+    // Tier 14: a property whose value is the parent's state field
+    // is a *dynamic* property — evaluated on every parent render
+    // (`{title: __state_who}`), not baked in as a constant.
+    let src = "component Card {\n    state title: String = \"?\";\n    view { Text { \"card\" } }\n}\ncomponent Page {\n    state who: String = \"Ada\";\n    view { Column {\n        Text { \"page\" }\n        Card { title: who }\n    } }\n}\n";
+    let js = compile_str(src);
+    assert!(js.contains("function mount_Card(root, props)"));
+    // The props object is evaluated at render time from the
+    // parent's state.
+    assert!(js.contains("mount_Card(__n"));
+    assert!(js.contains(", {title: __state_who});"));
+}
+
+#[test]
+fn dynamic_property_source_is_checked() {
+    // The source must be a state field of the parent component
+    // (or an enclosing For binding); unknown names and type
+    // mismatches are refused.
+    let unknown = "component Card {\n    state title: String = \"?\";\n    view { Text { \"card\" } }\n}\ncomponent Page {\n    view { Column {\n        Text { \"page\" }\n        Card { title: who }\n    } }\n}\n";
+    let toks = lex(unknown).unwrap();
+    let ast = parse(toks).unwrap();
+    match check_file(&ast) {
+        Err(cancho_ui_types::CheckError::Shape(cancho_ui_types::TypeError::PropertySourceUnknown { component, key, .. })) => {
+            assert_eq!(component, "Page");
+            assert_eq!(key, "who");
+        }
+        other => panic!("expected PropertySourceUnknown, got: {:?}", other.err()),
+    }
+    let mismatched = "component Card {\n    state title: String = \"?\";\n    view { Text { \"card\" } }\n}\ncomponent Page {\n    state who: Int = 0;\n    view { Column {\n        Text { \"page\" }\n        Card { title: who }\n    } }\n}\n";
+    let toks = lex(mismatched).unwrap();
+    let ast = parse(toks).unwrap();
+    match check_file(&ast) {
+        Err(cancho_ui_types::CheckError::Shape(cancho_ui_types::TypeError::PropertyTypeMismatch { key, .. })) => {
+            assert_eq!(key, "title");
+        }
+        other => panic!("expected PropertyTypeMismatch, got: {:?}", other.err()),
+    }
+}
+
+#[test]
+fn dynamic_property_can_read_a_for_binding() {
+    // Tier 14: inside a `For` body, the `as:` binding is a valid
+    // property source — a list of cards, one per row. The loop
+    // element type is not tracked yet, so the type match is
+    // skipped for such sources (documented).
+    let src = "component Card {\n    state title: String = \"?\";\n    view { Text { \"card\" } }\n}\ncomponent Board {\n    state names: List[String] = [\"Ada\"];\n    view { Column {\n        For {\n            over: names\n            as: t\n            Card { title: t }\n        }\n    } }\n}\n";
+    let toks = lex(src).unwrap();
+    let ast = parse(toks).unwrap();
+    check_file(&ast).unwrap_or_else(|e| panic!("expected ok, got: {:?}", e));
+    let js = compile_str(src);
+    // The mount happens inside the loop and reads the loop
+    // binding directly.
+    assert!(js.contains("for (const t of __state_names)"));
+    assert!(js.contains("mount_Card(__n"));
+    assert!(js.contains(", {title: t});"));
+}

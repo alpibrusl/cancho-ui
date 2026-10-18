@@ -1,12 +1,13 @@
-// examples/cards/cards.cui — Tier 12 composition plus Tier 13
-// properties. `Page` instantiates `HelloCard` twice; each
-// instance is its own unit — separate state, separate handlers —
-// mounted into its own wrapper element. `title: "..."` is a
-// *property*: a constant initial value for the child's String
-// state field, so the two cards say different things while their
-// counts still advance independently. Non-constant values,
-// unknown keys, duplicate keys, and type mismatches are all
-// compile-time refusals.
+// examples/cards/cards.cui — Tier 12 composition, Tier 13
+// constant properties, Tier 14 dynamic properties. `Page`
+// instantiates `HelloCard` several times; each instance is its
+// own unit — separate state, separate handlers — mounted into
+// its own wrapper element. `title: "..."` is a constant
+// property; inside a `For`, `title: t` is a *dynamic* property
+// read from the enclosing binding (here, one card per list
+// element) — evaluated on every parent render. Non-constant
+// values outside a local source, unknown keys, duplicate keys,
+// and type mismatches are all compile-time refusals.
 //
 // A cycle like `HelloCard` containing `HelloCard` is refused at
 // compile time (`component-cycle`) because the emitted mount
@@ -33,6 +34,8 @@ component HelloCard {
 }
 
 component Page {
+    state more: List[String] = ["extra A", "extra B"];
+
     view {
         Column {
             Text {
@@ -41,6 +44,11 @@ component Page {
             }
             HelloCard { title: "first card" }
             HelloCard { title: "second card" }
+            For {
+                over: more
+                as: t
+                HelloCard { title: t }
+            }
         }
     }
 }

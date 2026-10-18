@@ -631,6 +631,18 @@ fn type_to_diag(e: &TypeError, file: &Path) -> Diagnostic {
             ),
             Some(*span),
         ),
+        TypeError::PropertySourceUnknown { component, key, span } => (
+            "property-source-unknown",
+            Severity::Error,
+            Tier::Static,
+            Subject::Component { name: component.clone() },
+            format!(
+                "`{key}` is not a state field of `{component}` (and not an enclosing `For` binding); a dynamic property value must be read from the parent's state",
+                component = component,
+                key = key
+            ),
+            Some(*span),
+        ),
         TypeError::DuplicatePropKey { component, key, .. } => (
             "duplicate-property-key",
             Severity::Error,
