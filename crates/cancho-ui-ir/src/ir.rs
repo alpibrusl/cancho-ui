@@ -322,4 +322,9 @@ pub enum IrBindingValue {
     /// Tier 5: used for `TextField` so the value reflects the
     /// current state on every re-render.
     StateRef(String),
+    /// Tier 13: a component-instance property — a constant
+    /// initial value for one of the child's state fields. Also
+    /// carries the lowered form of `String(...)` binding values
+    /// when they appear on an instance (string properties).
+    Const { expr: Box<IrExpr>, span: Span },
 }

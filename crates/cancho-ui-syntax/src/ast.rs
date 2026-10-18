@@ -212,6 +212,14 @@ pub enum BindingValue {
     /// supports this for `TextField`; other primitives may use it
     /// in Phase 2.
     StateRef(String),
+    /// `title: 5` / `enabled: true` — Tier 13. A *property* on a
+    /// component instance: a constant initial value for one of
+    /// the child's state fields. String literals parse as
+    /// `String(s)` and are interpreted as string properties at
+    /// the shape pass (the only realistic use of a string
+    /// binding on an opaque instance); the other three literal
+    /// kinds parse as `Prop` directly.
+    Prop(Expr),
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -14,7 +14,7 @@
 //! `lower_file` for the capability pass.
 
 use cancho_ui_syntax::{
-    ast::{Accessibility, Binding, Component, ElementKind, File, Role, ViewNode},
+    ast::{Accessibility, Binding, BindingValue, Component, ElementKind, Expr, File, Role, Type, ViewNode},
     Span,
 };
 use thiserror::Error;
@@ -50,6 +50,24 @@ pub enum TypeError {
     /// (properties arrive in a later tier).
     #[error("component instance `{name}` takes no bindings; it is opaque — its own state and handlers govern it (properties arrive in a later tier)")]
     InstanceTakesBindings { name: String, span: Span },
+
+    /// Tier 13: property key is not a state field of the child.
+    #[error("component instance `{component}` has no state field `{key}` to pass as a property; add `state {key}: ...` to `component {component}` or remove the binding")]
+    PropertyUnknownKey { component: String, key: String, span: Span },
+
+    /// Tier 13: prop value's literal kind does not match the
+    /// child state field's declared type (or is not a constant).
+    #[error("property `{key}` of `{component}` does not match the state field's declared type (string property or int/float/bool literal constants only)")]
+    PropertyTypeMismatch { component: String, key: String, span: Span },
+
+    /// Tier 13: the same property is passed twice on an instance.
+    #[error("property `{key}` of `{component}` is passed twice on this instance")]
+    DuplicatePropKey {
+        component: String,
+        key: String,
+        first_span: Span,
+        second_span: Span,
+    },
 
     #[error("component instance `{name}` takes no children; its own view governs what renders")]
     InstanceTakesChildren { name: String, span: Span },
@@ -203,24 +221,35 @@ fn check_shape(file: &File) -> Result<(), TypeError> {
 }
 
 /// Named kinds in `c`'s view must be declared components of the
-/// same file, and each instance is opaque: the child owns its
-/// state, view, and handlers — the parent configures nothing yet
-/// (properties arrive in a later tier).
+/// same file. Tier 13: an instance may pass *properties* —
+/// constant initial values for the child's state fields — but is
+/// otherwise opaque (no `on:` handlers, no `role:`/`label:`, no
+/// children).
 fn check_instances(c: &Component, file: &File) -> Result<(), TypeError> {
+    fn is_const(value: &BindingValue, ty: &Type) -> bool {
+        // A prop value must be a literal whose kind matches the
+        // target state field's declared type. String bindings
+        // (`title: "Ada"`) parse as `String` and count as string
+        // properties; int/float/bool literals lift to `Prop`.
+        match value {
+            BindingValue::String(_) => matches!(ty, Type::String),
+            BindingValue::Prop(Expr::IntLit { .. }) => matches!(ty, Type::Int),
+            BindingValue::Prop(Expr::FloatLit { .. }) => matches!(ty, Type::Float),
+            BindingValue::Prop(Expr::BoolLit { .. }) => matches!(ty, Type::Bool),
+            _ => false,
+        }
+    }
+
     fn walk(node: &ViewNode, file: &File) -> Result<(), TypeError> {
-        // Reuse the general shape walk but only over Element
-        // nodes; recursion covers nested ones AND For children.
         match node {
             ViewNode::Element { kind, bindings, children, accessibility, span } => {
                 if let ElementKind::Named(name) = kind {
-                    if !file.components.iter().any(|d| d.name == *name) {
+                    let target = file
+                        .components
+                        .iter()
+                        .find(|d| d.name == *name);
+                    if target.is_none() {
                         return Err(TypeError::UnknownComponentKind {
-                            name: name.clone(),
-                            span: *span,
-                        });
-                    }
-                    if !bindings.is_empty() {
-                        return Err(TypeError::InstanceTakesBindings {
                             name: name.clone(),
                             span: *span,
                         });
@@ -236,6 +265,59 @@ fn check_instances(c: &Component, file: &File) -> Result<(), TypeError> {
                             name: name.clone(),
                             span: *span,
                         });
+                    }
+                    let target = target.unwrap();
+                    let mut seen_keys: Vec<(&str, Span)> = Vec::new();
+                    for b in bindings {
+                        match &b.value {
+                            // `on:` — the child owns its handlers;
+                            // the parent does not wire them. A
+                            // `role:` binding value is the same
+                            // category (the instance carries no
+                            // role of its own).
+                            BindingValue::EventRef(_)
+                            | BindingValue::StateRef(_)
+                            | BindingValue::Role(_) => {
+                                return Err(TypeError::InstanceTakesBindings {
+                                    name: name.clone(),
+                                    span: b.span,
+                                });
+                            }
+                            BindingValue::String(_) | BindingValue::Prop(_) => {
+                                let field = target
+                                    .state
+                                    .iter()
+                                    .find(|s| s.name == b.key);
+                                let field = match field {
+                                    Some(f) => f,
+                                    None => {
+                                        return Err(TypeError::PropertyUnknownKey {
+                                            component: name.clone(),
+                                            key: b.key.clone(),
+                                            span: b.span,
+                                        });
+                                    }
+                                };
+                                if !is_const(&b.value, &field.ty) {
+                                    return Err(TypeError::PropertyTypeMismatch {
+                                        component: name.clone(),
+                                        key: b.key.clone(),
+                                        span: b.span,
+                                    });
+                                }
+                                for (k, s) in &seen_keys {
+                                    if *k == b.key.as_str() {
+                                        return Err(TypeError::DuplicatePropKey {
+                                            component: name.clone(),
+                                            key: b.key.clone(),
+                                            first_span: *s,
+                                            second_span: b.span,
+                                        });
+                                    }
+                                }
+                                seen_keys.push((b.key.as_str(), b.span));
+                            }
+                        }
                     }
                 }
                 for ch in children {

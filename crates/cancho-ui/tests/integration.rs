@@ -912,12 +912,13 @@ fn component_instance_of_undeclared_kind_is_refused() {
 }
 
 #[test]
-fn component_instance_is_opaque() {
-    // Tier 12: the parent configures nothing. Bindings, children,
-    // and role/label on an instance are refused — the child owns
-    // its state, view, and handlers (properties arrive later).
-    let with_binding = "component Card {\n    state n: Int = 0;\n    view { Text { \"card\" } }\n}\ncomponent T {\n    view { Column {\n        Card { value: \"x\" }\n    } }\n}\n";
-    let toks = lex(with_binding).unwrap();
+fn component_instance_opacity_and_property_rules() {
+    // Tier 12 + Tier 13: an instance stays opaque in the
+    // categories that are not properties. `on:` handlers,
+    // children, and role/label are refused; an unknown property
+    // key is refused.
+    let with_handler = "component Card {\n    state n: Int = 0;\n    view { Text { \"card\" } }\n}\ncomponent T {\n    view { Column {\n        Card { on: Leave }\n    } }\n}\n";
+    let toks = lex(with_handler).unwrap();
     let ast = parse(toks).unwrap();
     match check_file(&ast) {
         Err(cancho_ui_types::CheckError::Shape(cancho_ui_types::TypeError::InstanceTakesBindings { .. })) => {}
@@ -929,6 +930,63 @@ fn component_instance_is_opaque() {
     match check_file(&ast) {
         Err(cancho_ui_types::CheckError::Shape(cancho_ui_types::TypeError::InstanceTakesChildren { .. })) => {}
         other => panic!("expected InstanceTakesChildren, got: {:?}", other.err()),
+    }
+    // Unknown property key.
+    let unknown_key = "component Card {\n    state n: Int = 0;\n    view { Text { \"card\" } }\n}\ncomponent T {\n    view { Column {\n        Card { mystery: \"x\" }\n    } }\n}\n";
+    let toks = lex(unknown_key).unwrap();
+    let ast = parse(toks).unwrap();
+    match check_file(&ast) {
+        Err(cancho_ui_types::CheckError::Shape(cancho_ui_types::TypeError::PropertyUnknownKey { key, .. })) => {
+            assert_eq!(key, "mystery");
+        }
+        other => panic!("expected PropertyUnknownKey, got: {:?}", other.err()),
+    }
+}
+
+#[test]
+fn properties_pass_constants_of_the_right_type() {
+    // Tier 13: `title` is a String state field, so a string
+    // property compiles; an Int prop for it does not. The same
+    // component used without properties anywhere keeps the plain
+    // `let __state_` initializers (taken_props never applies).
+    let ok = "component Card {\n    state title: String = \"?\";\n    state n: Int = 0;\n    view { Text { \"card\" } }\n}\ncomponent T {\n    view { Column {\n        Card { title: \"Ada\" n: 3 }\n    } }\n}\n";
+    let toks = lex(ok).unwrap();
+    let ast = parse(toks).unwrap();
+    check_file(&ast).unwrap_or_else(|e| panic!("expected ok, got: {:?}", e));
+    let typed_mismatch = "component Card {\n    state title: String = \"?\";\n    view { Text { \"card\" } }\n}\ncomponent T {\n    view { Column {\n        Card { title: 3 }\n    } }\n}\n";
+    let toks = lex(typed_mismatch).unwrap();
+    let ast = parse(toks).unwrap();
+    match check_file(&ast) {
+        Err(cancho_ui_types::CheckError::Shape(cancho_ui_types::TypeError::PropertyTypeMismatch { key, .. })) => {
+            assert_eq!(key, "title");
+        }
+        other => panic!("expected PropertyTypeMismatch, got: {:?}", other.err()),
+    }
+    let js = compile_str(ok);
+    // String property: String binding values on instances lower
+    // to Const values in the props object.
+    assert!(js.contains("mount_Card("));
+    assert!(js.contains("{title: \"Ada\", n: 3});"));
+    // The child takes a props argument and falls back per field.
+    assert!(js.contains("function mount_Card(root, props)"));
+    assert!(js.contains(
+        "let __state_title = (props == null || props.title === undefined) ? (\"?\") : props.title;"
+    ));
+    assert!(js.contains(
+        "let __state_n = (props == null || props.n === undefined) ? (0) : props.n;"
+    ));
+}
+
+#[test]
+fn opacity_accessibility_check() {
+    // `role:`/`label:` on an instance land in the accessibility
+    // struct (not the binding box) and are refused the same way.
+    let with_acc = "component Card {\n    state n: Int = 0;\n    view { Text { \"card\" } }\n}\ncomponent T {\n    view { Column {\n        Card { label: \"my card\" }\n    } }\n}\n";
+    let toks = lex(with_acc).unwrap();
+    let ast = parse(toks).unwrap();
+    match check_file(&ast) {
+        Err(cancho_ui_types::CheckError::Shape(cancho_ui_types::TypeError::InstanceTakesAccessibility { .. })) => {}
+        other => panic!("expected InstanceTakesAccessibility, got: {:?}", other.err()),
     }
 }
 

@@ -1,13 +1,19 @@
-// examples/cards/cards.cui — Tier 12: same-file component
-// composition. `Page` instantiates `HelloCard` twice; each
+// examples/cards/cards.cui — Tier 12 composition plus Tier 13
+// properties. `Page` instantiates `HelloCard` twice; each
 // instance is its own unit — separate state, separate handlers —
-// mounted into its own wrapper element. The instance is opaque:
-// no bindings, no children (properties arrive in a later tier),
-// and a cycle like `HelloCard` containing `HelloCard` is refused
-// at compile time (`component-cycle`) because the emitted mount
+// mounted into its own wrapper element. `title: "..."` is a
+// *property*: a constant initial value for the child's String
+// state field, so the two cards say different things while their
+// counts still advance independently. Non-constant values,
+// unknown keys, duplicate keys, and type mismatches are all
+// compile-time refusals.
+//
+// A cycle like `HelloCard` containing `HelloCard` is refused at
+// compile time (`component-cycle`) because the emitted mount
 // would recurse forever.
 
 component HelloCard {
+    state title: String = "card";
     state count: Int = 0;
 
     on Inc {
@@ -18,7 +24,7 @@ component HelloCard {
         Column {
             Text {
                 role: heading
-                "card"
+                "{title}"
             }
             Text { "count: {count}" }
             Button { label: "card +" on: Inc }
@@ -33,8 +39,8 @@ component Page {
                 role: heading
                 "page"
             }
-            HelloCard {}
-            HelloCard {}
+            HelloCard { title: "first card" }
+            HelloCard { title: "second card" }
         }
     }
 }

@@ -510,7 +510,7 @@ fn lower_view_node_with_effects(
             }
             let mut lowered_bindings = Vec::with_capacity(bindings.len());
             for b in bindings {
-                lowered_bindings.push(lower_binding(b)?);
+                lowered_bindings.push(lower_binding(b, Some(kind))?);
             }
             Ok((
                 IrViewNode::Element {
@@ -598,12 +598,39 @@ fn lower_role(r: &Role) -> IrRole {
     }
 }
 
-fn lower_binding(b: &Binding) -> Result<IrBinding, LowerError> {
+fn lower_binding(b: &Binding, kind: Option<&ElementKind>) -> Result<IrBinding, LowerError> {
     let value = match &b.value {
-        BindingValue::String(s) => IrBindingValue::String(s.clone()),
+        BindingValue::String(s) => {
+            // Tier 13: on a component instance, a string binding
+            // value is a *string property* (`title: "Ada"`) — a
+            // const initializer for the child's state field — not
+            // an HTML attribute (the instance is opaque). On
+            // primitives it stays the plain attribute value.
+            match kind {
+                Some(ElementKind::Named(_)) => IrBindingValue::Const {
+                    expr: Box::new(IrExpr::StringLit {
+                        value: s.clone(),
+                        span: b.span,
+                    }),
+                    span: b.span,
+                },
+                _ => IrBindingValue::String(s.clone()),
+            }
+        }
         BindingValue::EventRef(name) => IrBindingValue::EventRef(name.clone()),
         BindingValue::Role(r) => IrBindingValue::Role(lower_role(r)),
         BindingValue::StateRef(name) => IrBindingValue::StateRef(name.clone()),
+        BindingValue::Prop(expr) => {
+            // Tier 13: a component-instance property. The value is
+            // a constant (the parser only produces literal exprs
+            // here; the shape pass enforces it against the child's
+            // state field anyway). Lower it pure.
+            let ir = lower_expr_pure(expr)?;
+            IrBindingValue::Const {
+                expr: Box::new(ir),
+                span: b.span,
+            }
+        }
     };
     Ok(IrBinding {
         key: b.key.clone(),

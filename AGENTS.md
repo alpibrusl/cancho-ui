@@ -309,12 +309,14 @@ handlers — mounted into its own wrapper element:
 
 ```cancho-ui
 component HelloCard {
+    state title: String = "card";
     state count: Int = 0;
 
     on Inc { count = count + 1; }
 
     view {
         Column {
+            Text { role: heading "{title}" }
             Text { "count: {count}" }
             Button { label: "card +" on: Inc }
         }
@@ -325,28 +327,39 @@ component Page {
     view {
         Column {
             Text { "page" }
-            HelloCard {}
-            HelloCard {}
+            HelloCard { title: "first card" }
+            HelloCard { title: "second card" }
         }
     }
 }
 ```
 
 Two instances are two pieces of state: clicking one card's button
-advances only that card.
+advances only that card. Tier 13 adds **properties**: a binding
+whose key names a state field of the child and whose value is a
+constant (`"Adobe"`, `3`, `true`) is the child's *initial value*
+for that field. Each field not passed falls back to the child's
+declared default. Property refusals:
 
-An instance is **opaque** — the parent configures nothing yet
-(properties arrive in a later tier):
+| rule | misuse |
+|---|---|
+| `property-unknown-key` | key is not a state field of the child |
+| `property-type-mismatch` | constant's kind does not match the field's declared type |
+| `duplicate-property-key` | same key passed twice |
 
-- bindings on an instance are refused (`instance-opaque` — the
-  same code for `role:`/`label:` and children),
+What an instance still takes nothing of: an `on:` handler
+(`instance-opaque` — the child wires its own events), children,
+and `role:`/`label:`. Prop values are constants only — no parent
+state, no expressions (a later tier).
+
 - an unknown name is refused (`component-kind-unknown`),
 - a cycle — `A` instantiating `B`, `B` instantiating `A` — is
   refused at compile time (`component-cycle`) because the emitted
   mount would recurse forever.
 
-Same-file only for now: cross-file `import` and instance
-*properties* are the next composition tiers.
+Same-file only for now: cross-file `import` and dynamic
+(property-from-parent-state) property values are the next
+composition tiers.
 
 ---
 

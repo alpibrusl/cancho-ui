@@ -92,9 +92,16 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
         out.push('\n');
     }
 
+    // Tier 13: components some instance passes a property to get
+    // the `props`-aware mount signature.
+    let mut prop_consumers: Vec<String> = Vec::new();
+    for c in &ir.components {
+        collect_prop_consumers(&c.view.body, &mut prop_consumers);
+    }
+
     let component_names: Vec<String> = ir.components.iter().map(|c| c.name.clone()).collect();
     for c in &ir.components {
-        out.push_str(&emit_component(c, &component_names));
+        out.push_str(&emit_component(c, &component_names, &prop_consumers));
         out.push('\n');
     }
 
@@ -262,7 +269,39 @@ fn view_node_uses_await_or_sleep(node: &IrViewNode) -> bool {
 
 const STATE_PREFIX: &str = "__state_";
 
-fn emit_component(c: &IrComponent, component_names: &[String]) -> String {
+/// Tier 13: which components receive properties from some
+/// instance? Those get the `props`-aware mount signature.
+fn collect_prop_consumers(node: &IrViewNode, out: &mut Vec<String>) {
+    match node {
+        IrViewNode::Element { kind, bindings, children, .. } => {
+            if let IrElementKind::Named(name) = kind {
+                if bindings
+                    .iter()
+                    .any(|b| matches!(b.value, IrBindingValue::Const { .. }))
+                {
+                    out.push(name.clone());
+                }
+            }
+            for c in children {
+                collect_prop_consumers(c, out);
+            }
+        }
+        IrViewNode::For { children, .. } => {
+            for c in children {
+                collect_prop_consumers(c, out);
+            }
+        }
+        IrViewNode::Text { .. } => {}
+    }
+}
+
+fn emit_component(c: &IrComponent, component_names: &[String], prop_consumers: &[String]) -> String {
+    // Tier 13: components that some instance passes properties to
+    // take a `props` argument; their state initializers consult
+    // it, falling back to the declared default. Components never
+    // instantiated with properties keep the plain signature and
+    // initializers.
+    let takes_props = prop_consumers.iter().any(|n| *n == c.name);
     let mut out = String::new();
     out.push_str("// Component: ");
     out.push_str(&c.name);
@@ -271,7 +310,11 @@ fn emit_component(c: &IrComponent, component_names: &[String]) -> String {
     out.push_str(")\n");
     out.push_str("function mount_");
     out.push_str(&c.name);
-    out.push_str("(root) {\n");
+    if takes_props {
+        out.push_str("(root, props) {\n");
+    } else {
+        out.push_str("(root) {\n");
+    }
     out.push_str("    (function () {\n");
 
     for s in &c.state {
@@ -279,7 +322,15 @@ fn emit_component(c: &IrComponent, component_names: &[String]) -> String {
         out.push_str(STATE_PREFIX);
         out.push_str(&s.name);
         out.push_str(" = ");
-        out.push_str(&emit_expr_init(&s.initial));
+        if takes_props {
+            out.push_str(&format!(
+                "(props == null || props.{0} === undefined) ? ({1}) : props.{0}",
+                s.name,
+                emit_expr_init(&s.initial)
+            ));
+        } else {
+            out.push_str(&emit_expr_init(&s.initial));
+        }
         out.push_str(";\n");
     }
 
@@ -331,7 +382,7 @@ fn emit_component(c: &IrComponent, component_names: &[String]) -> String {
     out.push_str("        function __render() {\n");
     out.push_str("            root.textContent = '';\n");
     let mut node_id = 0u32;
-    let view_body = emit_view_node(&mut node_id, "            ", &c.view.body, "root", &[], component_names);
+    let view_body = emit_view_node(&mut node_id, "            ", &c.view.body, "root", &[], component_names, prop_consumers);
     out.push_str(&view_body);
     out.push_str("        }\n");
 
@@ -688,6 +739,7 @@ fn emit_view_node(
     parent_var: &str,
     params: &[&str],
     components: &[String],
+    prop_consumers: &[String],
 ) -> String {
     match node {
         IrViewNode::Text { parts, .. } => {
@@ -738,6 +790,7 @@ fn emit_view_node(
                     parent_var,
                     &local_params,
                     components,
+                    prop_consumers,
                 ));
             }
             out.push_str(&format!("{0}}}\n", indent));
@@ -782,8 +835,34 @@ fn emit_view_node(
             let mut input_handler: Option<String> = None;
             let mut input_value: Option<String> = None;
             let mut button_label: Option<String> = None;
+            // Tier 13: on a component instance, `Const` bindings
+            // are *properties* — constant initial values for the
+            // child's state fields. They go into the mount call's
+            // props object, not into wrapper attributes.
+            let mut props_obj: Vec<(String, &IrExpr)> = Vec::new();
             for b in bindings {
+                let as_prop = match &b.value {
+                    IrBindingValue::Const { expr, .. } => {
+                        Some(expr)
+                    }
+                    _ => None,
+                };
+                if matches!(kind, IrElementKind::Named(_)) {
+                    if let Some(expr) = as_prop {
+                        props_obj.push((b.key.clone(), expr));
+                        continue;
+                    }
+                }
                 match &b.value {
+                    IrBindingValue::Const { .. } => {
+                        // A `Const` binding on a primitive (a
+                        // non-string label etc.) is not expressible
+                        // as an HTML attribute value today.
+                        out.push_str(&format!(
+                            "{0}// property value on a primitive cannot be set as an attribute (Tier 13)\n",
+                            indent
+                        ));
+                    }
                     IrBindingValue::String(s) => {
                         if b.key == "label" {
                             if matches!(kind, IrElementKind::Button) {
@@ -899,7 +978,7 @@ fn emit_view_node(
                     ));
                 }
                 for c in children {
-                    out.push_str(&emit_view_node(next_id, &child_indent, c, &var, params, components));
+                    out.push_str(&emit_view_node(next_id, &child_indent, c, &var, params, components, prop_consumers));
                 }
             }
 
@@ -934,10 +1013,33 @@ fn emit_view_node(
             // renders as a plain wrapper.
             if let IrElementKind::Named(name) = kind {
                 if components.iter().any(|d| d == name) {
-                    out.push_str(&format!(
-                        "{0}mount_{1}({2});\n",
-                        indent, name, var
-                    ));
+                    if props_obj.is_empty() {
+                        out.push_str(&format!(
+                            "{0}mount_{1}({2});\n",
+                            indent, name, var
+                        ));
+                    } else {
+                        // Properties are constant initial values for
+                        // the child's state fields. A child never
+                        // targeted by a props instance keeps its
+                        // plain signature; one that is takes
+                        // `props` and falls back per field.
+                        let rendered: Vec<String> = props_obj
+                            .iter()
+                            .map(|(k, v)| format!(
+                                "{0}: {1}",
+                                k,
+                                emit_expr_runtime(v, &[])
+                            ))
+                            .collect();
+                        out.push_str(&format!(
+                            "{0}mount_{1}({2}, {{{3}}});\n",
+                            indent,
+                            name,
+                            var,
+                            rendered.join(", ")
+                        ));
+                    }
                 }
             }
 

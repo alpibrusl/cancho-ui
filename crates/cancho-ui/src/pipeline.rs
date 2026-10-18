@@ -607,6 +607,42 @@ fn type_to_diag(e: &TypeError, file: &Path) -> Diagnostic {
             ),
             Some(*span),
         ),
+        TypeError::PropertyUnknownKey { component, key, span } => (
+            "property-unknown-key",
+            Severity::Error,
+            Tier::Static,
+            Subject::Component { name: component.clone() },
+            format!(
+                "component instance `{component}` has no state field `{key}` to pass as a property",
+                component = component,
+                key = key
+            ),
+            Some(*span),
+        ),
+        TypeError::PropertyTypeMismatch { component, key, span } => (
+            "property-type-mismatch",
+            Severity::Error,
+            Tier::Static,
+            Subject::Component { name: component.clone() },
+            format!(
+                "property `{key}` of `{component}` does not match the state field's declared type (string property or int/float/bool literal constants only)",
+                component = component,
+                key = key
+            ),
+            Some(*span),
+        ),
+        TypeError::DuplicatePropKey { component, key, .. } => (
+            "duplicate-property-key",
+            Severity::Error,
+            Tier::Static,
+            Subject::Component { name: component.clone() },
+            format!(
+                "property `{key}` of `{component}` is passed twice on this instance",
+                component = component,
+                key = key
+            ),
+            None,
+        ),
         TypeError::ComponentCycle { chain } => (
             "component-cycle",
             Severity::Error,

@@ -475,6 +475,13 @@ impl Serialize for IrBindingValue {
             IrBindingValue::EventRef(s) => ser.serialize_str(s),
             IrBindingValue::Role(r) => r.serialize(ser),
             IrBindingValue::StateRef(s) => ser.serialize_str(s),
+            IrBindingValue::Const { expr, span } => {
+                use serde::ser::SerializeStruct;
+                let mut s = ser.serialize_struct("IrBindingValue::Const", 2)?;
+                s.serialize_field("expr", expr)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
         }
     }
 }

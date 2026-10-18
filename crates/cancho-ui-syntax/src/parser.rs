@@ -1286,20 +1286,37 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
                 }
             }
             _ => {
-                // Default: string literal.
+                // Default: string literal, or a constant initial
+                // value for a component-instance property (Tier
+                // 13): an int/float/bool literal lifts to `Prop`.
+                // String literals stay `String` (plain labels
+                // everywhere else); the shape pass interprets a
+                // `String` value on an instance as a string
+                // property.
                 let lit_tok = self.bump();
-                let s = match lit_tok.token {
-                    Token::StringLit(s) => s,
-                    other => {
-                        return Err(ParseError::Unexpected {
-                            expected: "string literal",
-                            found: other,
-                            line: lit_tok.span.start.line,
-                            column: lit_tok.span.start.column,
-                        });
+                match lit_tok.token {
+                    Token::StringLit(s) => Ok(BindingValue::String(s)),
+                    Token::IntLit(v) => Ok(BindingValue::Prop(Expr::IntLit {
+                        value: v,
+                        span: lit_tok.span,
+                    })),
+                    Token::FloatLit(v) => Ok(BindingValue::Prop(Expr::FloatLit {
+                        value: v,
+                        span: lit_tok.span,
+                    })),
+                    Token::Ident(k) if k == "true" || k == "false" => {
+                        Ok(BindingValue::Prop(Expr::BoolLit {
+                            value: k == "true",
+                            span: lit_tok.span,
+                        }))
                     }
-                };
-                Ok(BindingValue::String(s))
+                    other => Err(ParseError::Unexpected {
+                        expected: "string literal (or a constant property value: int/float/bool literal)",
+                        found: other,
+                        line: lit_tok.span.start.line,
+                        column: lit_tok.span.start.column,
+                    }),
+                }
             }
         }
     }
