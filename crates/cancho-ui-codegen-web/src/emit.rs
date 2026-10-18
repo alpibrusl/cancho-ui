@@ -302,6 +302,11 @@ fn emit_component(c: &IrComponent, component_names: &[String], prop_consumers: &
     // instantiated with properties keep the plain signature and
     // initializers.
     let takes_props = prop_consumers.iter().any(|n| *n == c.name);
+    // Tier 15: components whose view instantiates subcomponents
+    // carry a slot table — one persistent wrapper per instance
+    // site, surviving re-renders so that a child's state survives
+    // the parent re-render instead of resetting.
+    let has_instances = view_has_instance(&c.view.body, component_names);
     let mut out = String::new();
     out.push_str("// Component: ");
     out.push_str(&c.name);
@@ -315,7 +320,15 @@ fn emit_component(c: &IrComponent, component_names: &[String], prop_consumers: &
     } else {
         out.push_str("(root) {\n");
     }
-    out.push_str("    (function () {\n");
+    out.push_str("    ");
+    // Tier 15: a prop-consuming child returns its update handle
+    // (the IIFE's result), so the parent's slot can call
+    // `__cui_update` on later re-renders. Children that never
+    // receive properties return nothing.
+    if takes_props {
+        out.push_str("return ");
+    }
+    out.push_str("(function () {\n");
 
     for s in &c.state {
         out.push_str("        let ");
@@ -332,6 +345,14 @@ fn emit_component(c: &IrComponent, component_names: &[String], prop_consumers: &
             out.push_str(&emit_expr_init(&s.initial));
         }
         out.push_str(";\n");
+    }
+
+    // Tier 15: the slot table lives at mount-function scope so
+    // `__render()` can re-attach the same wrapper elements (and
+    // with them the mounted children's state). Only components
+    // with instance sites in their view pay for it.
+    if has_instances {
+        out.push_str("        const __cui_slots = { };\n");
     }
 
     for e in &c.events {
@@ -382,14 +403,59 @@ fn emit_component(c: &IrComponent, component_names: &[String], prop_consumers: &
     out.push_str("        function __render() {\n");
     out.push_str("            root.textContent = '';\n");
     let mut node_id = 0u32;
-    let view_body = emit_view_node(&mut node_id, "            ", &c.view.body, "root", &[], component_names, prop_consumers);
+    let view_body = emit_view_node(&mut node_id, "            ", &c.view.body, "root", &[], component_names, prop_consumers, has_instances, "\"\"");
     out.push_str(&view_body);
     out.push_str("        }\n");
 
     out.push_str("        __render();\n");
+
+    // Tier 15: prop-consuming components return an update handle.
+    // The parent re-render moves a slot wrapper (which keeps the
+    // child's whole subtree and closures alive) and then calls
+    // `__cui_update` with the *dynamic* property values only — a
+    // constant property is an initial value for the field, so a
+    // parent re-render must not clobber a field the child has
+    // changed since mount. Components that never receive
+    // properties return nothing; their slots are re-attached but
+    // never updated.
+    if takes_props {
+        let mut upd = String::new();
+        for s in &c.state {
+            upd.push_str(&format!(
+                "                if (props.{0} !== undefined) {{ __state_{0} = props.{0}; }}\n",
+                s.name
+            ));
+        }
+        out.push_str("        return {\n");
+        out.push_str("            __cui_update: function (props) {\n");
+        out.push_str(&upd);
+        out.push_str("                __render();\n");
+        out.push_str("            }\n");
+        out.push_str("        };\n");
+    }
     out.push_str("    })();\n");
     out.push_str("}\n");
     out
+}
+
+/// Tier 15: does this view subtree contain a component instance
+/// (a named element that names a declared component)? Decides
+/// whether the enclosing component carries the slot table.
+fn view_has_instance(node: &IrViewNode, component_names: &[String]) -> bool {
+    match node {
+        IrViewNode::Element { kind, children, .. } => {
+            if let IrElementKind::Named(name) = kind {
+                if component_names.iter().any(|d| d == name) {
+                    return true;
+                }
+            }
+            children.iter().any(|c| view_has_instance(c, component_names))
+        }
+        IrViewNode::For { children, .. } => {
+            children.iter().any(|c| view_has_instance(c, component_names))
+        }
+        IrViewNode::Text { .. } => false,
+    }
 }
 
 fn emit_expr_init(e: &IrExpr) -> String {
@@ -740,6 +806,8 @@ fn emit_view_node(
     params: &[&str],
     components: &[String],
     prop_consumers: &[String],
+    has_slots: bool,
+    slot_prefix: &str,
 ) -> String {
     match node {
         IrViewNode::Text { parts, .. } => {
@@ -775,6 +843,60 @@ fn emit_view_node(
             // name set so it resolves as the loop variable.
             let mut local_params: Vec<&str> = params.to_vec();
             local_params.push(binding.as_str());
+            // Tier 15: a loop that contains (below it) a component
+            // instance gets slot machinery — one persistent wrapper
+            // per (site, index), pruned to the current length. The
+            // loop switches to `forEach` to have the index at hand;
+            // loops without instances keep the plain `for..of`.
+            if has_slots && children.iter().any(|c| view_has_instance(c, components)) {
+                let id = *next_id;
+                *next_id += 1;
+                let list_var = format!("__list{}", id);
+                let key_var = format!("__key{}", id);
+                let arr_var = format!("__arr{}", id);
+                let child_prefix = format!(
+                    "({0} + \"s{1}\" + __i{2} + \"_\")",
+                    slot_prefix, id, id
+                );
+                let mut out = format!(
+                    "{0}const {1} = {2};\n",
+                    indent,
+                    list_var,
+                    emit_expr_runtime(over, params)
+                );
+                out.push_str(&format!(
+                    "{0}const {1} = {2} + \"s{3}\";\n",
+                    indent, key_var, slot_prefix, id
+                ));
+                out.push_str(&format!(
+                    "{0}const {1} = __cui_slots[{2}] || (__cui_slots[{2}] = []);\n",
+                    indent, arr_var, key_var
+                ));
+                out.push_str(&format!(
+                    "{0}{1}.length = Math.min({1}.length, {2}.length);\n",
+                    indent, arr_var, list_var
+                ));
+                out.push_str(&format!(
+                    "{0}{1}.forEach(function ({2}, __i{3}) {{\n",
+                    indent, list_var, binding, id
+                ));
+                let child_indent = format!("{}    ", indent);
+                for c in children {
+                    out.push_str(&emit_view_node(
+                        next_id,
+                        &child_indent,
+                        c,
+                        parent_var,
+                        &local_params,
+                        components,
+                        prop_consumers,
+                        has_slots,
+                        &child_prefix,
+                    ));
+                }
+                out.push_str(&format!("{0}}});\n", indent));
+                return out;
+            }
             let mut out = format!(
                 "{0}for (const {1} of {2}) {{\n",
                 indent,
@@ -791,6 +913,8 @@ fn emit_view_node(
                     &local_params,
                     components,
                     prop_consumers,
+                    has_slots,
+                    slot_prefix,
                 ));
             }
             out.push_str(&format!("{0}}}\n", indent));
@@ -801,6 +925,102 @@ fn emit_view_node(
             *next_id += 1;
             let var = format!("__n{}", id);
             let tag = kind.tag_name();
+            let instance_name: Option<&String> = match kind {
+                IrElementKind::Named(name) => {
+                    if has_slots && components.iter().any(|d| d == name) {
+                        Some(name)
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            };
+            if let Some(inst_name) = instance_name {
+                // Tier 15: the instance site takes the slot path.
+                // One persistent wrapper per site; the DOM subtree
+                // (and, with it, the child's closures and state)
+                // survives parent re-renders. Nothing else about an
+                // instance is emitted — an instance takes no
+                // bindings of its own besides its properties (the
+                // checker refuses the rest, `instance-opaque`), no
+                // children, no event wiring (`instance-opaque`).
+                let mut props_static: Vec<(String, &IrExpr)> = Vec::new();
+                let mut props_dynamic: Vec<(String, &IrExpr)> = Vec::new();
+                for b in bindings {
+                    if let IrBindingValue::Const { expr, .. } = &b.value {
+                        if matches!(expr.as_ref(), IrExpr::Ident { .. }) {
+                            props_dynamic.push((b.key.clone(), expr));
+                        } else {
+                            props_static.push((b.key.clone(), expr));
+                        }
+                    }
+                }
+                let child_takes = prop_consumers.iter().any(|d| d == inst_name);
+                let key_var = format!("__sk{0}", id);
+                let slot_var = format!("__slot{0}", id);
+                let mut out = format!(
+                    "{0}const {1} = {2} + \"{3}\";\n",
+                    indent,
+                    key_var,
+                    slot_prefix,
+                    format!("s{}", id)
+                );
+                out.push_str(&format!(
+                    "{0}let {1} = __cui_slots[{2}];\n",
+                    indent, slot_var, key_var
+                ));
+                out.push_str(&format!(
+                    "{0}if ({1} === undefined) {{\n",
+                    indent, slot_var
+                ));
+                out.push_str(&format!(
+                    "{0}    {1} = __cui_slots[{2}] = {{ el: document.createElement('div') }};\n",
+                    indent, slot_var, key_var
+                ));
+                if child_takes {
+                    let mut all: Vec<(String, &IrExpr)> = props_static.clone();
+                    all.extend(props_dynamic.clone());
+                    let rendered: Vec<String> = all
+                        .iter()
+                        .map(|(k, v)| format!(
+                            "{0}: {1}",
+                            k,
+                            emit_expr_runtime(v, params)
+                        ))
+                        .collect();
+                    out.push_str(&format!(
+                        "{0}    {1}.inst = mount_{2}({1}.el, {{{3}}});\n",
+                        indent, slot_var, inst_name, rendered.join(", ")
+                    ));
+                } else {
+                    out.push_str(&format!(
+                        "{0}    {1}.inst = mount_{2}({1}.el);\n",
+                        indent, slot_var, inst_name
+                    ));
+                }
+                out.push_str(&format!("{0}}}\n", indent));
+                if child_takes && !props_dynamic.is_empty() {
+                    let rendered: Vec<String> = props_dynamic
+                        .iter()
+                        .map(|(k, v)| format!(
+                            "{0}: {1}",
+                            k,
+                            emit_expr_runtime(v, params)
+                        ))
+                        .collect();
+                    out.push_str(&format!(
+                        "{0}else {{ {1}.inst.__cui_update({{{2}}}); }}\n",
+                        indent,
+                        slot_var,
+                        rendered.join(", ")
+                    ));
+                }
+                out.push_str(&format!(
+                    "{0}{1}.appendChild({2}.el);\n",
+                    indent, parent_var, slot_var
+                ));
+                return out;
+            }
             let mut out = format!(
                 "{0}const {1} = document.createElement('{2}');\n",
                 indent, var, tag
@@ -978,7 +1198,7 @@ fn emit_view_node(
                     ));
                 }
                 for c in children {
-                    out.push_str(&emit_view_node(next_id, &child_indent, c, &var, params, components, prop_consumers));
+                    out.push_str(&emit_view_node(next_id, &child_indent, c, &var, params, components, prop_consumers, has_slots, slot_prefix));
                 }
             }
 
@@ -1001,47 +1221,6 @@ fn emit_view_node(
                 "{0}{2}.appendChild({1});\n",
                 indent, var, parent_var
             ));
-
-            // Tier 12: a component instance mounts a whole
-            // subcomponent into this wrapper element. Each
-            // instance is its own `mount_<Name>` call — separate
-            // state, separate handlers — and the child re-renders
-            // into the wrapper without touching the parent's DOM
-            // outside it. The shape pass guarantees the name is a
-            // declared component of this file and the instance
-            // graph is acyclic; defensively, an undeclared name
-            // renders as a plain wrapper.
-            if let IrElementKind::Named(name) = kind {
-                if components.iter().any(|d| d == name) {
-                    if props_obj.is_empty() {
-                        out.push_str(&format!(
-                            "{0}mount_{1}({2});\n",
-                            indent, name, var
-                        ));
-                    } else {
-                        // Properties are constant initial values for
-                        // the child's state fields. A child never
-                        // targeted by a props instance keeps its
-                        // plain signature; one that is takes
-                        // `props` and falls back per field.
-                        let rendered: Vec<String> = props_obj
-                            .iter()
-                            .map(|(k, v)| format!(
-                                "{0}: {1}",
-                                k,
-                                emit_expr_runtime(v, params)
-                            ))
-                            .collect();
-                        out.push_str(&format!(
-                            "{0}mount_{1}({2}, {{{3}}});\n",
-                            indent,
-                            name,
-                            var,
-                            rendered.join(", ")
-                        ));
-                    }
-                }
-            }
 
             // Wire up event handlers.
             if let Some(event_name) = click_handler {

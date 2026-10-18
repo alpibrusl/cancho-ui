@@ -379,10 +379,42 @@ and `role:`/`label:`.
   refused at compile time (`component-cycle`) because the emitted
   mount would recurse forever.
 
-Know-not: a parent re-render re-mounts its instances — a child's
-state resets when the *parent* renders (the child's own
-interactions re-render only itself). Instance-identity
-preservation across parent renders is a later tier.
+Since Tier 15, a parent re-render does **not** reset its
+instances: each instance lives in a *slot* — one persistent
+wrapper per site (static sites get one key; `For` bodies get one
+per list index, pruned when the list shrinks). A re-render moves
+the same wrapper element into the fresh subtree — a DOM move
+keeps the child's whole tree, listeners, and closure state —
+so a child's interactions survive the parent's renders. Constant
+properties are initial values only, never re-applied; dynamic
+properties re-apply on every parent render through the child's
+returned `__cui_update` handle.
+
+```cancho-ui
+component Page {
+    state extra: String = "extra A";
+    state bump: Int = 0;
+    on Bump { bump = bump + 1; }
+    view {
+        Column {
+            Text { "page ({bump})" }
+            Button { label: "bump page" on: Bump }
+            HelloCard { title: extra }   // survives the bump, title re-applies
+        }
+    }
+}
+```
+
+Two know-nots remain:
+
+- **Slot keys are positional.** A `For` slot is keyed by list
+  index, not by element identity (there is no `key:` binding
+  yet); reordering a list updates the display but keeps the
+  per-position state.
+- **Slot removal does not cancel work.** When the list shrinks or
+  a slot is detached, the child's pending awaits are not
+  delivered `Cancelled` — component disposal reaching the
+  `Cancelled` arm is a later tier.
 
 Same-file only for now: cross-file `import` is the next
 composition tier.

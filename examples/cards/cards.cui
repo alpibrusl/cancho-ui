@@ -1,13 +1,17 @@
 // examples/cards/cards.cui — Tier 12 composition, Tier 13
-// constant properties, Tier 14 dynamic properties. `Page`
-// instantiates `HelloCard` several times; each instance is its
-// own unit — separate state, separate handlers — mounted into
-// its own wrapper element. `title: "..."` is a constant
-// property; inside a `For`, `title: t` is a *dynamic* property
-// read from the enclosing binding (here, one card per list
-// element) — evaluated on every parent render. Non-constant
-// values outside a local source, unknown keys, duplicate keys,
-// and type mismatches are all compile-time refusals.
+// constant properties, Tier 14 dynamic properties, Tier 15
+// instance-identity preservation. `Page` instantiates `HelloCard`
+// several times; each instance is its own unit — separate state,
+// separate handlers — mounted into its own wrapper element.
+// `title: "first card"` is a constant property (an initial value,
+// never re-applied); `title: extra` reads the *parent's state*
+// and `title: t` reads the enclosing `For` binding — both are
+// re-applied on every parent render. Clicking "bump page"
+// re-renders the parent: the cards keep their counts (the slot
+// wrappers are re-attached, not re-created) and renamed titles
+// flow through afterwards. Non-constant values outside a local
+// source, unknown keys, duplicate keys, and type mismatches are
+// all compile-time refusals.
 //
 // A cycle like `HelloCard` containing `HelloCard` is refused at
 // compile time (`component-cycle`) because the emitted mount
@@ -34,21 +38,33 @@ component HelloCard {
 }
 
 component Page {
-    state more: List[String] = ["extra A", "extra B"];
+    state extra: String = "extra A";
+    state more: List[String] = ["extra B", "extra C"];
+    state bump: Int = 0;
+
+    on Bump {
+        bump = bump + 1;
+    }
+
+    on Rename {
+        extra = "extra A renamed";
+    }
 
     view {
         Column {
             Text {
                 role: heading
-                "page"
+                "page ({bump})"
             }
+            HelloCard { title: extra }
             HelloCard { title: "first card" }
-            HelloCard { title: "second card" }
             For {
                 over: more
                 as: t
                 HelloCard { title: t }
             }
+            Button { label: "bump page" on: Bump }
+            Button { label: "rename" on: Rename }
         }
     }
 }

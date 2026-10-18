@@ -1043,13 +1043,21 @@ fn dynamic_property_reads_parent_state() {
     // Tier 14: a property whose value is the parent's state field
     // is a *dynamic* property — evaluated on every parent render
     // (`{title: __state_who}`), not baked in as a constant.
+    // Tier 15: the instance lives in a slot and the dynamic value
+    // flows through both the fresh mount and the
+    // `__cui_update` re-application.
     let src = "component Card {\n    state title: String = \"?\";\n    view { Text { \"card\" } }\n}\ncomponent Page {\n    state who: String = \"Ada\";\n    view { Column {\n        Text { \"page\" }\n        Card { title: who }\n    } }\n}\n";
     let js = compile_str(src);
     assert!(js.contains("function mount_Card(root, props)"));
     // The props object is evaluated at render time from the
-    // parent's state.
-    assert!(js.contains("mount_Card(__n"));
-    assert!(js.contains(", {title: __state_who});"));
+    // parent's state — at mount and again on every re-render.
+    assert!(js.contains("mount_Card(__slot"));
+    assert!(js.contains("mount_Card(__slot2.el, {title: __state_who})"));
+    assert!(js.contains("__slot2.inst.__cui_update({title: __state_who})"));
+    // The child exposes the update handle and re-applies only the
+    // dynamic keys.
+    assert!(js.contains("__cui_update: function (props)"));
+    assert!(js.contains("if (props.title !== undefined) { __state_title = props.title; }"));
 }
 
 #[test]
@@ -1084,14 +1092,74 @@ fn dynamic_property_can_read_a_for_binding() {
     // property source — a list of cards, one per row. The loop
     // element type is not tracked yet, so the type match is
     // skipped for such sources (documented).
+    // Tier 15: the loop that carries instances gets slot
+    // machinery — one wrapper per (site, index), pruned to the
+    // list length; the loop emits `forEach` so the index is at
+    // hand for the key.
     let src = "component Card {\n    state title: String = \"?\";\n    view { Text { \"card\" } }\n}\ncomponent Board {\n    state names: List[String] = [\"Ada\"];\n    view { Column {\n        For {\n            over: names\n            as: t\n            Card { title: t }\n        }\n    } }\n}\n";
     let toks = lex(src).unwrap();
     let ast = parse(toks).unwrap();
     check_file(&ast).unwrap_or_else(|e| panic!("expected ok, got: {:?}", e));
     let js = compile_str(src);
-    // The mount happens inside the loop and reads the loop
-    // binding directly.
-    assert!(js.contains("for (const t of __state_names)"));
-    assert!(js.contains("mount_Card(__n"));
-    assert!(js.contains(", {title: t});"));
+    // The loop is a keyed slot loop: `forEach` with an index, the
+    // slot array pruned to the current list length.
+    assert!(js.contains("const __list1 = __state_names;"));
+    assert!(js.contains("__list1.forEach(function (t, __i1)"));
+    assert!(js.contains("__arr1.length = Math.min(__arr1.length, __list1.length);"));
+    // The mount happens inside the loop and reads the loop binding
+    // directly — and the re-render updates the same slot.
+    assert!(js.contains("mount_Card(__slot2.el, {title: t})"));
+    assert!(js.contains("__slot2.inst.__cui_update({title: t})"));
+}
+
+#[test]
+fn instance_persists_across_parent_re_renders() {
+    // Tier 15: a child instance lives in a slot — one persistent
+    // wrapper per site, mounted once and re-attached (not
+    // re-created) on the parent's every re-render. The mount
+    // formula appears exactly once per site, and the parent
+    // carries the slot table that keeps the wrapper alive across
+    // `__render` invocations.
+    let src = "component Card {\n    state count: Int = 0;\n    on Inc { count = count + 1; }\n    view { Text { \"count: {count}\" } }\n}\ncomponent Page {\n    state n: Int = 0;\n    on Bump { n = n + 1; }\n    view { Column {\n        Text { \"bump: {n}\" }\n        Button { label: \"bump\" on: Bump }\n        Card {}\n    } }\n}\n";
+    let js = compile_str(src);
+    // The parent carries the slot table and the site mounts once.
+    assert!(js.contains("const __cui_slots = { };"));
+    assert_eq!(
+        js.matches("mount_Card(__slot").count(),
+        1,
+        "expected exactly one fresh mount per instance site"
+    );
+    assert!(js.contains("__cui_slots[__sk"));
+    assert!(js.contains("appendChild(__slot"));
+    // A child no instance passes properties to keeps the plain
+    // mount signature — no update handle, never re-applied.
+    assert!(js.contains("function mount_Card(root)"));
+    assert!(!js.contains("__cui_update"));
+}
+
+#[test]
+fn constant_props_are_not_reapplied_on_re_render() {
+    // Tier 15 semantics: a constant property is an *initial*
+    // value for the child's field — the parent re-render must not
+    // clobber a field the child has changed since mount. Only the
+    // dynamic keys flow into `__cui_update`.
+    let src = "component Card {\n    state title: String = \"?\";\n    state count: Int = 0;\n    view { Text { \"{title}: {count}\" } }\n}\ncomponent Page {\n    state who: Int = 0;\n    view { Column {\n        Text { \"page\" }\n        Card { title: \"static\" count: who }\n    } }\n}\n";
+    let js = compile_str(src);
+    // The fresh mount carries both keys; the update carries only
+    // the dynamic key (a bare identifier source).
+    assert!(js.contains("mount_Card(__slot2.el, {title: \"static\", count: __state_who})"));
+    assert!(js.contains("__slot2.inst.__cui_update({count: __state_who})"));
+    assert!(!js.contains("__cui_update({title: \"static\""));
+}
+
+#[test]
+fn for_without_instances_keeps_plain_for_of() {
+    // Tier 15 scoped the slot machinery: a `For` whose subtree has
+    // no component instance keeps the plain `for..of` row loop (and
+    // the component carries no slot table at all).
+    let src = "component Board {\n    state names: List[String] = [\"Ada\"];\n    view { Column {\n        For {\n            over: names\n            as: t\n            Text { \"row: {t}\" }\n        }\n    } }\n}\n";
+    let js = compile_str(src);
+    assert!(js.contains("for (const t of __state_names) {"));
+    assert!(!js.contains("__cui_slots"));
+    assert!(!js.contains("forEach"));
 }
