@@ -29,6 +29,11 @@ $ echo $?
 - **Ask the compiler, do not guess.** `inspect effects` lists the capabilities a
   component declares and every reachable effect that needs one, with its span.
   `report` separates what was checked from what is a trust boundary.
+- **Review the change, not the text.** `diff base.cui candidate.cui` says
+  `authority: expanded` when a component gained a capability, and lists the
+  state, events, handler writes and effects that moved. Line shifts, comments
+  and reordering are not changes. It compares the categories listed in
+  `not_compared`, not full behavioural equivalence.
 - **Async that cannot go stale.** A request that finishes after a newer one is
   dropped at the `await`, and a disposed component receives `Cancelled` in its
   own mandatory `match` arm.
@@ -36,7 +41,7 @@ $ echo $?
   lowered one-to-one to DOM calls; the page owns presentation.
 - **Measured.** 10 example programs compile and run (a counter, a clock, a
   searchable list with cancellation, composed components, cross-file imports);
-  73 tests pass; and a mutation test runs the front end on every prefix and
+  108 tests pass (35 of them for `diff`); and a mutation test runs the front end on every prefix and
   every one-character deletion of the examples (about 26,000 programs) without
   a panic. Not measured: whether an agent is more productive with cancho-ui
   than with a conventional stack. That needs the Phase 3 benchmark, which has
@@ -66,11 +71,14 @@ compiler or the emitted code uses Python.
 cancho-ui check   <file.cui>...  [--output json]
 cancho-ui build   <file.cui>...  [-o <path>] [--target web] [--output json]
 cancho-ui inspect component|effects|ir <file.cui> [<name>] [--output json]
+cancho-ui diff    <base.cui> <candidate.cui>  [--output json]
 cancho-ui report  <file.cui>...  [--output json]
 ```
 
 Exit codes match cancho: `0` success, `1` refused with a located diagnostic,
-`2` command line wrong, `3` environment failed.
+`2` command line wrong, `3` environment failed. `diff` adds `5`: the programs
+differ semantically (`0` is "no semantic change"; `1` stays "a file did not
+compile"). See [`docs/semantic-diff.md`](docs/semantic-diff.md).
 
 ```sh
 cargo fmt --all --check

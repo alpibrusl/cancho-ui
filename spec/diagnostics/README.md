@@ -291,6 +291,20 @@ one per tier. Each section is a list of structured items.
 
 ## 7. The semantic-diff output
 
+> **Corrected in place (Phase 3).** The sketch below was written before
+> `cancho-ui diff` existed and is **not** the shape it emits. The built shape
+> is specified in [`docs/semantic-diff.md`](../docs/semantic-diff.md) §3:
+> `capabilities` / `components` / `authority` (`expanded | reduced |
+> unchanged`) replace the flat `added_capabilities` lists;
+> `changed_transitions` with prose `from` / `to` is replaced by per-event
+> `writes_added`, `writes_removed` and a rendered `body`, because a prose
+> description of a transition is not derivable from the IR;
+> `added_foreign_dependencies` is not emitted because the IR has no foreign
+> nodes yet (the report says so in `not_compared`); `changed_accessibility`
+> is folded into the per-component `view` element list. Exit code `5` means
+> "differs" (`1` stays "refused"). The sketch is kept below as the
+> original intent.
+
 `cancho-ui diff <base> <candidate>` produces a JSON document
 listing the semantic changes between two IRs.
 

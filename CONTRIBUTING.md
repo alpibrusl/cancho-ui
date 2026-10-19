@@ -84,6 +84,9 @@ and the existing `cancho authority --output json` /
 - `2` — command line wrong.
 - `3` — environment failed (missing tool, no such file).
 - `4` — (test only) a test failed.
+- `5` — (diff only) the two programs differ semantically; `0` is "no
+  semantic change". `1` is not used for this because it already means
+  "refused" ([`docs/semantic-diff.md`](docs/semantic-diff.md) §5.1).
 
 `--output json` is on the data-bearing commands, not every command.
 Single-dash flags where the value follows the flag literally

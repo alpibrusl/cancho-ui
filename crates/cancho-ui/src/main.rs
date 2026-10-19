@@ -1,6 +1,6 @@
 //! `cancho-ui` — the compiler CLI.
 //!
-//! Phase 1 supports two commands:
+//! Commands (`check` and `build` first; `diff` is Phase 3):
 //!
 //! - `cancho-ui check <file.cui>...`  — parse, type-check, lower.
 //!   Exits 0 on success, 1 on refusal (with a located diagnostic),
@@ -9,8 +9,12 @@
 //! - `cancho-ui build <file.cui>...`  — same pipeline, then emit
 //!   JavaScript to stdout (or to `-o <path>` if given).
 //!
+//! - `cancho-ui diff <base> <candidate>` — semantic diff of two
+//!   programs' typed IRs (docs/semantic-diff.md).
+//!
 //! Exit codes match Cancho Core's:
-//!   0 success, 1 refused, 2 command line wrong, 3 environment.
+//!   0 success, 1 refused, 2 command line wrong, 3 environment;
+//!   `diff` adds 5 = the programs differ (1 stays "refused").
 //!
 //! The CLI is hand-rolled (no clap) for the same reason the cancho
 //! binary is: we want stable, agent-facing command names without a
@@ -18,6 +22,7 @@
 //! the lessons; in particular, single-dash flags render with their
 //! literal dash in `cancho-ui skill` output (Phase 2).
 
+mod diff_cmd;
 mod pipeline;
 
 use std::path::PathBuf;
@@ -32,6 +37,7 @@ USAGE:
     cancho-ui inspect component <file.cui> <name> [--output json]
     cancho-ui inspect effects   <file.cui> <name> [--output json]
     cancho-ui inspect ir       <file.cui>          [--output json]
+    cancho-ui diff <base.cui> <candidate.cui>      [--output json]
     cancho-ui report           <file.cui>...       [--output json]
     cancho-ui skill [--output json] [<out-file>]
     cancho-ui introspect [--output json]
@@ -43,6 +49,7 @@ Exit codes (matching cancho Core's CLI):
     1  refused (located diagnostic printed)
     2  command line wrong
     3  environment failed (missing file, read error)
+    5  (diff only) the programs differ semantically; 0 means no change
 
 Note on --output json: where supported, the JSON shape is locked
 in spec/diagnostics/README.md §4. Consumers match on `code`, not
@@ -90,6 +97,7 @@ fn run(args: &[String]) -> Result<ExitCode, CliError> {
         "check" => run_check(&args[1..]),
         "build" => run_build(&args[1..]),
         "inspect" => run_inspect(&args[1..]),
+        "diff" => diff_cmd::run_diff(&args[1..]),
         "report" => run_report(&args[1..]),
         "skill" => run_skill(&args[1..]),
         "introspect" => run_introspect(&args[1..]),
@@ -311,11 +319,12 @@ fn run_introspect(args: &[String]) -> Result<ExitCode, CliError> {
             { "name": "check",       "args": ["<file.cui>...", "--output json"] },
             { "name": "build",       "args": ["<file.cui>...", "-o <path>", "--target web", "--output json"] },
             { "name": "inspect",     "subcommands": ["component <file> <name>", "effects <file> <name>", "ir <file>"], "args": ["--output json"] },
+            { "name": "diff",        "args": ["<base.cui>", "<candidate.cui>", "--output json"], "exit_codes": { "0": "no semantic change", "1": "a file was refused", "2": "command line wrong", "3": "environment failed", "5": "the programs differ semantically" } },
             { "name": "report",      "args": ["<file.cui>...", "--output json"] },
             { "name": "skill",       "args": ["--output json", "[<out-file>]"] },
             { "name": "introspect",  "args": ["--output json"] },
         ],
-        "exit_codes": { "0": "success", "1": "refused", "2": "command line wrong", "3": "environment failed" },
+        "exit_codes": { "0": "success", "1": "refused", "2": "command line wrong", "3": "environment failed", "5": "diff only: the programs differ semantically" },
         "refusal_catalog_ref": "spec/diagnostics/README.md §3",
         "ir_schema_ref": "spec/ir-schema/README.md",
     });
@@ -608,12 +617,13 @@ cancho-ui build <file.cui> -o <file.js>          # compile to JS
 cancho-ui inspect component <file.cui> <name>   # one component, as data
 cancho-ui inspect effects <file.cui> <name>     # reachable effects + capabilities
 cancho-ui inspect ir <file.cui>                 # full IR
+cancho-ui diff <base.cui> <candidate.cui>       # semantic diff: authority, state, events, effects
 cancho-ui report <file.cui>                     # evidence report (5 sections)
 cancho-ui skill                                 # this file
 cancho-ui introspect                            # full command tree as data
 ```
 
-Exit codes match cancho Core: `0` ok, `1` refused, `2` command line wrong, `3` environment failed.
+Exit codes match cancho Core: `0` ok, `1` refused, `2` command line wrong, `3` environment failed. `diff` adds `5` = the programs differ (`0` = no semantic change; `1` stays 'a file was refused'). Read `authority` in the diff first: `expanded` means a component gained a capability.
 
 ## Refusal discipline
 
@@ -642,6 +652,7 @@ The Tier 2 compiler emits JavaScript + DOM that runs in any browser. It does not
 
 - `docs/proposal.md` — the position and Phase 1 exit criteria.
 - `docs/semantics.md` — the 12 semantic questions answered with guarantee tiers.
+- `docs/semantic-diff.md` — what `diff` compares, its JSON shape, and what it does not claim.
 - `docs/security-model.md` — the five-tier guarantee model and capability/effect rules.
 - `spec/diagnostics/README.md` — the diagnostic format and rule catalog.
 - `spec/ir-schema/README.md` — the typed UI IR.

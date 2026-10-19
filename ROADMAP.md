@@ -234,7 +234,8 @@ immediately and lives in the same commit.
 - Deterministic event inputs for supported event sequences.
 - Replayable traces for the demo application.
 - `cancho-ui diff <base> <candidate>` — semantic diff for
-  state/effect/capability changes.
+  state/effect/capability changes. **Built**; see
+  [`docs/semantic-diff.md`](docs/semantic-diff.md).
 - A small set of repeatable agent tasks (the proposal §10 list).
 - A conventional baseline implementation in a familiar web stack
   (React or Svelte, picked to match what an agent would write by
@@ -422,13 +423,26 @@ research-backed compiler and agent-workflow project.
 
 Stated here so the table above is not read as the whole of the proposal:
 
-- `cancho-ui diff` (semantic diff of state, effect and capability changes).
 - `cancho-ui test` and deterministic replay of event traces.
 - The agent benchmark (`eval/` is still only the plan).
 - A mobile backend and its conformance tests.
 - Self-hosting the compiler in cancho, which follows cancho's own
   `docs/self-hosting.md`: the Rust compiler stays the oracle, and nothing
   is ported until a program asks for it.
+
+Built since: `cancho-ui diff <base> <candidate>` (Phase 3), designed in
+[`docs/semantic-diff.md`](docs/semantic-diff.md) first. It compares the
+typed IRs by component name: capabilities (`authority: expanded | reduced |
+unchanged`), state, events and their writes, handler bodies, reachable
+effects with spans, and view elements. It does **not** yet cover
+foreign/trust boundaries, component properties, lifecycle, event ordering or
+cancellation, or view structure, because the IR has no such nodes (or, for
+the view, because it compares a multiset of elements, not a tree); the report
+names them in `not_compared`. Exit `5` means "differs" because `1` already
+means "refused". Measured: 35 tests (`tests/diff.rs`, plus the diff arm of
+`tests/no_panic.rs`, which diffed 14,698 compiling mutants of the examples
+against their originals, both ways, without a panic); each of eight planted
+bugs in the implementation was caught by at least one of them.
 
 Corrected in place: `cancho-ui inspect effects` printed
 `"reachable_effects": "[]"` for every component, a claim of no effects the
