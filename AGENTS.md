@@ -17,6 +17,7 @@
 cancho-ui check <file.cui>...                  # does it parse and type-check?
 cancho-ui check <file.cui>... --output json   # ... and which rule, as data
 cancho-ui build --target web <file.cui>        # produce JS + DOM output
+cancho-ui build <file.cui> --pwa -o <dir>      # an installable web app: page, manifest, offline worker, icons (docs/mobile-backend.md)
 cancho-ui test <file.cui> <trace.json>         # replay an event trace; exit 4 if a test failed (docs/replay.md)
 cancho-ui inspect component <id>               # the component, as data
 cancho-ui inspect effects <id>                 # reachable effects + capabilities

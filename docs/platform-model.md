@@ -45,7 +45,11 @@ React-or-Svelte-shaped abstraction.
 - An event loop adapter that converts DOM events into cancho-ui
   events.
 - The four Phase 1 platform adapters: `Network`, `Storage`,
-  `Clock`, `Location`.
+  `Clock`, `Location`. **Corrected 2026-10-19 (measured in the
+  emitted code):** only `Clock` and `Network` exist, and both are
+  stubs (`Network` is `net.search`, a simulated search over a fixed
+  corpus, not `fetch`); `Storage` and `Location` are not written.
+  See [`mobile-backend.md`](mobile-backend.md) §2.
 - Source maps for the cancho-ui → JavaScript lowering.
 - The full evidence report (`cancho-ui report`) with the five
   tiers named.

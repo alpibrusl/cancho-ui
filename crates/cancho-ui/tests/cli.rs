@@ -88,6 +88,29 @@ fn a_button_with_a_label_shows_the_label_as_its_text() {
     assert!(js.contains("createTextNode(\"Child text\")"), "{js}");
 }
 
+#[test]
+fn a_flag_with_a_value_does_not_swallow_the_file_after_it() {
+    // `build -o out.js file.cui` used to fail with "requires at least one file": each flag that takes a value
+    // advanced past the next argument twice.
+    let out = std::env::temp_dir().join(format!("cancho-ui-flag-order-{}.js", std::process::id()));
+    let _ = std::fs::remove_file(&out);
+    let (code, stdout) = run(&[
+        "build",
+        "-o",
+        out.to_str().expect("temp path is UTF-8"),
+        "--target",
+        "web",
+        "examples/counter/counter.cui",
+    ]);
+    assert_eq!(code, 0, "stdout: {stdout}");
+    assert!(out.exists(), "the build wrote the file named by -o");
+    // The same for the commands whose only flag is `--output`.
+    for command in ["check", "report"] {
+        let (code, stdout) = run(&[command, "--output", "json", "examples/counter/counter.cui"]);
+        assert_eq!(code, 0, "`{command}` with the flag first: {stdout}");
+    }
+}
+
 /// Run in a scratch directory, so a command that wrongly writes a file named
 /// after a flag leaves evidence there rather than in the repository.
 fn run_in_scratch(name: &str, args: &[&str]) -> (i32, String, std::path::PathBuf) {

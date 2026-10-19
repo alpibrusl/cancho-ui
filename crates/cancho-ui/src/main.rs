@@ -28,6 +28,7 @@
 
 mod diff_cmd;
 mod pipeline;
+mod pwa;
 mod test_cmd;
 
 use std::path::PathBuf;
@@ -39,6 +40,7 @@ cancho-ui — Cancho UI compiler CLI
 USAGE:
     cancho-ui check <file.cui>... [--output json]
     cancho-ui build <file.cui>... [-o <path>] [--target web] [--output json]
+    cancho-ui build <file.cui> --pwa -o <dir> [--name <text>]   an installable web app (docs/mobile-backend.md)
     cancho-ui inspect component <file.cui> <name> [--output json]
     cancho-ui inspect effects   <file.cui> <name> [--output json]
     cancho-ui inspect ir       <file.cui>          [--output json]
@@ -154,6 +156,16 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
     let mut all_diags: Vec<pipeline::Diagnostic> = Vec::new();
     for file in &opts.files {
         match pipeline::compile_to_js(file, opts.target.as_deref()) {
+            Ok(out) if opts.pwa => {
+                let dir = opts.output.as_ref().expect("parse requires -o with --pwa");
+                let name = opts.name.clone().unwrap_or_else(|| {
+                    file.file_stem()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("app")
+                        .to_string()
+                });
+                pwa::write_all(dir, &pwa::generate(&out, &name)).map_err(CliError::Env)?;
+            }
             Ok(out) => match &opts.output {
                 Some(path) => {
                     std::fs::write(path, &out).map_err(|e| {
@@ -336,7 +348,7 @@ fn run_introspect(args: &[String]) -> Result<ExitCode, CliError> {
         "version": "0.1.0",
         "commands": [
             { "name": "check",       "args": ["<file.cui>...", "--output json"] },
-            { "name": "build",       "args": ["<file.cui>...", "-o <path>", "--target web", "--output json"] },
+            { "name": "build",       "args": ["<file.cui>...", "-o <path>", "--target web", "--pwa", "--name <text>", "--output json"] },
             { "name": "inspect",     "subcommands": ["component <file> <name>", "effects <file> <name>", "ir <file>"], "args": ["--output json"] },
             { "name": "diff",        "args": ["<base.cui>", "<candidate.cui>", "--output json"], "exit_codes": { "0": "no semantic change", "1": "a file was refused", "2": "command line wrong", "3": "environment failed", "5": "the programs differ semantically" } },
             { "name": "test",        "args": ["<file.cui>", "<trace.json>", "--output json"], "exit_codes": { "0": "the trace passed", "1": "the program did not compile", "2": "command line wrong", "3": "environment failed", "4": "a test failed (expectation, malformed trace, or a construct replay refuses)" } },
@@ -402,6 +414,7 @@ impl CheckOpts {
                         }
                     };
                     i += 2;
+                    continue;
                 }
                 s if s.starts_with("--") => {
                     return Err(CliError::Usage(format!("unknown flag `{}`", s)));
@@ -423,6 +436,8 @@ struct BuildOpts {
     output: Option<PathBuf>,
     target: Option<String>,
     output_format: OutputFormat,
+    pwa: bool,
+    name: Option<String>,
 }
 
 impl BuildOpts {
@@ -438,6 +453,20 @@ impl BuildOpts {
                         .ok_or_else(|| CliError::Usage("--target requires an argument".into()))?;
                     out.target = Some(v.clone());
                     i += 2;
+                    continue;
+                }
+                "--pwa" => {
+                    out.pwa = true;
+                    i += 1;
+                    continue;
+                }
+                "--name" => {
+                    let v = args
+                        .get(i + 1)
+                        .ok_or_else(|| CliError::Usage("--name requires an argument".into()))?;
+                    out.name = Some(v.clone());
+                    i += 2;
+                    continue;
                 }
                 "--output" => {
                     let v = args
@@ -454,6 +483,7 @@ impl BuildOpts {
                         }
                     };
                     i += 2;
+                    continue;
                 }
                 "-o" => {
                     let v = args
@@ -461,6 +491,7 @@ impl BuildOpts {
                         .ok_or_else(|| CliError::Usage("-o requires an argument".into()))?;
                     out.output = Some(PathBuf::from(v));
                     i += 2;
+                    continue;
                 }
                 s if s.starts_with("--") => {
                     return Err(CliError::Usage(format!("unknown flag `{}`", s)));
@@ -471,6 +502,18 @@ impl BuildOpts {
         }
         if out.files.is_empty() {
             return Err(CliError::Usage("`build` requires at least one file".into()));
+        }
+        if out.pwa {
+            if out.files.len() != 1 {
+                return Err(CliError::Usage(
+                    "`build --pwa` takes exactly one file".into(),
+                ));
+            }
+            if out.output.is_none() {
+                return Err(CliError::Usage("`build --pwa` requires `-o <dir>`".into()));
+            }
+        } else if out.name.is_some() {
+            return Err(CliError::Usage("`--name` is only for `build --pwa`".into()));
         }
         Ok(out)
     }
@@ -554,6 +597,7 @@ impl ReportOpts {
                         _ => OutputFormat::Human,
                     };
                     i += 2;
+                    continue;
                 }
                 s if s.starts_with("--") => {
                     return Err(CliError::Usage(format!("unknown flag `{}`", s)));

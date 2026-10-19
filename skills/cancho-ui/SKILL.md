@@ -56,6 +56,7 @@ A trace is a JSON list of steps (`event`, `resolve` a scripted `net.search` answ
 
 ```
 cancho-ui build FILE.cui -o out.js      # JavaScript and DOM; the page owns the styling
+cancho-ui build FILE.cui --pwa -o DIR   # an installable web app for a phone (docs/mobile-backend.md)
 ```
 
 ## More
