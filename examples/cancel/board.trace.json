@@ -1,0 +1,10 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "note": "Board alone (its Loader children are not created): filter() over a list state.",
+  "component": "Board",
+  "steps": [
+    { "event": "Shrink", "state": { "items": [0] } },
+    { "event": "Shrink", "state": { "items": [0] } }
+  ]
+}

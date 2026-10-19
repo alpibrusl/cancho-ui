@@ -1,0 +1,14 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "note": "Loader alone: the host unmounts it while its sleep is pending. The Cancelled arm runs when the sleep completes.",
+  "component": "Loader",
+  "steps": [
+    { "event": "Go", "state": { "status": "loading" }, "expect": { "outcome": "suspended", "pending": [1] } },
+    { "dispose": true, "state": { "status": "loading" } },
+    { "advance": 399, "state": { "status": "loading" }, "expect": { "fired": [] } },
+    { "advance": 1,
+      "state": { "status": "cancelled", "r": { "Cancelled": null } },
+      "expect": { "fired": [ { "request": 1, "delivered": "Cancelled", "outcome": "completed" } ] } }
+  ]
+}

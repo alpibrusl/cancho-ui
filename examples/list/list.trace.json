@@ -1,0 +1,8 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "steps": [
+    { "event": "Pick", "state": { "picked": { "Some": "Ada" }, "names": ["Ada", "Grace", "Lin"] } },
+    { "event": "Clear", "state": { "picked": { "None": null } } }
+  ]
+}

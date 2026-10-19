@@ -1,0 +1,23 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "note": "The three arms of the awaited match: Err, then Ok, then Cancelled by disposal.",
+  "steps": [
+    { "event": "Change", "params": ["zz"], "state": { "query": "zz" } },
+    { "event": "Submit", "state": { "status": "loading" }, "expect": { "outcome": "suspended" } },
+    { "resolve": 1, "with": { "Err": "timeout" },
+      "state": { "status": "error: search failed", "results": [], "r": { "Err": "timeout" } },
+      "expect": { "fired": [ { "request": 1, "delivered": "Err", "outcome": "completed" } ] } },
+    { "event": "ShowLong", "state": { "min": 12 } },
+    { "event": "ShowAll", "state": { "min": 0 } },
+    { "event": "Change", "params": ["gr"], "state": { "query": "gr" } },
+    { "event": "Submit", "state": { "status": "loading" }, "expect": { "pending": [2] } },
+    { "resolve": 2, "with": { "Ok": ["Grace Hopper"] },
+      "state": { "status": "done", "results": ["Grace Hopper"] } },
+    { "event": "Submit", "state": { "status": "loading", "results": ["Grace Hopper"] }, "expect": { "pending": [3] } },
+    { "dispose": true, "state": { "status": "loading" } },
+    { "resolve": 3, "with": { "Ok": ["never delivered"] },
+      "state": { "status": "cancelled", "results": [], "r": { "Cancelled": null } },
+      "expect": { "fired": [ { "request": 3, "delivered": "Cancelled", "outcome": "completed" } ] } }
+  ]
+}

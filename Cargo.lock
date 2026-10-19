@@ -9,6 +9,7 @@ dependencies = [
  "cancho-ui-codegen-web",
  "cancho-ui-diff",
  "cancho-ui-ir",
+ "cancho-ui-replay",
  "cancho-ui-syntax",
  "cancho-ui-types",
  "serde",
@@ -40,6 +41,16 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+]
+
+[[package]]
+name = "cancho-ui-replay"
+version = "0.1.0"
+dependencies = [
+ "cancho-ui-ir",
+ "cancho-ui-syntax",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

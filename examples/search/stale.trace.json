@@ -1,0 +1,25 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "note": "The proposal's adverse-ordering test. The user searches 'a', then 'ad'. The newer request answers first; the slow earlier one answers last and must be dropped, not delivered.",
+  "steps": [
+    { "event": "Change", "params": ["a"], "state": { "query": "a" } },
+    { "event": "Submit",
+      "state": { "status": "loading" },
+      "expect": { "outcome": "suspended", "pending": [1],
+                  "issued": [ { "request": 1, "effect": "net.search", "args": ["a"] } ] } },
+    { "event": "Change", "params": ["ad"], "state": { "query": "ad" } },
+    { "event": "Submit",
+      "state": { "status": "loading" },
+      "expect": { "pending": [1, 2],
+                  "issued": [ { "request": 2, "effect": "net.search", "args": ["ad"] } ] } },
+    { "resolve": 2, "with": { "Ok": ["Ada Lovelace", "Ada Marrero"] },
+      "state": { "status": "done", "results": ["Ada Lovelace", "Ada Marrero"], "r": { "Ok": ["Ada Lovelace", "Ada Marrero"] } },
+      "expect": { "outcome": "completed", "pending": [1],
+                  "fired": [ { "request": 2, "delivered": "Ok" } ] } },
+    { "resolve": 1, "with": { "Ok": ["Ada Lovelace", "Ada Marrero", "Grace Hopper", "Linus Torvalds", "Andrey Kolmogorov", "Bertrand Russell"] },
+      "state": { "status": "done", "results": ["Ada Lovelace", "Ada Marrero"], "r": { "Ok": ["Ada Lovelace", "Ada Marrero"] } },
+      "expect": { "outcome": "dropped", "pending": [],
+                  "fired": [ { "request": 1, "delivered": "dropped" } ] } }
+  ]
+}
