@@ -4,6 +4,34 @@
 //
 // Do not edit by hand. Re-run `cancho-ui build` to regenerate.
 
+// Focus survives a re-render: see docs/semantics.md, Question 9.
+function __cui_focus_save(root) {
+    const el = document.activeElement;
+    if (!el || el === document.body || el === root || !root.contains(el)) { return null; }
+    const path = [];
+    for (let n = el; n !== root; n = n.parentNode) {
+        path.unshift(Array.prototype.indexOf.call(n.parentNode.childNodes, n));
+    }
+    return {
+        path: path,
+        tag: el.tagName,
+        label: el.getAttribute('aria-label'),
+        start: el.selectionStart,
+        end: el.selectionEnd,
+        direction: el.selectionDirection,
+    };
+}
+function __cui_focus_restore(root, saved) {
+    if (!saved) { return; }
+    let n = root;
+    for (let i = 0; i < saved.path.length && n; i++) { n = n.childNodes[saved.path[i]]; }
+    if (!n || n.tagName !== saved.tag || n.getAttribute('aria-label') !== saved.label) { return; }
+    n.focus();
+    if (typeof saved.start === 'number' && n.setSelectionRange) {
+        try { n.setSelectionRange(saved.start, saved.end, saved.direction); } catch (e) { /* not a text control */ }
+    }
+}
+
 // Component: Counter (id 0)
 function mount_Counter(root) {
     (function () {
@@ -25,6 +53,7 @@ function mount_Counter(root) {
             }
         }
         function __render() {
+            const __focus = __cui_focus_save(root);
             root.textContent = '';
             const __n0 = document.createElement('div');
             __n0.classList.add('cui-col');
@@ -46,6 +75,7 @@ function mount_Counter(root) {
                 __n0.appendChild(__n3);
                 __n3.addEventListener('click', __on_Reset);
             root.appendChild(__n0);
+            __cui_focus_restore(root, __focus);
         }
         __render();
     })();

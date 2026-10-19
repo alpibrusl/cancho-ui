@@ -380,6 +380,20 @@ label as an `aria-label` and an empty text node, so a labelled Button had
 nothing written on it (found by the project page's demo, which hid it with a
 CSS rule; tested in `crates/cancho-ui/tests/cli.rs`).
 
+**Focus survives a re-render** (web backend). A view is rebuilt from scratch on
+every state change, so the control the user was using used to be replaced:
+typing "ada" into a `TextField` left "a" with focus on the page, and pressing
+Enter three times on a focused `Button` counted once (both measured in Chromium).
+Before a rebuild the web backend now records where the focused control sits
+under the component's root (its path of child indices, its tag and its label) and
+its text selection, and restores both afterwards; a control that is no longer
+there, or is another kind or has another label, stays unfocused instead of
+focusing the wrong one. Emitted only for a program with a `Button` or a
+`TextField`. Checked in a browser by `scripts/check-focus.js` (and by mutation:
+without the restore, all five checks fail). **Not handled:** an input-method
+composition in progress; scroll position inside a rebuilt container; any
+control that moves in the tree between two renders (it loses focus).
+
 **Phase 1 enforces.** Role, label, basic keyboard. **Phase 2+
 refines.** Focus order, screen-reader semantics, color-contrast
 checks (external tool).
