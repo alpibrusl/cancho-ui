@@ -469,7 +469,8 @@ impl InspectOpts {
             let a = &args[i];
             match a.as_str() {
                 "--output" => {
-                    i += 1;
+                    // The value (`json`) belongs to the flag, not to `arg`.
+                    i += 2;
                     continue;
                 }
                 "-o" => {

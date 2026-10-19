@@ -1,231 +1,93 @@
-<p align="center"><img src="docs/assets/cancho-ui-logo-256.png" alt="cancho-ui" width="200"></p>
-
 # cancho-ui
 
-A **declarative UI language and toolchain whose programs compile to
-JavaScript + DOM, with capabilities, refusal discipline, and machine-readable
-diagnostics modelled on [cancho](https://github.com/alpibrusl/cancho)**.
-Components own state, declare the capabilities they need, and have their
-authority and reachable effects exposed as data — the same authority model
-Cancho uses at the systems level, lifted to the UI level.
+**A UI language whose compiler knows what each component is allowed to do.**
 
-## An example
+Most UI stacks let a component reach the network, the clock or storage through
+an import, and leave you to find out by reading. In cancho-ui a component
+declares the authority it needs, and the compiler refuses the program when the
+declaration and the code disagree. It builds JavaScript and DOM, and reports
+its findings as data an agent can read.
 
 ```
-component Clock {
-    requires Clock;
-
-    state started_at: Int = 0;
-    state ticking: Bool = false;
-
-    on Start {
-        started_at = clock.now();
-        ticking = true;
-    }
-
-    on Stop {
-        ticking = false;
-    }
-
-    view {
-        Column {
-            Text {
-                role: status
-                label: "elapsed time"
-                "Elapsed: {(clock.now() - started_at) / 1000}s"
-            }
-            Button { label: "Start" on: Start }
-            Button { label: "Stop"  on: Stop  }
-        }
-    }
-}
+$ cancho-ui check clock.cui          # `requires Clock;` deleted
+error[capability-missing] at clock.cui:13:21: component `Clock` performs `clock.now`
+  which requires the `Clock` capability, but `requires Clock` is not declared
+$ echo $?
+1
+$ cancho-ui check examples/clock/clock.cui
+$ echo $?
+0
 ```
 
-`requires Clock;` is the only way `clock.now()` is reachable. The compiler
-checks every reachable effect against the declared capabilities and refuses
-the program with `capability-missing` or `capability-unused` — the same
-exact-row rule Cancho uses for its effect rows, applied to UI.
+- **Authority is declared and checked.** `requires Clock;` is the only way
+  `clock.now()` is reachable. A missing declaration is `capability-missing`; a
+  declaration nothing uses is `capability-unused`. The rule is cancho's
+  exact-row rule for effects, lifted to the UI.
+- **Diagnostics are data.** `--output json` gives a locked shape with a stable
+  `code`, a source span and a remediation. Consumers match on the code, not on
+  the prose ([`spec/diagnostics`](spec/diagnostics/README.md)).
+- **Ask the compiler, do not guess.** `inspect effects` lists the capabilities a
+  component declares and every reachable effect that needs one, with its span.
+  `report` separates what was checked from what is a trust boundary.
+- **Async that cannot go stale.** A request that finishes after a newer one is
+  dropped at the `await`, and a disposed component receives `Cancelled` in its
+  own mandatory `match` arm.
+- **No virtual DOM, no JSX, no macros, no implicit anything.** The view is data
+  lowered one-to-one to DOM calls; the page owns presentation.
+- **Measured.** 10 example programs compile and run (a counter, a clock, a
+  searchable list with cancellation, composed components, cross-file imports);
+  73 tests pass; and a mutation test runs the front end on every prefix and
+  every one-character deletion of the examples (about 26,000 programs) without
+  a panic. Not measured: whether an agent is more productive with cancho-ui
+  than with a conventional stack. That needs the Phase 3 benchmark, which has
+  not been run, and there is no mobile backend yet.
 
-Run it:
+**[Project page](https://alpibrusl.github.io/cancho-ui)** ·
+[Language design](docs/language-design.md) ·
+[Semantics](docs/semantics.md) ·
+[Security model](docs/security-model.md) ·
+[Roadmap](ROADMAP.md)
+
+## Try it
+
+You need a Rust toolchain (the version is pinned in `rust-toolchain.toml`).
 
 ```sh
-cancho-ui build examples/clock/clock.cui -o examples/clock/clock.js
-cd examples/clock && python3 -m http.server
-# open http://localhost:8000/clock.html, click Start
+git clone https://github.com/alpibrusl/cancho-ui.git && cd cancho-ui
+cargo build --release
+target/release/cancho-ui build examples/clock/clock.cui -o examples/clock/clock.js
+cd examples/clock && python3 -m http.server     # then open /clock.html and click Start
 ```
 
-## What's deliberately not here
-
-- **No virtual DOM.** cancho-ui compiles straight to DOM ops
-  (`createElement`, `setAttribute`, `createTextNode`, `appendChild`).
-  The IR's view tree is data, lowered 1:1 to DOM. Adding a virtual DOM
-  would mean two trees for the compiler to reason about, and the
-  language model already has finer-grained reactivity available
-  (state reads, state writes, view rebuilds) without it.
-- **No JSX.** cancho-ui source is block-structured
-  (`Text { role: status "hi" }`), not expression-templated. Block-style
-  composes more cleanly with `role:` / `label:` accessibility blocks
-  and with multi-line children.
-- **No CSS-in-language.** cancho-ui emits `cui-col`, `cui-row` and
-  semantic tags; styling is the host page's job. Phase 6 may add a
-  scoped stylesheet story; for now the design is **the language
-  owns behavior and accessibility, the page owns presentation.**
-- **No implicit anything.** No implicit conversions, no operator
-  overloading, no ambient authority: a component that calls
-  `clock.now()` without `requires Clock;` does not compile.
-- **No foreign untyped imports.** Every effect call is declared in
-  the IR as an `IrReachableEffect`; the evidence report lists every
-  trust boundary. A foreign function reached without a `foreign` block
-  is a refusal, not a hidden capability.
-- **No macros.** Macros break stable content-addressable identity,
-  the same reason Cancho Core forbids them.
-
-And honestly, **early**: Tier 1–17 are shipped (the async slice,
-`Option[T]`/`List[T]` with `For`, the `Network` capability with
-`net.search`, runtime cancellation with stale-result protection,
-pure list operations — `filter`/`map`/`len` with derived `For`
-views, component composition with per-instance state, constant
-and dynamic properties, instance-identity preservation across
-parent re-renders, cross-file `import` of sibling modules, and
-component disposal — a disposed slot's pending awaits resolve
-`Cancelled` into its own mandatory `match` arm, with per-instance
-cancellation groups). The compiler is Rust, the
-language is a small
-declarative subset, and the toolchain is shaped to be one an AI
-agent can drive. The nine components shipped so far (`Hello`,
-`Counter`, `Clock`, `Search`, `Match`, `Ticker`, `Roster`,
-`HelloCard` + `Page` in the `cards` example) all compile and
-run; the refusal discipline is locked in
-`spec/diagnostics/README.md`; the CLI's JSON output is a contract,
-not a string. What is **not** claimed: that an agent using
-cancho-ui is more productive than one using a conventional stack.
-That needs the Phase 3 benchmark, which has not been run.
-
-The `Search` example is the proposal §9.3 demo, now in its real
-form: a `TextField` drives a `query` state field, `Search` kicks
-off `net.search(query)` — the `Network` capability — and the
-awaited request dispatches across the `Ok(_) | Err(_) | Cancelled`
-arms, assigning the matched list into `results`. `For` renders one
-row per result, and a query that matches nothing shows the empty
-state with zero rows. The Tier 9 `net.search` stub filters a fixed
-corpus by substring and its simulated delay grows with the query
-length — so Tier 10 cancellation is demonstrably needed: a slow
-stale request resolves after a fast newer one, and the runtime
-drops the superseded continuation at the await instead of letting
-it clobber the fresh results. A real adapter keeps the same
-resolve channel.
-
-## Building
+The `python3` line only serves the page to your browser; nothing in the
+compiler or the emitted code uses Python.
 
 ```sh
-git clone https://github.com/alpibrusl/cancho-ui
-cd cancho-ui
-cargo test --workspace   # the whole gate: 71 unit + integration tests
+cancho-ui check   <file.cui>...  [--output json]
+cancho-ui build   <file.cui>...  [-o <path>] [--target web] [--output json]
+cancho-ui inspect component|effects|ir <file.cui> [<name>] [--output json]
+cancho-ui report  <file.cui>...  [--output json]
 ```
 
-The browser harness for the end-to-end DOM smoke tests (`/tmp/test-*.js`)
-needs [`jsdom`](https://www.npmjs.com/package/jsdom):
+Exit codes match cancho: `0` success, `1` refused with a located diagnostic,
+`2` command line wrong, `3` environment failed.
 
 ```sh
-cd /tmp && npm install jsdom
-node /tmp/test-counter.js   # expects "OK: counter works"
-node /tmp/test-clock.js    # expects "OK: clock works"
-node /tmp/test-hello.js     # expects "OK: hello world rendered correctly"
-node /tmp/test-cards.js     # expects "OK: cards work"
-node /tmp/test-dashboard.js # expects "OK: dashboard works" (Tier 16 import)
-node /tmp/test-cancel.js    # expects "OK: cancel works" (Tier 17 disposal)
+cargo fmt --all --check
+cargo clippy --all-targets -- -D warnings
+cargo test --workspace          # the gate, the same three commands CI runs
 ```
 
-Linux-x86_64 and darwin-aarch64 are green in CI; the binary is a single
-release-mode artifact (~540 KB).
+## More
 
-## The toolchain's whole surface
+[Docs index](docs/README.md) · [Proposal](docs/proposal.md) ·
+[IR schema](spec/ir-schema/README.md) · [Grammar](spec/grammar/README.md) ·
+[Session log](SESSION-LOG.md) · [Writing cancho-ui source](AGENTS.md) ·
+[Contributing](CONTRIBUTING.md)
 
-```sh
-cancho-ui check <file.cui>... [--output json]
-cancho-ui build <file.cui>... [-o <path>] [--target web] [--output json]
-cancho-ui inspect component <file.cui> <name> [--output json]
-cancho-ui inspect effects   <file.cui> <name> [--output json]
-cancho-ui inspect ir       <file.cui>          [--output json]
-cancho-ui report           <file.cui>...       [--output json]
-cancho-ui skill [--output json] [<out-file>]
-cancho-ui introspect [--output json]
-cancho-ui --version
-cancho-ui --help
-```
+Design lands in `docs/` before the code that implements it, and a claim that
+turns out wrong is corrected in place. The compiler is written in Rust today;
+following cancho's own [self-hosting note](ROADMAP.md), nothing is ported to
+cancho until a program asks for it.
 
-Exit codes match cancho Core: `0` success, `1` refused with a
-located diagnostic, `2` command line wrong, `3` environment failed.
-
-`--output json` is the agent-facing surface. Consumers match on the
-stable `code` field (`type-not-pascal-case`, `capability-missing`,
-`lex-unexpected-char`, ...), not on prose. The shape is locked in
-[`spec/diagnostics/README.md`](../spec/diagnostics/README.md) §4.
-
-`inspect effects` is the one worth trying on something you did not
-write — it lists the capabilities a component declares and the
-reachable effects that need them, with the source span for each:
-
-```sh
-$ cancho-ui inspect effects examples/clock/clock.cui Clock --output json | jq .
-{
-  "component": "Clock",
-  "reachable_effects": [
-    {
-      "capability": "Clock",
-      "path": ["clock", "now"],
-      "span": { "file": "examples/clock/clock.cui", "start": {"line": 11, "column": 24}, "end": {...} }
-    }
-  ],
-  "requires": [
-    { "name": "Clock", "span": {...} }
-  ]
-}
-```
-
-A `requires Clock;` with no reachable effect is refused with
-`capability-unused`. A `clock.now()` without `requires Clock;` is
-refused with `capability-missing`. Both come back as locked-shape
-JSON; both carry the source span and a remediation hint with high
-confidence.
-
-## Docs
-
-[`docs/README.md`](docs/README.md) — every design document, one per
-page, in order. Start with the proposal; the language design, the
-semantics, the security model, and the platform model are next; the
-IR schema, the diagnostic format, and the grammar are the contracts the
-compiler meets.
-
-[`docs/proposal.md`](docs/proposal.md) — the original MVP proposal. The
-implementation matches Tier 1–17 of the proposal's roadmap (the async
-slice, the `Option`/`List` generics, the `Network` capability,
-runtime cancellation, pure list operations, component composition,
-constant plus dynamic properties, instance-identity
-preservation, cross-file `import`, and component disposal with
-per-instance cancellation groups included), plus the
-Phase 2 compile-time `match-non-exhaustive` rule. The remaining Phase 2
-items (`foreign`/`target` blocks) and beyond are
-still ahead; the roadmap rows record what each shipped and what was
-found.
-
-[`SESSION-LOG.md`](SESSION-LOG.md) — what Tier 1–4 actually built, the
-bugs found while building them, and how to reproduce the end-to-end DOM
-tests.
-
-## Contributing
-
-[`CONTRIBUTING.md`](CONTRIBUTING.md) — the gate, the file budget, the
-conventions. [`AGENTS.md`](AGENTS.md) is the one page for writing
-cancho-ui **source** (not the compiler); it has the runtime loop and
-the rule catalog cross-references a writer needs.
-
-Design lands in `docs/` **before** the code that implements it, and a
-claim that turns out wrong is corrected in place there rather than
-quietly edited — the roadmap says which.
-
-## Licence
-
-[EUPL-1.2](LICENSE), matching Cancho Core and the rest of the
-ecosystem. See `LICENSE` for the notice and where to obtain the full
-text in any of the 23 EU languages.
+[EUPL-1.2](LICENSE).
