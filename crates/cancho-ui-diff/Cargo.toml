@@ -1,0 +1,9 @@
+[package]
+name = "cancho-ui-diff"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+cancho-ui-ir = { workspace = true }
+serde = { workspace = true }

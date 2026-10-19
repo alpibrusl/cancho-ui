@@ -20,7 +20,7 @@ cancho-ui build --target web <file.cui>        # produce JS + DOM output
 cancho-ui test <file.cui>...                   # run every `fn test_*`; exit 4 if one failed
 cancho-ui inspect component <id>               # the component, as data
 cancho-ui inspect effects <id>                 # reachable effects + capabilities
-cancho-ui diff <base> <candidate>              # semantic diff
+cancho-ui diff <base> <candidate>              # semantic diff; exit 5 = differs, 0 = no change
 cancho-ui report                               # the evidence report
 ```
 
