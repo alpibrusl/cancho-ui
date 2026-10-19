@@ -21,6 +21,8 @@ Install cancho-ui and try it on one small program. Work in a new empty directory
    Then compare two programs. Use examples/clock/clock.cui and examples/counter/counter.cui:
    "$CUI" diff examples/clock/clock.cui examples/counter/counter.cui ; echo "exit $?"     # expect exit 5 (the programs differ)
    "$CUI" diff examples/clock/clock.cui examples/clock/clock.cui ; echo "exit $?"         # expect "no semantic change", exit 0
+   Then replay a trace of events with no browser. The trace resolves a slow earlier search after a newer one; the stale answer must be dropped:
+   "$CUI" test examples/search/search.cui examples/search/stale.trace.json ; echo "exit $?"   # expect PASS, exit 0
 
 5. Build the counter to JavaScript and look at it in a browser:
    "$CUI" build examples/counter/counter.cui -o docs/demo/counter.js
@@ -32,4 +34,4 @@ Install cancho-ui and try it on one small program. Work in a new empty directory
    - whether `cargo test --workspace` passed, and how many tests;
    - what the counter did in the browser, or that you could not open one;
    - anything that failed, with the exact error.
-Docs: README.md (the commands), docs/semantic-diff.md (what diff compares), spec/diagnostics/README.md (the refusal shape).
+Docs: README.md (the commands), docs/semantic-diff.md (what diff compares), docs/replay.md (what test replays, and what it does not), spec/diagnostics/README.md (the refusal shape).

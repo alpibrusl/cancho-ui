@@ -142,7 +142,7 @@ Once Phase 1 lands, the standing gate is:
 # (placeholder — lands with Phase 1)
 cancho-ui check examples/**/*.cui                 # valid fixtures must compile
 cancho-ui check examples/refusal/**/*.cui          # refusal fixtures must be refused
-cancho-ui test examples/**/*.cui                  # replay tests must pass
+cancho-ui test examples/<name>/<name>.cui examples/<name>/*.trace.json   # replay tests must pass (docs/replay.md)
 cancho-ui fmt --check docs/ examples/ spec/       # canonical layout
 ```
 

@@ -17,7 +17,7 @@
 cancho-ui check <file.cui>...                  # does it parse and type-check?
 cancho-ui check <file.cui>... --output json   # ... and which rule, as data
 cancho-ui build --target web <file.cui>        # produce JS + DOM output
-cancho-ui test <file.cui>...                   # run every `fn test_*`; exit 4 if one failed
+cancho-ui test <file.cui> <trace.json>         # replay an event trace; exit 4 if a test failed (docs/replay.md)
 cancho-ui inspect component <id>               # the component, as data
 cancho-ui inspect effects <id>                 # reachable effects + capabilities
 cancho-ui diff <base> <candidate>              # semantic diff; exit 5 = differs, 0 = no change
@@ -152,7 +152,8 @@ runtime, cancellation reaches the handler in two ways:
 - **Disposal dispatches the arm** (Tier 17): when a component
   instance is disposed — its slot pruned from a shrinking `For`, or
   its parent's disposal cascading to it — its pending await
-  *resolves* `{__cui_tag: "Cancelled"}`, so the mandatory
+  *resolves* `{__cui_tag: "Cancelled"}` (when the underlying request
+  completes, not at the instant of disposal; `docs/replay.md` §6), so the mandatory
   `Cancelled` arm runs: the program's own cancellation design
   executes, then the rest of the handler continues on the detached
   subtree (rendering into detached DOM, harmless). The arm is

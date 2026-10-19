@@ -6,6 +6,7 @@ members = [
     "crates/cancho-ui-ir",
     "crates/cancho-ui-codegen-web",
     "crates/cancho-ui-diff",
+    "crates/cancho-ui-replay",
     "crates/cancho-ui",
 ]
 
@@ -22,6 +23,7 @@ cancho-ui-types    = { path = "crates/cancho-ui-types" }
 cancho-ui-ir       = { path = "crates/cancho-ui-ir" }
 cancho-ui-codegen-web = { path = "crates/cancho-ui-codegen-web" }
 cancho-ui-diff     = { path = "crates/cancho-ui-diff" }
+cancho-ui-replay   = { path = "crates/cancho-ui-replay" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "1"

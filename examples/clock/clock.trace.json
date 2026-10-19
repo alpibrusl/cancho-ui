@@ -1,0 +1,14 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "note": "The clock is the trace's: Start reads exactly the time the trace says it is.",
+  "clock": 1000,
+  "steps": [
+    { "event": "Start", "state": { "started_at": 1000, "ticking": true } },
+    { "advance": 2500, "expect": { "outcome": "ok" } },
+    { "event": "Stop", "state": { "started_at": 1000, "ticking": false } },
+    { "advance": 500 },
+    { "event": "Start", "state": { "started_at": 4000, "ticking": true } },
+    { "event": "Tick", "state": { "started_at": 4000, "ticking": true }, "expect": { "outcome": "completed" } }
+  ]
+}

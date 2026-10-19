@@ -139,6 +139,21 @@ in `examples/refusal/`, and by the evidence report.
 | `ir-version-unsupported` | `Ir` | `Error` | `Runtime` | An IR consumer does not recognize the schema version |
 | `internal` | `Ir` | `Error` | `Unknown` | A backend or compiler internal error (mirrors Cancho Core's `internal`) |
 
+### 3.2 Replay rules (`cancho-ui test`)
+
+`cancho-ui test` reports failures in its own JSON shape
+([`docs/replay.md`](../../docs/replay.md) §7), tier `tested`, with these stable
+tags: `test-state-mismatch`, `test-expect-mismatch`, `trace-no-assertions`,
+`trace-malformed`, `trace-schema-unsupported`, `trace-unknown-key`,
+`trace-bad-step`, `trace-bad-value`, `trace-unknown-component`,
+`trace-unknown-event`, `trace-params-arity`, `trace-unknown-state-field`,
+`trace-unknown-request`, `trace-request-not-pending`,
+`trace-request-not-scriptable`, `trace-bad-response`,
+`trace-event-after-dispose`, `replay-unsupported`, `replay-type-error`,
+`replay-unknown-identifier`, `replay-no-match-arm`, `replay-non-finite`,
+`replay-number-format`. Their meanings are in `docs/replay.md` §7.1. A program that
+does not compile is still refused with the §3 rule that refuses it (exit `1`).
+
 ### 3.1 What is not in the catalog
 
 - **No warnings.** A diagnostic is `Error`. A warning would

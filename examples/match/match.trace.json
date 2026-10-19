@@ -1,0 +1,9 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "steps": [
+    { "event": "Set", "params": [5], "state": { "result": { "Ok": 5 } } },
+    { "event": "Fail", "state": { "result": { "Err": "out of range" } } },
+    { "event": "Set", "params": [0], "state": { "result": { "Ok": 0 } } }
+  ]
+}

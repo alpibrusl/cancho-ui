@@ -1,0 +1,18 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "note": "sleep(50) resolves by the clock, not by a trace step.",
+  "steps": [
+    { "event": "Tick",
+      "state": { "status": "Waiting" },
+      "expect": { "outcome": "suspended",
+                  "issued": [ { "request": 1, "effect": "sleep", "args": [50], "due": 50 } ],
+                  "pending": [1] } },
+    { "advance": 49,
+      "state": { "status": "Waiting" },
+      "expect": { "fired": [], "pending": [1] } },
+    { "advance": 1,
+      "state": { "status": "Ok", "r": { "Ok": null } },
+      "expect": { "fired": [ { "request": 1, "delivered": "Ok", "outcome": "completed" } ], "pending": [] } }
+  ]
+}
