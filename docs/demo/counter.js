@@ -36,13 +36,13 @@ function mount_Counter(root) {
                 const __n2 = document.createElement('button');
                 __n2.setAttribute('role', "button");
                 __n2.setAttribute('aria-label', "Increment");
-                __n2.appendChild(document.createTextNode(""));
+                __n2.appendChild(document.createTextNode("Increment"));
                 __n0.appendChild(__n2);
                 __n2.addEventListener('click', __on_Increment);
                 const __n3 = document.createElement('button');
                 __n3.setAttribute('role', "button");
                 __n3.setAttribute('aria-label', "Reset");
-                __n3.appendChild(document.createTextNode(""));
+                __n3.appendChild(document.createTextNode("Reset"));
                 __n0.appendChild(__n3);
                 __n3.addEventListener('click', __on_Reset);
             root.appendChild(__n0);

@@ -52,6 +52,42 @@ fn the_project_page_demo_is_what_the_compiler_emits() {
     );
 }
 
+#[test]
+fn a_button_with_a_label_shows_the_label_as_its_text() {
+    // `Button { label: "Increment" }` used to compile to an `aria-label` and an empty text node: a button with
+    // nothing written on it.
+    let dir = std::env::temp_dir().join("cancho-ui-button-label");
+    std::fs::create_dir_all(&dir).expect("scratch directory");
+    let source = dir.join("labelled.cui");
+    std::fs::write(
+        &source,
+        "component Labelled {\n    state n: Int = 0;\n    on Tap { n = n + 1; }\n    view {\n        Column {\n            Button {\n                role: button\n                label: \"Tap me\"\n                on: Tap\n            }\n            Button {\n                label: \"Not shown\"\n                on: Tap\n                Text { \"Child text\" }\n            }\n        }\n    }\n}\n",
+    )
+    .expect("a source file");
+    let out = dir.join("labelled.js");
+    let (code, stdout) = run(&[
+        "build",
+        source.to_str().expect("temp path is UTF-8"),
+        "-o",
+        out.to_str().expect("temp path is UTF-8"),
+    ]);
+    assert_eq!(code, 0, "stdout: {stdout}");
+    let js = std::fs::read_to_string(&out).expect("build wrote the file");
+    assert!(
+        js.contains("createTextNode(\"Tap me\")"),
+        "the label is the button's text:\n{js}"
+    );
+    assert!(
+        js.contains("setAttribute('aria-label', \"Tap me\")"),
+        "and stays its accessible name:\n{js}"
+    );
+    assert!(
+        !js.contains("createTextNode(\"Not shown\")"),
+        "a button with children of its own shows those, not its label:\n{js}"
+    );
+    assert!(js.contains("createTextNode(\"Child text\")"), "{js}");
+}
+
 /// Run in a scratch directory, so a command that wrongly writes a file named
 /// after a flag leaves evidence there rather than in the repository.
 fn run_in_scratch(name: &str, args: &[&str]) -> (i32, String, std::path::PathBuf) {

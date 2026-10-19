@@ -1317,7 +1317,17 @@ fn emit_view_node(
                     }
                 }
             } else {
-                if let Some(ref label) = button_label {
+                // A Button's visible text is its `label` when it has no children of its own: the `label` reaches
+                // here as the accessibility label (not as a binding), and a button with an `aria-label` and an
+                // empty text node showed nothing.
+                let visible_label = button_label.clone().or_else(|| {
+                    if matches!(kind, IrElementKind::Button) && children.is_empty() {
+                        accessibility.label.clone()
+                    } else {
+                        None
+                    }
+                });
+                if let Some(ref label) = visible_label {
                     out.push_str(&format!(
                         "{0}{1}.appendChild(document.createTextNode({2}));\n",
                         indent,

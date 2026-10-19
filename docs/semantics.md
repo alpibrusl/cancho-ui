@@ -373,6 +373,13 @@ right lowering.
 - An interactive primitive (Button, TextField) with no
   `keyboard_action` for the Enter key: `accessibility-keyboard-missing`.
 
+**A Button's `label` is also its visible text** (web backend), unless the
+Button has children of its own, which are shown instead; the `label` stays the
+accessible name either way. Until this was fixed, the web backend emitted the
+label as an `aria-label` and an empty text node, so a labelled Button had
+nothing written on it (found by the project page's demo, which hid it with a
+CSS rule; tested in `crates/cancho-ui/tests/cli.rs`).
+
 **Phase 1 enforces.** Role, label, basic keyboard. **Phase 2+
 refines.** Focus order, screen-reader semantics, color-contrast
 checks (external tool).
