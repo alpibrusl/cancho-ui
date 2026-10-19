@@ -29,3 +29,25 @@ fn inspect_effects_takes_the_output_flag_after_the_name() {
     assert_eq!(code, 0, "stdout: {stdout}");
     assert!(stdout.contains("\"capability\": \"Clock\""), "{stdout}");
 }
+
+#[test]
+fn the_project_page_demo_is_what_the_compiler_emits() {
+    // docs/demo/counter.js is served on the project page; it must be the
+    // compiler's current output for examples/counter, not a stale copy.
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let out = std::env::temp_dir().join("cancho-ui-demo-counter.js");
+    let (code, stdout) = run(&[
+        "build",
+        "examples/counter/counter.cui",
+        "-o",
+        out.to_str().expect("temp path is UTF-8"),
+    ]);
+    assert_eq!(code, 0, "stdout: {stdout}");
+    let fresh = std::fs::read_to_string(&out).expect("build wrote the file");
+    let committed =
+        std::fs::read_to_string(root.join("docs/demo/counter.js")).expect("demo is committed");
+    assert_eq!(
+        fresh, committed,
+        "docs/demo/counter.js is stale: rebuild it with `cancho-ui build examples/counter/counter.cui -o docs/demo/counter.js`"
+    );
+}

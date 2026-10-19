@@ -55,6 +55,10 @@ $ echo $?
 
 ## Try it
 
+**Claude Code skill:** copy [`skills/cancho-ui`](skills/cancho-ui/SKILL.md) into `~/.claude/skills/` (or your project's `.claude/skills/`) and the agent knows how to check, inspect and diff `.cui` programs, with the rules built in. Other agents can read the same file as plain instructions.
+
+**Or ask your coding agent to do it:** paste [`docs/agent-prompt.md`](docs/agent-prompt.md) into Claude Code, Codex or similar. It installs cancho-ui, proves the install with the test suite (no network, no key, no model), and walks through a refusal and a `diff`.
+
 You need a Rust toolchain (the version is pinned in `rust-toolchain.toml`).
 
 ```sh
