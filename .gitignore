@@ -8,6 +8,8 @@
 *.dylib
 *.out
 *.js
+# the project page serves this one: it is the compiler's output for examples/counter (tested in tests/cli.rs)
+!docs/demo/counter.js
 *.js.map
 *.cui.bak
 
