@@ -3,7 +3,7 @@
 //! Phase 1 supports:
 //!   - `String` — the only "value" type a static component needs.
 //!   - `Unit`   — the type of a view body that has no data, for
-//!                forward compatibility with stateful components.
+//!     forward compatibility with stateful components.
 //!
 //! Phase 2 adds `Int`, `Float`, `Bool`, `List[T]`, `Option[T]`,
 //! `Result[T, E]`, `Request[T]`, `Event(...)`, `Capability(...)`.

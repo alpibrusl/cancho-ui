@@ -29,15 +29,24 @@ pub struct IrPosition {
 impl From<cancho_ui_syntax::span::Span> for IrSpan {
     fn from(s: cancho_ui_syntax::span::Span) -> Self {
         IrSpan {
-            start: IrPosition { line: s.start.line, column: s.start.column },
-            end: IrPosition { line: s.end.line, column: s.end.column },
+            start: IrPosition {
+                line: s.start.line,
+                column: s.start.column,
+            },
+            end: IrPosition {
+                line: s.end.line,
+                column: s.end.column,
+            },
         }
     }
 }
 
 impl From<cancho_ui_syntax::span::Position> for IrPosition {
     fn from(p: cancho_ui_syntax::span::Position) -> Self {
-        IrPosition { line: p.line, column: p.column }
+        IrPosition {
+            line: p.line,
+            column: p.column,
+        }
     }
 }
 
@@ -153,7 +162,11 @@ impl Serialize for IrEventHandler {
 impl Serialize for IrStmt {
     fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
         match self {
-            IrStmt::Assign { target, value, span } => {
+            IrStmt::Assign {
+                target,
+                value,
+                span,
+            } => {
                 use serde::ser::SerializeStruct;
                 let mut s = ser.serialize_struct("IrStmt::Assign", 3)?;
                 s.serialize_field("target", target)?;
@@ -228,7 +241,11 @@ impl Serialize for IrExpr {
                 s.serialize_field("span", &IrSpan::from(*span))?;
                 s.end()
             }
-            IrExpr::Match { scrutinee, arms, span } => {
+            IrExpr::Match {
+                scrutinee,
+                arms,
+                span,
+            } => {
                 let mut s = ser.serialize_struct("IrExpr::Match", 3)?;
                 s.serialize_field("scrutinee", scrutinee.as_ref())?;
                 s.serialize_field("arms", arms)?;
@@ -275,7 +292,12 @@ impl Serialize for IrExpr {
                 s.serialize_field("span", &IrSpan::from(*span))?;
                 s.end()
             }
-            IrExpr::Filter { list, item, cond, span } => {
+            IrExpr::Filter {
+                list,
+                item,
+                cond,
+                span,
+            } => {
                 let mut s = ser.serialize_struct("IrExpr::Filter", 4)?;
                 s.serialize_field("list", list)?;
                 s.serialize_field("item", item)?;
@@ -283,7 +305,12 @@ impl Serialize for IrExpr {
                 s.serialize_field("span", &IrSpan::from(*span))?;
                 s.end()
             }
-            IrExpr::Map { list, item, body, span } => {
+            IrExpr::Map {
+                list,
+                item,
+                body,
+                span,
+            } => {
                 let mut s = ser.serialize_struct("IrExpr::Map", 4)?;
                 s.serialize_field("list", list)?;
                 s.serialize_field("item", item)?;
@@ -327,7 +354,11 @@ impl Serialize for IrPattern {
                 s.serialize_field("span", &IrSpan::from(*span))?;
                 s.end()
             }
-            IrPattern::Variant { name, binding, span } => {
+            IrPattern::Variant {
+                name,
+                binding,
+                span,
+            } => {
                 let mut s = ser.serialize_struct("IrPattern::Variant", 3)?;
                 s.serialize_field("name", name)?;
                 s.serialize_field("binding", binding)?;
@@ -383,7 +414,13 @@ impl Serialize for IrViewBlock {
 impl Serialize for IrViewNode {
     fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
         match self {
-            IrViewNode::Element { kind, accessibility, bindings, children, span } => {
+            IrViewNode::Element {
+                kind,
+                accessibility,
+                bindings,
+                children,
+                span,
+            } => {
                 use serde::ser::SerializeStruct;
                 let mut s = ser.serialize_struct("IrViewNode::Element", 5)?;
                 s.serialize_field("kind", kind)?;
@@ -400,7 +437,12 @@ impl Serialize for IrViewNode {
                 s.serialize_field("span", &IrSpan::from(*span))?;
                 s.end()
             }
-            IrViewNode::For { over, binding, children, span } => {
+            IrViewNode::For {
+                over,
+                binding,
+                children,
+                span,
+            } => {
                 use serde::ser::SerializeStruct;
                 let mut s = ser.serialize_struct("IrViewNode::For", 4)?;
                 s.serialize_field("over", over)?;

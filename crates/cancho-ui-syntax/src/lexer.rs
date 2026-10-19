@@ -25,30 +25,30 @@ pub enum Token {
     Await,
 
     // Punctuation
-    LBrace,    // {
-    RBrace,    // }
-    LParen,    // (
-    RParen,    // )
-    LBracket,  // [
-    RBracket,  // ]
-    Semi,      // ;
-    Comma,     // ,
-    Dot,       // .
-    DotDot,    // :
+    LBrace,   // {
+    RBrace,   // }
+    LParen,   // (
+    RParen,   // )
+    LBracket, // [
+    RBracket, // ]
+    Semi,     // ;
+    Comma,    // ,
+    Dot,      // .
+    DotDot,   // :
 
     // Operators
-    Plus,      // +
-    Minus,     // -
-    Star,      // *
-    Slash,     // /
-    Eq,        // =
-    EqEq,      // ==
-    FatArrow,  // =>
-    BangEq,    // !=
-    Lt,        // <
-    LtEq,      // <=
-    Gt,        // >
-    GtEq,      // >=
+    Plus,     // +
+    Minus,    // -
+    Star,     // *
+    Slash,    // /
+    Eq,       // =
+    EqEq,     // ==
+    FatArrow, // =>
+    BangEq,   // !=
+    Lt,       // <
+    LtEq,     // <=
+    Gt,       // >
+    GtEq,     // >=
 
     // Literals and identifiers
     Ident(String),
@@ -227,20 +227,62 @@ impl Lexer {
     fn next(&mut self) -> Result<Token, LexError> {
         let c = self.peek().expect("called next() at eof");
         match c {
-            '{' => { self.bump(); Ok(Token::LBrace) }
-            '}' => { self.bump(); Ok(Token::RBrace) }
-            '(' => { self.bump(); Ok(Token::LParen) }
-            ')' => { self.bump(); Ok(Token::RParen) }
-            '[' => { self.bump(); Ok(Token::LBracket) }
-            ']' => { self.bump(); Ok(Token::RBracket) }
-            ';' => { self.bump(); Ok(Token::Semi) }
-            ',' => { self.bump(); Ok(Token::Comma) }
-            '.' => { self.bump(); Ok(Token::Dot) }
-            ':' => { self.bump(); Ok(Token::DotDot) }
-            '+' => { self.bump(); Ok(Token::Plus) }
-            '-' => { self.bump(); Ok(Token::Minus) }
-            '*' => { self.bump(); Ok(Token::Star) }
-            '/' => { self.bump(); Ok(Token::Slash) }
+            '{' => {
+                self.bump();
+                Ok(Token::LBrace)
+            }
+            '}' => {
+                self.bump();
+                Ok(Token::RBrace)
+            }
+            '(' => {
+                self.bump();
+                Ok(Token::LParen)
+            }
+            ')' => {
+                self.bump();
+                Ok(Token::RParen)
+            }
+            '[' => {
+                self.bump();
+                Ok(Token::LBracket)
+            }
+            ']' => {
+                self.bump();
+                Ok(Token::RBracket)
+            }
+            ';' => {
+                self.bump();
+                Ok(Token::Semi)
+            }
+            ',' => {
+                self.bump();
+                Ok(Token::Comma)
+            }
+            '.' => {
+                self.bump();
+                Ok(Token::Dot)
+            }
+            ':' => {
+                self.bump();
+                Ok(Token::DotDot)
+            }
+            '+' => {
+                self.bump();
+                Ok(Token::Plus)
+            }
+            '-' => {
+                self.bump();
+                Ok(Token::Minus)
+            }
+            '*' => {
+                self.bump();
+                Ok(Token::Star)
+            }
+            '/' => {
+                self.bump();
+                Ok(Token::Slash)
+            }
             '=' => {
                 self.bump();
                 if self.peek() == Some('=') {
@@ -264,7 +306,11 @@ impl Lexer {
                     self.bump();
                     Ok(Token::BangEq)
                 } else {
-                    Err(LexError::UnexpectedChar { ch: '!', line: self.line, column: self.column })
+                    Err(LexError::UnexpectedChar {
+                        ch: '!',
+                        line: self.line,
+                        column: self.column,
+                    })
                 }
             }
             '<' => {
@@ -345,14 +391,22 @@ impl Lexer {
         let mut value = String::new();
         loop {
             match self.peek() {
-                None => return Err(LexError::UnterminatedString { line: start.line, column: start.column }),
+                None => {
+                    return Err(LexError::UnterminatedString {
+                        line: start.line,
+                        column: start.column,
+                    });
+                }
                 Some('"') => {
                     self.bump();
                     return Ok(Token::StringLit(value));
                 }
                 Some('\\') => {
                     self.bump();
-                    let esc = self.peek().ok_or(LexError::UnterminatedString { line: start.line, column: start.column })?;
+                    let esc = self.peek().ok_or(LexError::UnterminatedString {
+                        line: start.line,
+                        column: start.column,
+                    })?;
                     self.bump();
                     match esc {
                         'n' => value.push('\n'),
@@ -361,7 +415,13 @@ impl Lexer {
                         '\\' => value.push('\\'),
                         '"' => value.push('"'),
                         '0' => value.push('\0'),
-                        _ => return Err(LexError::UnknownEscape { ch: esc, line: self.line, column: self.column }),
+                        _ => {
+                            return Err(LexError::UnknownEscape {
+                                ch: esc,
+                                line: self.line,
+                                column: self.column,
+                            });
+                        }
                     }
                 }
                 Some(c) => {
@@ -419,12 +479,15 @@ mod tests {
     #[test]
     fn lexes_keywords_and_idents() {
         let toks = lex("component Hello view").unwrap();
-        assert_eq!(toks.iter().map(|t| &t.token).collect::<Vec<_>>(), vec![
-            &Token::Component,
-            &Token::Ident("Hello".into()),
-            &Token::View,
-            &Token::Eof,
-        ]);
+        assert_eq!(
+            toks.iter().map(|t| &t.token).collect::<Vec<_>>(),
+            vec![
+                &Token::Component,
+                &Token::Ident("Hello".into()),
+                &Token::View,
+                &Token::Eof,
+            ]
+        );
     }
 
     #[test]

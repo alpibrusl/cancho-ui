@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cancho-ui: a UI language that knows what each component may do</title>
+<meta name="description" content="cancho-ui compiles a small declarative UI language to JavaScript and DOM. A component declares the authority it needs and the compiler refuses the program when code and declaration disagree.">
+<meta property="og:title" content="cancho-ui: a UI language that knows what each component may do">
+<meta property="og:description" content="Declared capabilities, checked by the compiler. Diagnostics as data.">
+<meta name="color-scheme" content="light dark">
+<style>
+:root {
+  --bg: #fbfcfd; --fg: #14181a; --muted: #55606a; --line: #dfe5e7; --surface: #ffffff; --soft: #eff4f4;
+  --accent: #1f5fa6; --accent-fg: #ffffff; --good: #0f7b5f; --bad: #b42d27; --warn: #92400e;
+  --term-bg: #0f1519; --term-fg: #d6e2e6; --term-dim: #7d8f96; --term-good: #5fd3a6; --term-bad: #ff8a80; --term-acc: #8ec0ff;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0b0f14; --fg: #e7ebec; --muted: #9aa8ae; --line: #212a2d; --surface: #131a1c; --soft: #172022;
+    --accent: #7fb2ff; --accent-fg: #07162c; --good: #4fd1a5; --bad: #ff7b73; --warn: #f3c77a; --term-bg: #0a1013; }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; scroll-padding-top: 4rem; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 1rem/1.6 var(--font); }
+a { color: var(--accent); text-underline-offset: .15em; }
+.wrap { width: 100%; max-width: 64rem; margin: 0 auto; padding: 0 16px; }
+header.top { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+header.top .wrap { display: flex; align-items: center; gap: 1.5rem; height: 3.4rem; }
+.brand { font: 700 1rem var(--mono); color: var(--fg); text-decoration: none; }
+nav { display: flex; gap: 1.2rem; margin-left: auto; }
+nav a { color: var(--muted); text-decoration: none; font-size: .93rem; }
+nav a:hover { color: var(--fg); }
+@media (max-width: 40rem) { nav a.opt { display: none; } }
+.hero { padding: 3.5rem 0 2rem; text-align: center; }
+.hero h1 { font-size: clamp(2rem, 6vw, 3.4rem); line-height: 1.1; margin: 0 auto 1rem; letter-spacing: -.03em; max-width: 18ch; }
+.hero .sub { font-size: 1.2rem; color: var(--muted); max-width: 36rem; margin: 0 auto 1.6rem; }
+.cta { display: flex; gap: .8rem; justify-content: center; flex-wrap: wrap; }
+.btn { display: inline-block; padding: .65rem 1.2rem; border-radius: 8px; font-weight: 600; text-decoration: none; border: 1px solid var(--line); color: var(--fg); background: var(--surface); }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+section { margin: 0; padding: 3rem 0; }
+section.alt { background: var(--soft); }
+h2 { font-size: clamp(1.4rem, 3vw, 1.9rem); margin: 0 0 .6rem; letter-spacing: -.02em; text-align: center; }
+.lead { text-align: center; color: var(--muted); max-width: 38rem; margin: 0 auto 2rem; }
+.term { background: var(--term-bg); color: var(--term-fg); border-radius: 12px; border: 1px solid var(--line); max-width: 46rem; margin: 0 auto; box-shadow: 0 10px 30px rgba(0,0,0,.18); overflow: hidden; }
+.term .bar { display: flex; align-items: center; gap: .4rem; padding: .55rem .8rem; border-bottom: 1px solid #1f2a30; font: .78rem var(--mono); color: var(--term-dim); }
+.term .bar i { width: .7rem; height: .7rem; border-radius: 50%; background: #2c3a41; display: inline-block; }
+.term pre { margin: 0; padding: 1rem 1.1rem; min-height: 17.5rem; overflow-x: auto; font: .85rem/1.55 var(--mono); white-space: pre; }
+.term .g { color: var(--term-good); } .term .b { color: var(--term-bad); } .term .d { color: var(--term-dim); } .term .a { color: var(--term-acc); }
+.caption { text-align: center; color: var(--muted); font-size: .88rem; max-width: 46rem; margin: .8rem auto 0; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 1rem; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 1.2rem; }
+.card h3 { margin: 0 0 .4rem; font-size: 1.05rem; }
+.card p { margin: 0; color: var(--muted); font-size: .95rem; }
+.card .ic { font-size: 1.5rem; margin-bottom: .4rem; }
+.nums { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 1rem; text-align: center; }
+.num b { display: block; font-size: 2.3rem; letter-spacing: -.03em; color: var(--accent); }
+.num span { color: var(--muted); font-size: .92rem; }
+.fine { max-width: 46rem; margin: 1.5rem auto 0; color: var(--muted); font-size: .88rem; text-align: center; }
+pre.code { background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: .9rem 1rem; overflow-x: auto; font: .85rem/1.5 var(--mono); max-width: 46rem; margin: 0 auto 1rem; }
+code { font: .9em var(--mono); }
+.steps { max-width: 46rem; margin: 0 auto; padding-left: 1.2rem; }
+.steps li { margin: .4rem 0; }
+@media (max-width: 40rem) { .kbcols { grid-template-columns: repeat(2, 1fr); min-height: 0; } }
+footer { border-top: 1px solid var(--line); padding: 1.5rem 0 2rem; color: var(--muted); font-size: .9rem; text-align: center; }
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <a class="brand" href=".">cancho-ui</a>
+  <nav>
+    <a href="#why">Why</a><a class="opt" href="#source">The language</a><a class="opt" href="#measured">Measured</a><a href="#try">Try it</a>
+    <a href="https://github.com/alpibrusl/cancho-ui">GitHub</a>
+  </nav>
+</div></header>
+
+<div class="wrap hero">
+  <h1>A UI language that checks what it is allowed to do.</h1>
+  <p class="sub">A component declares the authority it needs, and the compiler, not a code review, refuses the program when the code asks for more.</p>
+  <div class="cta"><a class="btn primary" href="#try">Try it</a><a class="btn" href="#why">Why it is different</a><a class="btn" href="#source">See the language</a></div>
+</div>
+
+<div class="wrap" style="padding-bottom:2.5rem">
+  <div class="term" role="img" aria-label="The same program checked twice: refused without its capability declaration, accepted with it">
+    <div class="bar"><i></i><i></i><i></i> the terminal</div>
+<pre>
+<span class="d">$ cancho-ui check clock.cui          # `requires Clock;` deleted</span>
+<span class="b">error[capability-missing]</span> clock.cui:13:21: component `Clock` performs `clock.now`
+  which requires the `Clock` capability, but `requires Clock` is not declared
+<span class="d">exit 1</span>
+
+<span class="d">$ cancho-ui check examples/clock/clock.cui</span>
+<span class="g">exit 0</span>
+
+<span class="d">$ cancho-ui inspect effects examples/clock/clock.cui Clock --output json</span>
+<span class="a">{ "component": "Clock",
+  "reachable_effects": [ { "capability": "Clock", "path": ["clock","now"], ... } ] }</span>
+</pre>
+  </div>
+  <p class="caption">Real output of the compiler. The refusal carries a stable code, a span and a remediation in <code>--output json</code>, so an agent matches on the code instead of reading prose.</p>
+</div>
+
+<section class="alt" id="why"><div class="wrap">
+  <h2>Behaviour and authority, in the source</h2>
+  <p class="lead">State, events, effects and permissions are part of the language, so tools can answer questions about them.</p>
+  <div class="cards">
+    <div class="card"><div class="ic">🔐</div><h3>Declared capabilities</h3><p><code>requires Network;</code> is the only way a component reaches the network. A missing or unused declaration is refused.</p></div>
+    <div class="card"><div class="ic">🧾</div><h3>Diagnostics as data</h3><p>A locked JSON shape with a stable code, a span and a remediation. The CLI's exit codes are a contract too.</p></div>
+    <div class="card"><div class="ic">🛑</div><h3>Async that cannot go stale</h3><p>A superseded request is dropped at the <code>await</code>. A disposed component gets <code>Cancelled</code> in its own mandatory <code>match</code> arm.</p></div>
+    <div class="card"><div class="ic">🌐</div><h3>Plain output</h3><p>JavaScript and the real DOM. No virtual DOM, no JSX, no macros. The page owns presentation.</p></div>
+  </div>
+</div></section>
+
+<section id="source"><div class="wrap">
+  <h2>What a component looks like</h2>
+  <p class="lead">Block-structured and readable in a review. A lightly trimmed <code>examples/clock</code>, which compiles and runs.</p>
+<pre class="code"><code>component Clock {
+    requires Clock;
+
+    state started_at: Int = 0;
+    state ticking: Bool = false;
+
+    on Start { started_at = clock.now(); ticking = true; }
+    on Stop  { ticking = false; }
+
+    view {
+        Column {
+            Text { role: status label: "elapsed time"
+                   "Elapsed: {(clock.now() - started_at) / 1000}s" }
+            Button { label: "Start" on: Start }
+            Button { label: "Stop"  on: Stop  }
+        }
+    }
+}</code></pre>
+  <p class="fine">Nine more examples are in <a href="https://github.com/alpibrusl/cancho-ui/tree/main/examples">examples/</a>: a counter, a searchable list with cancellation, composed components, cross-file imports and component disposal.</p>
+</div></section>
+
+<section class="alt" id="measured"><div class="wrap">
+  <h2>Measured, not promised</h2>
+  <p class="lead">What the repository can show today.</p>
+  <div class="nums">
+    <div class="num"><b>10</b><span>example programs compile and run</span></div>
+    <div class="num"><b>73</b><span>tests pass under <code>cargo test --workspace</code></span></div>
+    <div class="num"><b>~26,000</b><span>mutated programs (every prefix, every one-character deletion) refused or accepted, never a panic</span></div>
+    <div class="num"><b>0</b><span>clippy warnings under <code>-D warnings</code></span></div>
+  </div>
+  <p class="fine">Not measured: whether an agent is more productive with cancho-ui than with a conventional stack. That needs the Phase 3 benchmark, which has not been run. There is no semantic <code>diff</code>, no replay and no mobile backend yet; see the <a href="https://github.com/alpibrusl/cancho-ui/blob/main/ROADMAP.md">roadmap</a>.</p>
+</div></section>
+
+<section id="try"><div class="wrap">
+  <h2>Try it</h2>
+  <p class="lead">You need a Rust toolchain; the version is pinned in <code>rust-toolchain.toml</code>.</p>
+<pre class="code"><code>git clone https://github.com/alpibrusl/cancho-ui.git
+cd cancho-ui
+cargo build --release
+target/release/cancho-ui build examples/clock/clock.cui -o examples/clock/clock.js
+cd examples/clock &amp;&amp; python3 -m http.server     # serve it, then open /clock.html</code></pre>
+  <p class="fine">The <code>python3</code> line only serves the page to your browser. The compiler and the emitted code do not use it.</p>
+</div></section>
+
+<section class="alt"><div class="wrap">
+  <h2>Go deeper</h2>
+  <div class="cards">
+    <div class="card"><h3><a href="https://github.com/alpibrusl/cancho-ui/blob/main/docs/language-design.md">Language design</a></h3><p>The model, and the questions it had to answer first.</p></div>
+    <div class="card"><h3><a href="https://github.com/alpibrusl/cancho-ui/blob/main/docs/security-model.md">Security model</a></h3><p>What is checked, what is enforced at run time, what is trusted.</p></div>
+    <div class="card"><h3><a href="https://github.com/alpibrusl/cancho-ui/blob/main/spec/diagnostics/README.md">Diagnostics</a></h3><p>The locked shape every refusal has.</p></div>
+  </div>
+</div></section>
+<footer><div class="wrap">cancho-ui · EUPL-1.2 · part of the <a href="https://github.com/alpibrusl/cancho">cancho</a> ecosystem</div></footer>
+</body>
+</html>

@@ -111,7 +111,7 @@ fn run_check(args: &[String]) -> Result<ExitCode, CliError> {
                         eprintln!("{}", pipeline::format_diagnostic(&diag, file));
                     }
                     OutputFormat::Json => {
-                        all_diags.push(diag);
+                        all_diags.push(*diag);
                     }
                 }
             }
@@ -154,7 +154,7 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
                     OutputFormat::Human => {
                         eprintln!("{}", pipeline::format_diagnostic(&diag, file));
                     }
-                    OutputFormat::Json => all_diags.push(diag),
+                    OutputFormat::Json => all_diags.push(*diag),
                 }
             }
             Err(pipeline::PipelineError::Env(msg)) => {
@@ -182,26 +182,26 @@ fn run_inspect(args: &[String]) -> Result<ExitCode, CliError> {
             let name = opts.arg.as_ref().ok_or_else(|| {
                 CliError::Usage("`inspect component` requires a component name".into())
             })?;
-            serde_json::to_string_pretty(
-                &ir.components.iter().find(|c| &c.name == name),
-            )
-            .unwrap()
+            serde_json::to_string_pretty(&ir.components.iter().find(|c| &c.name == name))
+                .expect("serializing derived JSON is infallible")
         }
         "effects" => {
             let name = opts.arg.as_ref().ok_or_else(|| {
                 CliError::Usage("`inspect effects` requires a component name".into())
             })?;
-            let comp = ir.components.iter().find(|c| &c.name == name).ok_or_else(|| {
-                CliError::Env(format!("component `{}` not found", name))
-            })?;
+            let comp = ir
+                .components
+                .iter()
+                .find(|c| &c.name == name)
+                .ok_or_else(|| CliError::Env(format!("component `{}` not found", name)))?;
             serde_json::to_string_pretty(&serde_json::json!({
                 "component": comp.name,
                 "requires": comp.requires,
-                "reachable_effects": "[]",
+                "reachable_effects": comp.reachable_effects,
             }))
-            .unwrap()
+            .expect("serializing derived JSON is infallible")
         }
-        "ir" => serde_json::to_string_pretty(&ir).unwrap(),
+        "ir" => serde_json::to_string_pretty(&ir).expect("serializing derived JSON is infallible"),
         other => {
             return Err(CliError::Usage(format!(
                 "unknown `inspect` subject `{}`",
@@ -212,9 +212,8 @@ fn run_inspect(args: &[String]) -> Result<ExitCode, CliError> {
     match opts.output_path {
         Some(path) => {
             let p = path.clone();
-            std::fs::write(&path, &json).map_err(move |e| {
-                CliError::Env(format!("writing `{}`: {}", p.display(), e))
-            })?;
+            std::fs::write(&path, &json)
+                .map_err(move |e| CliError::Env(format!("writing `{}`: {}", p.display(), e)))?;
         }
         None => println!("{}", json),
     }
@@ -244,15 +243,16 @@ fn run_report(args: &[String]) -> Result<ExitCode, CliError> {
                     .sum::<usize>();
                 report["static"]["checks_passed"] =
                     serde_json::json!(report["static"]["checks_passed"].as_u64().unwrap_or(0) + 1);
-                report["trust"]["count"] =
-                    serde_json::json!(report["trust"]["count"].as_u64().unwrap_or(0) + trust_count as u64);
+                report["trust"]["count"] = serde_json::json!(
+                    report["trust"]["count"].as_u64().unwrap_or(0) + trust_count as u64
+                );
             }
             Err(pipeline::PipelineError::Refused(diag)) => {
                 failures += 1;
                 if opts.output == OutputFormat::Human {
                     eprintln!("{}", pipeline::format_diagnostic(&diag, file));
                 } else {
-                    all_diags.push(diag);
+                    all_diags.push(*diag);
                 }
             }
             Err(pipeline::PipelineError::Env(msg)) => {
@@ -266,10 +266,17 @@ fn run_report(args: &[String]) -> Result<ExitCode, CliError> {
                 .expect("diagnostic serialization is infallible");
             println!("{}", json);
         } else {
-            println!("{}", serde_json::to_string_pretty(&report).unwrap());
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&report)
+                    .expect("serializing derived JSON is infallible")
+            );
         }
     } else {
-        println!("{}", serde_json::to_string_pretty(&report).unwrap());
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&report).expect("serializing derived JSON is infallible")
+        );
     }
     if failures > 0 {
         Ok(ExitCode::from(1))
@@ -287,9 +294,8 @@ fn run_skill(args: &[String]) -> Result<ExitCode, CliError> {
     match opts.output_path {
         Some(path) => {
             let p = path.clone();
-            std::fs::write(&path, body).map_err(move |e| {
-                CliError::Env(format!("writing `{}`: {}", p.display(), e))
-            })?;
+            std::fs::write(&path, body)
+                .map_err(move |e| CliError::Env(format!("writing `{}`: {}", p.display(), e)))?;
         }
         None => println!("{}", body),
     }
@@ -313,13 +319,12 @@ fn run_introspect(args: &[String]) -> Result<ExitCode, CliError> {
         "refusal_catalog_ref": "spec/diagnostics/README.md §3",
         "ir_schema_ref": "spec/ir-schema/README.md",
     });
-    let json = serde_json::to_string_pretty(&tree).unwrap();
+    let json = serde_json::to_string_pretty(&tree).expect("serializing derived JSON is infallible");
     match opts.output_path {
         Some(path) => {
             let p = path.clone();
-            std::fs::write(&path, &json).map_err(move |e| {
-                CliError::Env(format!("writing `{}`: {}", p.display(), e))
-            })?;
+            std::fs::write(&path, &json)
+                .map_err(move |e| CliError::Env(format!("writing `{}`: {}", p.display(), e)))?;
         }
         None => println!("{}", json),
     }
@@ -354,9 +359,9 @@ impl CheckOpts {
             let a = &args[i];
             match a.as_str() {
                 "--output" => {
-                    let v = args.get(i + 1).ok_or_else(|| {
-                        CliError::Usage("--output requires an argument".into())
-                    })?;
+                    let v = args
+                        .get(i + 1)
+                        .ok_or_else(|| CliError::Usage("--output requires an argument".into()))?;
                     out.output = match v.as_str() {
                         "json" => OutputFormat::Json,
                         "text" | "human" => OutputFormat::Human,
@@ -364,7 +369,7 @@ impl CheckOpts {
                             return Err(CliError::Usage(format!(
                                 "unknown --output value `{}`",
                                 other
-                            )))
+                            )));
                         }
                     };
                     i += 2;
@@ -399,16 +404,16 @@ impl BuildOpts {
             let a = &args[i];
             match a.as_str() {
                 "--target" => {
-                    let v = args.get(i + 1).ok_or_else(|| {
-                        CliError::Usage("--target requires an argument".into())
-                    })?;
+                    let v = args
+                        .get(i + 1)
+                        .ok_or_else(|| CliError::Usage("--target requires an argument".into()))?;
                     out.target = Some(v.clone());
                     i += 2;
                 }
                 "--output" => {
-                    let v = args.get(i + 1).ok_or_else(|| {
-                        CliError::Usage("--output requires an argument".into())
-                    })?;
+                    let v = args
+                        .get(i + 1)
+                        .ok_or_else(|| CliError::Usage("--output requires an argument".into()))?;
                     out.output_format = match v.as_str() {
                         "json" => OutputFormat::Json,
                         "text" | "human" => OutputFormat::Human,
@@ -416,7 +421,7 @@ impl BuildOpts {
                             return Err(CliError::Usage(format!(
                                 "unknown --output value `{}`",
                                 other
-                            )))
+                            )));
                         }
                     };
                     i += 2;
@@ -464,13 +469,14 @@ impl InspectOpts {
             let a = &args[i];
             match a.as_str() {
                 "--output" => {
-                    i += 1;
+                    // The value (`json`) belongs to the flag, not to `arg`.
+                    i += 2;
                     continue;
                 }
                 "-o" => {
-                    let v = args.get(i + 1).ok_or_else(|| {
-                        CliError::Usage("-o requires an argument".into())
-                    })?;
+                    let v = args
+                        .get(i + 1)
+                        .ok_or_else(|| CliError::Usage("-o requires an argument".into()))?;
                     out.output_path = Some(PathBuf::from(v));
                     i += 2;
                     continue;
@@ -511,9 +517,9 @@ impl ReportOpts {
             let a = &args[i];
             match a.as_str() {
                 "--output" => {
-                    let v = args.get(i + 1).ok_or_else(|| {
-                        CliError::Usage("--output requires an argument".into())
-                    })?;
+                    let v = args
+                        .get(i + 1)
+                        .ok_or_else(|| CliError::Usage("--output requires an argument".into()))?;
                     out.output = match v.as_str() {
                         "json" => OutputFormat::Json,
                         _ => OutputFormat::Human,
@@ -528,7 +534,9 @@ impl ReportOpts {
             i += 1;
         }
         if out.files.is_empty() {
-            return Err(CliError::Usage("`report` requires at least one file".into()));
+            return Err(CliError::Usage(
+                "`report` requires at least one file".into(),
+            ));
         }
         Ok(out)
     }

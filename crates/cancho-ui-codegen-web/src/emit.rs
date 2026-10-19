@@ -221,9 +221,9 @@ fn expr_uses_await(e: &IrExpr) -> bool {
         IrExpr::Call { args, .. } => args.iter().any(expr_uses_await),
         IrExpr::Ok { value, .. } => expr_uses_await(value),
         IrExpr::Err { reason, .. } => expr_uses_await(reason),
-        IrExpr::Match { scrutinee, arms, .. } => {
-            expr_uses_await(scrutinee) || arms.iter().any(|a| expr_uses_await(&a.body))
-        }
+        IrExpr::Match {
+            scrutinee, arms, ..
+        } => expr_uses_await(scrutinee) || arms.iter().any(|a| expr_uses_await(&a.body)),
         _ => false,
     }
 }
@@ -240,34 +240,29 @@ fn body_uses_sleep(s: &IrStmt) -> bool {
 fn expr_uses_sleep(e: &IrExpr) -> bool {
     match e {
         IrExpr::Call { path, args, .. } => {
-            (path.len() == 1 && path[0] == "sleep")
-                || args.iter().any(expr_uses_sleep)
+            (path.len() == 1 && path[0] == "sleep") || args.iter().any(expr_uses_sleep)
         }
-        IrExpr::Binary { lhs, rhs, .. } => {
-            expr_uses_sleep(lhs) || expr_uses_sleep(rhs)
-        }
+        IrExpr::Binary { lhs, rhs, .. } => expr_uses_sleep(lhs) || expr_uses_sleep(rhs),
         IrExpr::Unary { operand, .. } => expr_uses_sleep(operand),
         IrExpr::Ok { value, .. } => expr_uses_sleep(value),
         IrExpr::Err { reason, .. } => expr_uses_sleep(reason),
-        IrExpr::Match { scrutinee, arms, .. } => {
-            expr_uses_sleep(scrutinee)
-                || arms.iter().any(|a| expr_uses_sleep(&a.body))
-        }
+        IrExpr::Match {
+            scrutinee, arms, ..
+        } => expr_uses_sleep(scrutinee) || arms.iter().any(|a| expr_uses_sleep(&a.body)),
         _ => false,
     }
 }
 
 fn view_node_uses_await_or_sleep(node: &IrViewNode) -> bool {
     match node {
-        IrViewNode::Element { children, .. } => {
-            children.iter().any(view_node_uses_await_or_sleep)
-        }
+        IrViewNode::Element { children, .. } => children.iter().any(view_node_uses_await_or_sleep),
         IrViewNode::Text { parts, .. } => parts.iter().any(|p| match p {
             IrTextPart::Literal(_) => false,
             IrTextPart::Expr(e) => expr_uses_await(e) || expr_uses_sleep(e),
         }),
         IrViewNode::For { over, children, .. } => {
-            expr_uses_await(over) || expr_uses_sleep(over)
+            expr_uses_await(over)
+                || expr_uses_sleep(over)
                 || children.iter().any(view_node_uses_await_or_sleep)
         }
     }
@@ -279,14 +274,18 @@ const STATE_PREFIX: &str = "__state_";
 /// instance? Those get the `props`-aware mount signature.
 fn collect_prop_consumers(node: &IrViewNode, out: &mut Vec<String>) {
     match node {
-        IrViewNode::Element { kind, bindings, children, .. } => {
-            if let IrElementKind::Named(name) = kind {
-                if bindings
+        IrViewNode::Element {
+            kind,
+            bindings,
+            children,
+            ..
+        } => {
+            if let IrElementKind::Named(name) = kind
+                && bindings
                     .iter()
                     .any(|b| matches!(b.value, IrBindingValue::Const { .. }))
-                {
-                    out.push(name.clone());
-                }
+            {
+                out.push(name.clone());
             }
             for c in children {
                 collect_prop_consumers(c, out);
@@ -301,13 +300,17 @@ fn collect_prop_consumers(node: &IrViewNode, out: &mut Vec<String>) {
     }
 }
 
-fn emit_component(c: &IrComponent, component_names: &[String], prop_consumers: &[String]) -> String {
+fn emit_component(
+    c: &IrComponent,
+    component_names: &[String],
+    prop_consumers: &[String],
+) -> String {
     // Tier 13: components that some instance passes properties to
     // take a `props` argument; their state initializers consult
     // it, falling back to the declared default. Components never
     // instantiated with properties keep the plain signature and
     // initializers.
-    let takes_props = prop_consumers.iter().any(|n| *n == c.name);
+    let takes_props = prop_consumers.contains(&c.name);
     // Tier 15: components whose view instantiates subcomponents
     // carry a slot table — one persistent wrapper per instance
     // site, surviving re-renders so that a child's state survives
@@ -390,7 +393,7 @@ fn emit_component(c: &IrComponent, component_names: &[String], prop_consumers: &
         // handlers.
         out.push_str("        async function __on_");
         out.push_str(&e.name);
-        out.push_str("(");
+        out.push('(');
         out.push_str(&e.params.join(", "));
         out.push_str(") {\n");
         let param_set: Vec<&str> = e.params.iter().map(|s| s.as_str()).collect();
@@ -428,7 +431,18 @@ fn emit_component(c: &IrComponent, component_names: &[String], prop_consumers: &
     out.push_str("        function __render() {\n");
     out.push_str("            root.textContent = '';\n");
     let mut node_id = 0u32;
-    let view_body = emit_view_node(&mut node_id, "            ", &c.view.body, "root", &[], component_names, prop_consumers, has_instances, "\"\"", None);
+    let view_body = emit_view_node(
+        &mut node_id,
+        "            ",
+        &c.view.body,
+        "root",
+        &[],
+        component_names,
+        prop_consumers,
+        has_instances,
+        "\"\"",
+        None,
+    );
     out.push_str(&view_body);
     out.push_str("        }\n");
 
@@ -485,7 +499,9 @@ fn emit_component(c: &IrComponent, component_names: &[String], prop_consumers: &
                 // `match` dispatches the arm.
                 fields.push_str("                for (const g in __cui_inflight) {\n");
                 fields.push_str("                    const t = __cui_inflight[g];\n");
-                fields.push_str("                    if (t) { t.disposed = true; __cui_inflight[g] = null; }\n");
+                fields.push_str(
+                    "                    if (t) { t.disposed = true; __cui_inflight[g] = null; }\n",
+                );
                 fields.push_str("                }\n");
             }
             fields.push_str("            }");
@@ -505,16 +521,18 @@ fn emit_component(c: &IrComponent, component_names: &[String], prop_consumers: &
 fn view_has_instance(node: &IrViewNode, component_names: &[String]) -> bool {
     match node {
         IrViewNode::Element { kind, children, .. } => {
-            if let IrElementKind::Named(name) = kind {
-                if component_names.iter().any(|d| d == name) {
-                    return true;
-                }
+            if let IrElementKind::Named(name) = kind
+                && component_names.iter().any(|d| d == name)
+            {
+                return true;
             }
-            children.iter().any(|c| view_has_instance(c, component_names))
+            children
+                .iter()
+                .any(|c| view_has_instance(c, component_names))
         }
-        IrViewNode::For { children, .. } => {
-            children.iter().any(|c| view_has_instance(c, component_names))
-        }
+        IrViewNode::For { children, .. } => children
+            .iter()
+            .any(|c| view_has_instance(c, component_names)),
         IrViewNode::Text { .. } => false,
     }
 }
@@ -527,7 +545,11 @@ fn emit_expr_init(e: &IrExpr) -> String {
         IrExpr::BoolLit { value, .. } => value.to_string(),
         IrExpr::Ident { .. } => "undefined".into(),
         IrExpr::Call { .. } => "undefined".into(),
-        IrExpr::Unary { op: IrUnOp::Neg, operand, .. } => match operand.as_ref() {
+        IrExpr::Unary {
+            op: IrUnOp::Neg,
+            operand,
+            ..
+        } => match operand.as_ref() {
             IrExpr::IntLit { value, .. } => (-value).to_string(),
             IrExpr::FloatLit { value, .. } => format!("{}", -value),
             _ => "(0 - (".to_string() + &emit_expr_init(operand) + "))",
@@ -547,29 +569,22 @@ fn emit_expr_init(e: &IrExpr) -> String {
         // runtime representation is a tagged object:
         //   {__cui_tag:"Ok", value:v} or {__cui_tag:"Err", reason:r}.
         IrExpr::Ok { value, .. } => {
-            "({__cui_tag:\"Ok\",value:".to_string()
-                + &emit_expr_init(value)
-                + "})"
+            "({__cui_tag:\"Ok\",value:".to_string() + &emit_expr_init(value) + "})"
         }
         IrExpr::Err { reason, .. } => {
-            "({__cui_tag:\"Err\",reason:".to_string()
-                + &emit_expr_init(reason)
-                + "})"
+            "({__cui_tag:\"Err\",reason:".to_string() + &emit_expr_init(reason) + "})"
         }
         // `Some(value)` and `None` are legal state-field
         // initial values (Tier 8): tagged objects like the
         // Result constructors.
         IrExpr::Some { value, .. } => {
-            "({__cui_tag:\"Some\",value:".to_string()
-                + &emit_expr_init(value)
-                + "})"
+            "({__cui_tag:\"Some\",value:".to_string() + &emit_expr_init(value) + "})"
         }
         IrExpr::None { .. } => "({__cui_tag:\"None\"})".to_string(),
         // A `List[T]` literal is a plain JS array; the items are
         // literals or constructor expressions.
         IrExpr::ListLit { items, .. } => {
-            let rendered: Vec<String> =
-                items.iter().map(emit_expr_init).collect();
+            let rendered: Vec<String> = items.iter().map(emit_expr_init).collect();
             format!("[{}]", rendered.join(", "))
         }
         // `filter`/`map`/`len` in a state initializer: emitted like
@@ -577,7 +592,9 @@ fn emit_expr_init(e: &IrExpr) -> String {
         // state field in an initializer reads that field before it
         // is initialised — the same forward-reference risk any
         // initializer carries — so prefer literals here.
-        IrExpr::Filter { list, item, cond, .. } => {
+        IrExpr::Filter {
+            list, item, cond, ..
+        } => {
             format!(
                 "({}).filter(function ({}) {{ return {}; }})",
                 emit_expr_init(list),
@@ -585,7 +602,9 @@ fn emit_expr_init(e: &IrExpr) -> String {
                 emit_expr_init(cond)
             )
         }
-        IrExpr::Map { list, item, body, .. } => {
+        IrExpr::Map {
+            list, item, body, ..
+        } => {
             format!(
                 "({}).map(function ({}) {{ return {}; }})",
                 emit_expr_init(list),
@@ -623,9 +642,11 @@ fn emit_expr_runtime(e: &IrExpr, params: &[&str]) -> String {
             }
         }
         IrExpr::Call { path, args, .. } => emit_call_runtime(path, args, params),
-        IrExpr::Unary { op: IrUnOp::Neg, operand, .. } => {
-            "(0 - (".to_string() + &emit_expr_runtime(operand, params) + "))"
-        }
+        IrExpr::Unary {
+            op: IrUnOp::Neg,
+            operand,
+            ..
+        } => "(0 - (".to_string() + &emit_expr_runtime(operand, params) + "))",
         IrExpr::Binary { op, lhs, rhs, .. } => {
             "(".to_string()
                 + &emit_expr_runtime(lhs, params)
@@ -636,14 +657,10 @@ fn emit_expr_runtime(e: &IrExpr, params: &[&str]) -> String {
                 + ")"
         }
         IrExpr::Ok { value, .. } => {
-            "({__cui_tag:\"Ok\",value:".to_string()
-                + &emit_expr_runtime(value, params)
-                + "})"
+            "({__cui_tag:\"Ok\",value:".to_string() + &emit_expr_runtime(value, params) + "})"
         }
         IrExpr::Err { reason, .. } => {
-            "({__cui_tag:\"Err\",reason:".to_string()
-                + &emit_expr_runtime(reason, params)
-                + "})"
+            "({__cui_tag:\"Err\",reason:".to_string() + &emit_expr_runtime(reason, params) + "})"
         }
         IrExpr::Await { request, .. } => {
             // `await(expr)` becomes a cancellation tracked call:
@@ -675,9 +692,7 @@ fn emit_expr_runtime(e: &IrExpr, params: &[&str]) -> String {
         }
         IrExpr::Cancelled { .. } => "({__cui_tag:\"Cancelled\"})".to_string(),
         IrExpr::Some { value, .. } => {
-            "({__cui_tag:\"Some\",value:".to_string()
-                + &emit_expr_runtime(value, params)
-                + "})"
+            "({__cui_tag:\"Some\",value:".to_string() + &emit_expr_runtime(value, params) + "})"
         }
         IrExpr::None { .. } => "({__cui_tag:\"None\"})".to_string(),
         IrExpr::ListLit { items, .. } => {
@@ -685,7 +700,9 @@ fn emit_expr_runtime(e: &IrExpr, params: &[&str]) -> String {
                 items.iter().map(|i| emit_expr_runtime(i, params)).collect();
             format!("[{}]", rendered.join(", "))
         }
-        IrExpr::Filter { list, item, cond, .. } => {
+        IrExpr::Filter {
+            list, item, cond, ..
+        } => {
             // `filter(list, x => cond)` — an inline
             // `Array.prototype.filter`. The user's `x` becomes the
             // callback parameter and shadows a state field.
@@ -698,7 +715,9 @@ fn emit_expr_runtime(e: &IrExpr, params: &[&str]) -> String {
                 emit_expr_runtime(cond, &local_params)
             )
         }
-        IrExpr::Map { list, item, body, .. } => {
+        IrExpr::Map {
+            list, item, body, ..
+        } => {
             let mut local_params: Vec<&str> = params.to_vec();
             local_params.push(item.as_str());
             format!(
@@ -713,7 +732,9 @@ fn emit_expr_runtime(e: &IrExpr, params: &[&str]) -> String {
             // string — the same JS `.length`.
             format!("({}).length", emit_expr_runtime(list, params))
         }
-        IrExpr::Match { scrutinee, arms, .. } => {
+        IrExpr::Match {
+            scrutinee, arms, ..
+        } => {
             // Lower to nested ternaries. For Tier 6 the scrutinee
             // is expected to be a `Result` (Ok/Err) or `Option`
             // (Some/None). Phase 2 may emit a switch table or a
@@ -729,14 +750,10 @@ fn emit_expr_runtime(e: &IrExpr, params: &[&str]) -> String {
 /// each arm's guard and body can refer to it as both a tag
 /// (`__cui_match_<i>.__cui_tag`) and a payload
 /// (`__cui_match_<i>.value`).
-fn emit_match_as_ternary(
-    scrutinee: &IrExpr,
-    arms: &[IrMatchArm],
-    params: &[&str],
-) -> String {
+fn emit_match_as_ternary(scrutinee: &IrExpr, arms: &[IrMatchArm], params: &[&str]) -> String {
     use std::cell::Cell;
     thread_local! {
-        static COUNTER: Cell<u32> = Cell::new(0);
+        static COUNTER: Cell<u32> = const { Cell::new(0) };
     }
     let id = COUNTER.with(|c| {
         let n = c.get() + 1;
@@ -745,7 +762,10 @@ fn emit_match_as_ternary(
     });
     let scrutinee_var = format!("__cui_match_{}", id);
     let scrutinee_js = emit_expr_runtime(scrutinee, params);
-    let mut out = format!("((function () {{ var {0} = {1}; ", scrutinee_var, scrutinee_js);
+    let mut out = format!(
+        "((function () {{ var {0} = {1}; ",
+        scrutinee_var, scrutinee_js
+    );
 
     for (i, arm) in arms.iter().enumerate() {
         let guard = pattern_guard(&arm.pattern, &scrutinee_var);
@@ -787,16 +807,9 @@ fn pattern_guard(p: &IrPattern, scrutinee_var: &str) -> String {
     }
 }
 
-fn emit_arm_body(
-    p: &IrPattern,
-    scrutinee_var: &str,
-    body: &IrExpr,
-    params: &[&str],
-) -> String {
+fn emit_arm_body(p: &IrPattern, scrutinee_var: &str, body: &IrExpr, params: &[&str]) -> String {
     match p {
-        IrPattern::Wildcard { .. } | IrPattern::Ident { .. } => {
-            emit_expr_runtime(body, params)
-        }
+        IrPattern::Wildcard { .. } | IrPattern::Ident { .. } => emit_expr_runtime(body, params),
         IrPattern::Variant { name, binding, .. } => {
             // The payload field depends on the variant: `Ok`
             // stores its under `value`, `Err` under `reason` (see
@@ -855,15 +868,16 @@ fn emit_call_runtime(path: &[String], args: &[IrExpr], params: &[&str]) -> Strin
 
 fn emit_stmt(s: &IrStmt, params: &[&str]) -> String {
     match s {
-        IrStmt::Assign { target, value, .. } => STATE_PREFIX.to_string()
-            + target
-            + " = "
-            + &emit_expr_runtime(value, params)
-            + ";",
+        IrStmt::Assign { target, value, .. } => {
+            STATE_PREFIX.to_string() + target + " = " + &emit_expr_runtime(value, params) + ";"
+        }
         IrStmt::Expr { expr, .. } => emit_expr_runtime(expr, params) + ";",
     }
 }
 
+// The view walk threads one piece of state per concern (ids, slots, props);
+// a context struct is the follow-up, tracked in ROADMAP.md.
+#[allow(clippy::too_many_arguments)]
 fn emit_view_node(
     next_id: &mut u32,
     indent: &str,
@@ -885,19 +899,26 @@ fn emit_view_node(
             let id = *next_id;
             *next_id += 1;
             let var = format!("__n{}", id);
-            let mut out = format!("{0}const {1} = document.createElement('span');\n", indent, var);
+            let mut out = format!(
+                "{0}const {1} = document.createElement('span');\n",
+                indent, var
+            );
             for p in parts {
                 match p {
                     IrTextPart::Literal(s) => {
                         out.push_str(&format!(
                             "{0}{1}.appendChild(document.createTextNode({2}));\n",
-                            indent, var, js_string(s)
+                            indent,
+                            var,
+                            js_string(s)
                         ));
                     }
                     IrTextPart::Expr(e) => {
                         out.push_str(&format!(
                             "{0}{1}.appendChild(document.createTextNode(String({2})));\n",
-                            indent, var, emit_expr_runtime(e, params)
+                            indent,
+                            var,
+                            emit_expr_runtime(e, params)
                         ));
                     }
                 }
@@ -908,7 +929,12 @@ fn emit_view_node(
             ));
             out
         }
-        IrViewNode::For { over, binding, children, span: _ } => {
+        IrViewNode::For {
+            over,
+            binding,
+            children,
+            span: _,
+        } => {
             // Tier 8 row repetition: a `for..of` over the list,
             // children emitted with `binding` added to the visible
             // name set so it resolves as the loop variable.
@@ -925,10 +951,8 @@ fn emit_view_node(
                 let list_var = format!("__list{}", id);
                 let key_var = format!("__key{}", id);
                 let arr_var = format!("__arr{}", id);
-                let child_prefix = format!(
-                    "({0} + \"s{1}\" + __i{2} + \"_\")",
-                    slot_prefix, id, id
-                );
+                let child_prefix =
+                    format!("({0} + \"s{1}\" + __i{2} + \"_\")", slot_prefix, id, id);
                 let mut out = format!(
                     "{0}const {1} = {2};\n",
                     indent,
@@ -1013,7 +1037,13 @@ fn emit_view_node(
             out.push_str(&format!("{0}}}\n", indent));
             out
         }
-        IrViewNode::Element { kind, accessibility, bindings, children, span: _ } => {
+        IrViewNode::Element {
+            kind,
+            accessibility,
+            bindings,
+            children,
+            span: _,
+        } => {
             let id = *next_id;
             *next_id += 1;
             let var = format!("__n{}", id);
@@ -1056,16 +1086,13 @@ fn emit_view_node(
                     indent,
                     key_var,
                     slot_prefix,
-                    format!("s{}", id)
+                    format_args!("s{}", id)
                 );
                 out.push_str(&format!(
                     "{0}let {1} = __cui_slots[{2}];\n",
                     indent, slot_var, key_var
                 ));
-                out.push_str(&format!(
-                    "{0}if ({1} === undefined) {{\n",
-                    indent, slot_var
-                ));
+                out.push_str(&format!("{0}if ({1} === undefined) {{\n", indent, slot_var));
                 // Tier 17: the slot remembers its own table key so a
                 // For prune can delete the entry (no resurrection of
                 // a disposed slot when the list grows again); inside
@@ -1076,25 +1103,21 @@ fn emit_view_node(
                     indent, slot_var, key_var
                 ));
                 if let Some(arr_lhs) = slot_arr {
-                    out.push_str(&format!(
-                        "{0}    {1} = {2};\n",
-                        indent, arr_lhs, slot_var
-                    ));
+                    out.push_str(&format!("{0}    {1} = {2};\n", indent, arr_lhs, slot_var));
                 }
                 if child_takes {
                     let mut all: Vec<(String, &IrExpr)> = props_static.clone();
                     all.extend(props_dynamic.clone());
                     let rendered: Vec<String> = all
                         .iter()
-                        .map(|(k, v)| format!(
-                            "{0}: {1}",
-                            k,
-                            emit_expr_runtime(v, params)
-                        ))
+                        .map(|(k, v)| format!("{0}: {1}", k, emit_expr_runtime(v, params)))
                         .collect();
                     out.push_str(&format!(
                         "{0}    {1}.inst = mount_{2}({1}.el, {{{3}}});\n",
-                        indent, slot_var, inst_name, rendered.join(", ")
+                        indent,
+                        slot_var,
+                        inst_name,
+                        rendered.join(", ")
                     ));
                 } else {
                     out.push_str(&format!(
@@ -1106,11 +1129,7 @@ fn emit_view_node(
                 if child_takes && !props_dynamic.is_empty() {
                     let rendered: Vec<String> = props_dynamic
                         .iter()
-                        .map(|(k, v)| format!(
-                            "{0}: {1}",
-                            k,
-                            emit_expr_runtime(v, params)
-                        ))
+                        .map(|(k, v)| format!("{0}: {1}", k, emit_expr_runtime(v, params)))
                         .collect();
                     out.push_str(&format!(
                         "{0}else {{ {1}.inst.__cui_update({{{2}}}); }}\n",
@@ -1130,10 +1149,7 @@ fn emit_view_node(
                 indent, var, tag
             );
             if let Some(cls) = kind.layout_class() {
-                out.push_str(&format!(
-                    "{0}{1}.classList.add('{2}');\n",
-                    indent, var, cls
-                ));
+                out.push_str(&format!("{0}{1}.classList.add('{2}');\n", indent, var, cls));
             }
             if let Some(role) = &accessibility.role {
                 let r = match role {
@@ -1144,13 +1160,17 @@ fn emit_view_node(
                 };
                 out.push_str(&format!(
                     "{0}{1}.setAttribute('role', {2});\n",
-                    indent, var, js_string(r)
+                    indent,
+                    var,
+                    js_string(r)
                 ));
             }
             if let Some(label) = &accessibility.label {
                 out.push_str(&format!(
                     "{0}{1}.setAttribute('aria-label', {2});\n",
-                    indent, var, js_string(label)
+                    indent,
+                    var,
+                    js_string(label)
                 ));
             }
 
@@ -1166,16 +1186,14 @@ fn emit_view_node(
             let mut props_obj: Vec<(String, &IrExpr)> = Vec::new();
             for b in bindings {
                 let as_prop = match &b.value {
-                    IrBindingValue::Const { expr, .. } => {
-                        Some(expr)
-                    }
+                    IrBindingValue::Const { expr, .. } => Some(expr),
                     _ => None,
                 };
-                if matches!(kind, IrElementKind::Named(_)) {
-                    if let Some(expr) = as_prop {
-                        props_obj.push((b.key.clone(), expr));
-                        continue;
-                    }
+                if matches!(kind, IrElementKind::Named(_))
+                    && let Some(expr) = as_prop
+                {
+                    props_obj.push((b.key.clone(), expr));
+                    continue;
                 }
                 match &b.value {
                     IrBindingValue::Const { .. } => {
@@ -1194,7 +1212,9 @@ fn emit_view_node(
                             } else {
                                 out.push_str(&format!(
                                     "{0}{1}.setAttribute('aria-label', {2});\n",
-                                    indent, var, js_string(s)
+                                    indent,
+                                    var,
+                                    js_string(s)
                                 ));
                             }
                         } else if b.key == "value" {
@@ -1209,7 +1229,10 @@ fn emit_view_node(
                         } else {
                             out.push_str(&format!(
                                 "{0}{1}.setAttribute({2}, {3});\n",
-                                indent, var, js_string(&b.key), js_string(s)
+                                indent,
+                                var,
+                                js_string(&b.key),
+                                js_string(s)
                             ));
                         }
                     }
@@ -1260,7 +1283,9 @@ fn emit_view_node(
                         };
                         out.push_str(&format!(
                             "{0}{1}.setAttribute('role', {2});\n",
-                            indent, var, js_string(role_str)
+                            indent,
+                            var,
+                            js_string(role_str)
                         ));
                     }
                 }
@@ -1276,7 +1301,9 @@ fn emit_view_node(
                                 IrTextPart::Literal(s) => {
                                     out.push_str(&format!(
                                         "{0}{1}.appendChild(document.createTextNode({2}));\n",
-                                        indent, var, js_string(s)
+                                        indent,
+                                        var,
+                                        js_string(s)
                                     ));
                                 }
                                 IrTextPart::Expr(e) => {
@@ -1293,7 +1320,9 @@ fn emit_view_node(
                 if let Some(ref label) = button_label {
                     out.push_str(&format!(
                         "{0}{1}.appendChild(document.createTextNode({2}));\n",
-                        indent, var, js_string(label)
+                        indent,
+                        var,
+                        js_string(label)
                     ));
                 } else if matches!(kind, IrElementKind::Button) {
                     out.push_str(&format!(
@@ -1302,7 +1331,18 @@ fn emit_view_node(
                     ));
                 }
                 for c in children {
-                    out.push_str(&emit_view_node(next_id, &child_indent, c, &var, params, components, prop_consumers, has_slots, slot_prefix, slot_arr));
+                    out.push_str(&emit_view_node(
+                        next_id,
+                        &child_indent,
+                        c,
+                        &var,
+                        params,
+                        components,
+                        prop_consumers,
+                        has_slots,
+                        slot_prefix,
+                        slot_arr,
+                    ));
                 }
             }
 
@@ -1313,10 +1353,7 @@ fn emit_view_node(
                     indent, var
                 ));
                 if let Some(ref v) = input_value {
-                    out.push_str(&format!(
-                        "{0}{1}.value = {2};\n",
-                        indent, var, v
-                    ));
+                    out.push_str(&format!("{0}{1}.value = {2};\n", indent, var, v));
                 }
             }
 

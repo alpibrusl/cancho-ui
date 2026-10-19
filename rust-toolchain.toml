@@ -1,0 +1,5 @@
+# Pin the toolchain so "it passes locally" means it passes in CI
+# (same reasoning as cancho's own rust-toolchain.toml).
+[toolchain]
+channel = "1.97.0"
+components = ["clippy", "rustfmt"]

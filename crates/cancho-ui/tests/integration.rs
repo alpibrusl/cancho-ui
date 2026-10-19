@@ -7,8 +7,8 @@
 
 use cancho_ui_codegen_web::emit_module;
 use cancho_ui_ir::lower_file;
-use cancho_ui_syntax::parser::parse;
 use cancho_ui_syntax::lexer::lex;
+use cancho_ui_syntax::parser::parse;
 use cancho_ui_types::check_file;
 
 fn compile_str(src: &str) -> String {
@@ -114,9 +114,9 @@ component Page {
 
 #[test]
 fn diagnostic_format_is_stable() {
-    use cancho_ui_types::{check_file as cf, CheckError, TypeError};
-    use cancho_ui_syntax::parser::parse as p;
     use cancho_ui_syntax::lexer::lex as l;
+    use cancho_ui_syntax::parser::parse as p;
+    use cancho_ui_types::{TypeError, check_file as cf};
 
     // Lowercase component name → type-not-pascal-case.
     let src = "component hello { view { Text { \"hi\" } } }\n";
@@ -213,9 +213,9 @@ component Unused {
     view { Text { \"hi\" } }
 }
 ";
-    use cancho_ui_types::check_file;
     use cancho_ui_syntax::lexer::lex;
     use cancho_ui_syntax::parser::parse;
+    use cancho_ui_types::check_file;
     let toks = lex(src).unwrap();
     let ast = parse(toks).unwrap();
     let err = check_file(&ast).unwrap_err();
@@ -235,9 +235,9 @@ component Ticker {
     view { Text { \"hi\" } }
 }
 ";
-    use cancho_ui_types::check_file;
     use cancho_ui_syntax::lexer::lex;
     use cancho_ui_syntax::parser::parse;
+    use cancho_ui_types::check_file;
     let toks = lex(src).unwrap();
     let ast = parse(toks).unwrap();
     let err = check_file(&ast).unwrap_err();
@@ -279,7 +279,9 @@ component T {
     let js = compile_str(src);
     assert!(js.contains("function __on_Change(value)"));
     assert!(js.contains("__state_q = value;"));
-    assert!(js.contains("addEventListener('input', function (e) { __on_Change(e.target.value); })"));
+    assert!(
+        js.contains("addEventListener('input', function (e) { __on_Change(e.target.value); })")
+    );
 }
 
 #[test]
@@ -675,7 +677,11 @@ component T {
     let ast = parse(toks).unwrap();
     let err = check_file(&ast).unwrap_err();
     match err {
-        cancho_ui_types::CheckError::CapabilityMissing { capability, call_path, .. } => {
+        cancho_ui_types::CheckError::CapabilityMissing {
+            capability,
+            call_path,
+            ..
+        } => {
             assert_eq!(capability, "Network");
             assert_eq!(call_path, "net.search");
         }
@@ -891,9 +897,11 @@ fn derived_for_over_emits_filter_and_len() {
     // `len(results)` in the text body.
     assert!(js.contains("(__state_results).length"));
     // The derived `For` over an inline predicate.
-    assert!(js.contains(
-        "(__state_results).filter(function (n) { return ((n).length > __state_min); })"
-    ));
+    assert!(
+        js.contains(
+            "(__state_results).filter(function (n) { return ((n).length > __state_min); })"
+        )
+    );
     // The rows bind the loop variable.
     assert!(js.contains("for (const row of ("));
 }
@@ -905,7 +913,9 @@ fn component_instance_of_undeclared_kind_is_refused() {
     let toks = lex(src).unwrap();
     let ast = parse(toks).unwrap();
     match check_file(&ast) {
-        Err(cancho_ui_types::CheckError::Shape(cancho_ui_types::TypeError::UnknownComponentKind { name, .. })) => {
+        Err(cancho_ui_types::CheckError::Shape(
+            cancho_ui_types::TypeError::UnknownComponentKind { name, .. },
+        )) => {
             assert_eq!(name, "Ghost");
         }
         other => panic!("expected UnknownComponentKind, got: {:?}", other.err()),
@@ -922,14 +932,18 @@ fn component_instance_opacity_and_property_rules() {
     let toks = lex(with_handler).unwrap();
     let ast = parse(toks).unwrap();
     match check_file(&ast) {
-        Err(cancho_ui_types::CheckError::Shape(cancho_ui_types::TypeError::InstanceTakesBindings { .. })) => {}
+        Err(cancho_ui_types::CheckError::Shape(
+            cancho_ui_types::TypeError::InstanceTakesBindings { .. },
+        )) => {}
         other => panic!("expected InstanceTakesBindings, got: {:?}", other.err()),
     }
     let with_children = "component Card {\n    state n: Int = 0;\n    view { Text { \"card\" } }\n}\ncomponent T {\n    view { Column {\n        Card { Text { \"x\" } }\n    } }\n}\n";
     let toks = lex(with_children).unwrap();
     let ast = parse(toks).unwrap();
     match check_file(&ast) {
-        Err(cancho_ui_types::CheckError::Shape(cancho_ui_types::TypeError::InstanceTakesChildren { .. })) => {}
+        Err(cancho_ui_types::CheckError::Shape(
+            cancho_ui_types::TypeError::InstanceTakesChildren { .. },
+        )) => {}
         other => panic!("expected InstanceTakesChildren, got: {:?}", other.err()),
     }
     // Unknown property key.
@@ -937,7 +951,9 @@ fn component_instance_opacity_and_property_rules() {
     let toks = lex(unknown_key).unwrap();
     let ast = parse(toks).unwrap();
     match check_file(&ast) {
-        Err(cancho_ui_types::CheckError::Shape(cancho_ui_types::TypeError::PropertyUnknownKey { key, .. })) => {
+        Err(cancho_ui_types::CheckError::Shape(
+            cancho_ui_types::TypeError::PropertyUnknownKey { key, .. },
+        )) => {
             assert_eq!(key, "mystery");
         }
         other => panic!("expected PropertyUnknownKey, got: {:?}", other.err()),
@@ -958,7 +974,9 @@ fn properties_pass_constants_of_the_right_type() {
     let toks = lex(typed_mismatch).unwrap();
     let ast = parse(toks).unwrap();
     match check_file(&ast) {
-        Err(cancho_ui_types::CheckError::Shape(cancho_ui_types::TypeError::PropertyTypeMismatch { key, .. })) => {
+        Err(cancho_ui_types::CheckError::Shape(
+            cancho_ui_types::TypeError::PropertyTypeMismatch { key, .. },
+        )) => {
             assert_eq!(key, "title");
         }
         other => panic!("expected PropertyTypeMismatch, got: {:?}", other.err()),
@@ -973,9 +991,9 @@ fn properties_pass_constants_of_the_right_type() {
     assert!(js.contains(
         "let __state_title = (props == null || props.title === undefined) ? (\"?\") : props.title;"
     ));
-    assert!(js.contains(
-        "let __state_n = (props == null || props.n === undefined) ? (0) : props.n;"
-    ));
+    assert!(
+        js.contains("let __state_n = (props == null || props.n === undefined) ? (0) : props.n;")
+    );
 }
 
 #[test]
@@ -986,8 +1004,13 @@ fn opacity_accessibility_check() {
     let toks = lex(with_acc).unwrap();
     let ast = parse(toks).unwrap();
     match check_file(&ast) {
-        Err(cancho_ui_types::CheckError::Shape(cancho_ui_types::TypeError::InstanceTakesAccessibility { .. })) => {}
-        other => panic!("expected InstanceTakesAccessibility, got: {:?}", other.err()),
+        Err(cancho_ui_types::CheckError::Shape(
+            cancho_ui_types::TypeError::InstanceTakesAccessibility { .. },
+        )) => {}
+        other => panic!(
+            "expected InstanceTakesAccessibility, got: {:?}",
+            other.err()
+        ),
     }
 }
 
@@ -1000,7 +1023,10 @@ fn component_instance_cycle_is_refused() {
     let toks = lex(self_loop).unwrap();
     let ast = parse(toks).unwrap();
     match check_file(&ast) {
-        Err(cancho_ui_types::CheckError::Shape(cancho_ui_types::TypeError::ComponentCycle { chain, .. })) => {
+        Err(cancho_ui_types::CheckError::Shape(cancho_ui_types::TypeError::ComponentCycle {
+            chain,
+            ..
+        })) => {
             assert!(chain.contains(&"Loop".to_string()));
         }
         other => panic!("expected ComponentCycle, got: {:?}", other.err()),
@@ -1010,7 +1036,9 @@ fn component_instance_cycle_is_refused() {
     let toks = lex(a_b_a).unwrap();
     let ast = parse(toks).unwrap();
     match check_file(&ast) {
-        Err(cancho_ui_types::CheckError::Shape(cancho_ui_types::TypeError::ComponentCycle { .. })) => {}
+        Err(cancho_ui_types::CheckError::Shape(cancho_ui_types::TypeError::ComponentCycle {
+            ..
+        })) => {}
         other => panic!("expected ComponentCycle (A→B→A), got: {:?}", other.err()),
     }
 }
@@ -1032,7 +1060,7 @@ fn composition_emits_independent_mount_calls() {
     assert!(js.contains("function mount_HelloCard(root)"));
     assert!(js.contains("function mount_Page(root)"));
     // Each card instance has its own counter state.
-    assert_eq!(js.matches("__state_count").count() >= 4, true);
+    assert!(js.matches("__state_count").count() >= 4);
     // Cards come BEFORE the page parent's mount in module order (or
     // are function-hoisted functions — either way both are
     // declared by the time the page mounts).
@@ -1070,7 +1098,9 @@ fn dynamic_property_source_is_checked() {
     let toks = lex(unknown).unwrap();
     let ast = parse(toks).unwrap();
     match check_file(&ast) {
-        Err(cancho_ui_types::CheckError::Shape(cancho_ui_types::TypeError::PropertySourceUnknown { component, key, .. })) => {
+        Err(cancho_ui_types::CheckError::Shape(
+            cancho_ui_types::TypeError::PropertySourceUnknown { component, key, .. },
+        )) => {
             assert_eq!(component, "Page");
             assert_eq!(key, "who");
         }
@@ -1080,7 +1110,9 @@ fn dynamic_property_source_is_checked() {
     let toks = lex(mismatched).unwrap();
     let ast = parse(toks).unwrap();
     match check_file(&ast) {
-        Err(cancho_ui_types::CheckError::Shape(cancho_ui_types::TypeError::PropertyTypeMismatch { key, .. })) => {
+        Err(cancho_ui_types::CheckError::Shape(
+            cancho_ui_types::TypeError::PropertyTypeMismatch { key, .. },
+        )) => {
             assert_eq!(key, "title");
         }
         other => panic!("expected PropertyTypeMismatch, got: {:?}", other.err()),
@@ -1187,9 +1219,7 @@ fn disposal_disposes_pruned_slots_and_cascades() {
     // is closure-scoped per instance at runtime (two Loader
     // instances each get their own object).
     assert_eq!(js.matches("const __cui_inflight = { };").count(), 1);
-    assert!(js.contains(
-        "if (token.disposed) { return {__cui_tag: \"Cancelled\"}; }"
-    ));
+    assert!(js.contains("if (token.disposed) { return {__cui_tag: \"Cancelled\"}; }"));
     // The awaiting child returns only a dispose handle (no props
     // are passed), and the parent's prune calls it.
     assert!(js.contains("__cui_dispose: function () {"));
@@ -1340,7 +1370,10 @@ mod import_tests {
         let json = String::from_utf8_lossy(&output.stdout);
         assert_eq!(output.status.code(), Some(1));
         assert!(json.contains("\"import-unknown-component\""), "got: {json}");
-        assert!(json.contains("whose components are: HelloCard"), "got: {json}");
+        assert!(
+            json.contains("whose components are: HelloCard"),
+            "got: {json}"
+        );
     }
 
     #[test]
@@ -1350,9 +1383,21 @@ mod import_tests {
         // into a file already on the stack.
         let dir = temp_dir("cycle");
         write(&dir, "cards.cui", CARDS);
-        write(&dir, "a.cui", "module a;\nimport dash2.P;\ncomponent A { view { Column { P {} } } }\n");
-        write(&dir, "dash2.cui", "module dash2;\nimport a.A;\ncomponent P { view { Column { A {} } } }\n");
-        let main = write(&dir, "main.cui", "module dash2;\nimport a.A;\ncomponent Board { view { Column { A {} } } }\n");
+        write(
+            &dir,
+            "a.cui",
+            "module a;\nimport dash2.P;\ncomponent A { view { Column { P {} } } }\n",
+        );
+        write(
+            &dir,
+            "dash2.cui",
+            "module dash2;\nimport a.A;\ncomponent P { view { Column { A {} } } }\n",
+        );
+        let main = write(
+            &dir,
+            "main.cui",
+            "module dash2;\nimport a.A;\ncomponent Board { view { Column { A {} } } }\n",
+        );
         let output = run(&["check", main.to_str().unwrap(), "--output", "json"]);
         let json = String::from_utf8_lossy(&output.stdout);
         assert_eq!(output.status.code(), Some(1));
@@ -1372,9 +1417,7 @@ mod import_tests {
         write(
             &dir,
             "cards.cui",
-            &format!(
-                "{CARDS}component Badge {{ view {{ Column {{ Text {{ \"b\" }} }} }} }}\n"
-            ),
+            &format!("{CARDS}component Badge {{ view {{ Column {{ Text {{ \"b\" }} }} }} }}\n"),
         );
         let main = write(&dir, "main.cui", src);
         let output = run(&["check", main.to_str().unwrap(), "--output", "json"]);
@@ -1414,6 +1457,9 @@ mod import_tests {
         let output = run(&["check", main.to_str().unwrap(), "--output", "json"]);
         let json = String::from_utf8_lossy(&output.stdout);
         assert_eq!(output.status.code(), Some(1));
-        assert!(json.contains("broken.cui"), "expected broken.cui in span, got: {json}");
+        assert!(
+            json.contains("broken.cui"),
+            "expected broken.cui in span, got: {json}"
+        );
     }
 }
