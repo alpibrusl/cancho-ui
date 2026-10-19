@@ -1,0 +1,12 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "component": "Notes",
+  "note": "Save writes the note to the store; Restore reads it back into the field. docs/adapters.md section 4.",
+  "steps": [
+    { "event": "Change", "params": ["buy milk"], "state": { "draft": "buy milk" } },
+    { "event": "Save", "expect": { "storage": { "note": "buy milk" } } },
+    { "event": "Change", "params": ["something else"], "state": { "draft": "something else" } },
+    { "event": "Restore", "state": { "draft": "buy milk" } }
+  ]
+}

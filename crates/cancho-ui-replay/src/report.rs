@@ -110,6 +110,9 @@ pub struct StepReport {
     pub fired: Vec<FiredJson>,
     pub writes: Vec<WriteJson>,
     pub clock: Json,
+    /// The `Storage` store after the step; absent when the trace never seeds or writes it.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub storage: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]

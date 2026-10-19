@@ -141,6 +141,7 @@ fn run_trace(comp: &IrComponent, trace: &Trace, file: &str, trace_name: &str) ->
             return report;
         }
     };
+    machine.storage = trace.storage.clone();
     for (i, step) in trace.steps.iter().enumerate() {
         match run_step(&mut machine, comp, step, i, file, &mut report) {
             Ok(()) => report.steps_run += 1,
@@ -335,6 +336,7 @@ fn run_step(
             })
             .collect(),
         clock: num_json(m.clock),
+        storage: m.storage.clone(),
     };
     check_expectations(m, comp, step, &step_report, &fx, i, file, report);
     report.steps.push(step_report);

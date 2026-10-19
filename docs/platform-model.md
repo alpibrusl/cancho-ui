@@ -48,7 +48,9 @@ React-or-Svelte-shaped abstraction.
   `Clock`, `Location`. **Corrected 2026-10-19 (measured in the
   emitted code):** only `Clock` and `Network` exist, and both are
   stubs (`Network` is `net.search`, a simulated search over a fixed
-  corpus, not `fetch`); `Storage` and `Location` are not written.
+  corpus, not `fetch`); `Storage` and `Location` are not written. **Updated 2026-10-19: `Storage` is
+  now built** as the builtins `storage.get` / `storage.set` over `localStorage`
+  ([`adapters.md`](adapters.md)); `Location` and a real `Network` are not.
   See [`mobile-backend.md`](mobile-backend.md) §2.
 - Source maps for the cancho-ui → JavaScript lowering.
 - The full evidence report (`cancho-ui report`) with the five
@@ -180,7 +182,7 @@ is the operating form.
 | Capability | Adapter | Foreign function |
 |---|---|---|
 | `Network` | `net.request` | `fetch` from `"browser"` |
-| `Storage` | `storage.get`, `storage.set` | `localStorage.getItem` / `localStorage.setItem` from `"browser:storage"` |
+| `Storage` | `storage.get`, `storage.set` | **built as builtins, not `foreign`** (`localStorage.getItem` / `setItem`, key prefix `cui:`): [`adapters.md`](adapters.md) |
 | `Clock` | `clock.now` | `Date.now` from `"browser"` |
 | `Location` | `location.current` | `navigator.geolocation.getCurrentPosition` from `"browser:location"` |
 

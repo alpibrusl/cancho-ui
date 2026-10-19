@@ -82,6 +82,8 @@ impl Journal {
 pub struct Ctx<'a> {
     pub state: &'a BTreeMap<String, Value>,
     pub clock: f64,
+    /// The `Storage` store, key to value, without the adapter's `cui:` prefix.
+    pub storage: &'a mut BTreeMap<String, String>,
     pub journal: &'a mut Journal,
     pub locals: Vec<(String, Value)>,
     /// Evaluating a state initial value: identifiers, calls, `match` and
@@ -286,6 +288,51 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
             ctx.journal.record(v.clone());
             Ok(v)
         }
+        ("storage.get", 2) => {
+            let key = eval(ctx, &args[0])?;
+            let fallback = eval(ctx, &args[1])?;
+            if let Some(v) = ctx.journal.replayed() {
+                return Ok(v);
+            }
+            let (Value::Str(k), Value::Str(_)) = (&key, &fallback) else {
+                return Err(fault(
+                    "replay-type-error",
+                    format!(
+                        "`storage.get` needs a String key and a String default, got {} and {}",
+                        describe(&key),
+                        describe(&fallback)
+                    ),
+                    span,
+                ));
+            };
+            let v = match ctx.storage.get(k) {
+                Some(found) => Value::Str(found.clone()),
+                None => fallback,
+            };
+            ctx.journal.record(v.clone());
+            Ok(v)
+        }
+        ("storage.set", 2) => {
+            let key = eval(ctx, &args[0])?;
+            let value = eval(ctx, &args[1])?;
+            if let Some(v) = ctx.journal.replayed() {
+                return Ok(v);
+            }
+            let (Value::Str(k), Value::Str(v)) = (&key, &value) else {
+                return Err(fault(
+                    "replay-type-error",
+                    format!(
+                        "`storage.set` needs a String key and a String value, got {} and {}",
+                        describe(&key),
+                        describe(&value)
+                    ),
+                    span,
+                ));
+            };
+            ctx.storage.insert(k.clone(), v.clone());
+            ctx.journal.record(Value::Bool(true));
+            Ok(Value::Bool(true))
+        }
         ("net.search", 1) => {
             let q = eval(ctx, &args[0])?;
             Ok(Value::Request(Req {
@@ -307,7 +354,7 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                 span,
             )),
         },
-        ("clock.now" | "net.search" | "sleep", n) => Err(fault(
+        ("clock.now" | "net.search" | "sleep" | "storage.get" | "storage.set", n) => Err(fault(
             "replay-type-error",
             format!(
                 "`{name}` called with {n} argument(s); the emitted adapter takes a fixed number"
@@ -316,7 +363,9 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
         )),
         _ => Err(fault(
             "replay-unsupported",
-            format!("call to `{name}`: replay models `clock.now`, `net.search` and `sleep` only"),
+            format!(
+                "call to `{name}`: replay models `clock.now`, `net.search`, `sleep`, `storage.get` and `storage.set` only"
+            ),
             span,
         )),
     }

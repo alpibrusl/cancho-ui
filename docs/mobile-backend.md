@@ -39,7 +39,8 @@ from compiled output (`examples/search`):
   that resolves after a simulated delay (60 ms plus 45 ms per query character)
   against a fixed six-name corpus, so the demo runs offline. `Clock` and the
   `sleep` adapter use `setTimeout`. There is **no real network adapter**, no
-  `Storage` adapter and no `Location` adapter in the web backend. The design
+  `Storage` adapter and no `Location` adapter in the web backend. *(Corrected 2026-10-19: `Storage` is built since;
+  the paragraph describes the web backend before that change. [`adapters.md`](adapters.md).)* The design
   documents name `Network`, `Storage`, `Clock` and `Location`
   ([`platform-model.md`](platform-model.md) §1); two of the four are not
   written, and the one called `Network` is not a network.
@@ -112,7 +113,8 @@ program is usable on a phone, and an author replaces it freely:
 
 ## 6. Not done, on purpose
 
-- **Real adapters.** A `fetch`-based `Network`, a `Storage` over `localStorage`
+- **Real adapters.** *(`Storage` over `localStorage` is built: [`adapters.md`](adapters.md). The rest of this
+  bullet is still open.)* A `fetch`-based `Network`, a `Storage` over `localStorage`
   or IndexedDB, and `Location` over the Geolocation API are the work that makes
   the capabilities real on every web target, phones included. Each needs its
   own design (what the capability allows, what the trace replays). They are the

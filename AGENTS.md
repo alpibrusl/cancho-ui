@@ -111,6 +111,10 @@ component SearchForm {
 }
 ```
 
+`storage.get(key, default)` and `storage.set(key, value)` perform the `Storage` capability (strings
+only; `set` answers whether it persisted; see `docs/adapters.md`, and note that a string interpolation
+cannot contain a string literal, so put the call in `Text { storage.get("k", "d") }`).
+
 `net.search(query)` performs the `Network` capability; the
 `await(...)` resolves it over the `Ok | Err | Cancelled` arms —
 all three are mandatory when the field was assigned from

@@ -1,0 +1,26 @@
+// examples/notes/notes.cui — the Storage capability (docs/adapters.md). `storage.set(key, value)` writes
+// a string that survives a reload; `storage.get(key, default)` reads it back, in the view as well as in a
+// handler. A call with quotes cannot sit inside a string interpolation (the lexer ends the string at the
+// first quote), so the view uses the call as the Text body.
+
+component Notes {
+    requires Storage;
+
+    state draft: String = "";
+
+    on Change(value) { draft = value; }
+
+    on Save { storage.set("note", draft); }
+
+    on Restore { draft = storage.get("note", ""); }
+
+    view {
+        Column {
+            TextField { label: "Note" value: draft on: Change }
+            Button { label: "Save" on: Save }
+            Button { label: "Restore" on: Restore }
+            Text { "Saved note:" }
+            Text { storage.get("note", "nothing yet") }
+        }
+    }
+}

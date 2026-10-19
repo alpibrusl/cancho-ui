@@ -25,7 +25,8 @@ $ echo $?
 - **Authority is declared and checked.** `requires Clock;` is the only way
   `clock.now()` is reachable. A missing declaration is `capability-missing`; a
   declaration nothing uses is `capability-unused`. The rule is cancho's
-  exact-row rule for effects, lifted to the UI.
+  exact-row rule for effects, lifted to the UI. `Storage` (`storage.get`, `storage.set`) is a real
+  adapter over `localStorage`: [`docs/adapters.md`](docs/adapters.md).
 - **Diagnostics are data.** `--output json` gives a locked shape with a stable
   `code`, a source span and a remediation. Consumers match on the code, not on
   the prose ([`spec/diagnostics`](spec/diagnostics/README.md)).

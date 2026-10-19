@@ -30,6 +30,7 @@
 | **Phase 1 / Tier 15** — instance-identity preservation (slots) | ✅ done | `5bf5043` |
 | **Phase 1 / Tier 16** — cross-file `import` (Tier 17 = disposal, below) | ✅ done | `2bffe9b`, `examples/dashboard` |
 | **Phase 1 / Tier 17** — component disposal → `Cancelled` to the arm | ✅ done | this commit, `examples/cancel` |
+| **Phase 4 start** — real adapters: `Storage` (`storage.get`/`storage.set` over `localStorage`, replayable) | ✅ done, `Network` as `fetch` and `Location` not | [`docs/adapters.md`](docs/adapters.md), #PR |
 | **Phase 2** — capability/effect reachability, full refusal suite, evidence report | ✅ done incrementally per tier | `spec/diagnostics/README.md` frozen Phase 0 |
 
 Per-tier rows 2–14 keep their detail in the git history and
