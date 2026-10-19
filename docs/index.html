@@ -63,13 +63,40 @@ code { font: .9em var(--mono); }
 .steps li { margin: .4rem 0; }
 @media (max-width: 40rem) { .kbcols { grid-template-columns: repeat(2, 1fr); min-height: 0; } }
 footer { border-top: 1px solid var(--line); padding: 1.5rem 0 2rem; color: var(--muted); font-size: .9rem; text-align: center; }
+.term .bar button { margin-left: auto; font: .78rem var(--mono); color: var(--term-fg); background: #1b262c; border: 1px solid #2c3a41; border-radius: 6px; padding: .2rem .6rem; cursor: pointer; }
+.demo { display: grid; grid-template-columns: 1fr; gap: 1rem; max-width: 64rem; margin: 0 auto; align-items: start; }
+@media (min-width: 60rem) { .demo { grid-template-columns: 1fr 1fr; } }
+.demo .term { margin: 0; max-width: none; }
+.demo .term pre { min-height: 20rem; font-size: .8rem; }
+.side { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.12); overflow: hidden; }
+.sidehead { display: flex; justify-content: space-between; align-items: center; gap: .5rem; padding: .55rem .8rem; border-bottom: 1px solid var(--line); font-size: .85rem; }
+.sidehead span { font: .78rem var(--mono); color: var(--muted); }
+.sidebody { padding: .8rem; min-height: 20rem; }
+.side iframe { display: block; width: 100%; height: 20rem; border: 0; background: var(--bg); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: .5rem; }
+.tile { background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: .5rem .6rem; font-size: .8rem; transition: background .3s, border-color .3s; }
+.tile b { display: block; font: 600 .82rem var(--mono); }
+.tile .m { color: var(--muted); }
+.tile.hot { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 10%, var(--surface)); }
+.tile.hot .m { color: var(--bad); font-weight: 600; }
+.tile.ok { border-color: var(--good); }
+.tile.ok .m { color: var(--good); font-weight: 600; }
+.bar2 { height: .9rem; border-radius: 6px; background: var(--soft); border: 1px solid var(--line); overflow: hidden; margin: .4rem 0 .8rem; position: relative; }
+.bar2 i { display: block; height: 100%; background: var(--accent); transition: width .5s; }
+.bar2 i.torn { background: var(--bad); }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: .2rem .8rem; font: .82rem var(--mono); }
+.kv span:nth-child(odd) { color: var(--muted); }
+.promptbox { max-width: 52rem; margin: 0 auto; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); }
+.pbar { display: flex; justify-content: space-between; align-items: center; padding: .45rem .8rem; border-bottom: 1px solid var(--line); background: var(--soft); font: .8rem var(--mono); color: var(--muted); }
+.pbar button { font: 600 .8rem var(--font); padding: .25rem .7rem; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-fg); cursor: pointer; margin-right: .6rem; }
+.promptbox pre { margin: 0; padding: 1rem; max-height: 26rem; overflow: auto; font: .8rem/1.55 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 </style>
 </head>
 <body>
 <header class="top"><div class="wrap">
   <a class="brand" href=".">cancho-ui</a>
   <nav>
-    <a href="#why">Why</a><a class="opt" href="#source">The language</a><a class="opt" href="#measured">Measured</a><a href="#try">Try it</a>
+    <a href="#why">Why</a><a class="opt" href="#source">The language</a><a class="opt" href="#measured">Measured</a><a class="opt" href="#agent">Ask your agent</a><a href="#try">Try it</a>
     <a href="https://github.com/alpibrusl/cancho-ui">GitHub</a>
   </nav>
 </div></header>
@@ -77,27 +104,21 @@ footer { border-top: 1px solid var(--line); padding: 1.5rem 0 2rem; color: var(-
 <div class="wrap hero">
   <h1>A UI language that checks what it is allowed to do.</h1>
   <p class="sub">A component declares the authority it needs, and the compiler, not a code review, refuses the program when the code asks for more.</p>
-  <div class="cta"><a class="btn primary" href="#try">Try it</a><a class="btn" href="#why">Why it is different</a><a class="btn" href="#source">See the language</a></div>
+  <div class="cta"><a class="btn primary" href="#try">Try it</a><a class="btn" href="#why">Why it is different</a><a class="btn" href="#source">See the language</a><a class="btn" href="#agent">Ask your agent to try it</a></div>
 </div>
 
 <div class="wrap" style="padding-bottom:2.5rem">
-  <div class="term" role="img" aria-label="The same program checked twice: refused without its capability declaration, accepted with it">
-    <div class="bar"><i></i><i></i><i></i> the terminal</div>
-<pre>
-<span class="d">$ cancho-ui check clock.cui          # `requires Clock;` deleted</span>
-<span class="b">error[capability-missing]</span> clock.cui:13:21: component `Clock` performs `clock.now`
-  which requires the `Clock` capability, but `requires Clock` is not declared
-<span class="d">exit 1</span>
-
-<span class="d">$ cancho-ui check examples/clock/clock.cui</span>
-<span class="g">exit 0</span>
-
-<span class="d">$ cancho-ui inspect effects examples/clock/clock.cui Clock --output json</span>
-<span class="a">{ "component": "Clock",
-  "reachable_effects": [ { "capability": "Clock", "path": ["clock","now"], ... } ] }</span>
-</pre>
+  <div class="demo">
+    <div class="term" role="img" aria-label="Replay of real compiler output: a program refused for a missing capability, accepted with it, and a diff that reports the authority expanded">
+      <div class="bar"><i></i><i></i><i></i> the terminal <button id="replay" type="button">↻ replay</button></div>
+      <pre id="screen"></pre>
+    </div>
+    <div class="side" aria-label="The counter example, compiled by cancho-ui, running">
+      <div class="sidehead"><b>The same compiler's output, running</b><span>counter.cui → counter.js</span></div>
+      <iframe title="The counter example compiled by cancho-ui" src="demo/counter.html" loading="lazy"></iframe>
+    </div>
   </div>
-  <p class="caption">Real output of the compiler. The refusal carries a stable code, a span and a remediation in <code>--output json</code>, so an agent matches on the code instead of reading prose.</p>
+  <p class="caption">Left: real output of the compiler (a copy of <code>examples/clock</code> with and without <code>requires Clock;</code>, then <code>diff</code> against a copy that adds a <code>Network</code> call). The refusal carries a stable code, a span and a remediation in <code>--output json</code>. Right: <code>examples/counter</code>, compiled by <code>cancho-ui build</code>, running in your browser. Not a live session. <a href="demo/counter.html">Open it on its own</a>.</p>
 </div>
 
 <section class="alt" id="why"><div class="wrap">
@@ -147,6 +168,49 @@ footer { border-top: 1px solid var(--line); padding: 1.5rem 0 2rem; color: var(-
   <p class="fine">Not measured: whether an agent is more productive with cancho-ui than with a conventional stack. That needs the Phase 3 benchmark, which has not been run. There is a semantic <code>diff</code> (authority, state, events, effects; not full behavioural equivalence), but no replay and no mobile backend yet; see the <a href="https://github.com/alpibrusl/cancho-ui/blob/main/ROADMAP.md">roadmap</a>.</p>
 </div></section>
 
+<section class="alt" id="agent"><div class="wrap">
+  <h2>Ask your coding agent to try it</h2>
+  <p class="lead">Paste this into Claude Code, Codex or any coding agent that can run commands. It installs cancho-ui, proves the install with the test suite (no network, no key, no model), and walks through a refusal and a diff.</p>
+  <div class="promptbox">
+    <div class="pbar"><span>prompt</span><span><button type="button" id="copyprompt">Copy</button> <a href="https://raw.githubusercontent.com/alpibrusl/cancho-ui/main/docs/agent-prompt.md">raw</a></span></div>
+    <pre id="agentprompt">Install cancho-ui and try it on one small program. Work in a new empty directory, keep every path free of spaces, and never use sudo. Run steps 2 to 5 in one shell session. Report honestly; do not retry a failing command in a loop and do not edit the repository to make a command pass.
+
+1. Check that `git`, `cargo` (Rust, via rustup) and a C linker (`cc`) exist. If one is missing, stop and tell me which; do not install system packages on your own.
+
+2. Get the repository:
+   git clone https://github.com/alpibrusl/cancho-ui.git
+   cd cancho-ui
+
+3. Build it and prove the install works. This needs no network after the clone, no key and no model:
+   cargo build --release
+   cargo test --workspace          # every line `test result:` must say ok, none failed
+   export CUI="$PWD/target/release/cancho-ui"
+
+4. Try the compiler on its own example, a clock component that declares `requires Clock;`:
+   "$CUI" check examples/clock/clock.cui ; echo "exit $?"                      # expect exit 0
+   "$CUI" inspect effects examples/clock/clock.cui Clock --output json        # the capability and where it is used
+   Now make a copy without the declaration and check it:
+   sed '/requires Clock;/d' examples/clock/clock.cui &gt; /tmp/no-cap.cui
+   "$CUI" check /tmp/no-cap.cui ; echo "exit $?"                                # expect capability-missing, exit 1
+   "$CUI" check /tmp/no-cap.cui --output json                                   # the same refusal as data (code, span, remediation)
+   Then compare two programs. Use examples/clock/clock.cui and examples/counter/counter.cui:
+   "$CUI" diff examples/clock/clock.cui examples/counter/counter.cui ; echo "exit $?"     # expect exit 5 (the programs differ)
+   "$CUI" diff examples/clock/clock.cui examples/clock/clock.cui ; echo "exit $?"         # expect "no semantic change", exit 0
+
+5. Build the counter to JavaScript and look at it in a browser:
+   "$CUI" build examples/counter/counter.cui -o docs/demo/counter.js
+   python3 -m http.server -d docs 8000        # only serves the files; then open http://localhost:8000/demo/counter.html
+   Click Increment twice and Reset. If you cannot open a browser, say so and stop after the build.
+
+6. Tell me, briefly:
+   - the exit code and the first line each command printed in step 4;
+   - whether `cargo test --workspace` passed, and how many tests;
+   - what the counter did in the browser, or that you could not open one;
+   - anything that failed, with the exact error.
+Docs: README.md (the commands), docs/semantic-diff.md (what diff compares), spec/diagnostics/README.md (the refusal shape).</pre>
+  </div>
+  <p class="fine">It needs no key and no model. The same text is in <a href="https://github.com/alpibrusl/cancho-ui/blob/main/docs/agent-prompt.md">docs/agent-prompt.md</a>, and a Claude Code skill that teaches an agent to check, inspect and diff <code>.cui</code> programs is in <a href="https://github.com/alpibrusl/cancho-ui/blob/main/skills/cancho-ui/SKILL.md">skills/cancho-ui</a>.</p>
+</div></section>
 <section id="try"><div class="wrap">
   <h2>Try it</h2>
   <p class="lead">You need a Rust toolchain; the version is pinned in <code>rust-toolchain.toml</code>.</p>
@@ -167,5 +231,61 @@ cd examples/clock &amp;&amp; python3 -m http.server     # serve it, then open /c
   </div>
 </div></section>
 <footer><div class="wrap">cancho-ui · EUPL-1.2 · part of the <a href="https://github.com/alpibrusl/cancho">cancho</a> ecosystem</div></footer>
+<script>
+(function () {
+  var screen = document.getElementById("screen");
+  var lines = [
+    ["d", "$ cancho-ui check clock.cui   # `requires Clock;` deleted"],
+    ["b", "error[capability-missing] clock.cui:13:21"],
+    ["b", "  component `Clock` performs `clock.now`, which requires"],
+    ["b", "  the `Clock` capability, but `requires Clock` is not declared"],
+    ["d", "exit 1"],
+    ["d", "$ cancho-ui check clock.cui   # restored"],
+    ["g", "exit 0"],
+    ["d", "$ cancho-ui diff clock.cui clock-search.cui"],
+    ["a", "authority: expanded"],
+    ["a", "component Clock  (changed; authority expanded)"],
+    ["a", "  + requires Network"],
+    ["a", "  + state r: Result[List[String], String] = Ok([])"],
+    ["a", "  + event Search(): writes r"],
+    ["a", "  + effect Network net.search at 27:18"],
+    ["d", "exit 5"]
+  ];
+  function onReset() {}
+  function onAct() {}
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+  function span(l, text) { return '<span class="' + l[0] + '">' + esc(text) + "</span>"; }
+  var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var timer = null;
+  function full() {
+    clearTimeout(timer); onReset();
+    for (var i = 0; i < lines.length; i++) { if (lines[i][2]) { onAct(lines[i][2]); } }
+    screen.innerHTML = lines.map(function (l) { return span(l, l[1]); }).join("\n");
+  }
+  function play() {
+    clearTimeout(timer); screen.innerHTML = ""; onReset();
+    var i = 0, j = 0, html = "";
+    (function tick() {
+      if (i >= lines.length) { return; }
+      var l = lines[i];
+      j += 3;
+      screen.innerHTML = html + span(l, l[1].slice(0, j));
+      if (j >= l[1].length) {
+        html += span(l, l[1]) + "\n"; onAct(l[2]); i++; j = 0;
+        timer = setTimeout(tick, l[0] === "b" ? 1100 : 550);
+      } else { timer = setTimeout(tick, 14); }
+    })();
+  }
+  document.getElementById("replay").addEventListener("click", function () { if (reduce) { full(); } else { play(); } });
+  var copyBtn = document.getElementById("copyprompt");
+  copyBtn.addEventListener("click", function () {
+    var text = document.getElementById("agentprompt").textContent, done = function (ok) { copyBtn.textContent = ok ? "Copied" : "Select and copy"; setTimeout(function () { copyBtn.textContent = "Copy"; }, 2000); };
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); }); }
+    else { var r = document.createRange(); r.selectNodeContents(document.getElementById("agentprompt")); var sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); done(false); }
+  });
+  full();
+  if (!reduce) { play(); }
+})();
+</script>
 </body>
 </html>

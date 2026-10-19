@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cancho-ui counter</title>
+<meta name="color-scheme" content="light dark">
+<style>
+:root { --bg: #ffffff; --fg: #14181a; --line: #dfe5e7; --accent: #1f5fa6; --accent-fg: #ffffff; }
+@media (prefers-color-scheme: dark) { :root { --bg: #131a1c; --fg: #e7ebec; --line: #212a2d; --accent: #7fb2ff; --accent-fg: #07162c; } }
+body { margin: 0; padding: 1.2rem; background: var(--bg); color: var(--fg); font: 1rem/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.cui-col { display: flex; flex-direction: column; gap: .6rem; align-items: flex-start; }
+[role="status"] { font-size: 2rem; font-weight: 700; }
+button { padding: .5rem 1rem; font: inherit; font-weight: 600; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; }
+button::before { content: attr(aria-label); }
+button:first-of-type { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.note { margin-top: 1rem; font-size: .8rem; opacity: .7; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<p class="note">Compiled by <code>cancho-ui build examples/counter/counter.cui</code>; this is the emitted <code>counter.js</code>.</p>
+<script type="module" src="./counter.js"></script>
+</body>
+</html>
