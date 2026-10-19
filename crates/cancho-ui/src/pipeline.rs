@@ -14,20 +14,26 @@ use std::path::Path;
 use cancho_ui_codegen_web::emit_module;
 use cancho_ui_ir::lower::LowerError;
 use cancho_ui_ir::{lower_file, serialize::canonical_json};
-use cancho_ui_syntax::lexer::LexError;
-use cancho_ui_syntax::parser::{parse, ParseError};
 use cancho_ui_syntax::Span;
-use cancho_ui_types::{check_file, check_file_with_externals, TypeError};
+use cancho_ui_syntax::lexer::LexError;
+use cancho_ui_syntax::parser::{ParseError, parse};
+use cancho_ui_types::{TypeError, check_file_with_externals};
 use serde::Serialize;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum PipelineError {
     #[error("refused: {0}")]
-    Refused(Diagnostic),
+    Refused(Box<Diagnostic>),
 
     #[error("environment: {0}")]
     Env(String),
+}
+
+impl PipelineError {
+    pub fn refused(d: Diagnostic) -> Self {
+        PipelineError::Refused(Box::new(d))
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -60,6 +66,9 @@ pub enum Severity {
     Error,
 }
 
+// The full vocabulary of spec/diagnostics/README.md is declared even where
+// no check constructs it yet; a variant that is absent cannot be reported.
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Tier {
@@ -70,18 +79,8 @@ pub enum Tier {
     Unknown,
 }
 
-impl Tier {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Tier::Static => "static",
-            Tier::Tested => "tested",
-            Tier::Runtime => "runtime",
-            Tier::Trust => "trust",
-            Tier::Unknown => "unknown",
-        }
-    }
-}
-
+// See `Tier`: declared vocabulary of spec/diagnostics/README.md.
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Subject {
@@ -119,6 +118,9 @@ pub struct Remediation {
     pub confidence: Confidence,
 }
 
+// The full vocabulary of spec/diagnostics/README.md is declared even where
+// no check constructs it yet; a variant that is absent cannot be reported.
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Confidence {
@@ -139,8 +141,14 @@ impl SpanOut {
     pub fn from_span(span: Span, file: &Path) -> Self {
         SpanOut {
             file: file.display().to_string(),
-            start: PositionOut { line: span.start.line, column: span.start.column },
-            end: PositionOut { line: span.end.line, column: span.end.column },
+            start: PositionOut {
+                line: span.start.line,
+                column: span.start.column,
+            },
+            end: PositionOut {
+                line: span.end.line,
+                column: span.end.column,
+            },
         }
     }
 }
@@ -194,8 +202,7 @@ fn resolve_imports(
     ast: &cancho_ui_syntax::ast::File,
     stack: &mut Vec<std::path::PathBuf>,
 ) -> Result<Vec<ResolvedFile>, PipelineError> {
-    let canon = fs::canonicalize(file)
-        .unwrap_or_else(|_| file.to_path_buf());
+    let canon = fs::canonicalize(file).unwrap_or_else(|_| file.to_path_buf());
     if let Some(pos) = stack.iter().position(|p| *p == canon) {
         let mut chain: Vec<String> = stack[pos..]
             .iter()
@@ -204,14 +211,17 @@ fn resolve_imports(
         chain.push(canon.display().to_string());
         let last = ast.imports.last();
         let (msg_span, via): (cancho_ui_syntax::Span, String) = match last {
-            Some(i) => (i.span, format!(" via `import {}.{};`", i.module, i.component)),
+            Some(i) => (
+                i.span,
+                format!(" via `import {}.{};`", i.module, i.component),
+            ),
             None => (ast.span, String::new()),
         };
         let subject = match last {
             Some(i) => format!("{}.{}", i.module, i.component),
             None => "file".to_string(),
         };
-        return Err(PipelineError::Refused(import_diag(
+        return Err(PipelineError::refused(import_diag(
             "import-cycle",
             subject,
             format!(
@@ -232,7 +242,7 @@ fn resolve_imports(
             None => std::path::PathBuf::from(format!("{}.cui", imp.module)),
         };
         let source = fs::read_to_string(&module_path).map_err(|_| {
-            PipelineError::Refused(import_diag(
+            PipelineError::refused(import_diag(
                 "import-missing-module",
                 format!("{}.{}", imp.module, imp.component),
                 format!(
@@ -245,39 +255,57 @@ fn resolve_imports(
             ))
         })?;
         let toks = cancho_ui_syntax::lexer::lex(&source)
-            .map_err(|e| PipelineError::Refused(lex_to_diag(e, &module_path)))?;
-        let module_ast = parse(toks)
-            .map_err(|e| PipelineError::Refused(parse_to_diag(e, &module_path)))?;
+            .map_err(|e| PipelineError::refused(lex_to_diag(e, &module_path)))?;
+        let module_ast =
+            parse(toks).map_err(|e| PipelineError::refused(parse_to_diag(e, &module_path)))?;
         // The file must declare its module name.
         match &module_ast.module {
             Some(m) if m.name == imp.module => {}
             _ => {
-                return Err(PipelineError::Refused(import_diag(
+                return Err(PipelineError::refused(import_diag(
                     "import-missing-module",
                     format!("{}.{}", imp.module, imp.component),
                     format!(
                         "`{}` does not declare `module {};` — an imported file must declare the module its importers name",
-                        module_path.display(), imp.module
+                        module_path.display(),
+                        imp.module
                     ),
                     imp.span,
                     file,
-                    Some(format!("Add `module {};` at the top of `{}.`", imp.module, module_path.display())),
+                    Some(format!(
+                        "Add `module {};` at the top of `{}.`",
+                        imp.module,
+                        module_path.display()
+                    )),
                 )));
             }
         }
-        if !module_ast.components.iter().any(|c| c.name == imp.component) {
-            return Err(PipelineError::Refused(import_diag(
+        if !module_ast
+            .components
+            .iter()
+            .any(|c| c.name == imp.component)
+        {
+            return Err(PipelineError::refused(import_diag(
                 "import-unknown-component",
                 format!("{}.{}", imp.module, imp.component),
                 format!(
                     "component `{}` does not exist in `{}` (whose components are: {})",
                     imp.component,
                     module_path.display(),
-                    module_ast.components.iter().map(|c| c.name.clone()).collect::<Vec<_>>().join(", ")
+                    module_ast
+                        .components
+                        .iter()
+                        .map(|c| c.name.clone())
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 ),
                 imp.span,
                 file,
-                Some(format!("Import a component the module declares, or declare `component {} {{ ... }}` in `{}.`", imp.component, module_path.display())),
+                Some(format!(
+                    "Import a component the module declares, or declare `component {} {{ ... }}` in `{}.`",
+                    imp.component,
+                    module_path.display()
+                )),
             )));
         }
         // Recurse first: the module's own imports must be resolved
@@ -313,22 +341,27 @@ fn resolve_imports(
             })
             .collect();
         check_file_with_externals(&module_ast, &inner_externals)
-            .map_err(|e| PipelineError::Refused(check_to_diag(&e, &module_path)))?;
+            .map_err(|e| PipelineError::refused(check_to_diag(&e, &module_path)))?;
         resolved.append(&mut deps);
-        resolved.push(ResolvedFile { path: module_path, ast: module_ast });
+        resolved.push(ResolvedFile {
+            path: module_path,
+            ast: module_ast,
+        });
     }
     stack.pop();
     Ok(resolved)
 }
 
-fn compile_inner(file: &Path) -> Result<(cancho_ui_ir::ir::IrFile, std::path::PathBuf), PipelineError> {
+fn compile_inner(
+    file: &Path,
+) -> Result<(cancho_ui_ir::ir::IrFile, std::path::PathBuf), PipelineError> {
     let source = fs::read_to_string(file)
         .map_err(|e| PipelineError::Env(format!("reading `{}`: {}", file.display(), e)))?;
 
     let tokens = cancho_ui_syntax::lexer::lex(&source)
-        .map_err(|e| PipelineError::Refused(lex_to_diag(e, file)))?;
+        .map_err(|e| PipelineError::refused(lex_to_diag(e, file)))?;
 
-    let ast = parse(tokens).map_err(|e| PipelineError::Refused(parse_to_diag(e, file)))?;
+    let ast = parse(tokens).map_err(|e| PipelineError::refused(parse_to_diag(e, file)))?;
 
     // Tier 16: resolve the entry's imports (dependency order,
     // checked with their own file paths) and hand the entry a
@@ -368,7 +401,7 @@ fn compile_inner(file: &Path) -> Result<(cancho_ui_ir::ir::IrFile, std::path::Pa
     for (c, path) in &components {
         if let Some((n, other)) = seen.iter().find(|(n, _)| *n == c.name) {
             let (n, other) = (n.clone(), other.clone());
-            return Err(PipelineError::Refused(import_diag(
+            return Err(PipelineError::refused(import_diag(
                 "component-name-collision",
                 c.name.clone(),
                 format!(
@@ -379,7 +412,9 @@ fn compile_inner(file: &Path) -> Result<(cancho_ui_ir::ir::IrFile, std::path::Pa
                 ),
                 c.span,
                 file,
-                Some(format!("Rename one of the two `component {n}` declarations (and the instantiations that use it).")),
+                Some(format!(
+                    "Rename one of the two `component {n}` declarations (and the instantiations that use it)."
+                )),
             )));
         }
         seen.push((c.name.clone(), path.clone()));
@@ -415,13 +450,14 @@ fn compile_inner(file: &Path) -> Result<(cancho_ui_ir::ir::IrFile, std::path::Pa
         })
         .collect();
     check_file_with_externals(&ast, &externals)
-        .map_err(|e| PipelineError::Refused(check_to_diag(&e, file)))?;
+        .map_err(|e| PipelineError::refused(check_to_diag(&e, file)))?;
 
-    let entry_ir = lower_file(&ast)
-        .map_err(|e| PipelineError::Refused(lower_to_diag(&e, file)))?;
+    let entry_ir = lower_file(&ast).map_err(|e| PipelineError::refused(lower_to_diag(&e, file)))?;
     let mut irs: Vec<cancho_ui_ir::ir::IrFile> = Vec::new();
     for r in &resolved {
-        irs.push(lower_file(&r.ast).map_err(|e| PipelineError::Refused(lower_to_diag(&e, &r.path)))?);
+        irs.push(
+            lower_file(&r.ast).map_err(|e| PipelineError::refused(lower_to_diag(&e, &r.path)))?,
+        );
     }
     irs.push(entry_ir);
     let merged = cancho_ui_ir::merge_ir_files(&irs);
@@ -459,7 +495,9 @@ fn check_to_diag(e: &cancho_ui_types::CheckError, file: &Path) -> Diagnostic {
                 "builtin-shape-mismatch",
                 Severity::Error,
                 Tier::Static,
-                Subject::Component { name: String::new() },
+                Subject::Component {
+                    name: String::new(),
+                },
                 format!("`{}` is misused here (expected {})", name, detail),
                 Some(*span),
             );
@@ -510,7 +548,9 @@ fn check_to_diag(e: &cancho_ui_types::CheckError, file: &Path) -> Diagnostic {
                 "capability-missing",
                 Severity::Error,
                 Tier::Static,
-                Subject::Capability { name: capability.clone() },
+                Subject::Capability {
+                    name: capability.clone(),
+                },
                 format!(
                     "component `{}` performs `{}` which requires the `{}` capability, but `requires {}` is not declared",
                     component, call_path, capability, capability
@@ -544,7 +584,9 @@ fn check_to_diag(e: &cancho_ui_types::CheckError, file: &Path) -> Diagnostic {
                 "capability-unused",
                 Severity::Error,
                 Tier::Static,
-                Subject::Capability { name: capability.clone() },
+                Subject::Capability {
+                    name: capability.clone(),
+                },
                 format!(
                     "component `{}` declares `requires {};` but no reachable effect uses it",
                     component, capability
@@ -583,7 +625,9 @@ fn check_to_diag(e: &cancho_ui_types::CheckError, file: &Path) -> Diagnostic {
                 "match-non-exhaustive",
                 Severity::Error,
                 Tier::Static,
-                Subject::Component { name: component.clone() },
+                Subject::Component {
+                    name: component.clone(),
+                },
                 format!(
                     "`match` on `{}` in component `{}` is not exhaustive; missing arm(s): {}",
                     field,
@@ -617,19 +661,16 @@ fn check_to_diag(e: &cancho_ui_types::CheckError, file: &Path) -> Diagnostic {
 }
 
 pub fn compile_to_js(file: &Path, target: Option<&str>) -> Result<String, PipelineError> {
-    if let Some(t) = target {
-        if t != "web" {
-            return Err(PipelineError::Env(format!(
-                "unsupported target `{}`; only `web` is supported in Phase 1",
-                t
-            )));
-        }
+    if let Some(t) = target
+        && t != "web"
+    {
+        return Err(PipelineError::Env(format!(
+            "unsupported target `{}`; only `web` is supported in Phase 1",
+            t
+        )));
     }
     let ir = compile_to_ir(file)?;
-    Ok(emit_module(
-        &ir,
-        Some(file.to_string_lossy().as_ref()),
-    ))
+    Ok(emit_module(&ir, Some(file.to_string_lossy().as_ref())))
 }
 
 pub fn format_diagnostic(d: &Diagnostic, file: &Path) -> String {
@@ -638,10 +679,6 @@ pub fn format_diagnostic(d: &Diagnostic, file: &Path) -> String {
         None => file.display().to_string(),
     };
     format!("error[{}] at {}: {}", d.code, loc, d.message)
-}
-
-pub fn format_diagnostic_json(d: &Diagnostic) -> String {
-    serde_json::to_string_pretty(d).expect("Diagnostic serialization is infallible")
 }
 
 fn lex_to_diag(e: LexError, file: &Path) -> Diagnostic {
@@ -653,8 +690,14 @@ fn lex_to_diag(e: LexError, file: &Path) -> Diagnostic {
             Subject::Internal,
             format!("unexpected character {:?}", ch),
             Span::new(
-                cancho_ui_syntax::Position { line: *line, column: *column },
-                cancho_ui_syntax::Position { line: *line, column: *column + 1 },
+                cancho_ui_syntax::Position {
+                    line: *line,
+                    column: *column,
+                },
+                cancho_ui_syntax::Position {
+                    line: *line,
+                    column: *column + 1,
+                },
             ),
         ),
         LexError::UnterminatedString { line, column } => (
@@ -664,8 +707,14 @@ fn lex_to_diag(e: LexError, file: &Path) -> Diagnostic {
             Subject::Internal,
             "unterminated string literal".to_string(),
             Span::new(
-                cancho_ui_syntax::Position { line: *line, column: *column },
-                cancho_ui_syntax::Position { line: *line, column: *column },
+                cancho_ui_syntax::Position {
+                    line: *line,
+                    column: *column,
+                },
+                cancho_ui_syntax::Position {
+                    line: *line,
+                    column: *column,
+                },
             ),
         ),
         LexError::UnknownEscape { ch, line, column } => (
@@ -675,8 +724,14 @@ fn lex_to_diag(e: LexError, file: &Path) -> Diagnostic {
             Subject::Internal,
             format!("unknown escape sequence \\{}", ch),
             Span::new(
-                cancho_ui_syntax::Position { line: *line, column: *column },
-                cancho_ui_syntax::Position { line: *line, column: *column + 2 },
+                cancho_ui_syntax::Position {
+                    line: *line,
+                    column: *column,
+                },
+                cancho_ui_syntax::Position {
+                    line: *line,
+                    column: *column + 2,
+                },
             ),
         ),
     };
@@ -697,15 +752,26 @@ fn lex_to_diag(e: LexError, file: &Path) -> Diagnostic {
 
 fn parse_to_diag(e: ParseError, file: &Path) -> Diagnostic {
     let (code, severity, tier, subject, message, span) = match &e {
-        ParseError::Unexpected { expected, found, line, column } => (
+        ParseError::Unexpected {
+            expected,
+            found,
+            line,
+            column,
+        } => (
             "parse-unexpected-token",
             Severity::Error,
             Tier::Static,
             Subject::Internal,
             format!("expected {}, found {:?}", expected, token_name(found)),
             Some(Span::new(
-                cancho_ui_syntax::Position { line: *line, column: *column },
-                cancho_ui_syntax::Position { line: *line, column: *column + 1 },
+                cancho_ui_syntax::Position {
+                    line: *line,
+                    column: *column,
+                },
+                cancho_ui_syntax::Position {
+                    line: *line,
+                    column: *column + 1,
+                },
             )),
         ),
         ParseError::UnexpectedEof { expected } => (
@@ -723,8 +789,14 @@ fn parse_to_diag(e: ParseError, file: &Path) -> Diagnostic {
             Subject::Internal,
             format!("invalid number literal: {}", raw),
             Some(Span::new(
-                cancho_ui_syntax::Position { line: *line, column: *column },
-                cancho_ui_syntax::Position { line: *line, column: *column },
+                cancho_ui_syntax::Position {
+                    line: *line,
+                    column: *column,
+                },
+                cancho_ui_syntax::Position {
+                    line: *line,
+                    column: *column,
+                },
             )),
         ),
     };
@@ -799,7 +871,10 @@ fn type_to_diag(e: &TypeError, file: &Path) -> Diagnostic {
             Severity::Error,
             Tier::Static,
             Subject::Component { name: name.clone() },
-            format!("component `{}` is declared more than once in this file", name),
+            format!(
+                "component `{}` is declared more than once in this file",
+                name
+            ),
             None,
         ),
         TypeError::ReservedComponentName { name, span } => (
@@ -807,7 +882,10 @@ fn type_to_diag(e: &TypeError, file: &Path) -> Diagnostic {
             Severity::Error,
             Tier::Static,
             Subject::Component { name: name.clone() },
-            format!("`{}` is a reserved word and cannot be used as a component name", name),
+            format!(
+                "`{}` is a reserved word and cannot be used as a component name",
+                name
+            ),
             Some(*span),
         ),
         TypeError::NotPascalCase { name, span } => (
@@ -876,11 +954,17 @@ fn type_to_diag(e: &TypeError, file: &Path) -> Diagnostic {
             ),
             Some(*span),
         ),
-        TypeError::PropertyUnknownKey { component, key, span } => (
+        TypeError::PropertyUnknownKey {
+            component,
+            key,
+            span,
+        } => (
             "property-unknown-key",
             Severity::Error,
             Tier::Static,
-            Subject::Component { name: component.clone() },
+            Subject::Component {
+                name: component.clone(),
+            },
             format!(
                 "component instance `{component}` has no state field `{key}` to pass as a property",
                 component = component,
@@ -888,11 +972,17 @@ fn type_to_diag(e: &TypeError, file: &Path) -> Diagnostic {
             ),
             Some(*span),
         ),
-        TypeError::PropertyTypeMismatch { component, key, span } => (
+        TypeError::PropertyTypeMismatch {
+            component,
+            key,
+            span,
+        } => (
             "property-type-mismatch",
             Severity::Error,
             Tier::Static,
-            Subject::Component { name: component.clone() },
+            Subject::Component {
+                name: component.clone(),
+            },
             format!(
                 "property `{key}` of `{component}` does not match the state field's declared type (string property or int/float/bool literal constants only)",
                 component = component,
@@ -900,11 +990,17 @@ fn type_to_diag(e: &TypeError, file: &Path) -> Diagnostic {
             ),
             Some(*span),
         ),
-        TypeError::PropertySourceUnknown { component, key, span } => (
+        TypeError::PropertySourceUnknown {
+            component,
+            key,
+            span,
+        } => (
             "property-source-unknown",
             Severity::Error,
             Tier::Static,
-            Subject::Component { name: component.clone() },
+            Subject::Component {
+                name: component.clone(),
+            },
             format!(
                 "`{key}` is not a state field of `{component}` (and not an enclosing `For` binding); a dynamic property value must be read from the parent's state",
                 component = component,
@@ -916,7 +1012,9 @@ fn type_to_diag(e: &TypeError, file: &Path) -> Diagnostic {
             "duplicate-property-key",
             Severity::Error,
             Tier::Static,
-            Subject::Component { name: component.clone() },
+            Subject::Component {
+                name: component.clone(),
+            },
             format!(
                 "property `{key}` of `{component}` is passed twice on this instance",
                 component = component,
@@ -928,7 +1026,9 @@ fn type_to_diag(e: &TypeError, file: &Path) -> Diagnostic {
             "component-cycle",
             Severity::Error,
             Tier::Static,
-            Subject::Component { name: chain.first().cloned().unwrap_or_default() },
+            Subject::Component {
+                name: chain.first().cloned().unwrap_or_default(),
+            },
             format!(
                 "component instance chain is cyclic: {} — the emitted mount would recurse forever",
                 chain.join(" → ")

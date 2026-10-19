@@ -30,8 +30,8 @@
 //! ```
 
 use crate::ast::*;
-use crate::span::Span;
 use crate::lexer::{SpannedToken, Token};
+use crate::span::Span;
 use thiserror::Error;
 
 #[derive(Debug, Clone, Error, PartialEq)]
@@ -95,13 +95,6 @@ impl Parser {
         }
     }
 
-    fn match_token(&mut self, _t: &Token) -> bool {
-        // Reserved for future parser-extension use; kept private to
-        // silence the dead-code warning without dropping the
-        // utility. Phase 2 uses this when `match` becomes a keyword.
-        false
-    }
-
     // --- Top-level ---
 
     fn parse_file(&mut self) -> Result<File, ParseError> {
@@ -162,7 +155,11 @@ impl Parser {
         };
         let semi = self.expect(Token::Semi)?;
         let span = Span::new(kw.span.start, semi.span.end);
-        Ok(ImportDecl { module, component, span })
+        Ok(ImportDecl {
+            module,
+            component,
+            span,
+        })
     }
 
     fn parse_module(&mut self) -> Result<ModuleDecl, ParseError> {
@@ -180,7 +177,10 @@ impl Parser {
             }
         };
         self.expect(Token::Semi)?;
-        Ok(ModuleDecl { name, span: kw.span })
+        Ok(ModuleDecl {
+            name,
+            span: kw.span,
+        })
     }
 
     fn parse_component(&mut self) -> Result<Component, ParseError> {
@@ -415,28 +415,34 @@ impl Parser {
             stmts.push(self.parse_stmt()?);
         }
         let end = self.peek().span.end;
-        Ok(StmtBlock { stmts, span: Span::new(start, end) })
+        Ok(StmtBlock {
+            stmts,
+            span: Span::new(start, end),
+        })
     }
 
     fn parse_stmt(&mut self) -> Result<Stmt, ParseError> {
         let start = self.peek().span.start;
         // An assignment is `identifier = expr;`.
-        if let Token::Ident(_) = &self.peek().token {
-            if matches!(self.tokens.get(self.pos + 1).map(|t| &t.token), Some(Token::Eq)) {
-                let name_tok = self.bump();
-                let name = match name_tok.token {
-                    Token::Ident(s) => s,
-                    _ => unreachable!(),
-                };
-                self.expect(Token::Eq)?;
-                let value = self.parse_expr()?;
-                let end_tok = self.expect(Token::Semi)?;
-                return Ok(Stmt::Assign {
-                    target: name,
-                    value,
-                    span: Span::new(name_tok.span.start, end_tok.span.end),
-                });
-            }
+        let is_assign = matches!(self.peek().token, Token::Ident(_))
+            && matches!(
+                self.tokens.get(self.pos + 1).map(|t| &t.token),
+                Some(Token::Eq)
+            );
+        if is_assign {
+            let name_tok = self.bump();
+            let Token::Ident(name) = name_tok.token else {
+                // `is_assign` just matched `Token::Ident` at this position.
+                unreachable!("assignment target was checked to be an identifier");
+            };
+            self.expect(Token::Eq)?;
+            let value = self.parse_expr()?;
+            let end_tok = self.expect(Token::Semi)?;
+            return Ok(Stmt::Assign {
+                target: name,
+                value,
+                span: Span::new(name_tok.span.start, end_tok.span.end),
+            });
         }
         let expr = self.parse_expr()?;
         let end_tok = self.expect(Token::Semi)?;
@@ -513,157 +519,171 @@ impl Parser {
     }
 
     fn parse_await(&mut self) -> Result<Expr, ParseError> {
-    // `await(expr)` — awaits a `Request[T]`, returns the
-    // resolved `RequestResult[T]`. The parens are required so
-    // `await foo` (a missing-paren error) is unambiguous.
-    let kw = self.expect(Token::Await)?;
-    self.expect(Token::LParen)?;
-    let request = self.parse_expr()?;
-    let close = self.expect(Token::RParen)?;
-    Ok(Expr::Await {
-        request: Box::new(request),
-        span: Span::new(kw.span.start, close.span.end),
-    })
-}
+        // `await(expr)` — awaits a `Request[T]`, returns the
+        // resolved `RequestResult[T]`. The parens are required so
+        // `await foo` (a missing-paren error) is unambiguous.
+        let kw = self.expect(Token::Await)?;
+        self.expect(Token::LParen)?;
+        let request = self.parse_expr()?;
+        let close = self.expect(Token::RParen)?;
+        Ok(Expr::Await {
+            request: Box::new(request),
+            span: Span::new(kw.span.start, close.span.end),
+        })
+    }
 
-fn parse_list_lit(&mut self) -> Result<Expr, ParseError> {
-    // `[a, b, c]` — a `List[T]` literal. Items are plain
-    // expressions; trailing commas are not accepted.
-    let open = self.expect(Token::LBracket)?;
-    let mut items = Vec::new();
-    loop {
-        if matches!(self.peek().token, Token::RBracket) {
-            break;
+    fn parse_list_lit(&mut self) -> Result<Expr, ParseError> {
+        // `[a, b, c]` — a `List[T]` literal. Items are plain
+        // expressions; trailing commas are not accepted.
+        let open = self.expect(Token::LBracket)?;
+        let mut items = Vec::new();
+        loop {
+            if matches!(self.peek().token, Token::RBracket) {
+                break;
+            }
+            items.push(self.parse_expr()?);
+            if matches!(self.peek().token, Token::Comma) {
+                self.bump();
+            } else {
+                break;
+            }
         }
-        items.push(self.parse_expr()?);
-        if matches!(self.peek().token, Token::Comma) {
+        let close = self.expect(Token::RBracket)?;
+        Ok(Expr::ListLit {
+            items,
+            span: Span::new(open.span.start, close.span.end),
+        })
+    }
+
+    fn parse_match(&mut self) -> Result<Expr, ParseError> {
+        let kw = self.expect(Token::Match)?;
+        let scrutinee = self.parse_expr()?;
+        self.expect(Token::LBrace)?;
+        let mut arms = Vec::new();
+        while !matches!(self.peek().token, Token::RBrace) {
+            let pattern = self.parse_pattern()?;
+            self.expect(Token::FatArrow)?;
+            // The arm body is a single expression, optionally wrapped
+            // in braces (`{ expr }`). The braces are just for visual
+            // grouping — they don't introduce a new scope. Tier 6
+            // doesn't have block expressions with statements; for
+            // that, Phase 2 lands.
+            let (_open_brace, body) = if matches!(self.peek().token, Token::LBrace) {
+                let open = self.bump();
+                let inner = self.parse_expr()?;
+                let _close = self.expect(Token::RBrace)?;
+                (Some((open, _close)), inner)
+            } else {
+                (None, self.parse_expr()?)
+            };
+            let arm_span_start = pattern.span().start;
+            let arm_span_end = body.span().end;
+            arms.push(MatchArm {
+                pattern,
+                body,
+                span: Span::new(arm_span_start, arm_span_end),
+            });
+            // A trailing comma is allowed but not required — the next
+            // arm can be on a new line. Whitespace separates arms.
+            if matches!(self.peek().token, Token::Comma) {
+                self.bump();
+            }
+        }
+        let close = self.expect(Token::RBrace)?;
+        Ok(Expr::Match {
+            scrutinee: Box::new(scrutinee),
+            arms,
+            span: Span::new(kw.span.start, close.span.end),
+        })
+    }
+
+    fn parse_pattern(&mut self) -> Result<Pattern, ParseError> {
+        let start = self.peek().span.start;
+        if matches!(&self.peek().token, Token::Ident(s) if s == "_") {
             self.bump();
-        } else {
-            break;
-        }
-    }
-    let close = self.expect(Token::RBracket)?;
-    Ok(Expr::ListLit {
-        items,
-        span: Span::new(open.span.start, close.span.end),
-    })
-}
-
-fn parse_match(&mut self) -> Result<Expr, ParseError> {
-    let kw = self.expect(Token::Match)?;
-    let scrutinee = self.parse_expr()?;
-    self.expect(Token::LBrace)?;
-    let mut arms = Vec::new();
-    while !matches!(self.peek().token, Token::RBrace) {
-        let pattern = self.parse_pattern()?;
-        self.expect(Token::FatArrow)?;
-        // The arm body is a single expression, optionally wrapped
-        // in braces (`{ expr }`). The braces are just for visual
-        // grouping — they don't introduce a new scope. Tier 6
-        // doesn't have block expressions with statements; for
-        // that, Phase 2 lands.
-        let (_open_brace, body) = if matches!(self.peek().token, Token::LBrace) {
-            let open = self.bump();
-            let inner = self.parse_expr()?;
-            let _close = self.expect(Token::RBrace)?;
-            (Some((open, _close)), inner)
-        } else {
-            (None, self.parse_expr()?)
-        };
-        let arm_span_start = pattern.span().start;
-        let arm_span_end = body.span().end;
-        arms.push(MatchArm {
-            pattern,
-            body,
-            span: Span::new(arm_span_start, arm_span_end),
-        });
-        // A trailing comma is allowed but not required — the next
-        // arm can be on a new line. Whitespace separates arms.
-        if matches!(self.peek().token, Token::Comma) {
-            self.bump();
-        }
-    }
-    let close = self.expect(Token::RBrace)?;
-    Ok(Expr::Match {
-        scrutinee: Box::new(scrutinee),
-        arms,
-        span: Span::new(kw.span.start, close.span.end),
-    })
-}
-
-fn parse_pattern(&mut self) -> Result<Pattern, ParseError> {
-    let start = self.peek().span.start;
-    if matches!(&self.peek().token, Token::Ident(s) if s == "_") {
-        self.bump();
-        return Ok(Pattern::Wildcard { span: Span::new(start, start) });
-    }
-    let name_tok = self.bump();
-    let name = match name_tok.token {
-        Token::Ident(s) => s,
-        other => {
-            return Err(ParseError::Unexpected {
-                expected: "pattern (identifier, `_`, or `Name(binding)`)",
-                found: other,
-                line: name_tok.span.start.line,
-                column: name_tok.span.start.column,
+            return Ok(Pattern::Wildcard {
+                span: Span::new(start, start),
             });
         }
-    };
-    // `Cancelled` and `None` are known zero-payload variants. Other
-    // bare identifiers are still bindings (`Ident` pattern); the
-    // match arm body decides whether to use them.
-    if (name == "Cancelled" || name == "None") && !matches!(self.peek().token, Token::LParen) {
-        return Ok(Pattern::UnitVariant {
-            name,
-            span: name_tok.span,
-        });
-    }
-    // `Name(binding)` — a constructor pattern.
-    if matches!(self.peek().token, Token::LParen) {
-        self.bump();
-        let binding_tok = self.bump();
-        let binding = match binding_tok.token {
+        let name_tok = self.bump();
+        let name = match name_tok.token {
             Token::Ident(s) => s,
             other => {
                 return Err(ParseError::Unexpected {
-                    expected: "identifier in `Name(binding)` pattern",
+                    expected: "pattern (identifier, `_`, or `Name(binding)`)",
                     found: other,
-                    line: binding_tok.span.start.line,
-                    column: binding_tok.span.start.column,
+                    line: name_tok.span.start.line,
+                    column: name_tok.span.start.column,
                 });
             }
         };
-        let close = self.expect(Token::RParen)?;
-        return Ok(Pattern::Variant {
+        // `Cancelled` and `None` are known zero-payload variants. Other
+        // bare identifiers are still bindings (`Ident` pattern); the
+        // match arm body decides whether to use them.
+        if (name == "Cancelled" || name == "None") && !matches!(self.peek().token, Token::LParen) {
+            return Ok(Pattern::UnitVariant {
+                name,
+                span: name_tok.span,
+            });
+        }
+        // `Name(binding)` — a constructor pattern.
+        if matches!(self.peek().token, Token::LParen) {
+            self.bump();
+            let binding_tok = self.bump();
+            let binding = match binding_tok.token {
+                Token::Ident(s) => s,
+                other => {
+                    return Err(ParseError::Unexpected {
+                        expected: "identifier in `Name(binding)` pattern",
+                        found: other,
+                        line: binding_tok.span.start.line,
+                        column: binding_tok.span.start.column,
+                    });
+                }
+            };
+            let close = self.expect(Token::RParen)?;
+            return Ok(Pattern::Variant {
+                name,
+                binding,
+                span: Span::new(name_tok.span.start, close.span.end),
+            });
+        }
+        Ok(Pattern::Ident {
             name,
-            binding,
-            span: Span::new(name_tok.span.start, close.span.end),
-        });
+            span: name_tok.span,
+        })
     }
-    Ok(Pattern::Ident {
-        name,
-        span: name_tok.span,
-    })
-}
 
-fn parse_primary(&mut self) -> Result<Expr, ParseError> {
+    fn parse_primary(&mut self) -> Result<Expr, ParseError> {
         let tok = self.peek().clone();
         match tok.token {
             Token::IntLit(v) => {
                 self.bump();
-                Ok(Expr::IntLit { value: v, span: tok.span })
+                Ok(Expr::IntLit {
+                    value: v,
+                    span: tok.span,
+                })
             }
             Token::FloatLit(v) => {
                 self.bump();
-                Ok(Expr::FloatLit { value: v, span: tok.span })
+                Ok(Expr::FloatLit {
+                    value: v,
+                    span: tok.span,
+                })
             }
             Token::StringLit(s) => {
                 self.bump();
-                Ok(Expr::StringLit { value: s, span: tok.span })
+                Ok(Expr::StringLit {
+                    value: s,
+                    span: tok.span,
+                })
             }
             Token::Ident(s) if s == "true" || s == "false" => {
                 self.bump();
-                Ok(Expr::BoolLit { value: s == "true", span: tok.span })
+                Ok(Expr::BoolLit {
+                    value: s == "true",
+                    span: tok.span,
+                })
             }
             Token::Ident(_) => {
                 // A path: `ident (.ident)*` optionally followed by
@@ -674,7 +694,8 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
                 let first_name = match &first_tok.token {
                     Token::Ident(s) => s.clone(),
                     _ => unreachable!(),
-                };                let mut path = vec![first_name];
+                };
+                let mut path = vec![first_name];
                 while matches!(self.peek().token, Token::Dot) {
                     self.bump();
                     let seg = self.bump();
@@ -829,7 +850,9 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
                     // A bare `None` is the zero-payload `Option`
                     // constructor, not an identifier binding.
                     if name == "None" {
-                        return Ok(Expr::None { span: first_tok.span });
+                        return Ok(Expr::None {
+                            span: first_tok.span,
+                        });
                     }
                     Ok(Expr::Ident {
                         name,
@@ -959,13 +982,13 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
             }
             break;
         }
-        let over = over.ok_or_else(|| ParseError::Unexpected {
+        let over = over.ok_or(ParseError::Unexpected {
             expected: "`over: <state field name>` in For block",
             found: Token::Eof,
             line: kw_span.start.line,
             column: kw_span.start.column,
         })?;
-        let binding = binding.ok_or_else(|| ParseError::Unexpected {
+        let binding = binding.ok_or(ParseError::Unexpected {
             expected: "`as: <binding name>` in For block",
             found: Token::Eof,
             line: kw_span.start.line,
@@ -1037,10 +1060,14 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
                     let mut expr_src = String::new();
                     let mut depth = 1;
                     while let Some(&nc) = chars.peek() {
-                        if nc == '{' { depth += 1; }
+                        if nc == '{' {
+                            depth += 1;
+                        }
                         if nc == '}' {
                             depth -= 1;
-                            if depth == 0 { break; }
+                            if depth == 0 {
+                                break;
+                            }
                         }
                         expr_src.push(nc);
                         chars.next();
@@ -1054,20 +1081,25 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
                             column: 0,
                         });
                     }
-                    let interp_tokens = crate::lexer::lex(&expr_src).map_err(|e| {
-                        ParseError::InvalidNumber {
+                    let interp_tokens =
+                        crate::lexer::lex(&expr_src).map_err(|e| ParseError::InvalidNumber {
                             raw: format!("{:?}", e),
                             line: current_line,
                             column: 0,
-                        }
-                    })?;
-                    let mut sub = Parser { tokens: interp_tokens, pos: 0 };
+                        })?;
+                    let mut sub = Parser {
+                        tokens: interp_tokens,
+                        pos: 0,
+                    };
                     let expr = sub.parse_expr().map_err(|e| ParseError::InvalidNumber {
                         raw: format!("{:?}", e),
                         line: current_line,
                         column: 0,
                     })?;
-                    parts.push(TextPart::Expr { expr, span: tok.span });
+                    parts.push(TextPart::Expr {
+                        expr,
+                        span: tok.span,
+                    });
                 } else {
                     buf.push(c);
                 }
@@ -1126,7 +1158,11 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
             });
         }
         let open = self.bump(); // {
-        let mut accessibility = Accessibility { role: None, label: None, span: open.span };
+        let mut accessibility = Accessibility {
+            role: None,
+            label: None,
+            span: open.span,
+        };
         let mut bindings: Vec<Binding> = Vec::new();
         let mut children = Vec::new();
 
@@ -1196,8 +1232,13 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
             // supports the expression form so `Text { match
             // result { ... } }` works.
             match &self.peek().token {
-                Token::StringLit(_) | Token::Ident(_) | Token::IntLit(_) | Token::FloatLit(_)
-                | Token::LParen | Token::Minus | Token::Match => {
+                Token::StringLit(_)
+                | Token::Ident(_)
+                | Token::IntLit(_)
+                | Token::FloatLit(_)
+                | Token::LParen
+                | Token::Minus
+                | Token::Match => {
                     children.push(self.parse_text_node()?);
                 }
                 Token::RBrace => {
@@ -1256,12 +1297,14 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
                         }
                     }
                     Token::StringLit(_) => children.push(self.parse_text_node()?),
-                    _ => return Err(ParseError::Unexpected {
-                        expected: "binding or view node",
-                        found: self.peek().token.clone(),
-                        line: self.peek().span.start.line,
-                        column: self.peek().span.start.column,
-                    }),
+                    _ => {
+                        return Err(ParseError::Unexpected {
+                            expected: "binding or view node",
+                            found: self.peek().token.clone(),
+                            line: self.peek().span.start.line,
+                            column: self.peek().span.start.column,
+                        });
+                    }
                 }
             }
         }
@@ -1275,7 +1318,11 @@ fn parse_primary(&mut self) -> Result<Expr, ParseError> {
         })
     }
 
-    fn parse_binding_value(&mut self, key: &str, kind: &ElementKind) -> Result<BindingValue, ParseError> {
+    fn parse_binding_value(
+        &mut self,
+        key: &str,
+        kind: &ElementKind,
+    ) -> Result<BindingValue, ParseError> {
         // Currently the only supported binding values are:
         //   - string literal (e.g. `label: "Increment"`),
         //   - `on: EventName` (event reference),
@@ -1431,10 +1478,8 @@ mod tests {
 
     #[test]
     fn parses_state_decl() {
-        let f = parse_source(
-            "component C { state count: Int = 0; view { Text { \"x\" } } }\n",
-        )
-        .expect("parse");
+        let f = parse_source("component C { state count: Int = 0; view { Text { \"x\" } } }\n")
+            .expect("parse");
         assert_eq!(f.components[0].state.len(), 1);
         assert_eq!(f.components[0].state[0].name, "count");
         assert_eq!(f.components[0].state[0].ty, Type::Int);
@@ -1452,10 +1497,9 @@ mod tests {
 
     #[test]
     fn parses_string_interpolation() {
-        let f = parse_source(
-            "component C { state x: Int = 0; view { Text { \"Count: {x}\" } } }\n",
-        )
-        .expect("parse");
+        let f =
+            parse_source("component C { state x: Int = 0; view { Text { \"Count: {x}\" } } }\n")
+                .expect("parse");
         // The view body is a Text element whose single child is the
         // interpolated text node.
         match &f.components[0].view.body {
@@ -1463,7 +1507,10 @@ mod tests {
                 assert!(matches!(kind, ElementKind::Text));
                 assert_eq!(children.len(), 1);
                 match &children[0] {
-                    ViewNode::Text { value: TextValue::Interpolated(parts), .. } => {
+                    ViewNode::Text {
+                        value: TextValue::Interpolated(parts),
+                        ..
+                    } => {
                         assert_eq!(parts.len(), 2);
                         assert!(matches!(&parts[0], TextPart::Literal(s) if s == "Count: "));
                         assert!(matches!(&parts[1], TextPart::Expr { .. }));

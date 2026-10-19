@@ -418,3 +418,21 @@ then the design and the evidence, not a competing runtime.
 
 The Phase 5 results report decides that. Until then, this is a
 research-backed compiler and agent-workflow project.
+## Not yet built (against the proposal's Phases 3-5)
+
+Stated here so the table above is not read as the whole of the proposal:
+
+- `cancho-ui diff` (semantic diff of state, effect and capability changes).
+- `cancho-ui test` and deterministic replay of event traces.
+- The agent benchmark (`eval/` is still only the plan).
+- A mobile backend and its conformance tests.
+- Self-hosting the compiler in cancho, which follows cancho's own
+  `docs/self-hosting.md`: the Rust compiler stays the oracle, and nothing
+  is ported until a program asks for it.
+
+Corrected in place: `cancho-ui inspect effects` printed
+`"reachable_effects": "[]"` for every component, a claim of no effects the
+compiler had not checked. It now prints the IR's `reachable_effects`.
+The gate (fmt, clippy `-D warnings`, test) failed on the initial tiers and
+had no CI; both are fixed, and `tests/no_panic.rs` mutates every example
+(each prefix, each one-character deletion) to look for a panic.

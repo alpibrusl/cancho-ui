@@ -10,8 +10,9 @@
 //! `LowerError` enum.
 
 use cancho_ui_syntax::ast::{
-    Binding, BindingValue, BinOp, CapabilityRef, Component, ElementKind, EventHandler, Expr, File,
-    MatchArm, Pattern, Role, Stmt, StmtBlock, StateField, TextPart, TextValue, Type, UnOp, ViewNode,
+    BinOp, Binding, BindingValue, CapabilityRef, Component, ElementKind, EventHandler, Expr, File,
+    MatchArm, Pattern, Role, StateField, Stmt, StmtBlock, TextPart, TextValue, Type, UnOp,
+    ViewNode,
 };
 use cancho_ui_syntax::span::{Position, Span};
 use std::collections::BTreeSet;
@@ -62,7 +63,11 @@ pub enum LowerError {
     #[error(
         "`{name}` is misused here (expected {detail}); see Tier 11 call forms: `filter(list, x => cond)`, `map(list, x => body)`, `len(value)`"
     )]
-    BuiltinMisuse { name: String, detail: String, span: Span },
+    BuiltinMisuse {
+        name: String,
+        detail: String,
+        span: Span,
+    },
 
     #[error(
         "the lambda body must be pure: it may not `await(...)` or call effectful/suspending builtins — list operations run synchronously inside the render pass"
@@ -122,7 +127,10 @@ fn lower_component(c: &Component, next_id: &mut u32) -> Result<IrComponent, Lowe
     }
     let (view_body, view_effects) = lower_view_node_with_effects(&c.view.body)?;
     reachable_effects.extend(view_effects);
-    let view = IrViewBlock { body: view_body, span: c.view.span };
+    let view = IrViewBlock {
+        body: view_body,
+        span: c.view.span,
+    };
     Ok(IrComponent {
         id,
         name: c.name.clone(),
@@ -199,13 +207,13 @@ fn lower_stmts_with_effects(
     Ok((out, effects))
 }
 
-fn lower_stmts(block: &StmtBlock) -> Result<Vec<IrStmt>, LowerError> {
-    Ok(lower_stmts_with_effects(block)?.0)
-}
-
 fn lower_stmt(s: &Stmt) -> Result<(IrStmt, Vec<IrReachableEffect>), LowerError> {
     match s {
-        Stmt::Assign { target, value, span } => {
+        Stmt::Assign {
+            target,
+            value,
+            span,
+        } => {
             let (v, effects) = lower_expr_with_effects(value)?;
             Ok((
                 IrStmt::Assign {
@@ -233,20 +241,43 @@ fn lower_expr(e: &Expr) -> Result<IrExpr, LowerError> {
     Ok(lower_expr_with_effects(e)?.0)
 }
 
-fn lower_expr_with_effects(
-    e: &Expr,
-) -> Result<(IrExpr, Vec<IrReachableEffect>), LowerError> {
+fn lower_expr_with_effects(e: &Expr) -> Result<(IrExpr, Vec<IrReachableEffect>), LowerError> {
     match e {
-        Expr::IntLit { value, span } => Ok((IrExpr::IntLit { value: *value, span: *span }, vec![])),
-        Expr::FloatLit { value, span } => {
-            Ok((IrExpr::FloatLit { value: *value, span: *span }, vec![]))
-        }
-        Expr::StringLit { value, span } => Ok((
-            IrExpr::StringLit { value: value.clone(), span: *span },
+        Expr::IntLit { value, span } => Ok((
+            IrExpr::IntLit {
+                value: *value,
+                span: *span,
+            },
             vec![],
         )),
-        Expr::BoolLit { value, span } => Ok((IrExpr::BoolLit { value: *value, span: *span }, vec![])),
-        Expr::Ident { name, span } => Ok((IrExpr::Ident { name: name.clone(), span: *span }, vec![])),
+        Expr::FloatLit { value, span } => Ok((
+            IrExpr::FloatLit {
+                value: *value,
+                span: *span,
+            },
+            vec![],
+        )),
+        Expr::StringLit { value, span } => Ok((
+            IrExpr::StringLit {
+                value: value.clone(),
+                span: *span,
+            },
+            vec![],
+        )),
+        Expr::BoolLit { value, span } => Ok((
+            IrExpr::BoolLit {
+                value: *value,
+                span: *span,
+            },
+            vec![],
+        )),
+        Expr::Ident { name, span } => Ok((
+            IrExpr::Ident {
+                name: name.clone(),
+                span: *span,
+            },
+            vec![],
+        )),
         Expr::Lambda { span, .. } => {
             // `filter`/`map` consume their lambda before the
             // generic call path sees it; a lambda anywhere else
@@ -363,7 +394,8 @@ fn lower_expr_with_effects(
             ))
         }
         Expr::Binary { op, lhs, rhs, span } => {
-            let (l, mut le) = lower_expr_with_effects(lhs)?;            let (r, mut re) = lower_expr_with_effects(rhs)?;
+            let (l, mut le) = lower_expr_with_effects(lhs)?;
+            let (r, mut re) = lower_expr_with_effects(rhs)?;
             le.append(&mut re);
             Ok((
                 IrExpr::Binary {
@@ -386,10 +418,19 @@ fn lower_expr_with_effects(
                 e,
             ))
         }
-        Expr::Match { scrutinee, arms, span } => {
+        Expr::Match {
+            scrutinee,
+            arms,
+            span,
+        } => {
             let (ir_scrutinee, mut effects) = lower_expr_with_effects(scrutinee)?;
             let mut ir_arms = Vec::with_capacity(arms.len());
-            for MatchArm { pattern, body, span: arm_span } in arms {
+            for MatchArm {
+                pattern,
+                body,
+                span: arm_span,
+            } in arms
+            {
                 let ir_pattern = lower_pattern(pattern);
                 let (ir_body, mut e) = lower_expr_with_effects(body)?;
                 effects.append(&mut e);
@@ -438,10 +479,7 @@ fn lower_expr_with_effects(
                 e,
             ))
         }
-        Expr::Cancelled { span } => Ok((
-            IrExpr::Cancelled { span: *span },
-            Vec::new(),
-        )),
+        Expr::Cancelled { span } => Ok((IrExpr::Cancelled { span: *span }, Vec::new())),
         Expr::Some { value, span } => {
             let (ir_value, e) = lower_expr_with_effects(value)?;
             Ok((
@@ -461,7 +499,13 @@ fn lower_expr_with_effects(
                 effects.append(&mut e);
                 ir_items.push(ir);
             }
-            Ok((IrExpr::ListLit { items: ir_items, span: *span }, effects))
+            Ok((
+                IrExpr::ListLit {
+                    items: ir_items,
+                    span: *span,
+                },
+                effects,
+            ))
         }
     }
 }
@@ -473,7 +517,11 @@ fn lower_pattern(p: &Pattern) -> IrPattern {
             name: name.clone(),
             span: *span,
         },
-        Pattern::Variant { name, binding, span } => IrPattern::Variant {
+        Pattern::Variant {
+            name,
+            binding,
+            span,
+        } => IrPattern::Variant {
             name: name.clone(),
             binding: binding.clone(),
             span: *span,
@@ -507,15 +555,17 @@ fn builtin_capability(path: &[String]) -> Option<&'static str> {
     }
 }
 
-fn lower_view_node(node: &ViewNode) -> Result<IrViewNode, LowerError> {
-    Ok(lower_view_node_with_effects(node)?.0)
-}
-
 fn lower_view_node_with_effects(
     node: &ViewNode,
 ) -> Result<(IrViewNode, Vec<IrReachableEffect>), LowerError> {
     match node {
-        ViewNode::Element { kind, accessibility, bindings, children, span } => {
+        ViewNode::Element {
+            kind,
+            accessibility,
+            bindings,
+            children,
+            span,
+        } => {
             let mut lowered_children = Vec::with_capacity(children.len());
             let mut effects = Vec::new();
             for c in children {
@@ -559,7 +609,12 @@ fn lower_view_node_with_effects(
             };
             Ok((IrViewNode::Text { parts, span: *span }, effects))
         }
-        ViewNode::For { over, binding, children, span } => {
+        ViewNode::For {
+            over,
+            binding,
+            children,
+            span,
+        } => {
             // Tier 11: `over` is a general (pure) expression — a
             // state list, or a derived one via `filter(list, n =>
             // ...)`. Purity matters less here than in a predicate
@@ -695,7 +750,8 @@ fn lower_unop(op: UnOp) -> IrUnOp {
 /// Walk the lowered IR's `reachable_effects` against the
 /// component's `requires`. Refuses on `CapabilityMissing` and
 /// `CapabilityUnused`.
-fn check_capabilities(ir: &IrFile) -> Result<(), LowerError> {    for c in &ir.components {
+fn check_capabilities(ir: &IrFile) -> Result<(), LowerError> {
+    for c in &ir.components {
         let declared: BTreeSet<String> = c.requires.iter().map(|r| r.name.clone()).collect();
         for eff in &c.reachable_effects {
             if !declared.contains(&eff.capability) {
@@ -708,10 +764,7 @@ fn check_capabilities(ir: &IrFile) -> Result<(), LowerError> {    for c in &ir.c
             }
         }
         for req in &c.requires {
-            let used = c
-                .reachable_effects
-                .iter()
-                .any(|e| &e.capability == &req.name);
+            let used = c.reachable_effects.iter().any(|e| e.capability == req.name);
             if !used {
                 return Err(LowerError::CapabilityUnused {
                     component: c.name.clone(),
@@ -748,11 +801,8 @@ const _POSITION: Position = Position { line: 0, column: 0 };
 /// inference will widen this check.
 fn check_match_exhaustiveness(ir: &IrFile) -> Result<(), LowerError> {
     for c in &ir.components {
-        let state_types: BTreeMap<String, &IrType> = c
-            .state
-            .iter()
-            .map(|s| (s.name.clone(), &s.ty))
-            .collect();
+        let state_types: BTreeMap<String, &IrType> =
+            c.state.iter().map(|s| (s.name.clone(), &s.ty)).collect();
         let await_driven = await_driven_fields(c);
 
         for m in component_matches(c) {
@@ -786,7 +836,9 @@ fn stmt_matches<'a>(s: &'a IrStmt, out: &mut Vec<&'a IrExpr>) {
 
 fn expr_matches<'a>(e: &'a IrExpr, out: &mut Vec<&'a IrExpr>) {
     match e {
-        IrExpr::Match { scrutinee, arms, .. } => {
+        IrExpr::Match {
+            scrutinee, arms, ..
+        } => {
             out.push(e);
             expr_matches(scrutinee, out);
             for a in arms {
@@ -846,10 +898,11 @@ fn await_driven_fields(c: &IrComponent) -> BTreeSet<String> {
     let mut set: BTreeSet<String> = BTreeSet::new();
     for e in &c.events {
         for s in &e.body {
-            if let IrStmt::Assign { target, value, .. } = s {
-                if expr_contains_await(value) {
+            match s {
+                IrStmt::Assign { target, value, .. } if expr_contains_await(value) => {
                     set.insert(target.clone());
                 }
+                _ => {}
             }
         }
     }
@@ -879,23 +932,17 @@ fn ir_expr_suspends(e: &IrExpr) -> bool {
         IrExpr::Call { path, args, .. } => {
             (path.len() == 1 && path[0] == "sleep") || args.iter().any(ir_expr_suspends)
         }
-        IrExpr::Binary { lhs, rhs, .. } => {
-            ir_expr_suspends(lhs) || ir_expr_suspends(rhs)
-        }
+        IrExpr::Binary { lhs, rhs, .. } => ir_expr_suspends(lhs) || ir_expr_suspends(rhs),
         IrExpr::Unary { operand, .. } => ir_expr_suspends(operand),
         IrExpr::Ok { value, .. } | IrExpr::Some { value, .. } => ir_expr_suspends(value),
         IrExpr::Err { reason, .. } => ir_expr_suspends(reason),
         IrExpr::ListLit { items, .. } => items.iter().any(ir_expr_suspends),
-        IrExpr::Filter { list, cond, .. } => {
-            ir_expr_suspends(list) || ir_expr_suspends(cond)
-        }
-        IrExpr::Map { list, body, .. } => {
-            ir_expr_suspends(list) || ir_expr_suspends(body)
-        }
+        IrExpr::Filter { list, cond, .. } => ir_expr_suspends(list) || ir_expr_suspends(cond),
+        IrExpr::Map { list, body, .. } => ir_expr_suspends(list) || ir_expr_suspends(body),
         IrExpr::Len { list, .. } => ir_expr_suspends(list),
-        IrExpr::Match { scrutinee, arms, .. } => {
-            ir_expr_suspends(scrutinee) || arms.iter().any(|a| ir_expr_suspends(&a.body))
-        }
+        IrExpr::Match {
+            scrutinee, arms, ..
+        } => ir_expr_suspends(scrutinee) || arms.iter().any(|a| ir_expr_suspends(&a.body)),
         _ => false,
     }
 }
@@ -903,17 +950,15 @@ fn ir_expr_suspends(e: &IrExpr) -> bool {
 fn expr_contains_await(e: &IrExpr) -> bool {
     match e {
         IrExpr::Await { .. } => true,
-        IrExpr::Binary { lhs, rhs, .. } => {
-            expr_contains_await(lhs) || expr_contains_await(rhs)
-        }
+        IrExpr::Binary { lhs, rhs, .. } => expr_contains_await(lhs) || expr_contains_await(rhs),
         IrExpr::Unary { operand, .. } => expr_contains_await(operand),
         IrExpr::Call { args, .. } => args.iter().any(expr_contains_await),
         IrExpr::Ok { value, .. } => expr_contains_await(value),
         IrExpr::Err { reason, .. } => expr_contains_await(reason),
         IrExpr::Some { value, .. } => expr_contains_await(value),
-        IrExpr::Match { scrutinee, arms, .. } => {
-            expr_contains_await(scrutinee) || arms.iter().any(|a| expr_contains_await(&a.body))
-        }
+        IrExpr::Match {
+            scrutinee, arms, ..
+        } => expr_contains_await(scrutinee) || arms.iter().any(|a| expr_contains_await(&a.body)),
         _ => false,
     }
 }
@@ -925,7 +970,11 @@ fn check_one_match(
     await_driven: &BTreeSet<String>,
 ) -> Result<(), LowerError> {
     let (scrutinee, arms, span) = match m {
-        IrExpr::Match { scrutinee, arms, span } => (scrutinee, arms, *span),
+        IrExpr::Match {
+            scrutinee,
+            arms,
+            span,
+        } => (scrutinee, arms, *span),
         _ => return Ok(()),
     };
     let field = match scrutinee.as_ref() {
@@ -941,7 +990,11 @@ fn check_one_match(
     let mut required: Vec<&str> = match ty {
         IrType::Result { .. } => vec!["Ok", "Err"],
         IrType::Option { .. } => vec!["Some", "None"],
-        IrType::Int | IrType::Float | IrType::Bool | IrType::String | IrType::List { .. }
+        IrType::Int
+        | IrType::Float
+        | IrType::Bool
+        | IrType::String
+        | IrType::List { .. }
         | IrType::Request { .. } => return Ok(()),
     };
 

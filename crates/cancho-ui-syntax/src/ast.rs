@@ -84,17 +84,26 @@ pub enum Type {
     /// `Result[T, E]` — Tier 6. Two constructors: `Ok(value)` and
     /// `Err(reason)`. The `match` on a `Result` must have both
     /// arms; missing one is the `match-non-exhaustive` refusal.
-    Result { ok: Box<Type>, err: Box<Type> },
+    Result {
+        ok: Box<Type>,
+        err: Box<Type>,
+    },
     /// `Request[T]` — Tier 7. The payload of an asynchronous
     /// effect call. `await(r)` resolves it to a
     /// `RequestResult[T]` (`Ok | Err | Cancelled`).
-    Request { payload: Box<Type> },
+    Request {
+        payload: Box<Type>,
+    },
     /// `Option[T]` — Tier 8. Two constructors: `Some(value)` and
     /// `None`.
-    Option { some: Box<Type> },
+    Option {
+        some: Box<Type>,
+    },
     /// `List[T]` — Tier 8. A list literal is `[a, b, c]`; the
     /// view renders it with `For { over: list as: x ... }`.
-    List { elem: Box<Type> },
+    List {
+        elem: Box<Type>,
+    },
 }
 
 impl Type {
@@ -244,20 +253,39 @@ pub struct StmtBlock {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Stmt {
     /// `x = expr;` — assignment to a state field.
-    Assign { target: String, value: Expr, span: Span },
+    Assign {
+        target: String,
+        value: Expr,
+        span: Span,
+    },
     /// `expr;` — expression statement (e.g. `net.search(query);`).
     Expr { expr: Expr, span: Span },
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
-    IntLit { value: i64, span: Span },
-    FloatLit { value: f64, span: Span },
-    StringLit { value: String, span: Span },
-    BoolLit { value: bool, span: Span },
+    IntLit {
+        value: i64,
+        span: Span,
+    },
+    FloatLit {
+        value: f64,
+        span: Span,
+    },
+    StringLit {
+        value: String,
+        span: Span,
+    },
+    BoolLit {
+        value: bool,
+        span: Span,
+    },
     /// A bare identifier — references a state field (in handlers)
     /// or interpolates into text.
-    Ident { name: String, span: Span },
+    Ident {
+        name: String,
+        span: Span,
+    },
     /// A builtin call: `path(args)` where `path` is one or more
     /// identifiers separated by `.` (e.g. `clock.now()`). Phase 2+
     /// will generalize this to user-defined functions, but the AST
@@ -293,24 +321,43 @@ pub enum Expr {
     /// determine `E` (Phase 2 will thread it through type
     /// inference). Tier 6: the constructed IR uses a discriminated
     /// pair of `kind` (`"Ok"` or `"Err"`) and `value`.
-    Ok { value: Box<Expr>, span: Span },
+    Ok {
+        value: Box<Expr>,
+        span: Span,
+    },
     /// `Err(reason)` — see `Ok` for the type-inference caveat.
-    Err { reason: Box<Expr>, span: Span },
+    Err {
+        reason: Box<Expr>,
+        span: Span,
+    },
     /// `await(expr)` — Tier 7. Awaits a `Request[T]` and resolves
     /// to a `RequestResult[T]`. The runtime representation is a
     /// Promise-based chain.
-    Await { request: Box<Expr>, span: Span },
+    Await {
+        request: Box<Expr>,
+        span: Span,
+    },
     /// `Cancelled` — Tier 7. The third variant of a
     /// `RequestResult[T]`. Constructed only by the runtime when a
     /// request is dropped; users do not write `Cancelled(...)`
     /// (the constructor takes no payload).
-    Cancelled { span: Span },
+    Cancelled {
+        span: Span,
+    },
     /// `Some(value)` — Tier 8. `Option[T]` value constructor.
-    Some { value: Box<Expr>, span: Span },
+    Some {
+        value: Box<Expr>,
+        span: Span,
+    },
     /// `None` — Tier 8. The zero-payload `Option[T]` constructor.
-    None { span: Span },
+    None {
+        span: Span,
+    },
     /// `[a, b, c]` — Tier 8. A `List[T]` literal.
-    ListLit { items: Vec<Expr>, span: Span },
+    ListLit {
+        items: Vec<Expr>,
+        span: Span,
+    },
     /// `x => body` — Tier 11. A single-parameter lambda. It is
     /// accepted *syntactically* anywhere an argument could go, but
     /// the lowering refuses it everywhere except as the second
@@ -318,7 +365,11 @@ pub enum Expr {
     /// (`lambda-unsupported`): Tier 11 has no first-class function
     /// values, so a lambda never outlives the builtin call it
     /// belongs to.
-    Lambda { param: String, body: Box<Expr>, span: Span },
+    Lambda {
+        param: String,
+        body: Box<Expr>,
+        span: Span,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -341,7 +392,11 @@ pub enum Pattern {
     /// payload, binds the payload to `binding`. Tier 6 supports
     /// only single-payload variants (`Ok(v)`, `Err(e)`,
     /// `Some(v)`).
-    Variant { name: String, binding: String, span: Span },
+    Variant {
+        name: String,
+        binding: String,
+        span: Span,
+    },
     /// `Name` — matches the zero-payload variant `Name`. Tier 7
     /// uses this for `Cancelled` (which carries no payload).
     /// Disambiguated from `Ident` by the fact that a constructor

@@ -14,8 +14,11 @@
 //! `lower_file` for the capability pass.
 
 use cancho_ui_syntax::{
-    ast::{Accessibility, Binding, BindingValue, Component, ElementKind, Expr, File, Role, Type, ViewNode},
     Span,
+    ast::{
+        Accessibility, Binding, BindingValue, Component, ElementKind, Expr, File, Role, Type,
+        ViewNode,
+    },
 };
 use thiserror::Error;
 
@@ -33,7 +36,9 @@ pub enum TypeError {
     #[error("component `{name}` is declared but has no `view` clause")]
     MissingView { name: String, span: Span },
 
-    #[error("duplicate component `{name}` in this file (declared at {first_span:?} and {second_span:?})")]
+    #[error(
+        "duplicate component `{name}` in this file (declared at {first_span:?} and {second_span:?})"
+    )]
     DuplicateComponent {
         name: String,
         first_span: Span,
@@ -43,36 +48,62 @@ pub enum TypeError {
     #[error("component name `{name}` uses the reserved word `{name}`")]
     ReservedComponentName { name: String, span: Span },
 
-    #[error("component name `{name}` is not PascalCase; component names must start with an uppercase letter")]
+    #[error(
+        "component name `{name}` is not PascalCase; component names must start with an uppercase letter"
+    )]
     NotPascalCase { name: String, span: Span },
 
-    #[error("element kind `{name}` is not PascalCase; element kinds must match a built-in primitive or a PascalCase component name")]
+    #[error(
+        "element kind `{name}` is not PascalCase; element kinds must match a built-in primitive or a PascalCase component name"
+    )]
     NotPascalCaseKind { name: String, span: Span },
 
     /// Tier 12.`{name}` is not a component declared in this file,
     /// so it cannot be instantiated in a view.
-    #[error("component kind `{name}` is not declared in this file; add a `component {name} {{ ... }}` or use a built-in primitive")]
+    #[error(
+        "component kind `{name}` is not declared in this file; add a `component {name} {{ ... }}` or use a built-in primitive"
+    )]
     UnknownComponentKind { name: String, span: Span },
 
     /// Tier 12: a component instance is opaque — it owns its own
     /// state, view, and handlers; the parent configures nothing
     /// (properties arrive in a later tier).
-    #[error("component instance `{name}` takes no bindings; it is opaque — its own state and handlers govern it (properties arrive in a later tier)")]
+    #[error(
+        "component instance `{name}` takes no bindings; it is opaque — its own state and handlers govern it (properties arrive in a later tier)"
+    )]
     InstanceTakesBindings { name: String, span: Span },
 
     /// Tier 13: property key is not a state field of the child.
-    #[error("component instance `{component}` has no state field `{key}` to pass as a property; add `state {key}: ...` to `component {component}` or remove the binding")]
-    PropertyUnknownKey { component: String, key: String, span: Span },
+    #[error(
+        "component instance `{component}` has no state field `{key}` to pass as a property; add `state {key}: ...` to `component {component}` or remove the binding"
+    )]
+    PropertyUnknownKey {
+        component: String,
+        key: String,
+        span: Span,
+    },
 
     /// Tier 13: prop value's literal kind does not match the
     /// child state field's declared type (or is not a constant).
-    #[error("property `{key}` of `{component}` does not match the state field's declared type (string property or int/float/bool literal constants only)")]
-    PropertyTypeMismatch { component: String, key: String, span: Span },
+    #[error(
+        "property `{key}` of `{component}` does not match the state field's declared type (string property or int/float/bool literal constants only)"
+    )]
+    PropertyTypeMismatch {
+        component: String,
+        key: String,
+        span: Span,
+    },
 
     /// Tier 14: dynamic property source is not a state field of
     /// the enclosing component (nor an enclosing `For` binding).
-    #[error("`{key}` is not a state field of `{component}` (and not an enclosing `For` binding); a dynamic property value must be read from the parent's state")]
-    PropertySourceUnknown { component: String, key: String, span: Span },
+    #[error(
+        "`{key}` is not a state field of `{component}` (and not an enclosing `For` binding); a dynamic property value must be read from the parent's state"
+    )]
+    PropertySourceUnknown {
+        component: String,
+        key: String,
+        span: Span,
+    },
 
     /// Tier 13: the same property is passed twice on an instance.
     #[error("property `{key}` of `{component}` is passed twice on this instance")]
@@ -86,7 +117,9 @@ pub enum TypeError {
     #[error("component instance `{name}` takes no children; its own view governs what renders")]
     InstanceTakesChildren { name: String, span: Span },
 
-    #[error("component instance `{name}` takes no role/label of its own; the inner components carry their own accessibility")]
+    #[error(
+        "component instance `{name}` takes no role/label of its own; the inner components carry their own accessibility"
+    )]
     InstanceTakesAccessibility { name: String, span: Span },
 
     #[error("component instance chain is cyclic: {} — the emitted mount would recurse forever", chain.join(" → "))]
@@ -103,7 +136,9 @@ pub enum CheckError {
     #[error(transparent)]
     Shape(TypeError),
 
-    #[error("component `{component}` performs `{call_path}` which requires the `{capability}` capability, but `requires {capability}` is not declared")]
+    #[error(
+        "component `{component}` performs `{call_path}` which requires the `{capability}` capability, but `requires {capability}` is not declared"
+    )]
     CapabilityMissing {
         component: String,
         capability: String,
@@ -111,14 +146,18 @@ pub enum CheckError {
         span: Span,
     },
 
-    #[error("component `{component}` declares `requires {capability};` but no reachable effect uses it")]
+    #[error(
+        "component `{component}` declares `requires {capability};` but no reachable effect uses it"
+    )]
     CapabilityUnused {
         component: String,
         capability: String,
         span: Span,
     },
 
-    #[error("`match` on `{field}` in component `{component}` is not exhaustive; missing arm(s): {missing:?}")]
+    #[error(
+        "`match` on `{field}` in component `{component}` is not exhaustive; missing arm(s): {missing:?}"
+    )]
     MatchNonExhaustive {
         component: String,
         field: String,
@@ -132,9 +171,15 @@ pub enum CheckError {
     LambdaUnsupported { span: Span },
 
     #[error("`{name}` is misused here (expected {detail})")]
-    BuiltinMisuse { name: String, detail: String, span: Span },
+    BuiltinMisuse {
+        name: String,
+        detail: String,
+        span: Span,
+    },
 
-    #[error("the lambda body must be pure: it may not `await(...)` or call effectful/suspending builtins")]
+    #[error(
+        "the lambda body must be pure: it may not `await(...)` or call effectful/suspending builtins"
+    )]
     PureLambdaRequired { span: Span },
 }
 
@@ -248,7 +293,10 @@ fn check_shape_with(file: &File, externals: &[ExternalComponent]) -> Result<(), 
     for c in &file.components {
         shapes.insert(
             c.name.clone(),
-            c.state.iter().map(|s| (s.name.clone(), s.ty.clone())).collect(),
+            c.state
+                .iter()
+                .map(|s| (s.name.clone(), s.ty.clone()))
+                .collect(),
         );
     }
     for e in externals {
@@ -266,7 +314,10 @@ fn check_shape_with(file: &File, externals: &[ExternalComponent]) -> Result<(), 
 /// constant initial values for the child's state fields — but is
 /// otherwise opaque (no `on:` handlers, no `role:`/`label:`, no
 /// children).
-fn check_instances(c: &Component, shapes: &std::collections::HashMap<String, Vec<(String, Type)>>) -> Result<(), TypeError> {
+fn check_instances(
+    c: &Component,
+    shapes: &std::collections::HashMap<String, Vec<(String, Type)>>,
+) -> Result<(), TypeError> {
     fn is_const(value: &BindingValue, ty: &Type) -> bool {
         // A prop value must be a literal whose kind matches the
         // target state field's declared type. String bindings
@@ -288,17 +339,22 @@ fn check_instances(c: &Component, shapes: &std::collections::HashMap<String, Vec
         locals: &mut Vec<String>,
     ) -> Result<(), TypeError> {
         match node {
-            ViewNode::Element { kind, bindings, children, accessibility, span } => {
+            ViewNode::Element {
+                kind,
+                bindings,
+                children,
+                accessibility,
+                span,
+            } => {
                 if let ElementKind::Named(name) = kind {
                     // Tier 16: the target shape may come from an
                     // imported sibling module, not only this file.
-                    let target = shapes.get(name.as_str());
-                    if target.is_none() {
+                    let Some(target) = shapes.get(name.as_str()) else {
                         return Err(TypeError::UnknownComponentKind {
                             name: name.clone(),
                             span: *span,
                         });
-                    }
+                    };
                     if !children.is_empty() {
                         return Err(TypeError::InstanceTakesChildren {
                             name: name.clone(),
@@ -311,12 +367,14 @@ fn check_instances(c: &Component, shapes: &std::collections::HashMap<String, Vec
                             span: *span,
                         });
                     }
-                    let target = target.unwrap();
                     let mut seen_keys: Vec<(&str, Span)> = Vec::new();
                     // The state shape of the target component: from
                     // this file or an imported module (Tier 16),
                     // same `(name, Type)` pair either way.
-                    fn find_state<'a>(states: &'a [(String, Type)], key: &str) -> Option<&'a (String, Type)> {
+                    fn find_state<'a>(
+                        states: &'a [(String, Type)],
+                        key: &str,
+                    ) -> Option<&'a (String, Type)> {
                         states.iter().find(|s| s.0 == key)
                     }
                     for b in bindings {
@@ -356,10 +414,7 @@ fn check_instances(c: &Component, shapes: &std::collections::HashMap<String, Vec
                                 };
                                 let is_local = locals.iter().any(|l| l == source);
                                 if !is_local {
-                                    let ps = parent
-                                        .state
-                                        .iter()
-                                        .find(|s| &s.name == source);
+                                    let ps = parent.state.iter().find(|s| &s.name == source);
                                     let ps = match ps {
                                         Some(f) => f,
                                         None => {
@@ -427,7 +482,9 @@ fn check_instances(c: &Component, shapes: &std::collections::HashMap<String, Vec
                     walk(ch, shapes, parent, locals)?;
                 }
             }
-            ViewNode::For { binding, children, .. } => {
+            ViewNode::For {
+                binding, children, ..
+            } => {
                 // The `as:` binding is in scope for dynamic
                 // property values inside the body.
                 locals.push(binding.clone());
@@ -455,7 +512,7 @@ fn check_instance_cycle(file: &File) -> Result<(), TypeError> {
 
     /// Which components does the named component's view
     /// instantiate? (May contain duplicates; the DFS tolerates.)
-    fn adjacency<'a>(name: &str, file: &'a File) -> Vec<String> {
+    fn adjacency(name: &str, file: &File) -> Vec<String> {
         let mut uses = Vec::new();
         for c in file.components.iter().filter(|d| d.name == name) {
             component_uses(c, &mut uses);
@@ -472,7 +529,9 @@ fn check_instance_cycle(file: &File) -> Result<(), TypeError> {
         match color.get(name).copied() {
             Some(VISITING) => {
                 chain.push(name.to_string());
-                return Err(TypeError::ComponentCycle { chain: chain.clone() });
+                return Err(TypeError::ComponentCycle {
+                    chain: chain.clone(),
+                });
             }
             // A fresh node: mark as used by seed first DFS roots.
             None => {
@@ -535,14 +594,20 @@ fn check_component_shape(c: &Component) -> Result<(), TypeError> {
 
 fn check_view_node_shape(node: &ViewNode) -> Result<(), TypeError> {
     match node {
-        ViewNode::Element { kind, accessibility, children, bindings, span } => {
-            if let ElementKind::Named(name) = kind {
-                if !is_pascal_case(name) {
-                    return Err(TypeError::NotPascalCaseKind {
-                        name: name.clone(),
-                        span: *span,
-                    });
-                }
+        ViewNode::Element {
+            kind,
+            accessibility,
+            children,
+            bindings,
+            span,
+        } => {
+            if let ElementKind::Named(name) = kind
+                && !is_pascal_case(name)
+            {
+                return Err(TypeError::NotPascalCaseKind {
+                    name: name.clone(),
+                    span: *span,
+                });
             }
             check_accessibility_shape(accessibility);
             for c in children {
@@ -609,8 +674,8 @@ fn is_pascal_case(s: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cancho_ui_syntax::parser::parse;
     use cancho_ui_syntax::lexer::lex;
+    use cancho_ui_syntax::parser::parse;
 
     fn parse_ok(src: &str) -> File {
         let toks = lex(src).expect("lex");
@@ -627,14 +692,20 @@ mod tests {
     fn reserved_name_refused() {
         let f = parse_ok("component effect { view { Text { \"hi\" } } }\n");
         let err = check_file(&f).unwrap_err();
-        assert!(matches!(err, CheckError::Shape(TypeError::ReservedComponentName { .. })));
+        assert!(matches!(
+            err,
+            CheckError::Shape(TypeError::ReservedComponentName { .. })
+        ));
     }
 
     #[test]
     fn lowercase_name_refused() {
         let f = parse_ok("component hello { view { Text { \"hi\" } } }\n");
         let err = check_file(&f).unwrap_err();
-        assert!(matches!(err, CheckError::Shape(TypeError::NotPascalCase { .. })));
+        assert!(matches!(
+            err,
+            CheckError::Shape(TypeError::NotPascalCase { .. })
+        ));
     }
 
     #[test]
@@ -643,7 +714,10 @@ mod tests {
             "component X { view { Text { \"a\" } } }\ncomponent X { view { Text { \"b\" } } }\n",
         );
         let err = check_file(&f).unwrap_err();
-        assert!(matches!(err, CheckError::Shape(TypeError::DuplicateComponent { .. })));
+        assert!(matches!(
+            err,
+            CheckError::Shape(TypeError::DuplicateComponent { .. })
+        ));
     }
 
     #[test]

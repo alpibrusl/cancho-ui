@@ -56,12 +56,21 @@ pub enum IrType {
     Float,
     Bool,
     String,
-    Result { ok: Box<IrType>, err: Box<IrType> },
-    Request { payload: Box<IrType> },
+    Result {
+        ok: Box<IrType>,
+        err: Box<IrType>,
+    },
+    Request {
+        payload: Box<IrType>,
+    },
     /// `Option[T]` — Tier 8.
-    Option { some: Box<IrType> },
+    Option {
+        some: Box<IrType>,
+    },
     /// `List[T]` — Tier 8.
-    List { elem: Box<IrType> },
+    List {
+        elem: Box<IrType>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -93,11 +102,26 @@ pub enum IrStmt {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum IrExpr {
-    IntLit { value: i64, span: Span },
-    FloatLit { value: f64, span: Span },
-    StringLit { value: String, span: Span },
-    BoolLit { value: bool, span: Span },
-    Ident { name: String, span: Span },
+    IntLit {
+        value: i64,
+        span: Span,
+    },
+    FloatLit {
+        value: f64,
+        span: Span,
+    },
+    StringLit {
+        value: String,
+        span: Span,
+    },
+    BoolLit {
+        value: bool,
+        span: Span,
+    },
+    Ident {
+        name: String,
+        span: Span,
+    },
     /// A builtin call: `path(args)`. The capability that authorises
     /// it lives on the enclosing `IrComponent::reachable_effects`,
     /// not on the call itself, so the same call path can be authorised
@@ -131,38 +155,70 @@ pub enum IrExpr {
     /// `Ok(value)` — a `Result[T, E]` constructor with payload.
     /// The runtime representation is a discriminated pair:
     /// `{ __cui_tag: "Ok", value: <v> }`.
-    Ok { value: Box<IrExpr>, span: Span },
+    Ok {
+        value: Box<IrExpr>,
+        span: Span,
+    },
     /// `Err(reason)` — see `Ok`.
-    Err { reason: Box<IrExpr>, span: Span },
+    Err {
+        reason: Box<IrExpr>,
+        span: Span,
+    },
     /// `await(r)` — Tier 7. Awaits a `Request[T]`; the lowering
     /// lowers it to a JS Promise chain that resolves to a
     /// `RequestResult[T]` (`Ok | Err | Cancelled`).
-    Await { request: Box<IrExpr>, span: Span },
+    Await {
+        request: Box<IrExpr>,
+        span: Span,
+    },
     /// `Cancelled` — Tier 7. The third variant of a
     /// `RequestResult[T]`. The runtime produces it when a request
     /// is dropped; user code matches against it.
-    Cancelled { span: Span },
+    Cancelled {
+        span: Span,
+    },
     /// `Some(value)` — Tier 8. `Option[T]` value constructor;
     /// `{__cui_tag: "Some", value: <v>}`.
-    Some { value: Box<IrExpr>, span: Span },
+    Some {
+        value: Box<IrExpr>,
+        span: Span,
+    },
     /// `None` — Tier 8. The zero-payload `Option[T]`
     /// constructor; `{__cui_tag: "None"}`.
-    None { span: Span },
+    None {
+        span: Span,
+    },
     /// `[a, b, c]` — Tier 8. A `List[T]` literal; a JS array.
-    ListLit { items: Vec<IrExpr>, span: Span },
+    ListLit {
+        items: Vec<IrExpr>,
+        span: Span,
+    },
     /// `filter(list, x => cond)` — Tier 11. Keeps the elements
     /// for which `cond` (with `x` bound) is truthy; a JS
     /// `Array.prototype.filter` with an inline callback. Pure —
     /// no capability.
-    Filter { list: Box<IrExpr>, item: String, cond: Box<IrExpr>, span: Span },
+    Filter {
+        list: Box<IrExpr>,
+        item: String,
+        cond: Box<IrExpr>,
+        span: Span,
+    },
     /// `map(list, x => body)` — Tier 11. Maps each element
     /// through `body` (with `x` bound); a JS
     /// `Array.prototype.map` with an inline callback.
-    Map { list: Box<IrExpr>, item: String, body: Box<IrExpr>, span: Span },
+    Map {
+        list: Box<IrExpr>,
+        item: String,
+        body: Box<IrExpr>,
+        span: Span,
+    },
     /// `len(list)` — Tier 11. Element count of a list (or
     /// character count of a string, the same JS `.length`).
     /// Pure — no capability.
-    Len { list: Box<IrExpr>, span: Span },
+    Len {
+        list: Box<IrExpr>,
+        span: Span,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -174,10 +230,22 @@ pub struct IrMatchArm {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum IrPattern {
-    Wildcard { span: Span },
-    Ident { name: String, span: Span },
-    Variant { name: String, binding: String, span: Span },
-    UnitVariant { name: String, span: Span },
+    Wildcard {
+        span: Span,
+    },
+    Ident {
+        name: String,
+        span: Span,
+    },
+    Variant {
+        name: String,
+        binding: String,
+        span: Span,
+    },
+    UnitVariant {
+        name: String,
+        span: Span,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -326,5 +394,8 @@ pub enum IrBindingValue {
     /// initial value for one of the child's state fields. Also
     /// carries the lowered form of `String(...)` binding values
     /// when they appear on an instance (string properties).
-    Const { expr: Box<IrExpr>, span: Span },
+    Const {
+        expr: Box<IrExpr>,
+        span: Span,
+    },
 }
