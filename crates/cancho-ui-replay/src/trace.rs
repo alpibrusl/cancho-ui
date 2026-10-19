@@ -61,10 +61,12 @@ pub struct Step {
 pub struct Trace {
     pub component: Option<String>,
     pub clock: f64,
+    /// The `Storage` store at the start: key to value (docs/adapters.md).
+    pub storage: std::collections::BTreeMap<String, String>,
     pub steps: Vec<Step>,
 }
 
-const EXPECT_KEYS: &[&str] = &["outcome", "issued", "pending", "fired"];
+const EXPECT_KEYS: &[&str] = &["outcome", "issued", "pending", "fired", "storage"];
 
 pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {
     let root: Json = serde_json::from_str(text).map_err(|e| TraceError {
@@ -84,7 +86,15 @@ pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {
     })?;
     allow_keys(
         obj,
-        &["schema", "version", "component", "clock", "steps", "note"],
+        &[
+            "schema",
+            "version",
+            "component",
+            "clock",
+            "storage",
+            "steps",
+            "note",
+        ],
         "",
     )?;
     match obj.get("schema").and_then(Json::as_str) {
@@ -122,6 +132,33 @@ pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {
         None => 0.0,
         Some(j) => non_negative(j, "clock")?,
     };
+    let mut storage = std::collections::BTreeMap::new();
+    match obj.get("storage") {
+        None => {}
+        Some(Json::Object(m)) => {
+            for (k, v) in m {
+                match v {
+                    Json::String(s) => {
+                        storage.insert(k.clone(), s.clone());
+                    }
+                    _ => {
+                        return Err(err(
+                            "trace-malformed",
+                            format!("storage.{k}"),
+                            "a stored value is a string",
+                        ));
+                    }
+                }
+            }
+        }
+        Some(_) => {
+            return Err(err(
+                "trace-malformed",
+                "storage",
+                "`storage` is an object of strings",
+            ));
+        }
+    }
     let steps_json = match obj.get("steps") {
         Some(Json::Array(a)) if !a.is_empty() => a,
         Some(Json::Array(_)) => {
@@ -157,6 +194,7 @@ pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {
     Ok(Trace {
         component,
         clock,
+        storage,
         steps,
     })
 }

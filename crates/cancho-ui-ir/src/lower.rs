@@ -61,7 +61,7 @@ pub enum LowerError {
     LambdaUnsupported { span: Span },
 
     #[error(
-        "`{name}` is misused here (expected {detail}); see Tier 11 call forms: `filter(list, x => cond)`, `map(list, x => body)`, `len(value)`"
+        "`{name}` is misused here (expected {detail}); see the builtin call forms: `filter(list, x => cond)`, `map(list, x => body)`, `len(value)`, `storage.get(key, default)`, `storage.set(key, value)`"
     )]
     BuiltinMisuse {
         name: String,
@@ -290,6 +290,22 @@ fn lower_expr_with_effects(e: &Expr) -> Result<(IrExpr, Vec<IrReachableEffect>),
             // `map(list, x => body)`, `len(value)`. They are pure
             // (no capability); the generic call path below does
             // not see them.
+            if path.len() == 2 && path[0] == "storage" && (path[1] == "get" || path[1] == "set") {
+                // docs/adapters.md: two arguments, always. A missing one would reach the browser as
+                // `undefined`, so it is refused here.
+                if args.len() != 2 {
+                    let form = if path[1] == "get" {
+                        "exactly two arguments: storage.get(key, default)"
+                    } else {
+                        "exactly two arguments: storage.set(key, value)"
+                    };
+                    return Err(LowerError::BuiltinMisuse {
+                        name: format!("storage.{}", path[1]),
+                        detail: form.to_string(),
+                        span: *span,
+                    });
+                }
+            }
             if path.len() == 1 && path[0] == "filter" {
                 if args.len() != 2 {
                     return Err(LowerError::BuiltinMisuse {
@@ -545,6 +561,10 @@ fn builtin_capability(path: &[String]) -> Option<&'static str> {
         // effect. `await(net.search(q))` resolves to Ok | Err |
         // Cancelled with an Ok payload of `List[String]`.
         Some("Network")
+    } else if path.len() == 2 && path[0] == "storage" && (path[1] == "get" || path[1] == "set") {
+        // docs/adapters.md: `storage.get(key, default)` and `storage.set(key, value)` read and
+        // write a persistent key-value store, synchronously. Both need `Storage`.
+        Some("Storage")
     } else if path.len() == 1 && path[0] == "sleep" {
         // Tier 7: `sleep(ms)` is a pure-runtime wait. It does
         // not need a user-declared capability; the runtime

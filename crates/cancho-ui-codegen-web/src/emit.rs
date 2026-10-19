@@ -49,6 +49,7 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
     let mut any_clock = false;
     let mut any_sleep = false;
     let mut any_network = false;
+    let mut any_storage = false;
     let mut any_cancel = false;
     for c in &ir.components {
         for e in &c.reachable_effects {
@@ -57,6 +58,9 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
             }
             if e.capability == "Network" {
                 any_network = true;
+            }
+            if e.capability == "Storage" {
+                any_storage = true;
             }
         }
         for arm in c.events.iter().flat_map(|e| e.body.iter()) {
@@ -77,6 +81,10 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
     }
     if any_clock {
         out.push_str(CLOCK_ADAPTER_JS);
+        out.push('\n');
+    }
+    if any_storage {
+        out.push_str(STORAGE_ADAPTER_JS);
         out.push('\n');
     }
     if any_sleep {
@@ -131,6 +139,35 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
 
     out
 }
+
+/// The `Storage` adapter (docs/adapters.md): a string-to-string store under the key prefix `cui:` in
+/// `localStorage`, with a page-lifetime fallback when `localStorage` is absent or throws (a private window,
+/// blocked site data, a full quota). `set` answers whether the value is persisted.
+const STORAGE_ADAPTER_JS: &str = "\
+// Platform adapter: Storage capability (docs/adapters.md).
+// Keys live under the prefix `cui:` in localStorage; a program cannot read or write any other key. When
+// localStorage is unavailable the store lasts as long as the page, and `storage.set` answers false.
+var __cui_storage_memory = {};
+function __cui_storage_get(key, fallback) {
+    var k = 'cui:' + String(key);
+    try {
+        var v = window.localStorage.getItem(k);
+        if (v !== null) { return v; }
+    } catch (e) { /* unavailable: fall through to memory */ }
+    return Object.prototype.hasOwnProperty.call(__cui_storage_memory, k) ? __cui_storage_memory[k] : fallback;
+}
+function __cui_storage_set(key, value) {
+    var k = 'cui:' + String(key);
+    try {
+        window.localStorage.setItem(k, String(value));
+        delete __cui_storage_memory[k];
+        return true;
+    } catch (e) {
+        __cui_storage_memory[k] = String(value);
+        return false;
+    }
+}
+";
 
 const CLOCK_ADAPTER_JS: &str = "\
 // Platform adapter: Clock capability (Tier 4 stub).
@@ -917,6 +954,12 @@ fn emit_call_runtime(path: &[String], args: &[IrExpr], params: &[&str]) -> Strin
         let rendered_args: Vec<String> =
             args.iter().map(|a| emit_expr_runtime(a, params)).collect();
         return format!("__cui_sleep_ms({})", rendered_args.join(", "));
+    }
+    if path.len() == 2 && path[0] == "storage" && (path[1] == "get" || path[1] == "set") {
+        // docs/adapters.md: synchronous; `get(key, default)` answers a String, `set(key, value)` a Bool.
+        let rendered_args: Vec<String> =
+            args.iter().map(|a| emit_expr_runtime(a, params)).collect();
+        return format!("__cui_storage_{}({})", path[1], rendered_args.join(", "));
     }
     if path.len() == 2 && path[0] == "net" && path[1] == "search" {
         // Tier 9: `net.search(q)` resolves to

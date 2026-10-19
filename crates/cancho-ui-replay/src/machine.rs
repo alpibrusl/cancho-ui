@@ -107,6 +107,8 @@ pub struct Machine<'a> {
     comp: &'a IrComponent,
     pub state: BTreeMap<String, Value>,
     pub clock: f64,
+    /// The `Storage` store (docs/adapters.md): key to value, seeded by the trace, written by `storage.set`.
+    pub storage: BTreeMap<String, String>,
     pub requests: Vec<Request>,
     inflight: BTreeMap<&'static str, u32>,
     pub disposed: bool,
@@ -116,12 +118,14 @@ impl<'a> Machine<'a> {
     /// Initialise state from the declared initial values, in declaration order.
     pub fn new(comp: &'a IrComponent, clock: f64) -> Result<Machine<'a>, Fault> {
         let mut state: BTreeMap<String, Value> = BTreeMap::new();
+        let mut no_storage: BTreeMap<String, String> = BTreeMap::new();
         for field in &comp.state {
             let mut journal = Journal::default();
             let value = {
                 let mut ctx = Ctx {
                     state: &state,
                     clock,
+                    storage: &mut no_storage,
                     journal: &mut journal,
                     locals: Vec::new(),
                     init: true,
@@ -144,6 +148,7 @@ impl<'a> Machine<'a> {
             comp,
             state,
             clock,
+            storage: BTreeMap::new(),
             requests: Vec::new(),
             inflight: BTreeMap::new(),
             disposed: false,
@@ -293,6 +298,7 @@ impl<'a> Machine<'a> {
                 let mut ctx = Ctx {
                     state: &self.state,
                     clock: self.clock,
+                    storage: &mut self.storage,
                     journal: &mut task.journal,
                     locals: task.params.clone(),
                     init: false,

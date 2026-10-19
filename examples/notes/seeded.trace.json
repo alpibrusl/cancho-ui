@@ -1,0 +1,12 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "component": "Notes",
+  "storage": { "note": "from last time", "unrelated": "kept" },
+  "note": "A store that already holds a note: Restore loads it, and Save replaces only its own key.",
+  "steps": [
+    { "event": "Restore", "state": { "draft": "from last time" } },
+    { "event": "Change", "params": ["new"], "state": { "draft": "new" } },
+    { "event": "Save", "expect": { "storage": { "note": "new", "unrelated": "kept" } } }
+  ]
+}
