@@ -111,6 +111,50 @@ fn a_flag_with_a_value_does_not_swallow_the_file_after_it() {
     }
 }
 
+#[test]
+fn focus_survives_a_rerender_in_every_program_with_a_focusable_control() {
+    // The view is rebuilt on every state change, which dropped focus after each keystroke in a TextField and after
+    // each Enter on a Button (measured in a browser; `scripts/check-focus.js`). The helper is emitted for a program
+    // with a Button or a TextField and for no other, so a program without one is unchanged.
+    let build = |example: &str| {
+        let out = std::env::temp_dir().join(format!(
+            "cancho-ui-focus-{}-{}.js",
+            std::process::id(),
+            example.replace('/', "-")
+        ));
+        let (code, stdout) = run(&["build", example, "-o", out.to_str().expect("UTF-8 path")]);
+        assert_eq!(code, 0, "stdout: {stdout}");
+        std::fs::read_to_string(&out).expect("build wrote the file")
+    };
+    for example in ["examples/counter/counter.cui", "examples/search/search.cui"] {
+        let js = build(example);
+        assert!(
+            js.contains("function __cui_focus_save(root)"),
+            "{example}: the helper"
+        );
+        assert!(
+            js.contains("const __focus = __cui_focus_save(root);"),
+            "{example}: saved before the rebuild"
+        );
+        let save = js
+            .find("const __focus = __cui_focus_save(root);")
+            .expect("save");
+        let clear = js.find("root.textContent = '';").expect("rebuild");
+        let restore = js
+            .find("__cui_focus_restore(root, __focus);")
+            .expect("restore");
+        assert!(
+            save < clear && clear < restore,
+            "{example}: save, then rebuild, then restore"
+        );
+    }
+    let hello = build("examples/hello/hello.cui");
+    assert!(
+        !hello.contains("__cui_focus"),
+        "a program with nothing to focus is unchanged:\n{hello}"
+    );
+}
+
 /// Run in a scratch directory, so a command that wrongly writes a file named
 /// after a flag leaves evidence there rather than in the repository.
 fn run_in_scratch(name: &str, args: &[&str]) -> (i32, String, std::path::PathBuf) {

@@ -91,6 +91,15 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
         out.push_str(CANCEL_ADAPTER_JS);
         out.push('\n');
     }
+    // A control the user is using must keep focus across the rebuild a state change causes.
+    let keep_focus = ir
+        .components
+        .iter()
+        .any(|c| view_has_focusable(&c.view.body));
+    if keep_focus {
+        out.push_str(FOCUS_ADAPTER_JS);
+        out.push('\n');
+    }
 
     // Tier 13: components some instance passes a property to get
     // the `props`-aware mount signature.
@@ -101,7 +110,12 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
 
     let component_names: Vec<String> = ir.components.iter().map(|c| c.name.clone()).collect();
     for c in &ir.components {
-        out.push_str(&emit_component(c, &component_names, &prop_consumers));
+        out.push_str(&emit_component(
+            c,
+            &component_names,
+            &prop_consumers,
+            keep_focus,
+        ));
         out.push('\n');
     }
 
@@ -126,6 +140,54 @@ function __cui_clock_now() {
     return Date.now();
 }
 ";
+
+/// Does a view hold a control the user can focus (a `Button` or a `TextField`), directly or in a `For`?
+fn view_has_focusable(node: &IrViewNode) -> bool {
+    match node {
+        IrViewNode::Element { kind, children, .. } => {
+            matches!(kind, IrElementKind::Button | IrElementKind::TextField)
+                || children.iter().any(view_has_focusable)
+        }
+        IrViewNode::For { children, .. } => children.iter().any(view_has_focusable),
+        IrViewNode::Text { .. } => false,
+    }
+}
+
+/// Focus survives a re-render. A view is rebuilt from scratch on every state change, so the control the user is
+/// using was replaced and focus fell to the page: typing "ada" into a `TextField` left "a", and pressing Enter three
+/// times on a focused `Button` counted once (both measured).
+/// Before the rebuild the focused control's place under this component's root (its path of child indices) and its
+/// text selection are recorded; after it, the control at that path gets both back. A control that is gone, or is a
+/// different kind or has another label, stays unfocused rather than focusing the wrong one. Not handled: an
+/// input method composition in progress.
+const FOCUS_ADAPTER_JS: &str = r#"// Focus survives a re-render: see docs/semantics.md, Question 9.
+function __cui_focus_save(root) {
+    const el = document.activeElement;
+    if (!el || el === document.body || el === root || !root.contains(el)) { return null; }
+    const path = [];
+    for (let n = el; n !== root; n = n.parentNode) {
+        path.unshift(Array.prototype.indexOf.call(n.parentNode.childNodes, n));
+    }
+    return {
+        path: path,
+        tag: el.tagName,
+        label: el.getAttribute('aria-label'),
+        start: el.selectionStart,
+        end: el.selectionEnd,
+        direction: el.selectionDirection,
+    };
+}
+function __cui_focus_restore(root, saved) {
+    if (!saved) { return; }
+    let n = root;
+    for (let i = 0; i < saved.path.length && n; i++) { n = n.childNodes[saved.path[i]]; }
+    if (!n || n.tagName !== saved.tag || n.getAttribute('aria-label') !== saved.label) { return; }
+    n.focus();
+    if (typeof saved.start === 'number' && n.setSelectionRange) {
+        try { n.setSelectionRange(saved.start, saved.end, saved.direction); } catch (e) { /* not a text control */ }
+    }
+}
+"#;
 
 const SLEEP_ADAPTER_JS: &str = "\
 // Platform adapter: async sleep (Tier 7).
@@ -304,6 +366,7 @@ fn emit_component(
     c: &IrComponent,
     component_names: &[String],
     prop_consumers: &[String],
+    keep_focus: bool,
 ) -> String {
     // Tier 13: components that some instance passes properties to
     // take a `props` argument; their state initializers consult
@@ -429,6 +492,9 @@ fn emit_component(
     }
 
     out.push_str("        function __render() {\n");
+    if keep_focus {
+        out.push_str("            const __focus = __cui_focus_save(root);\n");
+    }
     out.push_str("            root.textContent = '';\n");
     let mut node_id = 0u32;
     let view_body = emit_view_node(
@@ -444,6 +510,9 @@ fn emit_component(
         None,
     );
     out.push_str(&view_body);
+    if keep_focus {
+        out.push_str("            __cui_focus_restore(root, __focus);\n");
+    }
     out.push_str("        }\n");
 
     out.push_str("        __render();\n");

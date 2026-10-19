@@ -462,6 +462,13 @@ corrected), page-lifecycle mapping, a React Native comparison, any native shell,
 a real phone. Found on the way: every flag that took a value swallowed the next argument in `check`,
 `build` and `report` (`build -o out.js file.cui` failed); fixed, with a test.
 
+Fixed: **focus was lost on every re-render** of the web backend (measured: typing "ada" into a `TextField`
+left "a"; Enter pressed three times on a focused `Button` counted once, so a keyboard user could not
+activate a button twice). The focused control and its text selection are now recorded before the rebuild and
+restored after (`docs/semantics.md`, Question 9; `scripts/check-focus.js` fails without it). Found while
+answering what cancho-ui cannot do that React can: it was the first item of that list. Not handled: input-method
+composition, scroll position, a control that moves between renders.
+
 Built since: `cancho-ui diff <base> <candidate>` (Phase 3), designed in
 [`docs/semantic-diff.md`](docs/semantic-diff.md) first. It compares the
 typed IRs by component name: capabilities (`authority: expanded | reduced |
