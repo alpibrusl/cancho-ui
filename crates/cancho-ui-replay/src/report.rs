@@ -251,7 +251,7 @@ pub fn render_human(r: &TestReport) -> String {
             }
         }
         out.push_str(&format!(
-            "FAIL  {} failure{}; {} of {} steps run, {} checks passed or failed\n",
+            "FAIL  {} failure{}; {} of {} steps run, {} checks\n",
             r.failures.len(),
             if r.failures.len() == 1 { "" } else { "s" },
             r.steps_run,

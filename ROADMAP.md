@@ -423,12 +423,32 @@ research-backed compiler and agent-workflow project.
 
 Stated here so the table above is not read as the whole of the proposal:
 
-- `cancho-ui test` and deterministic replay of event traces.
 - The agent benchmark (`eval/` is still only the plan).
 - A mobile backend and its conformance tests.
 - Self-hosting the compiler in cancho, which follows cancho's own
   `docs/self-hosting.md`: the Rust compiler stays the oracle, and nothing
   is ported until a program asks for it.
+
+Built since: `cancho-ui test <file.cui> <trace.json>` (Phase 3, "replayable
+tests"), designed in [`docs/replay.md`](docs/replay.md) first. It replays a JSON
+trace of events over an interpreter of the typed IR (new crate
+`cancho-ui-replay`), with no browser and no JavaScript runtime, and checks the
+component's state after each step and the trace's `expect` assertions, with a
+located failure. `net.search` is scripted by the trace (the trace orders the
+answers) and the clock is fake, so a replay is deterministic; supersede (the
+stale-response drop) and dispose-to-`Cancelled` follow the emitted runtime. The
+proposal's headline adverse-ordering test is `examples/search/stale.trace.json`.
+Exit `4` means a test failed. It does **not** replay the view, timing or latency,
+the real network adapter, child component instances or properties, and it is a
+second implementation of the semantics, not the emitted JavaScript (a pass means
+the interpreter and the trace agree); every report carries these in
+`not_claimed`. Measured: 9 example traces (42 steps, 87 checks) pass; 150 tests
+in the workspace; replay ran on 17,161 mutated traces and 15,486 compiling program
+mutants without a panic; 28 deliberate bugs in the interpreter were each tried
+and 26 were caught (the 2 survivors are equivalent mutants, `docs/replay.md` §13).
+Corrected in place while building it: `Cancelled` reaches the arm when the
+request completes, not at the instant of disposal; and `clock.cui`'s
+"integer-truncated" comment was wrong.
 
 Built since: `cancho-ui diff <base> <candidate>` (Phase 3), designed in
 [`docs/semantic-diff.md`](docs/semantic-diff.md) first. It compares the

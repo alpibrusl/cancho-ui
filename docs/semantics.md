@@ -138,7 +138,9 @@ a checked property, not an aspirational one.
   with the message naming the unspecified behavior.
 
 **Phase 1 enforces.** Sequential semantics, deterministic
-replay. **Phase 2+ refines.** Cross-component ordering if an
+replay (built: [`docs/replay.md`](replay.md), `cancho-ui test`; it replays one
+component at a time, so cross-component ordering is still not defined).
+**Phase 2+ refines.** Cross-component ordering if an
 asker appears.
 
 ---

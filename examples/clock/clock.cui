@@ -2,8 +2,9 @@
 // Demonstrates `requires Clock;` + `clock.now()`. The state field
 // `started_at` records the moment the user pressed Start; the
 // displayed duration is the difference between `clock.now()` and
-// `started_at` (in seconds, integer-truncated). Reset returns the
-// display to "Press Start".
+// `started_at`, divided by 1000 (seconds; `/` is JavaScript division in
+// the emitted code, so it is not truncated: 1500 ms shows as 1.5s).
+// Reset returns the display to "Press Start".
 
 component Clock {
     requires Clock;

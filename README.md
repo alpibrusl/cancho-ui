@@ -34,6 +34,14 @@ $ echo $?
   state, events, handler writes and effects that moved. Line shifts, comments
   and reordering are not changes. It compares the categories listed in
   `not_compared`, not full behavioural equivalence.
+- **Replay the adverse ordering, no browser.** `test prog.cui trace.json`
+  runs a JSON trace of events, scripted `net.search` answers and fake-clock
+  ticks over the typed IR and checks the state after each step. A slow earlier
+  request resolving after a newer one must be dropped; the trace says so in 25
+  lines and fails, with a located error and exit 4, if the runtime rule is
+  removed. It replays handlers, not the view, timing or the real network, and it
+  is a second implementation of the semantics, not the emitted JavaScript
+  ([`docs/replay.md`](docs/replay.md)).
 - **Async that cannot go stale.** A request that finishes after a newer one is
   dropped at the `await`, and a disposed component receives `Cancelled` in its
   own mandatory `match` arm.
@@ -41,7 +49,7 @@ $ echo $?
   lowered one-to-one to DOM calls; the page owns presentation.
 - **Measured.** 10 example programs compile and run (a counter, a clock, a
   searchable list with cancellation, composed components, cross-file imports);
-  108 tests pass (35 of them for `diff`); and a mutation test runs the front end on every prefix and
+  150 tests pass (35 of them for `diff`, 35 for `test`); and a mutation test runs the front end on every prefix and
   every one-character deletion of the examples (about 26,000 programs) without
   a panic. Not measured: whether an agent is more productive with cancho-ui
   than with a conventional stack. That needs the Phase 3 benchmark, which has
@@ -76,13 +84,19 @@ cancho-ui check   <file.cui>...  [--output json]
 cancho-ui build   <file.cui>...  [-o <path>] [--target web] [--output json]
 cancho-ui inspect component|effects|ir <file.cui> [<name>] [--output json]
 cancho-ui diff    <base.cui> <candidate.cui>  [--output json]
+cancho-ui test    <file.cui> <trace.json>  [--output json]
 cancho-ui report  <file.cui>...  [--output json]
 ```
 
 Exit codes match cancho: `0` success, `1` refused with a located diagnostic,
 `2` command line wrong, `3` environment failed. `diff` adds `5`: the programs
 differ semantically (`0` is "no semantic change"; `1` stays "a file did not
-compile"). See [`docs/semantic-diff.md`](docs/semantic-diff.md).
+compile"). See [`docs/semantic-diff.md`](docs/semantic-diff.md). `test` adds
+`4`: a test failed (an expectation did not hold, the trace is malformed, or the
+program did something replay refuses; read the `rule`). Example traces are
+`examples/*/*.trace.json`; try
+`cancho-ui test examples/search/search.cui examples/search/stale.trace.json`.
+See [`docs/replay.md`](docs/replay.md).
 
 ```sh
 cargo fmt --all --check

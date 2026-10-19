@@ -66,6 +66,7 @@ does not force premature changes to cancho Core.
 | **Platform model** | Web-first decision record, mobile-backend candidates | [`platform-model.md`](platform-model.md) |
 | **Typed UI IR** | Component, state, event, effect, capability, lifecycle representation | [`../spec/ir-schema/README.md`](../spec/ir-schema/README.md) |
 | **Semantic diff** | What `cancho-ui diff` compares, its JSON shape, exit codes, and what it does not claim | [`semantic-diff.md`](semantic-diff.md) |
+| **Replay** | What `cancho-ui test` replays (a trace of events, a scripted network, a fake clock), its rules, and what it does not claim | [`replay.md`](replay.md) |
 | **Diagnostic format** | Rule codes, severity, span, subject, expected/actual, remediation, tier | [`../spec/diagnostics/README.md`](../spec/diagnostics/README.md) |
 | **Grammar sketch** | EBNF for the syntax in `language-design.md` (Phase 0 only — not implemented) | [`../spec/grammar/README.md`](../spec/grammar/README.md) |
 | **Valid and invalid examples** | At least 10 of each, written down, the contract Phase 1 must meet | [`../examples/README.md`](../examples/README.md) |
@@ -85,6 +86,7 @@ What is **not** there yet, and why, is
 | [`security-model.md`](security-model.md) | Five-tier guarantee model and trust-boundary contract | Phase 0 |
 | [`platform-model.md`](platform-model.md) | Web-first decision; mobile-backend candidates | Phase 0 |
 | [`semantic-diff.md`](semantic-diff.md) | `cancho-ui diff`: design, JSON shape, exit codes, limits | Phase 3, built |
+| [`replay.md`](replay.md) | `cancho-ui test`: trace format, replay semantics, rule tags, limits, measurements | Phase 3, built |
 | [`../spec/ir-schema/README.md`](../spec/ir-schema/README.md) | Typed UI IR sketch | Phase 0 |
 | [`../spec/diagnostics/README.md`](../spec/diagnostics/README.md) | Machine-readable diagnostic format | Phase 0 |
 | [`../spec/grammar/README.md`](../spec/grammar/README.md) | Grammar sketch (EBNF) | Phase 0 |

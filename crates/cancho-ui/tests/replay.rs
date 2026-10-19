@@ -163,6 +163,7 @@ component Expr {
     on Div(x) { half = x / 2; }
     on Cat(x) { s = "n=" + x; n = len(s); ok = n > 2; }
     on Wide { n = len("😀"); }
+    on Pair(x, y) { n = x - y; }
     view { Text { "{s}" } }
 }
 "#;
@@ -186,6 +187,38 @@ fn string_concatenation_len_and_comparison() {
         ]),
     );
     assert_pass(&r);
+}
+
+#[test]
+fn parameters_bind_in_declaration_order() {
+    let r = run(
+        EXPR,
+        json!([{"event": "Pair", "params": [10, 3], "state": {"n": 7}}]),
+    );
+    assert_pass(&r);
+}
+
+#[test]
+fn expect_compares_lists_by_length_and_elements() {
+    // A request is pending, so `pending: []` and `pending: [2]` must both fail;
+    // only `[1]` holds.
+    let base = submit("a").as_array().expect("array").clone();
+    for (expected, ok) in [
+        (json!([1]), true),
+        (json!([]), false),
+        (json!([2]), false),
+        (json!([1, 2]), false),
+    ] {
+        let mut steps = base.clone();
+        steps.push(json!({"event": "ShowAll", "expect": {"pending": expected}}));
+        let r = run(SEARCH, Json::Array(steps));
+        assert_eq!(
+            r.failures.is_empty(),
+            ok,
+            "expected {expected}: {:?}",
+            r.failures
+        );
+    }
 }
 
 #[test]
@@ -431,6 +464,7 @@ fn the_clock_starts_where_the_header_says_and_only_advance_moves_it() {
 const JOURNAL: &str = r#"
 component Journal {
     requires Network;
+    requires Clock;
     state a: Int = 1;
     state out: Int = 0;
     state r: Result[List[String], String] = Ok([]);
@@ -442,9 +476,26 @@ component Journal {
             Cancelled => { 0 }
         };
     }
+    on Stamp {
+        out = clock.now() * 1000 + match await(net.search("q")) {
+            Ok(l) => { len(l) }
+            Err(_) => { 0 }
+            Cancelled => { 0 }
+        };
+    }
     view { Text { "{out}" } }
 }
 "#;
+
+#[test]
+fn clock_read_before_an_await_keeps_the_instant_it_had() {
+    let t = json!({"schema": "cancho-ui-trace", "version": "0.1.0", "clock": 5, "steps": [
+        {"event": "Stamp", "expect": {"outcome": "suspended"}},
+        {"advance": 7},
+        {"resolve": 1, "with": {"Ok": ["x"]}, "state": {"out": 5001}}
+    ]});
+    assert_pass(&replay(&ir(JOURNAL), &t.to_string(), "p.cui", "t.json"));
+}
 
 #[test]
 fn state_read_before_an_await_keeps_the_value_it_had() {

@@ -19,8 +19,9 @@ trace says it should be?* It is the answer to the Phase 3 deliverable
 [`semantics.md`](semantics.md) Q3's "same input, same output, every run", made a
 checked property instead of an aspiration. Its headline use is the one the
 proposal names: **the adverse-ordering test**. A slow earlier request resolving
-after a fast newer one must be dropped, and the trace says so in 12 lines
-(`examples/search/stale.trace.json`).
+after a fast newer one must be dropped, and the trace says so in 25 lines
+(`examples/search/stale.trace.json`), and the replay fails if the runtime rule is
+removed (§13).
 
 ---
 
@@ -146,8 +147,9 @@ For each step: the component's **state after the step**, per the semantics of
 
 1. **State is initialised** from the declared initial values, in declaration
    order, before step 0 (Q1). An initial value must be a literal expression
-   (literals, `Ok`/`Err`/`Some`/`None`, list literals, arithmetic, `len`,
-   `filter`, `map` over those). An initial value that reads an identifier or
+   (literals, `Ok`/`Err`/`Some`/`None`, list literals, arithmetic and `len`
+   over those; a `filter`/`map` callback reads its item as an identifier, so it
+   is refused too). An initial value that reads an identifier or
    calls a function is `undefined` in the emitted JavaScript; replay refuses it
    (`replay-unsupported`) rather than invent a value.
 2. **An event runs its handler body** statement by statement, in order, to
@@ -242,7 +244,11 @@ instance. Replay implements the runtime's rule verbatim:
    (`delivered: "dropped"`); else if it was disposed, the `await` yields
    `Cancelled` and the handler continues; else the `await` yields the scripted
    value and the group's slot is cleared.
-3. Supersede-then-dispose drops (rule 2's first branch wins).
+3. A superseded request is no longer in the group table, so a later `dispose` does
+   not touch it: superseded-then-disposed still drops. The reverse (disposed, then
+   superseded) cannot be built from a trace: after `dispose` no event can start a
+   request, and only one request per group was current to be disposed. So the
+   order of rule 2's first two tests is unobservable; replay uses the emitter's.
 
 A request that is superseded is **still pending** until the trace resolves it:
 the browser's request is still in flight, and resolving it is the adverse event
@@ -289,36 +295,49 @@ the disposed handlers finish.
 
 ## 7. Output and exit codes
 
-Human form (stdout):
+Human form (stdout), from `examples/search/stale.trace.json`:
 
 ```
 cancho-ui test examples/search/search.cui examples/search/stale.trace.json
 component Search, 6 steps
-  step 0  event Change(a)        completed   query="a"
-  step 1  event Submit           suspended   issued #1 net.search("a")
-  ...
-  step 5  resolve #1             dropped     (stale: superseded by #2)
-PASS  6 steps, 14 checks
+  step 0  event Change("a")                  completed  query="a"
+  step 1  event Submit()                     suspended  status="loading"  issued #1 net.search("a")
+  step 2  event Change("ad")                 completed  query="ad"
+  step 3  event Submit()                     suspended  status="loading"  issued #2 net.search("ad")
+  step 4  resolve #2                         completed  r={"Ok":[...]}  status="done"  results=[...]  #2 -> Ok
+  step 5  resolve #1                         dropped    #1 -> dropped
+PASS  6 steps, 21 checks
 ```
 
-`--output json` prints one object (the shape is part of the contract):
+(The `r=` and `results=` values are elided here; the command prints them.) Each
+line shows the fields the step wrote, the requests it started, and what each
+resumed `await` received.
+
+`--output json` prints one object (the shape is part of the contract; keys are
+sorted):
 
 ```json
 {
   "schema": "cancho-ui-test", "version": "0.1.0",
   "file": "...", "trace": "...", "component": "Search",
   "result": "pass",
-  "steps_run": 6, "steps_total": 6, "checks": 14,
+  "steps_total": 6, "steps_run": 6, "checks": 21,
   "failures": [],
-  "steps": [ { "step": 5, "action": "resolve", "outcome": "dropped",
+  "steps": [ { "step": 5, "action": "resolve", "detail": 1, "outcome": "dropped",
                "state": { "...": "..." }, "issued": [], "pending": [],
                "fired": [ { "request": 1, "delivered": "dropped", "outcome": "dropped" } ],
-               "writes": [] } ],
-  "requests": [ { "request": 1, "effect": "net.search", "args": ["a"], "status": "resolved" } ],
+               "writes": [], "clock": 0 } ],
+  "requests": [ { "request": 1, "effect": "net.search", "args": ["a"],
+                  "status": "resolved", "superseded": true, "disposed": false } ],
   "final_state": { "...": "..." },
-  "not_claimed": [ "view_rendering", "..." ]
+  "not_claimed": [ "emitted_javascript_behaviour", "view_rendering", "..." ]
 }
 ```
+
+`detail` is `{"name", "params"}` for an event, the request id for a resolve, the
+milliseconds for an advance. `writes` lists each state assignment the step made,
+with its source span. `checks` counts the individual `state` and `expect`
+comparisons made.
 
 A failure is
 
@@ -331,10 +350,14 @@ A failure is
 
 `path` locates the assertion in the trace (JSON syntax errors carry the parser's
 `line`/`column` instead, since the JSON value tree has no source positions);
-`span` locates the **source** that produced the actual value: the assignment in
-the handler that last wrote the field during this step, or, for a runtime
-refusal, the expression that was refused. It is `null` where nothing in the
-source is responsible (for example a field no step has written).
+`span` locates the **source** that produced the actual value: for a `state`
+mismatch the assignment that last wrote the field during this step, else the
+field's declaration; for an `expect` mismatch the handler that ran or resumed;
+for a runtime refusal the expression that was refused. It is `null` for trace
+errors, which are located by `path` instead. A span names a position in the
+`.cui` file given on the command line; a component pulled in by `import` carries
+the position in its own file, which the span cannot name (the IR has no file on
+its spans).
 
 | Exit | Meaning |
 |---|---|
@@ -455,7 +478,32 @@ a regression test the CI gate runs.
 
 ## 11. Corrections made while building
 
-(Filled in as the code disagrees with this document; see the end of the file.)
+1. **`Cancelled` is delivered when the request completes, not when the component is
+   disposed.** The Tier 17 text in `AGENTS.md` §3 and the emitter's comments say the
+   pending await "resolves" `Cancelled` on disposal. Reading `__cui_call`: dispose only
+   sets `token.disposed`; the `.then` that returns `Cancelled` runs when the
+   underlying promise settles (400 ms later for `sleep(400)`). Replay follows the
+   code (§6). `AGENTS.md` is corrected in place.
+2. **`examples/clock/clock.cui` said elapsed seconds are "integer-truncated".** The
+   emitted JavaScript divides with `/` and does not truncate (§8). The comment is
+   corrected in place; the program is unchanged.
+3. **Concurrent timers in one component are impossible.** The first draft of §5
+   described due sleeps racing; building the tests showed that every `sleep` shares
+   one group, so starting a second supersedes the first, and the earlier one is
+   dropped when it fires. The ordering rule is
+   still needed (a chain of sleeps started inside one advance, and a superseded
+   timer firing before its successor) and is tested, but a trace cannot make two
+   live timers race. `sleeps_in_one_component_share_a_group...` pins this.
+4. **A trace with no assertion is refused** (`trace-no-assertions`). Not in the first
+   draft; added after asking what a `pass` on `{"steps": [{"event": "Increment"}]}`
+   would prove (nothing).
+5. **Two replayed rules are unobservable and so untested** (§4.1, rule 3: disposed
+   vs. superseded order; the `inflight` slot comparison on resolve). They mirror the
+   emitter and are listed as surviving mutants in §13, with the reason.
+6. **The step report grew `writes`, `clock` and `detail`.** §7 was written first
+   without them; they are needed to print the human form and to locate a failure.
+
+---
 
 ## 12. Alternatives considered
 
@@ -470,3 +518,64 @@ a regression test the CI gate runs.
 - **Continuations by a CPS evaluator or a bytecode VM** instead of the journal
   (§3.1). Either works; the journal reuses one straightforward recursive
   evaluator and is a few dozen lines.
+
+---
+
+## 13. Measured
+
+Everything below was run on this commit; nothing is estimated.
+
+- **Example traces:** 9 traces over 7 programs (`counter`, `clock`, `await`,
+  `cancel` x2, `list`, `match`, `search` x2): 42 steps, 87 checks, all pass;
+  the whole set replays in 0.06 s wall clock, including nine process starts
+  (release build).
+- **Tests:** 150 pass under `cargo test --workspace` (109 on `origin/main`; the README
+  said 108). New: 35 in `tests/replay.rs`, 2 replay arms in `tests/no_panic.rs`,
+  4 in `tests/cli.rs` (the `skill`/`introspect` argument fix).
+- **No panic:** `replay` ran on 17,161 mutated traces (every prefix, every
+  one-character deletion, and every JSON node replaced by each of 13 awkward values,
+  of the nine example traces; 32,555 steps reached the interpreter), and on 15,486
+  compiling mutants of the example programs with their own traces. None panicked, and
+  every report was self-consistent (`result`, `steps_run`, serialisable, renderable).
+- **A test that cannot fail proves nothing:** the interpreter was mutated 28 times,
+  one change at a time, and `tests/replay.rs` run against each. **26 mutants were
+  killed, 2 survived, and both survivors are equivalent mutants** (unobservable by
+  any trace, §4.1 rule 3 and §11, 5).
+
+  | # | Mutation | Result |
+  |---|---|---|
+  | 01 | statements run in reverse order | killed (16 tests) |
+  | 02 | starting a request does not supersede the pending one | killed (5) |
+  | 03 | ignore the `Cancelled` arm: a disposed request delivers its answer | killed (3) |
+  | 04 | disposed tested before superseded | **survived** (equivalent, §4.1) |
+  | 05 | state reads not journaled | killed (1) |
+  | 06 | `clock.now()` not journaled | killed (1) |
+  | 07 | timers do not set the clock to their due time | killed (3) |
+  | 08 | due timers fire in id order | killed (1) |
+  | 09 | `sleep` due ignores the clock at issue | killed (1) |
+  | 10 | `/` truncates | killed (1) |
+  | 11 | a variant pattern ignores its tag | killed (5) |
+  | 12 | `>` behaves as `>=` | killed (1) |
+  | 13 | `sleep` resolves with `Err` | killed (3) |
+  | 14 | `pending` lists resolved requests | killed (6) |
+  | 15 | event parameters bind in reverse | killed (1) |
+  | 16 | `expect` lists match by prefix | killed (1) |
+  | 17 | `len` counts characters, not UTF-16 units | killed (1) |
+  | 18 | `filter` keeps what the predicate rejects | killed (1) |
+  | 19 | `advance` does not move the clock | killed (3) |
+  | 20 | a dropped request still runs the rest of its handler | killed (5) |
+  | 21 | numeric assignments write 0 | killed (19) |
+  | 22 | `trace-no-assertions` removed | killed (1) |
+  | 23 | `state` expectations compare nothing | killed (4) |
+  | 24 | the group slot is cleared by any resolve | **survived** (equivalent, §11, 5) |
+  | 25 | `+` swaps its string operands | killed (1) |
+  | 26 | `-` swaps its operands | killed (3) |
+  | 27 | an `Err` answer is reported as `Ok` | killed (1) |
+  | 28 | the journal is cleared when an answer arrives | killed (10) |
+
+  The headline: with mutation 02 applied, `cancho-ui test examples/search/search.cui
+  examples/search/stale.trace.json` exits `4` with four located failures at step 5
+  (the stale response overwrote `results`, `outcome` was `completed`, not `dropped`).
+  Mutations 06 and 15 survived the first version of the suite; the tests
+  `clock_read_before_an_await_keeps_the_instant_it_had` and
+  `parameters_bind_in_declaration_order` were added for them.
