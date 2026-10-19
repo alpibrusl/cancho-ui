@@ -19,6 +19,9 @@ $ echo $?
 0
 ```
 
+[![A 20-second recording of the demo](docs/demo/ui-demo.poster.jpg)](docs/demo/ui-demo.mp4)
+*A 20-second recording of the project page's demo (real compiler output beside the compiled counter running), not a live session. Re-record it with `node scripts/record-demo.js` (needs `playwright` and `ffmpeg`).*
+
 - **Authority is declared and checked.** `requires Clock;` is the only way
   `clock.now()` is reachable. A missing declaration is `capability-missing`; a
   declaration nothing uses is `capability-unused`. The rule is cancho's
