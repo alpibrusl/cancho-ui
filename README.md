@@ -85,6 +85,7 @@ compiler or the emitted code uses Python.
 ```sh
 cancho-ui check   <file.cui>...  [--output json]
 cancho-ui build   <file.cui>...  [-o <path>] [--target web] [--output json]
+cancho-ui build   <file.cui> --pwa -o <dir> [--name <text>]   # an installable web app
 cancho-ui inspect component|effects|ir <file.cui> [<name>] [--output json]
 cancho-ui diff    <base.cui> <candidate.cui>  [--output json]
 cancho-ui test    <file.cui> <trace.json>  [--output json]

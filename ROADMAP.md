@@ -424,7 +424,8 @@ research-backed compiler and agent-workflow project.
 Stated here so the table above is not read as the whole of the proposal:
 
 - The agent benchmark (`eval/` is still only the plan).
-- A mobile backend and its conformance tests.
+- A native mobile backend and its conformance tests. (An installable-web-app slice, `build --pwa`,
+  exists; see "Built since" below and `docs/mobile-backend.md`. Nothing is tested on a phone or on iOS.)
 - Self-hosting the compiler in cancho, which follows cancho's own
   `docs/self-hosting.md`: the Rust compiler stays the oracle, and nothing
   is ported until a program asks for it.
@@ -449,6 +450,17 @@ and 26 were caught (the 2 survivors are equivalent mutants, `docs/replay.md` §1
 Corrected in place while building it: `Cancelled` reaches the arm when the
 request completes, not at the instant of disposal; and `clock.cui`'s
 "integer-truncated" comment was wrong.
+
+Built since: `cancho-ui build <file.cui> --pwa -o <dir>` (the first slice of Phase 4, mobile),
+designed in [`docs/mobile-backend.md`](docs/mobile-backend.md) first: the mobile target is the web
+backend installed from the phone's browser (page, manifest, offline service worker, placeholder icons, all
+generated, no library). Measured in Chromium with Pixel 5 emulation: no installability errors, the
+page starts with the server stopped, every control is at least 44 px; three deliberate breaks of the
+generator are caught by `scripts/check-pwa.js`. **Not done:** real `Network`, `Storage` and `Location`
+adapters (the web backend's adapters are two stubs, measured; `platform-model.md` said four and is
+corrected), page-lifecycle mapping, a React Native comparison, any native shell, iOS and
+a real phone. Found on the way: every flag that took a value swallowed the next argument in `check`,
+`build` and `report` (`build -o out.js file.cui` failed); fixed, with a test.
 
 Built since: `cancho-ui diff <base> <candidate>` (Phase 3), designed in
 [`docs/semantic-diff.md`](docs/semantic-diff.md) first. It compares the
