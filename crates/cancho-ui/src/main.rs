@@ -297,12 +297,22 @@ fn run_skill(args: &[String]) -> Result<ExitCode, CliError> {
     // Emits an agentskills.io-shaped markdown describing every
     // command. Phase 1 emits a hand-written guide; Phase 2
     // generates it from the registered CommandInfo vector.
-    let opts = SkillOpts::parse(args)?;
-    let body = SKILL_MD;
+    let opts = SelfDescribeOpts::parse("skill", args)?;
+    let body = match opts.format {
+        OutputFormat::Human => SKILL_MD.to_string(),
+        OutputFormat::Json => serde_json::to_string_pretty(&serde_json::json!({
+            "schema": "cancho-ui-skill",
+            "version": "0.1.0",
+            "name": "cancho-ui",
+            "format": "markdown",
+            "content": SKILL_MD,
+        }))
+        .expect("serializing derived JSON is infallible"),
+    };
     match opts.output_path {
         Some(path) => {
             let p = path.clone();
-            std::fs::write(&path, body)
+            std::fs::write(&path, &body)
                 .map_err(move |e| CliError::Env(format!("writing `{}`: {}", p.display(), e)))?;
         }
         None => println!("{}", body),
@@ -311,7 +321,8 @@ fn run_skill(args: &[String]) -> Result<ExitCode, CliError> {
 }
 
 fn run_introspect(args: &[String]) -> Result<ExitCode, CliError> {
-    let opts = IntrospectOpts::parse(args)?;
+    // The command tree is data: `--output text` prints the same JSON.
+    let opts = SelfDescribeOpts::parse("introspect", args)?;
     let tree = serde_json::json!({
         "schema": "cancho-ui-cli",
         "version": "0.1.0",
@@ -551,34 +562,50 @@ impl ReportOpts {
     }
 }
 
+/// Arguments of the two self-describing commands, `skill` and
+/// `introspect`: `[--output json] [<out-file>]`. The flag takes its
+/// value; a bare argument is the output file; anything else is a usage
+/// error (it used to be silently taken as the output path, so
+/// `introspect --output json` wrote a file literally named `--output`).
 #[derive(Debug, Default)]
-struct SkillOpts {
+struct SelfDescribeOpts {
     output_path: Option<PathBuf>,
+    format: OutputFormat,
 }
 
-impl SkillOpts {
-    fn parse(args: &[String]) -> Result<Self, CliError> {
-        let mut out = SkillOpts::default();
-        for a in args {
-            if out.output_path.is_none() {
-                out.output_path = Some(PathBuf::from(a));
-            }
-        }
-        Ok(out)
-    }
-}
-
-#[derive(Debug, Default)]
-struct IntrospectOpts {
-    output_path: Option<PathBuf>,
-}
-
-impl IntrospectOpts {
-    fn parse(args: &[String]) -> Result<Self, CliError> {
-        let mut out = IntrospectOpts::default();
-        for a in args {
-            if out.output_path.is_none() {
-                out.output_path = Some(PathBuf::from(a));
+impl SelfDescribeOpts {
+    fn parse(command: &str, args: &[String]) -> Result<Self, CliError> {
+        let mut out = SelfDescribeOpts::default();
+        let mut i = 0;
+        while i < args.len() {
+            match args[i].as_str() {
+                "--output" => {
+                    let v = args.get(i + 1).ok_or_else(|| {
+                        CliError::Usage(format!("`{command}`: --output requires an argument"))
+                    })?;
+                    out.format = match v.as_str() {
+                        "json" => OutputFormat::Json,
+                        "text" | "human" => OutputFormat::Human,
+                        other => {
+                            return Err(CliError::Usage(format!(
+                                "unknown --output value `{other}`"
+                            )));
+                        }
+                    };
+                    i += 2;
+                }
+                s if s.starts_with('-') && s.len() > 1 => {
+                    return Err(CliError::Usage(format!("`{command}`: unknown flag `{s}`")));
+                }
+                s => {
+                    if out.output_path.is_some() {
+                        return Err(CliError::Usage(format!(
+                            "`{command}` takes at most one output file; got a second, `{s}`"
+                        )));
+                    }
+                    out.output_path = Some(PathBuf::from(s));
+                    i += 1;
+                }
             }
         }
         Ok(out)
