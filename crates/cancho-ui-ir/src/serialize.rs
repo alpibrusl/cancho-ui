@@ -343,6 +343,19 @@ impl Serialize for IrExpr {
                 s.serialize_field("span", &IrSpan::from(*span))?;
                 s.end()
             }
+            IrExpr::SortBy {
+                list,
+                item,
+                key,
+                span,
+            } => {
+                let mut s = ser.serialize_struct("IrExpr::SortBy", 4)?;
+                s.serialize_field("list", list)?;
+                s.serialize_field("item", item)?;
+                s.serialize_field("key", key)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
             IrExpr::Len { list, span } => {
                 let mut s = ser.serialize_struct("IrExpr::Len", 2)?;
                 s.serialize_field("list", list)?;

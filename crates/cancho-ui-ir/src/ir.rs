@@ -234,6 +234,14 @@ pub enum IrExpr {
         body: Box<IrExpr>,
         span: Span,
     },
+    /// `sort(list, x => key)` — docs/lists.md. A new list, stable and ascending by `key` (with `x` bound):
+    /// numbers before strings, numbers numerically, strings by UTF-16 code units. Pure.
+    SortBy {
+        list: Box<IrExpr>,
+        item: String,
+        key: Box<IrExpr>,
+        span: Span,
+    },
     /// `len(list)` — Tier 11. Element count of a list (or
     /// character count of a string, the same JS `.length`).
     /// Pure — no capability.

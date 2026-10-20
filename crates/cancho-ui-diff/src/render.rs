@@ -83,6 +83,9 @@ pub fn expr(e: &IrExpr) -> String {
         IrExpr::Map {
             list, item, body, ..
         } => format!("map({}, {} => {})", expr(list), item, expr(body)),
+        IrExpr::SortBy {
+            list, item, key, ..
+        } => format!("sort({}, {} => {})", expr(list), item, expr(key)),
         IrExpr::Len { list, .. } => format!("len({})", expr(list)),
     }
 }
