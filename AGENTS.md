@@ -116,8 +116,8 @@ only; `set` answers whether it persisted; see `docs/adapters.md`, and note that 
 cannot contain a string literal, so put the call in `Text { storage.get("k", "d") }`).
 
 `net.get(url)` also performs `Network`: a same-origin GET awaited like `net.search`, answering
-`Ok(text) | Err(reason) | Cancelled` (see `docs/adapters.md` section 9). Do not write `"error: {why}"` in a
-`match` arm: braces are interpolated only inside `Text`, so use `"error: " + why`.
+`Ok(text) | Err(reason) | Cancelled` (see `docs/adapters.md` section 9). `"error: {why}"` interpolates in a
+`match` arm as in a `Text`; a `{` in a label or other static text is refused.
 
 `net.search(query)` performs the `Network` capability; the
 `await(...)` resolves it over the `Ok | Err | Cancelled` arms —

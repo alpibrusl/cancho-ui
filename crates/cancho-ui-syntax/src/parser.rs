@@ -64,6 +64,83 @@ struct Parser {
     pos: usize,
 }
 
+/// A string that is static text (a label, an attribute, a property): a `{` in it would be shown as a brace and
+/// never interpolated, which reads as a bug in the program, so it is refused. The dynamic part belongs in a
+/// `Text` child (or, for a handler or a `match` arm, in a string expression, where `{x}` does interpolate).
+fn static_text(value: String, span: Span) -> Result<String, ParseError> {
+    if value.contains('{') {
+        return Err(ParseError::Unexpected {
+            expected: "static text without `{` (a label or attribute is not interpolated; put the dynamic part in a `Text` child)",
+            found: Token::StringLit(value),
+            line: span.start.line,
+            column: span.start.column,
+        });
+    }
+    Ok(value)
+}
+
+/// Split the text of a string literal into literal runs and `{expr}` interpolations. A `{` always starts an
+/// interpolation, in a `Text` body and in a string expression alike; there is no escape for a literal brace.
+fn interpolation_parts(value: &str, span: Span) -> Result<Vec<TextPart>, ParseError> {
+    let mut parts = Vec::new();
+    let mut buf = String::new();
+    let current_line = span.start.line;
+    let mut chars = value.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '{' {
+            if !buf.is_empty() {
+                parts.push(TextPart::Literal(std::mem::take(&mut buf)));
+            }
+            let mut expr_src = String::new();
+            let mut depth = 1;
+            while let Some(&nc) = chars.peek() {
+                if nc == '{' {
+                    depth += 1;
+                }
+                if nc == '}' {
+                    depth -= 1;
+                    if depth == 0 {
+                        break;
+                    }
+                }
+                expr_src.push(nc);
+                chars.next();
+            }
+            chars.next();
+            if depth != 0 {
+                return Err(ParseError::Unexpected {
+                    expected: "closing `}` in interpolation",
+                    found: Token::Eof,
+                    line: current_line,
+                    column: 0,
+                });
+            }
+            let interp_tokens =
+                crate::lexer::lex(&expr_src).map_err(|e| ParseError::InvalidNumber {
+                    raw: format!("{:?}", e),
+                    line: current_line,
+                    column: 0,
+                })?;
+            let mut sub = Parser {
+                tokens: interp_tokens,
+                pos: 0,
+            };
+            let expr = sub.parse_expr().map_err(|e| ParseError::InvalidNumber {
+                raw: format!("{:?}", e),
+                line: current_line,
+                column: 0,
+            })?;
+            parts.push(TextPart::Expr { expr, span });
+        } else {
+            buf.push(c);
+        }
+    }
+    if !buf.is_empty() {
+        parts.push(TextPart::Literal(buf));
+    }
+    Ok(parts)
+}
+
 impl Parser {
     fn peek(&self) -> &SpannedToken {
         &self.tokens[self.pos]
@@ -673,10 +750,43 @@ impl Parser {
             }
             Token::StringLit(s) => {
                 self.bump();
-                Ok(Expr::StringLit {
-                    value: s,
-                    span: tok.span,
-                })
+                let parts = interpolation_parts(&s, tok.span)?;
+                if !parts.iter().any(|p| matches!(p, TextPart::Expr { .. })) {
+                    return Ok(Expr::StringLit {
+                        value: s,
+                        span: tok.span,
+                    });
+                }
+                // `"a {x} b"` in an expression is `("a " + x) + " b"`: the same text a `Text` would show
+                // (JavaScript's `+` on a string converts the other side the way `String(..)` does). It starts
+                // from a string so that `"{a}{b}"` concatenates and does not add.
+                let mut items: Vec<Expr> = Vec::new();
+                if matches!(parts.first(), Some(TextPart::Expr { .. })) {
+                    items.push(Expr::StringLit {
+                        value: String::new(),
+                        span: tok.span,
+                    });
+                }
+                for part in parts {
+                    items.push(match part {
+                        TextPart::Literal(value) => Expr::StringLit {
+                            value,
+                            span: tok.span,
+                        },
+                        TextPart::Expr { expr, .. } => expr,
+                    });
+                }
+                let mut it = items.into_iter();
+                let mut acc = it.next().expect("at least one part");
+                for rhs in it {
+                    acc = Expr::Binary {
+                        op: BinOp::Add,
+                        lhs: Box::new(acc),
+                        rhs: Box::new(rhs),
+                        span: tok.span,
+                    };
+                }
+                Ok(acc)
             }
             Token::Ident(s) if s == "true" || s == "false" => {
                 self.bump();
@@ -1048,65 +1158,7 @@ impl Parser {
                 Token::StringLit(s) => s,
                 _ => unreachable!(),
             };
-            let mut parts = Vec::new();
-            let mut buf = String::new();
-            let current_line = tok.span.start.line;
-            let mut chars = value.chars().peekable();
-            while let Some(c) = chars.next() {
-                if c == '{' {
-                    if !buf.is_empty() {
-                        parts.push(TextPart::Literal(std::mem::take(&mut buf)));
-                    }
-                    let mut expr_src = String::new();
-                    let mut depth = 1;
-                    while let Some(&nc) = chars.peek() {
-                        if nc == '{' {
-                            depth += 1;
-                        }
-                        if nc == '}' {
-                            depth -= 1;
-                            if depth == 0 {
-                                break;
-                            }
-                        }
-                        expr_src.push(nc);
-                        chars.next();
-                    }
-                    chars.next();
-                    if depth != 0 {
-                        return Err(ParseError::Unexpected {
-                            expected: "closing `}` in interpolation",
-                            found: Token::Eof,
-                            line: current_line,
-                            column: 0,
-                        });
-                    }
-                    let interp_tokens =
-                        crate::lexer::lex(&expr_src).map_err(|e| ParseError::InvalidNumber {
-                            raw: format!("{:?}", e),
-                            line: current_line,
-                            column: 0,
-                        })?;
-                    let mut sub = Parser {
-                        tokens: interp_tokens,
-                        pos: 0,
-                    };
-                    let expr = sub.parse_expr().map_err(|e| ParseError::InvalidNumber {
-                        raw: format!("{:?}", e),
-                        line: current_line,
-                        column: 0,
-                    })?;
-                    parts.push(TextPart::Expr {
-                        expr,
-                        span: tok.span,
-                    });
-                } else {
-                    buf.push(c);
-                }
-            }
-            if !buf.is_empty() {
-                parts.push(TextPart::Literal(buf));
-            }
+            let parts = interpolation_parts(&value, tok.span)?;
             Ok(ViewNode::Text {
                 value: TextValue::Interpolated(parts),
                 span: tok.span,
@@ -1192,7 +1244,7 @@ impl Parser {
                     self.expect(Token::DotDot)?;
                     let label_tok = self.bump();
                     let label = match label_tok.token {
-                        Token::StringLit(s) => s,
+                        Token::StringLit(s) => static_text(s, label_tok.span)?,
                         other => {
                             return Err(ParseError::Unexpected {
                                 expected: "label string literal",
@@ -1365,7 +1417,7 @@ impl Parser {
                 let val_tok = self.bump();
                 match val_tok.token {
                     Token::Ident(s) => Ok(BindingValue::StateRef(s)),
-                    Token::StringLit(s) => Ok(BindingValue::String(s)),
+                    Token::StringLit(s) => Ok(BindingValue::String(static_text(s, val_tok.span)?)),
                     other => Err(ParseError::Unexpected {
                         expected: "state field name (identifier) or string literal",
                         found: other,
@@ -1387,7 +1439,7 @@ impl Parser {
                 // enclosing `For` binding) at each render.
                 let lit_tok = self.bump();
                 match lit_tok.token {
-                    Token::StringLit(s) => Ok(BindingValue::String(s)),
+                    Token::StringLit(s) => Ok(BindingValue::String(static_text(s, lit_tok.span)?)),
                     Token::IntLit(v) => Ok(BindingValue::Prop(Expr::IntLit {
                         value: v,
                         span: lit_tok.span,

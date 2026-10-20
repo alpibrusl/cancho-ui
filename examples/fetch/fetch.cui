@@ -18,7 +18,7 @@ component Fetch {
         r = await(net.get(url));
         status = match r {
             Ok(_) => { "done" }
-            Err(why) => { "error: " + why }
+            Err(why) => { "error: {why}" }
             Cancelled => { "cancelled" }
         };
         body = match r {
