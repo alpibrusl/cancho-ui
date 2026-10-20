@@ -113,8 +113,8 @@ program is usable on a phone, and an author replaces it freely:
 
 ## 6. Not done, on purpose
 
-- **Real adapters.** *(`Storage` over `localStorage` is built: [`adapters.md`](adapters.md). The rest of this
-  bullet is still open.)* A `fetch`-based `Network`, a `Storage` over `localStorage`
+- **Real adapters.** *(`Storage` over `localStorage` and a same-origin `net.get` are built: [`adapters.md`](adapters.md). The rest of
+  this bullet is still open.)* A `fetch`-based `Network`, a `Storage` over `localStorage`
   or IndexedDB, and `Location` over the Geolocation API are the work that makes
   the capabilities real on every web target, phones included. Each needs its
   own design (what the capability allows, what the trace replays). They are the

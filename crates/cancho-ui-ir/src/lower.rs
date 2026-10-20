@@ -61,7 +61,7 @@ pub enum LowerError {
     LambdaUnsupported { span: Span },
 
     #[error(
-        "`{name}` is misused here (expected {detail}); see the builtin call forms: `filter(list, x => cond)`, `map(list, x => body)`, `len(value)`, `storage.get(key, default)`, `storage.set(key, value)`"
+        "`{name}` is misused here (expected {detail}); see the builtin call forms: `filter(list, x => cond)`, `map(list, x => body)`, `len(value)`, `storage.get(key, default)`, `storage.set(key, value)`, `net.get(url)`"
     )]
     BuiltinMisuse {
         name: String,
@@ -290,6 +290,14 @@ fn lower_expr_with_effects(e: &Expr) -> Result<(IrExpr, Vec<IrReachableEffect>),
             // `map(list, x => body)`, `len(value)`. They are pure
             // (no capability); the generic call path below does
             // not see them.
+            if path.len() == 2 && path[0] == "net" && path[1] == "get" && args.len() != 1 {
+                // docs/adapters.md section 9: one argument, the URL.
+                return Err(LowerError::BuiltinMisuse {
+                    name: "net.get".to_string(),
+                    detail: "exactly one argument: net.get(url)".to_string(),
+                    span: *span,
+                });
+            }
             if path.len() == 2 && path[0] == "storage" && (path[1] == "get" || path[1] == "set") {
                 // docs/adapters.md: two arguments, always. A missing one would reach the browser as
                 // `undefined`, so it is refused here.
@@ -556,7 +564,7 @@ fn lower_pattern(p: &Pattern) -> IrPattern {
 fn builtin_capability(path: &[String]) -> Option<&'static str> {
     if path.len() == 2 && path[0] == "clock" && path[1] == "now" {
         Some("Clock")
-    } else if path.len() == 2 && path[0] == "net" && path[1] == "search" {
+    } else if path.len() == 2 && path[0] == "net" && (path[1] == "search" || path[1] == "get") {
         // Tier 9: `net.search(query)` is the asynchronous search
         // effect. `await(net.search(q))` resolves to Ok | Err |
         // Cancelled with an Ok payload of `List[String]`.

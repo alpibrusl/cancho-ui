@@ -1,0 +1,46 @@
+// examples/fetch/fetch.cui — the real `Network` adapter (docs/adapters.md section 9). `net.get(url)` is a GET of
+// this page's own origin: `await(net.get(url))` resolves to Ok(text) | Err(reason) | Cancelled, where a reason is
+// "HTTP 404", "network error", "timeout", "too large" or "blocked: ...". A URL on another origin never leaves
+// the page: it comes back as Err("blocked: ...").
+
+component Fetch {
+    requires Network;
+
+    state url: String = "data.txt";
+    state status: String = "idle";
+    state body: String = "";
+    state r: Result[String, String] = Ok("");
+
+    on Change(value) { url = value; }
+
+    on Load {
+        status = "loading";
+        r = await(net.get(url));
+        status = match r {
+            Ok(_) => { "done" }
+            Err(why) => { "error: " + why }
+            Cancelled => { "cancelled" }
+        };
+        body = match r {
+            Ok(text) => { text }
+            Err(_) => { "" }
+            Cancelled => { "" }
+        };
+    }
+
+    view {
+        Column {
+            TextField {
+                label: "URL"
+                value: url
+                on: Change
+            }
+            Button { label: "Load" on: Load }
+            Text {
+                role: status
+                "status: {status}"
+            }
+            Text { body }
+        }
+    }
+}

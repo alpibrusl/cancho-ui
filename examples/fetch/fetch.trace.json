@@ -1,0 +1,25 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "component": "Fetch",
+  "note": "A GET that succeeds, one that fails, and a newer request that supersedes an older one. docs/adapters.md section 9.",
+  "steps": [
+    { "event": "Load",
+      "state": { "status": "loading" },
+      "expect": { "outcome": "suspended",
+                  "issued": [ { "request": 1, "effect": "net.get", "args": ["data.txt"] } ],
+                  "pending": [1] } },
+    { "resolve": 1, "with": { "Ok": "hello" },
+      "state": { "status": "done", "body": "hello" } },
+    { "event": "Change", "params": ["missing.txt"], "state": { "url": "missing.txt" } },
+    { "event": "Load", "expect": { "pending": [2] } },
+    { "resolve": 2, "with": { "Err": "HTTP 404" },
+      "state": { "status": "error: HTTP 404", "body": "" } },
+    { "event": "Load", "expect": { "pending": [3] } },
+    { "event": "Load", "expect": { "pending": [3, 4] } },
+    { "resolve": 3, "with": { "Ok": "stale" },
+      "state": { "status": "loading", "body": "" } },
+    { "resolve": 4, "with": { "Ok": "fresh" },
+      "state": { "status": "done", "body": "fresh" } }
+  ]
+}

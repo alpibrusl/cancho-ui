@@ -48,7 +48,8 @@ React-or-Svelte-shaped abstraction.
   `Clock`, `Location`. **Corrected 2026-10-19 (measured in the
   emitted code):** only `Clock` and `Network` exist, and both are
   stubs (`Network` is `net.search`, a simulated search over a fixed
-  corpus, not `fetch`); `Storage` and `Location` are not written. **Updated 2026-10-19: `Storage` is
+  corpus, not `fetch`); `Storage` and `Location` are not written. **Updated 2026-10-20: `net.get` is a real same-origin `fetch`**
+  ([`adapters.md`](adapters.md) section 9). **Updated 2026-10-19: `Storage` is
   now built** as the builtins `storage.get` / `storage.set` over `localStorage`
   ([`adapters.md`](adapters.md)); `Location` and a real `Network` are not.
   See [`mobile-backend.md`](mobile-backend.md) §2.

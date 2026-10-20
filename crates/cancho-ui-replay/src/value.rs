@@ -6,6 +6,7 @@ use serde_json::{Map, Number, Value as Json};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Effect {
     NetSearch,
+    NetGet,
     Sleep,
 }
 
@@ -13,6 +14,7 @@ impl Effect {
     pub fn name(self) -> &'static str {
         match self {
             Effect::NetSearch => "net.search",
+            Effect::NetGet => "net.get",
             Effect::Sleep => "sleep",
         }
     }
@@ -21,6 +23,7 @@ impl Effect {
     pub fn group(self) -> &'static str {
         match self {
             Effect::NetSearch => "net_search",
+            Effect::NetGet => "net_get",
             Effect::Sleep => "sleep",
         }
     }
