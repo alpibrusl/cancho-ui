@@ -65,7 +65,7 @@ does not force premature changes to cancho Core.
 | **Security model** | Five-tier guarantee model, capability/effect rules, trust boundaries | [`security-model.md`](security-model.md) |
 | **Platform model** | Web-first decision record, mobile-backend candidates | [`platform-model.md`](platform-model.md) |
 | **Typed UI IR** | Component, state, event, effect, capability, lifecycle representation | [`../spec/ir-schema/README.md`](../spec/ir-schema/README.md) |
-| **Adapters** | `Storage` (built): the calls, the key prefix, what happens when `localStorage` throws, replay, what is not built | [`adapters.md`](adapters.md) |
+| **Adapters** | `Storage` and `Network` (`net.get`), built: the calls, what each guards, replay, what is not built | [`adapters.md`](adapters.md) |
 | **Mobile** | The mobile decision (an installable web app, fewest dependencies), what `build --pwa` writes, what is and is not built, and how it is checked | [`mobile-backend.md`](mobile-backend.md) |
 | **Semantic diff** | What `cancho-ui diff` compares, its JSON shape, exit codes, and what it does not claim | [`semantic-diff.md`](semantic-diff.md) |
 | **Replay** | What `cancho-ui test` replays (a trace of events, a scripted network, a fake clock), its rules, and what it does not claim | [`replay.md`](replay.md) |

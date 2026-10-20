@@ -268,12 +268,12 @@ fn run_step(
                     format!("request #{id} has already resolved"),
                 ));
             }
-            if effect != value::Effect::NetSearch {
+            if !matches!(effect, value::Effect::NetSearch | value::Effect::NetGet) {
                 return Err(stop(
                     "trace-request-not-scriptable",
                     "resolve",
                     format!(
-                        "request #{id} is a `{}`; timers resolve by advancing the clock, only `net.search` is scripted",
+                        "request #{id} is a `{}`; timers resolve by advancing the clock, only `net.search` and `net.get` are scripted",
                         effect.name()
                     ),
                 ));

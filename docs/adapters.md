@@ -1,8 +1,8 @@
-# Platform adapters: `Storage` first
+# Platform adapters: `Storage` and `Network`
 
-> **Status: designed, and the first adapter built: `Storage`.** Written before the code
-> ([`CONTRIBUTING.md`](../CONTRIBUTING.md) section 1); where building disagreed with it, the correction is made in
-> place and listed in section 8. `Network` as `fetch`, and `Location`, are designed here and **not built**.
+> **Status: designed, and two adapters built: `Storage` (sections 1 to 8) and `Network` as `net.get`
+> (section 9).** Written before the code ([`CONTRIBUTING.md`](../CONTRIBUTING.md) section 1); where building
+> disagreed with it, the correction is made in place and listed in section 8. `Location` is **not built**.
 > This answers the first item of [`mobile-backend.md`](mobile-backend.md) section 6 ("real adapters").
 
 ## 1. What exists, and what this adds
@@ -102,8 +102,7 @@ kept for symmetry with `clock.now` and is stated here rather than hidden.
 
 ## 7. Not done
 
-* **`Network` as `fetch`** (`net.get(url)` awaited, with a `Network("host")` bound), **`Location`**
-  (`location.current`), the declared narrowing `Storage("ns")`, an event for another tab's write, an
+* **`Location`** (`location.current`), the declared narrowings `Storage("ns")` and `Network("host")`, an event for another tab's write, an
   asynchronous store, quotas beyond "it threw", and values that are not strings.
 * **Argument counts of the other builtins** (`clock.now`, `sleep`, `net.search`) are not checked statically.
 * **iOS Safari** is not tested; Chromium only. Safari's private mode is known to make `localStorage` throw on
@@ -112,3 +111,78 @@ kept for symmetry with `clock.now` and is stated here rather than hidden.
 ## 8. Corrections
 
 *(None yet.)*
+
+---
+
+## 9. `Network`: `net.get(url)`
+
+### 9.1 The decision
+
+```
+await(net.get(url: String))  ->  Ok(text: String) | Err(reason: String) | Cancelled
+```
+
+It is the second effect `await` accepts that is a request ([`semantics.md`](semantics.md) Q2): starting a call
+cancels the component's still-pending `net.get` (stale-result protection), the cancellation group is `net_get`
+and is not shared with `net.search`, and a disposed component's pending `net.get` resolves to `Cancelled`. A
+`match` on the awaited field needs all three arms, exactly as for `net.search`.
+
+* **Same origin only.** Phase 1 has no way to say which host a component may reach (`Network("host")` is
+  Phase 2, `security-model.md` section 2.3), and an unbounded `fetch` of a program-built string is an exfiltration
+  channel. So the adapter fetches **only this page's own origin**. A URL on another origin is answered with
+  `Err("blocked: only this site's own origin may be fetched")` **before any request is made**. That also fits the
+  installed web app of [`mobile-backend.md`](mobile-backend.md): a phone app talks to the server that served it.
+  Cross-origin access is the declared `Network("host")` narrowing, not built.
+* **GET only**, no headers, no body, `credentials: "same-origin"`.
+* **Redirects are refused** (`redirect: "manual"`; the answer is `Err("blocked: redirect")`): a redirect could
+  leave the origin after the check.
+* **At most 1 MiB of text**, else `Err("too large")`; **10 s** to the reply, else `Err("timeout")`.
+* **Every failure is a value.** `Err("HTTP 404")` for a non-2xx status, `Err("network error")` when the request
+  fails (offline, refused, reset; including the installed app's service worker having nothing cached for it),
+  `Err("blocked: not a URL")` for a string `new URL` rejects. Nothing throws into the program.
+* **`net.search` stays** as the simulated search the demos use; a program that only uses `net.get` no longer
+  carries its fixed corpus. The capability is the same, `Network`; the row does not say which call.
+
+### 9.2 Replay
+
+`net.get` is an effect like `net.search`: the step report shows `issued #n net.get("data.txt")`, the trace
+scripts the answer with `{"resolve": n, "with": {"Ok": "text"}}` or `{"Err": "HTTP 404"}`, and a newer request
+drops an older one's answer. A URL that is not a string is `replay-type-error`. Replay does not model the five
+guards of 9.1; they are the browser's (9.3).
+
+### 9.3 Checked
+
+In the gate (`crates/cancho-ui/tests/network.rs`, 6 tests): only the adapter a program uses is emitted (a
+fetch-only program carries no corpus; the search example carries no `net_get`; the counter carries no `fetch(`);
+the four guards are present and there is exactly one `fetch(`; the two refusals (`capability-missing`, and
+`builtin-shape-mismatch` for zero and for two arguments); the example trace passes and a wrong answer fails; a
+non-string URL is `replay-type-error`; a `net.search` in flight is not superseded by a `net.get`.
+
+Outside the gate (`scripts/check-network.js`, Chromium, a real HTTP server for the page and a second server for
+"another origin"): a same-origin file is fetched and shown; a 404 is `Err("HTTP 404")` and the old body is
+cleared; **another origin is blocked and that server receives 0 requests**; `http://` is blocked as not a URL; a
+redirect is refused; a 2 MiB body is `too large`; a reply that never comes is a `timeout` after 10.07 s; with the
+server stopped the answer is `network error`; no script errors.
+
+**The checks can fail.** Five deliberate breaks of the adapter, each run against the browser script: the origin
+check removed (killed by 2 checks, including the request count), redirects followed, the size bound removed, the
+status not checked (each killed by 1). `credentials: "include"` in place of `"same-origin"` **survives, and
+cannot be observed**: with the origin check in front, every request is same-origin, so the two are equal.
+
+### 9.4 Found while building it
+
+1. **A string literal with braces is interpolated only inside `Text`.** `status = match r { Err(why) => { "error:
+   {why}" } ... }` compiles, and the emitted JavaScript returns the text `error: {why}`, braces included. Replay
+   shows it (it was replay that caught it). The workaround is `"error: " + why`. This is the same family as
+   section 5 item 1 and a worse one, because nothing is refused. Either interpolation should work in every
+   string expression or a `{` in one should be refused; that is a language decision, recorded here and not made.
+2. **An awaited `net.get` that returns `Ok(text)` binds a `String`, not a `List[String]`.** The checker does not
+   type the payload of `Result[..]` (`state r: Result[String, String]` is accepted for `net.search` too);
+   nothing here changes that.
+
+### 9.5 Not done
+
+`Network("host")` narrowing and cross-origin fetches (and with them CORS handling and any credentials), methods
+other than GET, request bodies and headers, streaming, aborting the underlying request when it is superseded
+(the answer is dropped; the request completes), a retry policy, and the service worker caching API replies. Chromium
+only; iOS Safari is not tested.

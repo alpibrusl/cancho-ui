@@ -49,6 +49,7 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
     let mut any_clock = false;
     let mut any_sleep = false;
     let mut any_network = false;
+    let mut any_net_get = false;
     let mut any_storage = false;
     let mut any_cancel = false;
     for c in &ir.components {
@@ -56,7 +57,9 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
             if e.capability == "Clock" {
                 any_clock = true;
             }
-            if e.capability == "Network" {
+            if e.capability == "Network" && e.path.last().is_some_and(|f| f == "get") {
+                any_net_get = true;
+            } else if e.capability == "Network" {
                 any_network = true;
             }
             if e.capability == "Storage" {
@@ -93,6 +96,10 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
     }
     if any_network {
         out.push_str(NETWORK_ADAPTER_JS);
+        out.push('\n');
+    }
+    if any_net_get {
+        out.push_str(NET_GET_ADAPTER_JS);
         out.push('\n');
     }
     if any_cancel {
@@ -264,6 +271,47 @@ function __cui_net_search(q) {
             });
             resolve({__cui_tag: \"Ok\", value: value});
         }, 60 + 45 * String(q).length);
+    });
+}
+";
+
+/// The `net.get` adapter (docs/adapters.md section 9): a same-origin GET with a size bound and a deadline.
+const NET_GET_ADAPTER_JS: &str = "\
+// Platform adapter: Network capability, `net.get(url)` (docs/adapters.md section 9).
+// A GET of this page's own origin and nothing else: a URL on another origin is answered with Err before any
+// request is made, a redirect is refused (it could leave the origin), a body over 1 MiB or a reply later than
+// 10 s is an Err, and every failure is a value, never a throw.
+function __cui_net_get(url) {
+    var err = function (reason) { return {__cui_tag: \"Err\", reason: reason}; };
+    return new Promise(function (resolve) {
+        var target;
+        try {
+            target = new URL(String(url), window.location.href);
+        } catch (e) {
+            resolve(err(\"blocked: not a URL\"));
+            return;
+        }
+        if (target.origin !== window.location.origin) {
+            resolve(err(\"blocked: only this site's own origin may be fetched\"));
+            return;
+        }
+        var timer = null;
+        var controller = typeof AbortController === \"function\" ? new AbortController() : null;
+        if (controller) { timer = setTimeout(function () { controller.abort(); }, 10000); }
+        var init = { method: \"GET\", credentials: \"same-origin\", redirect: \"manual\" };
+        if (controller) { init.signal = controller.signal; }
+        fetch(target.href, init).then(function (response) {
+            if (response.type === \"opaqueredirect\") { return err(\"blocked: redirect\"); }
+            if (!response.ok) { return err(\"HTTP \" + response.status); }
+            return response.text().then(function (text) {
+                return text.length > 1048576 ? err(\"too large\") : {__cui_tag: \"Ok\", value: text};
+            });
+        }).catch(function (e) {
+            return err(e && e.name === \"AbortError\" ? \"timeout\" : \"network error\");
+        }).then(function (result) {
+            if (timer !== null) { clearTimeout(timer); }
+            resolve(result);
+        });
     });
 }
 ";
@@ -960,6 +1008,11 @@ fn emit_call_runtime(path: &[String], args: &[IrExpr], params: &[&str]) -> Strin
         let rendered_args: Vec<String> =
             args.iter().map(|a| emit_expr_runtime(a, params)).collect();
         return format!("__cui_storage_{}({})", path[1], rendered_args.join(", "));
+    }
+    if path.len() == 2 && path[0] == "net" && path[1] == "get" {
+        let rendered_args: Vec<String> =
+            args.iter().map(|a| emit_expr_runtime(a, params)).collect();
+        return format!("__cui_net_get({})", rendered_args.join(", "));
     }
     if path.len() == 2 && path[0] == "net" && path[1] == "search" {
         // Tier 9: `net.search(q)` resolves to
