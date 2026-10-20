@@ -97,6 +97,36 @@ async function shown(page) {
     await context.close();
   }
 
+  // 3. `requires Storage("notes")`: keys live under `cui:notes:`, and a key of the bare program is not visible.
+  {
+    const nsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'check-storage-ns-'));
+    const src = fs.readFileSync(path.join(ROOT, 'examples/notes/notes.cui'), 'utf8').replace('requires Storage;', 'requires Storage("notes");');
+    const nsFile = path.join(nsDir, 'notes.cui');
+    fs.writeFileSync(nsFile, src);
+    const b = spawnSync(CANCHO_UI, ['build', nsFile, '--pwa', '-o', path.join(nsDir, 'out')], { encoding: 'utf8' });
+    if (b.status !== 0) { throw new Error(b.stderr); }
+    const nsServer = await serve(path.join(nsDir, 'out'));
+    const nsUrl = `http://localhost:${nsServer.address().port}/`;
+    const context = await browser.newContext();
+    await context.addInitScript(() => { window.localStorage.setItem('cui:note', 'the bare program\'s note'); });
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(String(e)));
+    await page.goto(nsUrl);
+    await page.waitForSelector('#root *');
+    check('a namespaced program does not see the bare program\'s key cui:note', (await shown(page)).includes('nothing yet') && !(await shown(page)).includes('bare program'), await shown(page));
+    await page.fill('input', 'in a namespace');
+    await page.click('button');
+    const keys = (await page.evaluate(() => Object.keys(window.localStorage))).sort();
+    check('Save writes cui:notes:note and leaves cui:note alone', JSON.stringify(keys) === JSON.stringify(['cui:note', 'cui:notes:note']), JSON.stringify(keys));
+    await page.reload();
+    await page.waitForSelector('#root *');
+    check('after a reload the namespaced note is shown', (await shown(page)).includes('in a namespace'), await shown(page));
+    check('namespaced: no script errors', errors.length === 0, errors.join(' | '));
+    await context.close();
+    nsServer.close();
+  }
+
   await browser.close();
   server.close();
   console.log(failures.length ? `\n${failures.length} check(s) failed` : '\nall checks passed');

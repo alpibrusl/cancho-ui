@@ -853,6 +853,17 @@ fn literal_host(url: &str) -> Option<String> {
     Some(host.to_string())
 }
 
+/// A `Storage` namespace (docs/adapters.md section 12): it becomes part of a `localStorage` key, so it holds no
+/// `:` (which would let one namespace spell another's keys) and nothing that needs escaping.
+fn namespace_is_legal(ns: &str) -> bool {
+    let b = ns.as_bytes();
+    !b.is_empty()
+        && b.len() <= 32
+        && (b[0].is_ascii_lowercase() || b[0].is_ascii_digit())
+        && b.iter()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || *c == b'-')
+}
+
 fn check_bounds_legal(c: &IrComponent) -> Result<(), LowerError> {
     for req in &c.requires {
         if req.bounds.is_empty() {
@@ -871,12 +882,24 @@ fn check_bounds_legal(c: &IrComponent) -> Result<(), LowerError> {
             }
             continue;
         }
+        if req.name == "Storage" {
+            let legal = req.bounds.len() == 1 && namespace_is_legal(&req.bounds[0]);
+            if !legal {
+                return Err(LowerError::NarrowingIllegal {
+                    component: c.name.clone(),
+                    capability: req.name.clone(),
+                    reason: "a `Storage` bound is exactly one namespace: 1 to 32 lower-case letters, digits and `-`, starting with a letter or digit".to_string(),
+                    span: req.span,
+                });
+            }
+            continue;
+        }
         if req.name != "Network" {
             return Err(LowerError::NarrowingIllegal {
                 component: c.name.clone(),
                 capability: req.name.clone(),
                 reason: format!(
-                    "`{}` takes no bound yet; only `Network(\"host\")` and `Location(\"coarse\" or \"fine\")` do",
+                    "`{}` takes no bound yet; only `Network(\"host\")`, `Location(\"coarse\" or \"fine\")` and `Storage(\"ns\")` do",
                     req.name
                 ),
                 span: req.span,

@@ -146,7 +146,7 @@ fn a_literal_url_on_a_host_the_component_does_not_allow_is_bound_violated() {
 fn a_bound_on_a_capability_that_takes_none_or_that_is_not_a_host_is_narrowing_illegal() {
     for requires in [
         "requires Clock(\"x\");",
-        "requires Storage(\"prefs\");",
+        "requires Storage(\"a:b\");",
         "requires Network(\"https://api.example.com\");",
         "requires Network(\"api.example.com/path\");",
         "requires Network(\"*.example.com\");",
@@ -159,7 +159,7 @@ fn a_bound_on_a_capability_that_takes_none_or_that_is_not_a_host_is_narrowing_il
         let src = if requires.contains("Clock") {
             "component N {\n    requires Clock(\"x\");\n    state n: Int = 0;\n    on Go { n = clock.now(); }\n    view { Text { \"x\" } }\n}\n".to_string()
         } else if requires.contains("Storage") {
-            "component N {\n    requires Storage(\"prefs\");\n    on Go { storage.set(\"a\", \"b\"); }\n    view { Text { \"x\" } }\n}\n".to_string()
+            "component N {\n    requires Storage(\"a:b\");\n    on Go { storage.set(\"a\", \"b\"); }\n    view { Text { \"x\" } }\n}\n".to_string()
         } else {
             program(requires, "data.txt")
         };

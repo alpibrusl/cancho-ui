@@ -79,11 +79,22 @@ impl Journal {
     }
 }
 
+/// The store key of `key` under namespace `ns` (docs/adapters.md section 12), without the adapter's `cui:`.
+fn storage_key(ns: &str, key: &str) -> String {
+    if ns.is_empty() {
+        key.to_string()
+    } else {
+        format!("{ns}:{key}")
+    }
+}
+
 pub struct Ctx<'a> {
     pub state: &'a BTreeMap<String, Value>,
     pub clock: f64,
-    /// The `Storage` store, key to value, without the adapter's `cui:` prefix.
+    /// The `Storage` store, key to value, without the adapter's `cui:` prefix (a namespaced key is `ns:key`).
     pub storage: &'a mut BTreeMap<String, String>,
+    /// The component's `Storage("ns")` namespace, or "" : a key is looked up as `ns:key`, as the adapter does.
+    pub storage_ns: &'a str,
     pub journal: &'a mut Journal,
     pub locals: Vec<(String, Value)>,
     /// Evaluating a state initial value: identifiers, calls, `match` and
@@ -305,7 +316,8 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                     span,
                 ));
             };
-            let v = match ctx.storage.get(k) {
+            let full = storage_key(ctx.storage_ns, k);
+            let v = match ctx.storage.get(&full) {
                 Some(found) => Value::Str(found.clone()),
                 None => fallback,
             };
@@ -329,7 +341,8 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                     span,
                 ));
             };
-            ctx.storage.insert(k.clone(), v.clone());
+            ctx.storage
+                .insert(storage_key(ctx.storage_ns, k), v.clone());
             ctx.journal.record(Value::Bool(true));
             Ok(Value::Bool(true))
         }
