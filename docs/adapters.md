@@ -69,7 +69,7 @@ Replay does not model `localStorage` failing; that is the browser script's (sect
 
 ## 5. Found while building it
 
-1. **A string interpolation cannot hold a string literal.** `"Saved: {storage.get("note", "none")}"` is
+1. **A string interpolation cannot hold a string literal** (still true; the lexer ends the string at the first inner quote). `"Saved: {storage.get("note", "none")}"` is
    `parse-unexpected-token`: the lexer ends the string at the first inner quote. The workaround is the general
    expression form of `Text`: `Text { storage.get("note", "none") }`. `examples/notes` uses it. A lexer fix is a
    language change and is not made here.
@@ -171,11 +171,13 @@ cannot be observed**: with the origin check in front, every request is same-orig
 
 ### 9.4 Found while building it
 
-1. **A string literal with braces is interpolated only inside `Text`.** `status = match r { Err(why) => { "error:
-   {why}" } ... }` compiles, and the emitted JavaScript returns the text `error: {why}`, braces included. Replay
-   shows it (it was replay that caught it). The workaround is `"error: " + why`. This is the same family as
-   section 5 item 1 and a worse one, because nothing is refused. Either interpolation should work in every
-   string expression or a `{` in one should be refused; that is a language decision, recorded here and not made.
+1. **A string literal with braces was interpolated only inside `Text`.** `status = match r { Err(why) => {
+   "error: {why}" } ... }` compiled, and the emitted JavaScript returned the text `error: {why}`, braces
+   included; replay showed it (it was replay that caught it). **Fixed 2026-10-20**, in the change that follows `net.get`: `{expr}`
+   interpolates in every string expression, and a `{` in static text (a label, an accessibility label, a
+   `value:` string, an instance property) is `parse-unexpected-token` instead of a silent brace. The same bug
+   was in `Button { label: "Item {n}" }`, found while fixing this one. Decision 12 of
+   [`language-design.md`](language-design.md); tests in `crates/cancho-ui/tests/interpolation.rs`.
 2. **An awaited `net.get` that returns `Ok(text)` binds a `String`, not a `List[String]`.** The checker does not
    type the payload of `Result[..]` (`state r: Result[String, String]` is accepted for `net.search` too);
    nothing here changes that.
