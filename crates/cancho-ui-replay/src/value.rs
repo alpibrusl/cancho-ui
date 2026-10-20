@@ -7,6 +7,7 @@ use serde_json::{Map, Number, Value as Json};
 pub enum Effect {
     NetSearch,
     NetGet,
+    NetFetch,
     LocationCurrent,
     Sleep,
 }
@@ -16,6 +17,7 @@ impl Effect {
         match self {
             Effect::NetSearch => "net.search",
             Effect::NetGet => "net.get",
+            Effect::NetFetch => "net.fetch",
             Effect::LocationCurrent => "location.current",
             Effect::Sleep => "sleep",
         }
@@ -26,6 +28,7 @@ impl Effect {
         match self {
             Effect::NetSearch => "net_search",
             Effect::NetGet => "net_get",
+            Effect::NetFetch => "net_fetch",
             Effect::LocationCurrent => "location_current",
             Effect::Sleep => "sleep",
         }

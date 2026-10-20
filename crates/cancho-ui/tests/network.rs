@@ -93,7 +93,7 @@ fn the_adapter_keeps_its_four_guards() {
         assert!(js.contains(needle), "the adapter lacks {needle:?}");
     }
     assert_eq!(
-        js.matches("fetch(").count(),
+        js.matches(" fetch(target.href").count(),
         1,
         "one fetch, behind the guards"
     );

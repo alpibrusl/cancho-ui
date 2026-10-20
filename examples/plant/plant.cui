@@ -8,14 +8,16 @@
 // directly). The keys are those of `GET /metrics` in cancho-gateway `docs/observability.md`: `uptime_ms`,
 // `sessions_active`, `routes[].name`, `routes[].requests.{2xx,5xx}`, `upstreams[].name`, `upstreams[].circuit_open`.
 //
-// A response other than 2xx comes back as `Err("HTTP 503")` with no body (docs/adapters.md section 9): a gateway that is
-// not ready says so here, but not why.
+// `admin/readyz` is read with `net.fetch` (docs/adapters.md section 15), not `net.get`: a gateway that is not ready answers
+// `503` with the reasons in the body, and `net.get` would drop the body. `net.fetch` answers `Ok` for any status, with the
+// status and the body in one JSON text, which `json.get` takes apart like any other.
 
 component Plant {
     requires Network;
 
     state m: Result[String, String] = Ok("");
     state z: Result[String, String] = Ok("");
+    state why: List[String] = [];
     state note: String = "not loaded";
     state ready: String = "unknown";
     state uptime: String = "-";
@@ -27,16 +29,21 @@ component Plant {
     on Refresh {
         note = "loading";
         m = await(net.get("admin/metrics"));
-        z = await(net.get("admin/readyz"));
+        z = await(net.fetch("admin/readyz"));
         note = match m {
             Ok(_) => { "updated" }
-            Err(why) => { "error: " + why }
+            Err(e) => { "error: " + e }
             Cancelled => { "cancelled" }
         };
         ready = match z {
-            Ok(text) => { json.get(text, "ready", "unknown") }
-            Err(why) => { "not ready (" + why + ")" }
+            Ok(reply) => { json.get(json.get(reply, "body", ""), "ready", "unknown") }
+            Err(e) => { "unknown (" + e + ")" }
             Cancelled => { "unknown" }
+        };
+        why = match z {
+            Ok(reply) => { json.items(json.get(reply, "body", ""), "why") }
+            Err(_) => { [] }
+            Cancelled => { [] }
         };
         uptime = match m {
             Ok(text) => { json.get(text, "uptime_ms", "-") }
@@ -73,6 +80,11 @@ component Plant {
                 "status: {note}"
             }
             Text { "ready: " + ready }
+            For {
+                over: why
+                as: reason
+                Text { "  because: " + json.get(reason, "", "?") }
+            }
             Text { "uptime (ms): " + uptime }
             Text { "sessions: " + sessions }
             Text {

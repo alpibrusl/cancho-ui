@@ -58,7 +58,9 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
             if e.capability == "Clock" {
                 any_clock = true;
             }
-            if e.capability == "Network" && e.path.last().is_some_and(|f| f == "get") {
+            if e.capability == "Network"
+                && e.path.last().is_some_and(|f| f == "get" || f == "fetch")
+            {
                 any_net_get = true;
             } else if e.capability == "Network" {
                 any_network = true;
@@ -358,11 +360,19 @@ function __cui_net_search(q) {
 
 /// The `net.get` adapter (docs/adapters.md section 9): a same-origin GET with a size bound and a deadline.
 const NET_GET_ADAPTER_JS: &str = "\
-// Platform adapter: Network capability, `net.get(url)` (docs/adapters.md section 9).
+// Platform adapter: Network capability, `net.get(url)` (docs/adapters.md section 9) and `net.fetch(url)` (section 15).
+// `net.fetch` answers Ok for any HTTP status, with the JSON text {\"status\":N,\"body\":\"...\"}; `net.get` answers Err(\"HTTP N\")
+// for a status outside 200 to 299.
 // A GET of this page's own origin, or of a host the component's `requires Network(\"host\")` names: any other
 // URL is answered with Err before a request is made, a redirect is refused (it could leave the allowed set), a
 // body over 1 MiB or a reply later than 10 s is an Err, and every failure is a value, never a throw.
 function __cui_net_get(url, hosts) {
+    return __cui_net_request(url, hosts, false);
+}
+function __cui_net_fetch(url, hosts) {
+    return __cui_net_request(url, hosts, true);
+}
+function __cui_net_request(url, hosts, envelope) {
     var err = function (reason) { return {__cui_tag: \"Err\", reason: reason}; };
     return new Promise(function (resolve) {
         var target;
@@ -387,9 +397,10 @@ function __cui_net_get(url, hosts) {
         if (controller) { init.signal = controller.signal; }
         fetch(target.href, init).then(function (response) {
             if (response.type === \"opaqueredirect\") { return err(\"blocked: redirect\"); }
-            if (!response.ok) { return err(\"HTTP \" + response.status); }
+            if (!response.ok && !envelope) { return err(\"HTTP \" + response.status); }
             return response.text().then(function (text) {
-                return text.length > 1048576 ? err(\"too large\") : {__cui_tag: \"Ok\", value: text};
+                if (text.length > 1048576) { return err(\"too large\"); }
+                return {__cui_tag: \"Ok\", value: envelope ? JSON.stringify({status: response.status, body: text}) : text};
             });
         }).catch(function (e) {
             return err(e && e.name === \"AbortError\" ? \"timeout\" : \"network error\");
@@ -1169,11 +1180,12 @@ fn emit_call_runtime(path: &[String], args: &[IrExpr], params: &[&str]) -> Strin
     if path.len() == 2 && path[0] == "location" && path[1] == "current" {
         return "__cui_location_current(__cui_location_digits)".to_string();
     }
-    if path.len() == 2 && path[0] == "net" && path[1] == "get" {
+    if path.len() == 2 && path[0] == "net" && (path[1] == "get" || path[1] == "fetch") {
         let rendered_args: Vec<String> =
             args.iter().map(|a| emit_expr_runtime(a, params)).collect();
         return format!(
-            "__cui_net_get({}, __cui_net_hosts)",
+            "__cui_net_{}({}, __cui_net_hosts)",
+            path[1],
             rendered_args.join(", ")
         );
     }

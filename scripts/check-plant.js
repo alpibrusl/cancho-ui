@@ -31,6 +31,7 @@ function serve(dir, admin) {
   const server = http.createServer((req, res) => {
     const url = decodeURIComponent(req.url.split('?')[0]);
     if (url === '/admin/metrics') { res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(admin.metrics); return; }
+    if (url === '/admin/readyz' && admin.dead) { req.socket.destroy(); return; }
     if (url === '/admin/readyz') { res.writeHead(admin.readyStatus, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(admin.ready); return; }
     const rel = url.replace(/^\/+/, '') || 'index.html';
     const file = path.join(dir, path.normalize(rel));
@@ -67,12 +68,20 @@ async function shown(page) {
   check('both routes are listed with their counters', t.includes('Routes (2)') && t.includes('api|  2xx: 4021|  5xx: 2|web|  2xx: 950|  5xx: 0'), t);
   check('both upstreams are listed with their circuit', t.includes('api|  circuit open: false|  failures: 2|web|  circuit open: true|  failures: 0'), t);
 
-  // a gateway that is not ready: 503 comes back as an error with no body (docs/adapters.md section 9)
-  admin.ready = '{"ready":false,"why":["upstream web: circuit open"]}\n';
+  // a gateway that is not ready: 503 with its reasons in the body, which net.fetch keeps (docs/adapters.md section 15)
+  admin.ready = '{"ready":false,"why":["upstream web: circuit open","log: a write failed in the last 10 s"]}\n';
   admin.readyStatus = 503;
   await page.click('text=Refresh');
-  await page.waitForFunction(() => document.body.innerText.includes('ready: not ready (HTTP 503)'));
-  check('a 503 on readiness is shown as not ready', (await shown(page)).includes('ready: not ready (HTTP 503)'), await shown(page));
+  await page.waitForFunction(() => document.body.innerText.includes('ready: false'));
+  const nr = await shown(page);
+  check('a 503 on readiness is shown with its reasons', nr.includes('ready: false') && nr.includes('because: upstream web: circuit open') && nr.includes('because: log: a write failed in the last 10 s'), nr);
+
+  // a transport error on readiness
+  admin.dead = true;
+  await page.click('text=Refresh');
+  await page.waitForFunction(() => document.body.innerText.includes('ready: unknown (network error)'));
+  check('a transport error on readiness is unknown, with the reason', (await shown(page)).includes('ready: unknown (network error)') && !(await shown(page)).includes('because'), await shown(page));
+  admin.dead = false;
 
   // a document that is not JSON: the defaults, not a crash
   admin.metrics = '<html>proxy error</html>';

@@ -79,7 +79,7 @@ pub enum LowerError {
     LambdaUnsupported { span: Span },
 
     #[error(
-        "`{name}` is misused here (expected {detail}); see the builtin call forms: `filter(list, x => cond)`, `map(list, x => body)`, `len(value)`, `storage.get(key, default)`, `storage.set(key, value)`, `net.get(url)`, `json.get(text, path, default)`, `json.items(text, path)`"
+        "`{name}` is misused here (expected {detail}); see the builtin call forms: `filter(list, x => cond)`, `map(list, x => body)`, `len(value)`, `storage.get(key, default)`, `storage.set(key, value)`, `net.get(url)`, `net.fetch(url)`, `json.get(text, path, default)`, `json.items(text, path)`"
     )]
     BuiltinMisuse {
         name: String,
@@ -314,6 +314,14 @@ fn lower_expr_with_effects(e: &Expr) -> Result<(IrExpr, Vec<IrReachableEffect>),
                 return Err(LowerError::BuiltinMisuse {
                     name: "location.current".to_string(),
                     detail: "no arguments: location.current()".to_string(),
+                    span: *span,
+                });
+            }
+            if path.len() == 2 && path[0] == "net" && path[1] == "fetch" && args.len() != 1 {
+                // docs/adapters.md section 15: one argument, the URL.
+                return Err(LowerError::BuiltinMisuse {
+                    name: "net.fetch".to_string(),
+                    detail: "exactly one argument: net.fetch(url)".to_string(),
                     span: *span,
                 });
             }
@@ -610,7 +618,10 @@ fn lower_pattern(p: &Pattern) -> IrPattern {
 fn builtin_capability(path: &[String]) -> Option<&'static str> {
     if path.len() == 2 && path[0] == "clock" && path[1] == "now" {
         Some("Clock")
-    } else if path.len() == 2 && path[0] == "net" && (path[1] == "search" || path[1] == "get") {
+    } else if path.len() == 2
+        && path[0] == "net"
+        && (path[1] == "search" || path[1] == "get" || path[1] == "fetch")
+    {
         // Tier 9: `net.search(query)` is the asynchronous search
         // effect. `await(net.search(q))` resolves to Ok | Err |
         // Cancelled with an Ok payload of `List[String]`.
@@ -955,7 +966,7 @@ fn check_capabilities(ir: &IrFile) -> Result<(), LowerError> {
                     span: eff.span,
                 });
             }
-            if eff.path == ["net", "get"]
+            if (eff.path == ["net", "get"] || eff.path == ["net", "fetch"])
                 && let Some(url) = &eff.literal_arg
                 && let Some(host) = literal_host(url)
                 && !allowed.contains(&host)
