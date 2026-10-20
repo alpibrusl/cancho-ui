@@ -229,7 +229,23 @@ fn facets(c: &IrComponent) -> Facets {
         *view.entry(d).or_insert(0usize) += 1;
     }
     Facets {
-        requires: c.requires.iter().map(|r| r.name.clone()).collect(),
+        // A bound is part of the declared authority: `Network("a.example")` is not `Network`.
+        requires: c
+            .requires
+            .iter()
+            .map(|r| {
+                if r.bounds.is_empty() {
+                    r.name.clone()
+                } else {
+                    let bounds: Vec<String> = r
+                        .bounds
+                        .iter()
+                        .map(|b| format!("\"{}\"", b.to_ascii_lowercase()))
+                        .collect();
+                    format!("{}({})", r.name, bounds.join(", "))
+                }
+            })
+            .collect(),
         state: c
             .state
             .iter()

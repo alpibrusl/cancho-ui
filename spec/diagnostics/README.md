@@ -125,7 +125,8 @@ in `examples/refusal/`, and by the evidence report.
 | `capability-missing` | `Capability` | `Error` | `Static` | A component using an effect without `requires Capability` |
 | `capability-unused` | `Capability` | `Error` | `Static` | A `requires` declaration with no reachable use |
 | `capability-insufficient` | `Capability` | `Error` | `Static` | A `requires` narrower than the effect's needs |
-| `capability-narrowing-illegal` | `Capability` | `Error` | `Static` | (Phase 2+) A narrowed literal that is not a string literal |
+| `capability-narrowing-illegal` | `Capability` | `Error` | `Static` | A bound on a capability that takes none, or a `Network` bound that is not `name[:port]`. *(A bound that is not a string literal is `parse-unexpected-token`; built 2026-10-20, `docs/adapters.md` section 10.)* |
+| `capability-bound-violated` | `Capability` | `Error` | `Static` | A `net.get` of a literal URL whose host the component's `Network` does not allow (the runtime guard answers `Err("blocked: ...")` for the URLs it cannot see) |
 | `accessibility-role-undefined` | `Accessibility` | `Error` | `Static` | A view primitive without a `role` |
 | `accessibility-label-empty` | `Accessibility` | `Error` | `Static` | An interactive primitive with empty `label` |
 | `accessibility-keyboard-missing` | `Accessibility` | `Error` | `Static` | An interactive primitive without a keyboard action for Enter |

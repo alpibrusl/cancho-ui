@@ -82,7 +82,7 @@ async function load(page, url, waitMs) {
   shown = await load(page, 'missing.txt');
   check('a 404 is an Err("HTTP 404"), and the old body is gone', shown.includes('status: error: HTTP 404') && !shown.includes('hello'), shown);
   shown = await load(page, `http://127.0.0.1:${other.server.address().port}/secret.txt`);
-  check('another origin is blocked', shown.includes('error: blocked: only this site'), shown);
+  check('another origin is blocked', shown.includes('is neither this site nor an allowed host'), shown);
   check('and no request reached that origin', other.hits.n === 0, `hits: ${other.hits.n}`);
   shown = await load(page, 'http://');
   check('a string that is not a URL is blocked', shown.includes('error: blocked: not a URL'), shown);
@@ -101,6 +101,38 @@ async function load(page, url, waitMs) {
   shown = await load(page, 'data.txt');
   check('with the server gone the answer is "network error"', shown.includes('error: network error'), shown);
   check('no script errors', errors.length === 0, errors.join(' | '));
+
+  // `requires Network("host")` (docs/adapters.md section 10): the same program with the second server's host allowed.
+  {
+    const allowed = await otherServer();
+    const third = await otherServer();
+    const host = `127.0.0.1:${allowed.server.address().port}`;
+    const source = fs.readFileSync(path.join(ROOT, 'examples/fetch/fetch.cui'), 'utf8').replace('requires Network;', `requires Network("${host}");`);
+    if (!source.includes(host)) { throw new Error('the bound was not applied'); }
+    const sourceFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'check-network-src-')), 'fetch.cui');
+    fs.writeFileSync(sourceFile, source);
+    const dir2 = fs.mkdtempSync(path.join(os.tmpdir(), 'check-network-b-'));
+    const r2 = spawnSync(CANCHO_UI, ['build', sourceFile, '--pwa', '-o', dir2], { encoding: 'utf8' });
+    if (r2.status !== 0) { throw new Error(r2.stderr); }
+    const main2 = await mainServer(dir2);
+    const page2 = await (await browser.newContext()).newPage();
+    await page2.goto(`http://localhost:${main2.address().port}/`);
+    await page2.waitForSelector('#root *');
+    let t = await load(page2, `http://${host}/secret.txt`);
+    check('a host named in requires Network(..) is fetched', t.includes('status: done') && t.includes('secret'), t);
+    check('and that server saw exactly that one request', allowed.hits.n === 1, `hits: ${allowed.hits.n}`);
+    t = await load(page2, `http://127.0.0.1:${third.server.address().port}/secret.txt`);
+    check('another host is still blocked', t.includes('is neither this site nor an allowed host'), t);
+    check('and no request reached it', third.hits.n === 0, `hits: ${third.hits.n}`);
+    t = await load(page2, `HTTP://127.0.0.1:${allowed.server.address().port}/Secret.txt`);
+    check('the scheme and host are compared case-insensitively', t.includes('status: done'), t);
+    t = await load(page2, 'data.txt');
+    check('this site is still reachable', t.includes('status: done') && t.includes('hello from the server'), t);
+    allowed.server.close();
+    third.server.close();
+    main2.closeAllConnections();
+    await new Promise((done) => main2.close(done));
+  }
 
   await browser.close();
   other.server.close();

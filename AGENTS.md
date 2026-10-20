@@ -115,7 +115,8 @@ component SearchForm {
 only; `set` answers whether it persisted; see `docs/adapters.md`, and note that a string interpolation
 cannot contain a string literal, so put the call in `Text { storage.get("k", "d") }`).
 
-`net.get(url)` also performs `Network`: a same-origin GET awaited like `net.search`, answering
+`net.get(url)` also performs `Network`: a GET of this site, or of a host named in `requires Network("host")` (a
+literal URL on another host is `capability-bound-violated`), awaited like `net.search`, answering
 `Ok(text) | Err(reason) | Cancelled` (see `docs/adapters.md` section 9). `"error: {why}"` interpolates in a
 `match` arm as in a `Text`; a `{` in a label or other static text is refused.
 

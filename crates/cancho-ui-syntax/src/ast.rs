@@ -64,6 +64,8 @@ pub struct StateField {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CapabilityRef {
     pub name: String,
+    /// `requires Network("a.example", "b.example:8443")`: the string-literal bounds, in order (docs/adapters.md 10).
+    pub bounds: Vec<String>,
     pub span: Span,
 }
 

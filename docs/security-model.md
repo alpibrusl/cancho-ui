@@ -108,6 +108,10 @@ union of its transitions' rows.
 
 ### 2.3 Capability narrowing (Phase 2+)
 
+> **Built 2026-10-20 for `Network` only, with a different meaning from the one sketched below** (the bare
+> capability is already the page's own origin, so a bound *adds* hosts): [`adapters.md`](adapters.md) section 10.
+> `Storage("ns")` and `Location(coarse)` are not built.
+
 Phase 2 refines the capability with narrowing, the same way Cancho
 Core narrows `Fs(prefix)` and `Net(bound)`:
 

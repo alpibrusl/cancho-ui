@@ -39,6 +39,9 @@ pub struct IrReachableEffect {
     /// The call path, e.g. `["clock", "now"]`. Phase 2 will also
     /// store the foreign symbol it lowers to.
     pub path: Vec<String>,
+    /// The first argument when it is a string literal (`net.get("https://a.example/x")`): what the static
+    /// bound check reads. Not part of the IR JSON.
+    pub literal_arg: Option<String>,
     pub span: Span,
 }
 
@@ -76,6 +79,8 @@ pub enum IrType {
 #[derive(Debug, Clone, PartialEq)]
 pub struct IrCapabilityRef {
     pub name: String,
+    /// The bounds written after the name (`Network("a.example")`); empty for a bare capability.
+    pub bounds: Vec<String>,
     pub span: Span,
 }
 
