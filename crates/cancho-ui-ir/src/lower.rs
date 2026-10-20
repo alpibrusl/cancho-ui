@@ -309,6 +309,14 @@ fn lower_expr_with_effects(e: &Expr) -> Result<(IrExpr, Vec<IrReachableEffect>),
             // `map(list, x => body)`, `len(value)`. They are pure
             // (no capability); the generic call path below does
             // not see them.
+            if path.len() == 2 && path[0] == "location" && path[1] == "current" && !args.is_empty()
+            {
+                return Err(LowerError::BuiltinMisuse {
+                    name: "location.current".to_string(),
+                    detail: "no arguments: location.current()".to_string(),
+                    span: *span,
+                });
+            }
             if path.len() == 2 && path[0] == "net" && path[1] == "get" && args.len() != 1 {
                 // docs/adapters.md section 9: one argument, the URL.
                 return Err(LowerError::BuiltinMisuse {
@@ -592,6 +600,9 @@ fn builtin_capability(path: &[String]) -> Option<&'static str> {
         // effect. `await(net.search(q))` resolves to Ok | Err |
         // Cancelled with an Ok payload of `List[String]`.
         Some("Network")
+    } else if path.len() == 2 && path[0] == "location" && path[1] == "current" {
+        // docs/adapters.md section 11: `await(location.current())` resolves to Ok("lat,lon") | Err | Cancelled.
+        Some("Location")
     } else if path.len() == 2 && path[0] == "storage" && (path[1] == "get" || path[1] == "set") {
         // docs/adapters.md: `storage.get(key, default)` and `storage.set(key, value)` read and
         // write a persistent key-value store, synchronously. Both need `Storage`.
@@ -847,12 +858,25 @@ fn check_bounds_legal(c: &IrComponent) -> Result<(), LowerError> {
         if req.bounds.is_empty() {
             continue;
         }
+        if req.name == "Location" {
+            let legal =
+                req.bounds.len() == 1 && matches!(req.bounds[0].as_str(), "coarse" | "fine");
+            if !legal {
+                return Err(LowerError::NarrowingIllegal {
+                    component: c.name.clone(),
+                    capability: req.name.clone(),
+                    reason: "a `Location` bound is exactly one of \"coarse\" (2 decimals, the default) or \"fine\" (5 decimals)".to_string(),
+                    span: req.span,
+                });
+            }
+            continue;
+        }
         if req.name != "Network" {
             return Err(LowerError::NarrowingIllegal {
                 component: c.name.clone(),
                 capability: req.name.clone(),
                 reason: format!(
-                    "`{}` takes no bound yet; only `Network(\"host\")` does",
+                    "`{}` takes no bound yet; only `Network(\"host\")` and `Location(\"coarse\" or \"fine\")` do",
                     req.name
                 ),
                 span: req.span,

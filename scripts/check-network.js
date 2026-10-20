@@ -107,7 +107,7 @@ async function load(page, url, waitMs) {
     const allowed = await otherServer();
     const third = await otherServer();
     const host = `127.0.0.1:${allowed.server.address().port}`;
-    const source = fs.readFileSync(path.join(ROOT, 'examples/fetch/fetch.cui'), 'utf8').replace('requires Network;', `requires Network("${host}");`);
+    const source = fs.readFileSync(path.join(ROOT, 'examples/fetch/fetch.cui'), 'utf8').replace('\n    requires Network;\n', `\n    requires Network("${host}");\n`);
     if (!source.includes(host)) { throw new Error('the bound was not applied'); }
     const sourceFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'check-network-src-')), 'fetch.cui');
     fs.writeFileSync(sourceFile, source);

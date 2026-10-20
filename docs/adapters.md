@@ -275,3 +275,96 @@ was added and kills it.
   `Network("host")` line in front of them; there is no "this program can reach nothing" form below the bare
   `Network`, because the bare `Network` already cannot leave the origin.
 
+
+---
+
+## 11. `Location`: `location.current()`
+
+> **Status: designed here before the code; built and measured in 11.4 to 11.6.** (Section 12 is the status of all three adapters.)
+
+### 11.1 The decision
+
+```
+await(location.current())  ->  Ok(position: String) | Err(reason: String) | Cancelled
+```
+
+* **A position is the text `"lat,lon"`**, decimal degrees, so it can be shown, or sent to this site with
+  `net.get("/near?pos=" + pos)`. The language has no records and no way to index a list or split a string, so a
+  structured position would be a value nothing could read; a string is what a program can use today. (A typed
+  position is a language change, not made here.)
+* **Precision is the bound, and the default is the coarse one.** Bare `requires Location;` rounds to **2
+  decimals** (about 1 km). `requires Location("fine");` gives **5 decimals** (about 1 m). `Location("coarse")` is
+  the bare form spelled out. This is `security-model.md` section 2.3 ("`Location` is narrowed by precision"), with
+  the same direction as `Network("host")`: the bare capability is the least, a bound asks for more, and the
+  semantic diff shows `Location("fine")` as a change of declared authority. Any other bound is
+  `capability-narrowing-illegal`. The rounding is done in the adapter, so a coarse component never holds a fine
+  position.
+* **Failures are values**, never a throw: `Err("permission denied")`, `Err("position unavailable")`,
+  `Err("timeout")` (10 s), `Err("unavailable")` (no Geolocation API, or an insecure context).
+* **The browser asks the user.** The page does not decide whether a position is shared; the first call shows the
+  browser's prompt, and a refusal is `Err("permission denied")`. `maximumAge` is 60 s: a position up to a minute
+  old is accepted so a repeated call does not wake the radio.
+* Its own cancellation group (`location_current`); a newer call supersedes an older one; `Cancelled` on
+  disposal. Zero arguments, else `builtin-shape-mismatch`.
+
+### 11.2 Replay
+
+`location.current` is an effect like the others: `issued #n location.current()`, scripted with
+`{"resolve": n, "with": {"Ok": "40.42,-3.70"}}`. Replay does not round: the trace says what the adapter would
+have delivered.
+
+### 11.3 Not done
+
+Watching a position (`watchPosition`), altitude, accuracy, heading and speed, a typed position, asking for
+permission ahead of the call, and iOS Safari.
+
+### 11.4 What was built
+
+`location.current()` is a builtin of the `Location` capability; the adapter (`__cui_location_current(digits)`) is
+emitted only for a program that uses it, and each component instance declares `const __cui_location_digits`
+(2, or 5 when any of its `requires Location(..)` says `"fine"`). `capability-narrowing-illegal` covers a
+`Location` bound that is not exactly one of `"coarse"` and `"fine"` (matched exactly: `"Fine"` is refused).
+Replay: `Effect::LocationCurrent`, scriptable, its own cancellation group.
+
+### 11.5 Checked
+
+In the gate (`crates/cancho-ui/tests/location.rs`, 5 tests): the adapter appears only where used and has one
+guard and one call of `navigator.geolocation`; the default is 2 digits, `"coarse"` is 2, `"fine"` is 5, and two
+components in one file keep their own; four illegal bounds; missing declaration and an argument; the example
+trace passes and `location.current` is not superseded by a `net.get`.
+
+In Chromium (`scripts/check-location.js`, the position and the permission emulated by Playwright): a bare
+`requires Location` shows `40.42,-3.70` for a position of 40.416775, -3.70379; `Location("fine")` shows
+`40.41678,-3.70379`; the signs of a southern, eastern position are kept (`-33.87,151.21`); without the user's
+permission the answer is `permission denied` and the position is not shown; with no Geolocation API
+`unavailable`; an error code 2 `position unavailable`; code 3 `timeout`; an adapter-side throw `unavailable`
+and no script error.
+
+**The checks can fail.** Eight deliberate breaks: the default digits swapped, `"fine"` never detected, any bound
+legal, the arity check removed, the capability unmapped (all killed by the gate), the rounding removed (killed by 3
+browser checks), a refusal mapped to the wrong reason (1), and the adapter's `catch` removed (the script ends in
+a timeout of the page, not in a failed check, so the break is counted by the script's exit status). One
+**harness mistake of mine** is worth stating: the first run of the browser script said `"fine"` gave 2 decimals;
+the cause was the script replacing the first `requires Location;` of the example, which is inside its header
+comment, so the "fine" build was not fine. The replacement now targets the declaration line.
+
+### 11.6 Found while building it
+
+The language has no way to read a position's parts, so `"lat,lon"` is only displayable or forwardable (11.1). A
+real consumer (distance, a map) needs a typed record or a list index; neither exists, and that is the next
+language question the adapters raise, not an adapter one.
+
+---
+
+## 12. Where the adapters stand
+
+| Capability | Calls | Bound | Real in the browser |
+|---|---|---|---|
+| `Clock` | `clock.now()`, `sleep(ms)` | none | `Date.now`, `setTimeout` |
+| `Storage` | `storage.get(k, d)`, `storage.set(k, v)` | none (prefix `cui:` fixed) | `localStorage`, with a page-lifetime fallback |
+| `Network` | `net.get(url)`; `net.search(q)` is the simulated demo | `Network("host", ..)` adds hosts | `fetch`, same-origin plus the allow-list |
+| `Location` | `location.current()` | `Location("coarse" \| "fine")` | Geolocation, rounded in the adapter |
+
+Not built anywhere: `Storage("ns")`, wildcard or per-path `Network` bounds, `watchPosition`, a typed position,
+IndexedDB, and any of it on iOS Safari (nothing here was run there).
+
