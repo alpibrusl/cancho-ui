@@ -21,6 +21,7 @@ use machine::{Machine, Status, StepEffects};
 use trace::{Action, Step, Trace, TraceError, parse_trace};
 use value::{Value, num_json, subset};
 
+pub use eval::{JSON_ITEMS_MAX, json_get, json_items};
 pub use report::{
     Failure, FiredJson, IssuedJson, NOT_CLAIMED, REPORT_SCHEMA, REPORT_VERSION, RequestJson,
     SpanJson, StepReport, TestReport, WriteJson, render_human,

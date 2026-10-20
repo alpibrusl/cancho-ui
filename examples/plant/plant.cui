@@ -1,0 +1,102 @@
+// examples/plant/plant.cui — an operator console for an edge gateway (docs/adapters.md section 14, and the plant-floor
+// stack of alpibrusl/cancho-industrial). It reads the gateway's admin document with `net.get` and takes it apart with
+// `json.get` and `json.items` (docs/language-design.md decision 13), which are pure: the only authority the page asks
+// for is `Network`, to read a document from its own origin.
+//
+// The paths `admin/metrics` and `admin/readyz` are routes of the page's own origin that the deployment forwards to the
+// gateway's admin listener (a different port is a different origin, so the browser would not let the page read it
+// directly). The keys are those of `GET /metrics` in cancho-gateway `docs/observability.md`: `uptime_ms`,
+// `sessions_active`, `routes[].name`, `routes[].requests.{2xx,5xx}`, `upstreams[].name`, `upstreams[].circuit_open`.
+//
+// A response other than 2xx comes back as `Err("HTTP 503")` with no body (docs/adapters.md section 9): a gateway that is
+// not ready says so here, but not why.
+
+component Plant {
+    requires Network;
+
+    state m: Result[String, String] = Ok("");
+    state z: Result[String, String] = Ok("");
+    state note: String = "not loaded";
+    state ready: String = "unknown";
+    state uptime: String = "-";
+    state sessions: String = "-";
+    state routes: List[String] = [];
+    state nroutes: Int = 0;
+    state upstreams: List[String] = [];
+
+    on Refresh {
+        note = "loading";
+        m = await(net.get("admin/metrics"));
+        z = await(net.get("admin/readyz"));
+        note = match m {
+            Ok(_) => { "updated" }
+            Err(why) => { "error: " + why }
+            Cancelled => { "cancelled" }
+        };
+        ready = match z {
+            Ok(text) => { json.get(text, "ready", "unknown") }
+            Err(why) => { "not ready (" + why + ")" }
+            Cancelled => { "unknown" }
+        };
+        uptime = match m {
+            Ok(text) => { json.get(text, "uptime_ms", "-") }
+            Err(_) => { "-" }
+            Cancelled => { "-" }
+        };
+        sessions = match m {
+            Ok(text) => { json.get(text, "sessions_active", "-") }
+            Err(_) => { "-" }
+            Cancelled => { "-" }
+        };
+        routes = match m {
+            Ok(text) => { json.items(text, "routes") }
+            Err(_) => { [] }
+            Cancelled => { [] }
+        };
+        nroutes = len(routes);
+        upstreams = match m {
+            Ok(text) => { json.items(text, "upstreams") }
+            Err(_) => { [] }
+            Cancelled => { [] }
+        };
+    }
+
+    view {
+        Column {
+            Text {
+                role: heading
+                "Gateway"
+            }
+            Button { label: "Refresh" on: Refresh }
+            Text {
+                role: status
+                "status: {note}"
+            }
+            Text { "ready: " + ready }
+            Text { "uptime (ms): " + uptime }
+            Text { "sessions: " + sessions }
+            Text {
+                role: heading
+                "Routes ({nroutes})"
+            }
+            For {
+                over: routes
+                as: r
+                Text { json.get(r, "name", "?") }
+                Text { "  2xx: " + json.get(r, "requests.2xx", "0") }
+                Text { "  5xx: " + json.get(r, "requests.5xx", "0") }
+            }
+            Text {
+                role: heading
+                "Upstreams"
+            }
+            For {
+                over: upstreams
+                as: u
+                Text { json.get(u, "name", "?") }
+                Text { "  circuit open: " + json.get(u, "circuit_open", "?") }
+                Text { "  failures: " + json.get(u, "failures", "0") }
+            }
+        }
+    }
+}
