@@ -46,6 +46,9 @@ pub enum Action {
     },
     Advance(f64),
     Dispose,
+    /// The page becomes hidden / visible again (docs/schedules.md section 11).
+    Hide,
+    Show,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -243,11 +246,12 @@ fn parse_step(j: &Json, i: usize) -> Result<Step, TraceError> {
     allow_keys(
         obj,
         &[
-            "event", "params", "resolve", "with", "advance", "dispose", "state", "expect", "note",
+            "event", "params", "resolve", "with", "advance", "dispose", "hide", "show", "state",
+            "expect", "note",
         ],
         &at,
     )?;
-    let actions: Vec<&str> = ["event", "resolve", "advance", "dispose"]
+    let actions: Vec<&str> = ["event", "resolve", "advance", "dispose", "hide", "show"]
         .into_iter()
         .filter(|k| obj.contains_key(*k))
         .collect();
@@ -256,7 +260,7 @@ fn parse_step(j: &Json, i: usize) -> Result<Step, TraceError> {
             "trace-bad-step",
             &at,
             format!(
-                "a step has exactly one of `event`, `resolve`, `advance`, `dispose`; this one has {}",
+                "a step has exactly one of `event`, `resolve`, `advance`, `dispose`, `hide`, `show`; this one has {}",
                 actions.len()
             ),
         ));
@@ -331,6 +335,21 @@ fn parse_step(j: &Json, i: usize) -> Result<Step, TraceError> {
             Action::Resolve { request, answer }
         }
         "advance" => Action::Advance(non_negative(&obj["advance"], &format!("{at}.advance"))?),
+        "hide" | "show" => {
+            let key = actions[0];
+            if obj[key] != Json::Bool(true) {
+                return Err(err(
+                    "trace-bad-step",
+                    format!("{at}.{key}"),
+                    format!("`{key}` is `true`"),
+                ));
+            }
+            if key == "hide" {
+                Action::Hide
+            } else {
+                Action::Show
+            }
+        }
         _ => {
             if obj["dispose"] != Json::Bool(true) {
                 return Err(err(

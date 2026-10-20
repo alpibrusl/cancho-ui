@@ -88,6 +88,7 @@ A step has **exactly one action key**, plus optional `state`, `expect` and
 | `{"resolve": N, "with": {"Ok": v}}` or `{"with": {"Err": v}}` | the scripted network answers request `N` (§4) |
 | `{"advance": ms}` | the fake clock moves forward `ms` milliseconds; every `sleep` that falls due fires, in order (§5) |
 | `{"dispose": true}` | the host unmounts the component: its pending requests are marked disposed (§6) |
+| `{"hide": true}` / `{"show": true}` | the page becomes hidden / visible again: no `every` tick runs while it is hidden, and `show` runs one catch-up tick for each that fell due (`schedules.md` section 11). Repeating the state the page is in is `trace-bad-step` |
 
 `params` defaults to `[]` and must match the handler's parameter count.
 `note` is free text for the human; it is never read.

@@ -106,7 +106,11 @@ fn a_component_without_schedules_has_an_empty_list_and_no_timer() {
     let (code, _, _) = run(&["build", p(&file), "-o", p(&out)]);
     assert_eq!(code, 0);
     let js = std::fs::read_to_string(out).expect("the built program");
-    assert!(!js.contains("setInterval") && !js.contains("__cui_timers"));
+    assert!(
+        !js.contains("setInterval")
+            && !js.contains("__cui_every")
+            && !js.contains("visibilitychange")
+    );
 }
 
 #[test]
@@ -199,10 +203,14 @@ fn the_emitted_page_starts_after_the_first_render_ticks_with_a_guard_and_clears_
         .find("        __render();\n        __on_Tick();")
         .expect("start after the first render");
     let timer = js
-        .find("setInterval(function () { if (__cui_busy.Tick === 0) { __on_Tick(); } }, 1500)")
-        .expect("the guarded interval");
+        .find("__cui_every.push({ ms: 1500, next: Date.now() + 1500, o: null, run: function () { if (__cui_busy.Tick === 0) { __on_Tick(); } } });")
+        .expect("the guarded timer");
     assert!(render < timer, "start before the timer is armed");
-    assert!(js.contains("__cui_timers.forEach(function (t) { clearInterval(t); });"));
+    assert!(js.contains("__cui_every.forEach(function (s) { if (s.o !== null) { clearTimeout(s.o); s.o = null; } });"));
+    // section 11: the page's visibility is listened to, and the listeners go with the component.
+    assert!(js.contains("document.addEventListener('visibilitychange', __cui_visibility);"));
+    assert!(js.contains("window.addEventListener('pagehide', __cui_pagehide);"));
+    assert!(js.contains("document.removeEventListener('visibilitychange', __cui_visibility);"));
     assert!(
         js.contains("__cui_dispose"),
         "a scheduled component can be disposed"
@@ -353,4 +361,93 @@ fn an_advance_that_would_fire_too_many_ticks_is_refused_with_a_rule_tag() {
     );
     assert_ne!(code, 0, "{out}");
     assert!(out.contains("replay-tick-limit"), "{out}");
+}
+
+// ---- hidden pages (docs/schedules.md section 11) -------------------------------------------------------------------
+
+#[test]
+fn a_hidden_page_runs_no_tick_and_one_catch_up_tick_when_it_is_shown() {
+    let (code, out) = replay(
+        &counter("    every 1000 Tick;"),
+        r#"{"schema":"cancho-ui-trace","version":"0.1.0","steps":[
+            {"hide":true},
+            {"advance":3500,"state":{"n":0},"expect":{"ticks":[]}},
+            {"show":true,"state":{"n":1},"expect":{"ticks":[{"event":"Tick","at":3500,"ran":true,"catch_up":true}]}},
+            {"advance":999,"state":{"n":1},"expect":{"ticks":[]}},
+            {"advance":1,"state":{"n":2},"expect":{"ticks":[{"event":"Tick","at":4500,"ran":true}]}}]}"#,
+    );
+    assert_eq!(code, 0, "{out}");
+    // the human report names the two steps for what they are
+    assert!(
+        out.contains("step 0  hide") && out.contains("step 2  show"),
+        "{out}"
+    );
+}
+
+#[test]
+fn a_schedule_that_was_not_due_keeps_the_time_it_had_left() {
+    let (code, out) = replay(
+        &counter("    every 1000 Tick;"),
+        r#"{"schema":"cancho-ui-trace","version":"0.1.0","steps":[
+            {"advance":600,"state":{"n":0}},
+            {"hide":true},
+            {"advance":100,"state":{"n":0}},
+            {"show":true,"state":{"n":0},"expect":{"ticks":[]}},
+            {"advance":299,"state":{"n":0}},
+            {"advance":1,"state":{"n":1},"expect":{"ticks":[{"event":"Tick","at":1000}]}}]}"#,
+    );
+    assert_eq!(code, 0, "{out}");
+}
+
+#[test]
+fn a_catch_up_tick_is_skipped_while_a_run_is_in_flight() {
+    let src = "component Poll {\n    requires Network;\n    state r: Result[String, String] = Ok(\"\");\n    every 1000 Refresh;\n    on Refresh { r = await(net.get(\"x\")); }\n    view { Text { \"x\" } }\n}\n";
+    let (code, out) = replay(
+        src,
+        r#"{"schema":"cancho-ui-trace","version":"0.1.0","steps":[
+            {"advance":1000,"expect":{"pending":[1]}},
+            {"hide":true},
+            {"advance":5000},
+            {"show":true,"expect":{"ticks":[{"at":6000,"ran":false,"catch_up":true}],"pending":[1]}}]}"#,
+    );
+    assert_eq!(code, 0, "{out}");
+}
+
+#[test]
+fn a_request_in_flight_completes_and_a_sleep_fires_while_the_page_is_hidden() {
+    let src = "component T {\n    state log: String = \"\";\n    every 1000 Mark;\n    on Mark { log = log + \"t\"; }\n    on Nap { r = await(sleep(1500)); log = log + \"s\"; }\n    state r: Result[Int, String] = Ok(0);\n    view { Text { log } }\n}\n";
+    let (code, out) = replay(
+        src,
+        r#"{"schema":"cancho-ui-trace","version":"0.1.0","steps":[
+            {"event":"Nap","state":{"log":""}},
+            {"hide":true},
+            {"advance":2000,"state":{"log":"s"}},
+            {"show":true,"state":{"log":"st"}}]}"#,
+    );
+    assert_eq!(code, 0, "{out}");
+}
+
+#[test]
+fn hiding_a_hidden_page_or_showing_a_visible_one_is_a_bad_step() {
+    for trace in [
+        r#"{"schema":"cancho-ui-trace","version":"0.1.0","steps":[{"hide":true,"state":{"n":0}},{"hide":true,"state":{"n":0}}]}"#,
+        r#"{"schema":"cancho-ui-trace","version":"0.1.0","steps":[{"show":true,"state":{"n":0}}]}"#,
+    ] {
+        let (code, out) = replay(&counter("    every 1000 Tick;"), trace);
+        assert_ne!(code, 0, "{out}");
+        assert!(out.contains("trace-bad-step"), "{out}");
+    }
+}
+
+#[test]
+fn showing_a_disposed_component_runs_no_tick() {
+    let (code, out) = replay(
+        &counter("    every 1000 Tick;"),
+        r#"{"schema":"cancho-ui-trace","version":"0.1.0","steps":[
+            {"hide":true},
+            {"advance":5000},
+            {"dispose":true},
+            {"show":true,"state":{"n":0},"expect":{"ticks":[]}}]}"#,
+    );
+    assert_eq!(code, 0, "{out}");
 }

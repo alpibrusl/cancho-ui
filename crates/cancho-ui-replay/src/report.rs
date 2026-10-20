@@ -97,6 +97,9 @@ pub struct TickJson {
     pub event: String,
     pub at: Json,
     pub ran: bool,
+    /// Present (and true) on the tick that ran when the page became visible again.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub catch_up: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -200,6 +203,8 @@ pub fn render_human(r: &TestReport) -> String {
                 compact(&s.detail),
                 compact(&s.clock)
             ),
+            "hide" => "hide".to_string(),
+            "show" => "show".to_string(),
             _ => "dispose".to_string(),
         };
         let mut detail: Vec<String> = Vec::new();

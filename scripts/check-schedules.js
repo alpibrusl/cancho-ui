@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Browser-side checks of `start` and `every` (docs/schedules.md section 7), in Chromium with a fake clock
 // (`page.clock`): start runs once after the first render; a tick every period; a tick that finds a run in flight is
-// skipped; a click counts as a run in flight; disposing a component stops its timers. Outside the gate: needs node, the
+// skipped; a click counts as a run in flight; a hidden page runs no tick and gets one catch-up tick when shown
+// (docs/schedules.md section 11); disposing a component stops its timers. Outside the gate: needs node, the
 // `playwright` package with a Chromium, and a built `cancho-ui`. Timers in a background tab are not tested.
 //   node scripts/check-schedules.js [path/to/cancho-ui]
 'use strict';
@@ -143,6 +144,44 @@ function serve(dir, hits) {
   hits.held.splice(0).forEach((reply) => reply());
   await page.waitForTimeout(300);
 
+  // hidden pages (section 11): no tick while hidden, one catch-up tick when shown, the remaining time kept when none was due
+  const setVisibility = (state) => page.evaluate((st) => {
+    Object.defineProperty(document, 'visibilityState', { value: st, configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  }, state);
+  await setVisibility('hidden');
+  await page.clock.runFor(5000);
+  await page.waitForTimeout(200);
+  check('a hidden page runs no tick', hits.count === 8, String(hits.count));
+  await setVisibility('visible');
+  check('shown again: one catch-up tick for the five that were missed', await settle(9), String(hits.count));
+  await page.clock.runFor(999);
+  await page.waitForTimeout(200);
+  check('the next tick is a period after the catch-up, not before', hits.count === 9, String(hits.count));
+  await page.clock.runFor(1);
+  check('and then it comes', await settle(10), String(hits.count));
+  await page.clock.runFor(400);
+  await setVisibility('hidden');
+  await page.clock.runFor(100);
+  await setVisibility('visible');
+  await page.waitForTimeout(200);
+  check('hidden for less than the time left: no catch-up tick', hits.count === 10, String(hits.count));
+  await page.clock.runFor(499);
+  await page.waitForTimeout(200);
+  check('the schedule kept the time it had left', hits.count === 10, String(hits.count));
+  await page.clock.runFor(1);
+  check('and ticks when that is over', await settle(11), String(hits.count));
+  // pagehide pauses, a persisted pageshow resumes (the back-forward cache)
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })));
+  await page.clock.runFor(3000);
+  await page.waitForTimeout(200);
+  check('pagehide pauses the ticks', hits.count === 11, String(hits.count));
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
+  check('a persisted pageshow resumes them with one catch-up tick', await settle(12), String(hits.count));
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: false })));
+  await page.waitForTimeout(200);
+  check('a pageshow that is not persisted changes nothing', hits.count === 12, String(hits.count));
+
   // disposal: the parent removes the component; no tick runs afterwards
   await page.click('text=Remove');
   await page.waitForTimeout(100);
@@ -150,6 +189,10 @@ function serve(dir, hits) {
   await page.clock.runFor(10000);
   await page.waitForTimeout(300);
   check('a removed component stops ticking', hits.count === before, `${before} -> ${hits.count}`);
+  await setVisibility('hidden');
+  await setVisibility('visible');
+  await page.waitForTimeout(200);
+  check('and no longer listens to the page being shown', hits.count === before, `${before} -> ${hits.count}`);
   check('no script errors', errors.length === 0, errors.join(' | '));
 
   await browser.close();

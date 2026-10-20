@@ -661,18 +661,20 @@ fn emit_component(
         .filter(|s| matches!(s.kind, IrScheduleKind::Every(_)))
         .map(|s| s.event.as_str())
         .collect();
-    if has_schedules {
-        out.push_str("        const __cui_timers = [];\n");
-        if !ticked.is_empty() {
-            let mut names: Vec<&str> = ticked.clone();
-            names.sort_unstable();
-            names.dedup();
-            let fields: Vec<String> = names.iter().map(|n| format!("{n}: 0")).collect();
-            out.push_str(&format!(
-                "        const __cui_busy = {{ {} }};\n",
-                fields.join(", ")
-            ));
-        }
+    if has_schedules && !ticked.is_empty() {
+        // docs/schedules.md section 11: the page is active unless it is hidden; a tick does not run while it is not.
+        out.push_str("        const __cui_every = [];\n");
+        out.push_str(
+            "        let __cui_active = typeof document === 'undefined' || document.visibilityState !== 'hidden';\n",
+        );
+        let mut names: Vec<&str> = ticked.clone();
+        names.sort_unstable();
+        names.dedup();
+        let fields: Vec<String> = names.iter().map(|n| format!("{n}: 0")).collect();
+        out.push_str(&format!(
+            "        const __cui_busy = {{ {} }};\n",
+            fields.join(", ")
+        ));
     }
     // docs/adapters.md 10: the hosts other than this page's own that `net.get` may reach, from the bounds of
     // `requires Network(..)`, lower-cased. Per instance, so two components keep their own allow-lists.
@@ -800,10 +802,30 @@ fn emit_component(
             }
             IrScheduleKind::Every(ms) => {
                 out.push_str(&format!(
-                    "        __cui_timers.push(setInterval(function () {{ if (__cui_busy.{0} === 0) {{ __on_{0}(); }} }}, {1}));\n",
+                    "        __cui_every.push({{ ms: {1}, next: Date.now() + {1}, o: null, run: function () {{ if (__cui_busy.{0} === 0) {{ __on_{0}(); }} }} }});\n",
                     s.event, ms
                 ));
             }
+        }
+    }
+    if !ticked.is_empty() {
+        // docs/schedules.md section 11.4: a timeout chain that reschedules from `next` (no drift, no burst after a
+        // throttled tab), paused while the page is hidden, a catch-up tick on becoming visible.
+        for line in [
+            "function __cui_arm(s) { s.o = setTimeout(function () { s.o = null; s.next += s.ms; if (s.next <= Date.now()) { s.next = Date.now() + s.ms; } __cui_arm(s); s.run(); }, Math.max(0, s.next - Date.now())); }",
+            "function __cui_pause() { __cui_every.forEach(function (s) { if (s.o !== null) { clearTimeout(s.o); s.o = null; } }); }",
+            "function __cui_resume() { const now = Date.now(); __cui_every.forEach(function (s) { if (s.o !== null) { return; } if (s.next <= now) { s.next = now + s.ms; __cui_arm(s); s.run(); } else { __cui_arm(s); } }); }",
+            "function __cui_visibility() { const a = document.visibilityState !== 'hidden'; if (a === __cui_active) { return; } __cui_active = a; if (a) { __cui_resume(); } else { __cui_pause(); } }",
+            "function __cui_pagehide() { if (__cui_active) { __cui_active = false; __cui_pause(); } }",
+            "function __cui_pageshow(e) { if (e.persisted) { __cui_visibility(); } }",
+            "document.addEventListener('visibilitychange', __cui_visibility);",
+            "window.addEventListener('pagehide', __cui_pagehide);",
+            "window.addEventListener('pageshow', __cui_pageshow);",
+            "if (__cui_active) { __cui_every.forEach(__cui_arm); }",
+        ] {
+            out.push_str("        ");
+            out.push_str(line);
+            out.push('\n');
         }
     }
 
@@ -852,11 +874,18 @@ fn emit_component(
                 fields.push_str("                    }\n");
                 fields.push_str("                }\n");
             }
-            if has_schedules {
-                fields.push_str(
-                    "                __cui_timers.forEach(function (t) { clearInterval(t); });\n",
-                );
-                fields.push_str("                __cui_timers.length = 0;\n");
+            if !ticked.is_empty() {
+                for line in [
+                    "__cui_every.forEach(function (s) { if (s.o !== null) { clearTimeout(s.o); s.o = null; } });",
+                    "__cui_every.length = 0;",
+                    "document.removeEventListener('visibilitychange', __cui_visibility);",
+                    "window.removeEventListener('pagehide', __cui_pagehide);",
+                    "window.removeEventListener('pageshow', __cui_pageshow);",
+                ] {
+                    fields.push_str("                ");
+                    fields.push_str(line);
+                    fields.push('\n');
+                }
             }
             if has_awaits {
                 // Then the instance's own pending requests: their
