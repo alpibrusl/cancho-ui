@@ -220,6 +220,7 @@ function __cui_json_get(text, path, fallback) {
     if (typeof cur === 'string') { return cur; }
     if (typeof cur === 'boolean') { return cur ? 'true' : 'false'; }
     if (typeof cur === 'number' && Number.isInteger(cur) && Math.abs(cur) <= 9007199254740992) { return String(cur); }
+    if (typeof cur === 'number' && Math.abs(cur) >= 1e-6 && Math.abs(cur) < 1e15) { return String(cur); }
     return fallback;
 }
 function __cui_json_items(text, path) {
