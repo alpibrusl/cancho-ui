@@ -21,13 +21,14 @@ function check(label, ok, detail) {
 }
 
 // The app's own origin: the built page, and the routes the checks fetch.
+const slow = { opened: 0, closed: 0 };
 function mainServer(dir) {
   const server = http.createServer((req, res) => {
     const url = decodeURIComponent(req.url.split('?')[0]);
     if (url === '/data.txt') { res.writeHead(200, { 'content-type': 'text/plain' }); res.end('hello from the server'); return; }
     if (url === '/redirect.txt') { res.writeHead(302, { location: '/data.txt' }); res.end(); return; }
     if (url === '/big.txt') { res.writeHead(200, { 'content-type': 'text/plain' }); res.end('x'.repeat(2 * 1024 * 1024)); return; }
-    if (url === '/slow.txt') { return; } // never answered
+    if (url === '/slow.txt') { slow.opened += 1; req.on('close', () => { slow.closed += 1; }); return; } // never answered
     const rel = url.replace(/^\/+/, '') || 'index.html';
     const file = path.join(dir, path.normalize(rel));
     if (!file.startsWith(dir) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); res.end('no'); return; }
@@ -90,6 +91,19 @@ async function load(page, url, waitMs) {
   check('a redirect is refused', shown.includes('error: blocked: redirect'), shown);
   shown = await load(page, 'big.txt');
   check('a body over 1 MiB is "too large"', shown.includes('error: too large'), shown);
+  // a newer request supersedes the pending one, and the browser is told to stop the old one (docs/adapters.md 9.5)
+  {
+    const opened = slow.opened;
+    const closed = slow.closed;
+    await page.fill('input', 'slow.txt');
+    await page.click('button');
+    for (let i = 0; i < 50 && slow.opened === opened; i++) { await page.waitForTimeout(20); }
+    check('a slow request reaches the server and waits', slow.opened === opened + 1 && slow.closed === closed, `${slow.opened - opened} opened, ${slow.closed - closed} closed`);
+    shown = await load(page, 'data.txt');
+    for (let i = 0; i < 50 && slow.closed === closed; i++) { await page.waitForTimeout(20); }
+    check('the newer request is shown', shown.includes('status: done') && shown.includes('hello from the server'), shown);
+    check('and the superseded one was aborted: its connection closed long before the 10 s timeout', slow.closed === closed + 1, `${slow.closed - closed} closed`);
+  }
   const t0 = Date.now();
   shown = await load(page, 'slow.txt', 15000);
   const took = Date.now() - t0;

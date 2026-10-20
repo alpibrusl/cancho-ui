@@ -184,9 +184,10 @@ cannot be observed**: with the origin check in front, every request is same-orig
 
 ### 9.5 Not done
 
+*(Aborting a superseded or disposed request: built 2026-10-20, section 16.)*
+
 `Network("host")` narrowing and cross-origin fetches (and with them CORS handling and any credentials), methods
-other than GET, request bodies and headers, streaming, aborting the underlying request when it is superseded
-(the answer is dropped; the request completes), a retry policy, and the service worker caching API replies. Chromium
+other than GET, request bodies and headers, streaming, a retry policy, and the service worker caching API replies. Chromium
 only; iOS Safari is not tested.
 
 ---
@@ -510,6 +511,38 @@ the cost of the shape, and why `net.get` stays: most pages should not have to ch
 The response headers, a method other than GET, a body, and a status that is a redirect (still `blocked: redirect`). The
 envelope is built in the browser; replay's trace has to write it by hand, and a trace that writes it wrongly tests
 nothing about the adapter (the Chromium check does).
+
+---
+
+## 16. A request that is superseded or disposed is aborted
+
+### 16.1 The decision
+
+Until now a superseded request (`semantics.md` Q4) or one whose component was disposed (Q5) had its **answer** dropped
+and its **request** left to finish: the browser kept the connection, the server did the work, and a page that
+superseded a slow request every tick (the plant console, a search box) piled them up. The adapter now stops it. The
+semantics do not change: the answer is dropped or `Cancelled` exactly as before; what changes is that the browser is
+told to abandon the fetch (`AbortController.abort()`), so the connection closes and the server sees it.
+
+### 16.2 How
+
+`__cui_call` makes a token for the request, publishes it in `__cui_owner` for the duration of the synchronous `start()`
+call, and `__cui_net_request` (the one function behind `net.get` and `net.fetch`) reads it as it starts and sets
+`token.abort`. Superseding a group aborts the previous token; a component's `__cui_dispose` aborts the tokens it
+disposes. A call that is not a network request (`sleep`, `location.current`) sets no `abort` and is as before. The
+adapter answers the aborted fetch `Err("aborted")`, which nobody reads (the token is `cancelled` or `disposed`).
+
+### 16.3 Checked
+
+* `scripts/check-network.js` (Chromium): a slow request that never answers, then a newer one: the newer is shown and the
+  server sees the slow request's connection close at once, not after the 10 s timeout.
+* `scripts/check-schedules.js`: a request held by the server, the component removed: the server sees it close.
+* `cargo test`: the emitted runtime carries the wiring.
+
+### 16.4 Not done
+
+An abort the server may not notice (a proxy that keeps the upstream), and the same for `net.post` when it exists: an
+aborted write may or may not have been applied, which is why section 17 will not retry one.
 
 ---
 

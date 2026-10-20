@@ -71,7 +71,7 @@ function serve(dir, hits) {
     const url = decodeURIComponent(req.url.split('?')[0]);
     if (url === '/ping') {
       hits.count++;
-      if (hits.hold) { hits.held.push(() => { res.writeHead(200); res.end('pong'); }); return; }
+      if (hits.hold) { hits.held.push(() => { res.writeHead(200); res.end('pong'); }); req.on('close', () => { if (!res.writableEnded) { hits.aborted++; } }); return; }
       res.writeHead(200, { 'cache-control': 'no-store' });
       res.end('pong');
       return;
@@ -91,7 +91,7 @@ function serve(dir, hits) {
   fs.writeFileSync(src, SRC);
   const r = spawnSync(CANCHO_UI, ['build', src, '--pwa', '-o', path.join(dir, 'out')], { encoding: 'utf8' });
   if (r.status !== 0) { throw new Error(r.stderr); }
-  const hits = { count: 0, hold: false, held: [] };
+  const hits = { count: 0, hold: false, held: [], aborted: 0 };
   const server = await serve(path.join(dir, 'out'), hits);
   const url = `http://localhost:${server.address().port}/`;
   const browser = await chromium.launch({ args: ['--no-proxy-server'] });
@@ -181,6 +181,17 @@ function serve(dir, hits) {
   await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: false })));
   await page.waitForTimeout(200);
   check('a pageshow that is not persisted changes nothing', hits.count === 12, String(hits.count));
+
+  // disposal aborts the request in flight (docs/adapters.md 9.5): the server sees the connection close
+  hits.hold = true;
+  await page.click('text=Ping now');
+  check('a click starts a run, which the server holds', await settle(13), String(hits.count));
+  check('nothing was aborted so far', hits.aborted === 0, String(hits.aborted));
+  await page.click('text=Remove');
+  for (let i = 0; i < 50 && hits.aborted === 0; i++) { await page.waitForTimeout(20); }
+  check('removing the component aborts the request it had in flight', hits.aborted === 1, String(hits.aborted));
+  hits.hold = false;
+  hits.held.splice(0);
 
   // disposal: the parent removes the component; no tick runs afterwards
   await page.click('text=Remove');

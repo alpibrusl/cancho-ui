@@ -67,6 +67,12 @@ fn net_fetch_is_emitted_beside_the_shared_request_function() {
     assert!(js.contains("function __cui_net_request(url, hosts, envelope)"));
     assert!(js.contains("JSON.stringify({status: response.status, body: text})"));
     assert!(js.contains("if (!response.ok && !envelope)"));
+    // docs/adapters.md 16: a superseded or disposed request is aborted
+    assert!(js.contains("owner.abort = function () { stopped = true; controller.abort(); };"));
+    assert!(js.contains("if (prev) { prev.cancelled = true; if (prev.abort) { prev.abort(); } }"));
+    assert!(
+        js.contains("t.disposed = true; __cui_inflight[g] = null; if (t.abort) { t.abort(); }")
+    );
 }
 
 #[test]

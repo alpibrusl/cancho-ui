@@ -1228,7 +1228,9 @@ fn disposal_disposes_pruned_slots_and_cascades() {
     // For slots (arrays) and static slots alike:
     assert!(js.contains("__ds.forEach(function (x) { if (x.inst) x.inst.__cui_dispose(); });"));
     // The awaiting child cancels its own pending groups.
-    assert!(js.contains("if (t) { t.disposed = true; __cui_inflight[g] = null; }"));
+    assert!(js.contains(
+        "if (t) { t.disposed = true; __cui_inflight[g] = null; if (t.abort) { t.abort(); } }"
+    ));
     // The `shrink` filter is emitted with the list op runtime.
     assert!(js.contains("(__state_items).filter(function (x)"));
 }
