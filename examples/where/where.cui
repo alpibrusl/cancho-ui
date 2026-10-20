@@ -1,0 +1,37 @@
+// examples/where/where.cui — the `Location` capability (docs/adapters.md section 11). `await(location.current())`
+// resolves to Ok("lat,lon") | Err(reason) | Cancelled. A bare `requires Location;` rounds to 2 decimals (about
+// 1 km); `requires Location("fine");` gives 5. The browser asks the user the first time.
+
+component Where {
+    requires Location;
+
+    state status: String = "idle";
+    state pos: String = "";
+    state r: Result[String, String] = Ok("");
+
+    on Find {
+        status = "locating";
+        r = await(location.current());
+        status = match r {
+            Ok(_) => { "done" }
+            Err(why) => { "error: {why}" }
+            Cancelled => { "cancelled" }
+        };
+        pos = match r {
+            Ok(p) => { p }
+            Err(_) => { "" }
+            Cancelled => { "" }
+        };
+    }
+
+    view {
+        Column {
+            Button { label: "Find me" on: Find }
+            Text {
+                role: status
+                "status: {status}"
+            }
+            Text { pos }
+        }
+    }
+}

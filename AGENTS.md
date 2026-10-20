@@ -120,6 +120,10 @@ literal URL on another host is `capability-bound-violated`), awaited like `net.s
 `Ok(text) | Err(reason) | Cancelled` (see `docs/adapters.md` section 9). `"error: {why}"` interpolates in a
 `match` arm as in a `Text`; a `{` in a label or other static text is refused.
 
+`await(location.current())` performs `Location` and resolves to `Ok("lat,lon")` (2 decimals; `requires
+Location("fine");` for 5), `Err(reason)` or `Cancelled`; the browser asks the user
+(`docs/adapters.md` section 11).
+
 `net.search(query)` performs the `Network` capability; the
 `await(...)` resolves it over the `Ok | Err | Cancelled` arms —
 all three are mandatory when the field was assigned from

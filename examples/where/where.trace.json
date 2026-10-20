@@ -1,0 +1,24 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "component": "Where",
+  "note": "A position that arrives, a refusal, and a newer request that supersedes an older one. docs/adapters.md section 11.",
+  "steps": [
+    { "event": "Find",
+      "state": { "status": "locating" },
+      "expect": { "outcome": "suspended",
+                  "issued": [ { "request": 1, "effect": "location.current", "args": [] } ],
+                  "pending": [1] } },
+    { "resolve": 1, "with": { "Ok": "40.42,-3.70" },
+      "state": { "status": "done", "pos": "40.42,-3.70" } },
+    { "event": "Find", "expect": { "pending": [2] } },
+    { "resolve": 2, "with": { "Err": "permission denied" },
+      "state": { "status": "error: permission denied", "pos": "" } },
+    { "event": "Find", "expect": { "pending": [3] } },
+    { "event": "Find", "expect": { "pending": [3, 4] } },
+    { "resolve": 3, "with": { "Ok": "1.00,2.00" },
+      "state": { "status": "locating", "pos": "" } },
+    { "resolve": 4, "with": { "Ok": "5.00,6.00" },
+      "state": { "status": "done", "pos": "5.00,6.00" } }
+  ]
+}

@@ -50,6 +50,7 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
     let mut any_sleep = false;
     let mut any_network = false;
     let mut any_net_get = false;
+    let mut any_location = false;
     let mut any_storage = false;
     let mut any_cancel = false;
     for c in &ir.components {
@@ -64,6 +65,9 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
             }
             if e.capability == "Storage" {
                 any_storage = true;
+            }
+            if e.capability == "Location" {
+                any_location = true;
             }
         }
         for arm in c.events.iter().flat_map(|e| e.body.iter()) {
@@ -100,6 +104,10 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
     }
     if any_net_get {
         out.push_str(NET_GET_ADAPTER_JS);
+        out.push('\n');
+    }
+    if any_location {
+        out.push_str(LOCATION_ADAPTER_JS);
         out.push('\n');
     }
     if any_cancel {
@@ -320,6 +328,31 @@ function __cui_net_get(url, hosts) {
 }
 ";
 
+/// The `location.current` adapter (docs/adapters.md section 11): the browser's Geolocation, rounded in the adapter.
+const LOCATION_ADAPTER_JS: &str = "\
+// Platform adapter: Location capability, `location.current()` (docs/adapters.md section 11).
+// Resolves to \"lat,lon\" in decimal degrees, rounded to `digits` decimals (2, about 1 km, unless the component
+// asked for \"fine\": 5). The browser asks the user; a refusal, a timeout or a missing API is an Err value.
+function __cui_location_current(digits) {
+    var err = function (reason) { return {__cui_tag: \"Err\", reason: reason}; };
+    return new Promise(function (resolve) {
+        if (typeof navigator === \"undefined\" || !navigator.geolocation) {
+            resolve(err(\"unavailable\"));
+            return;
+        }
+        try {
+            navigator.geolocation.getCurrentPosition(function (pos) {
+                resolve({__cui_tag: \"Ok\", value: pos.coords.latitude.toFixed(digits) + \",\" + pos.coords.longitude.toFixed(digits)});
+            }, function (e) {
+                resolve(err(e && e.code === 1 ? \"permission denied\" : e && e.code === 3 ? \"timeout\" : \"position unavailable\"));
+            }, { enableHighAccuracy: digits > 2, timeout: 10000, maximumAge: 60000 });
+        } catch (e) {
+            resolve(err(\"unavailable\"));
+        }
+    });
+}
+";
+
 const CANCEL_ADAPTER_JS: &str = "\
 // Platform adapter: runtime cancellation (Tier 10), with per-
 // component disposal (Tier 17).
@@ -536,6 +569,17 @@ fn emit_component(
     }
     // docs/adapters.md 10: the hosts other than this page's own that `net.get` may reach, from the bounds of
     // `requires Network(..)`, lower-cased. Per instance, so two components keep their own allow-lists.
+    if c.requires.iter().any(|r| r.name == "Location") {
+        let fine = c
+            .requires
+            .iter()
+            .filter(|r| r.name == "Location")
+            .any(|r| r.bounds.iter().any(|b| b == "fine"));
+        out.push_str(&format!(
+            "        const __cui_location_digits = {};\n",
+            if fine { 5 } else { 2 }
+        ));
+    }
     if c.requires.iter().any(|r| r.name == "Network") {
         let hosts: Vec<String> = c
             .requires
@@ -1027,6 +1071,9 @@ fn emit_call_runtime(path: &[String], args: &[IrExpr], params: &[&str]) -> Strin
         let rendered_args: Vec<String> =
             args.iter().map(|a| emit_expr_runtime(a, params)).collect();
         return format!("__cui_storage_{}({})", path[1], rendered_args.join(", "));
+    }
+    if path.len() == 2 && path[0] == "location" && path[1] == "current" {
+        return "__cui_location_current(__cui_location_digits)".to_string();
     }
     if path.len() == 2 && path[0] == "net" && path[1] == "get" {
         let rendered_args: Vec<String> =

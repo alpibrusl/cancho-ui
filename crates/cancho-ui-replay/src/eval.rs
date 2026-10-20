@@ -333,6 +333,10 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
             ctx.journal.record(Value::Bool(true));
             Ok(Value::Bool(true))
         }
+        ("location.current", 0) => Ok(Value::Request(Req {
+            effect: Effect::LocationCurrent,
+            args: Vec::new(),
+        })),
         ("net.get", 1) => match eval(ctx, &args[0])? {
             url @ Value::Str(_) => Ok(Value::Request(Req {
                 effect: Effect::NetGet,
@@ -365,19 +369,21 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                 span,
             )),
         },
-        ("clock.now" | "net.search" | "net.get" | "sleep" | "storage.get" | "storage.set", n) => {
-            Err(fault(
-                "replay-type-error",
-                format!(
-                    "`{name}` called with {n} argument(s); the emitted adapter takes a fixed number"
-                ),
-                span,
-            ))
-        }
+        (
+            "clock.now" | "net.search" | "net.get" | "location.current" | "sleep" | "storage.get"
+            | "storage.set",
+            n,
+        ) => Err(fault(
+            "replay-type-error",
+            format!(
+                "`{name}` called with {n} argument(s); the emitted adapter takes a fixed number"
+            ),
+            span,
+        )),
         _ => Err(fault(
             "replay-unsupported",
             format!(
-                "call to `{name}`: replay models `clock.now`, `net.search`, `net.get`, `sleep`, `storage.get` and `storage.set` only"
+                "call to `{name}`: replay models `clock.now`, `net.search`, `net.get`, `location.current`, `sleep`, `storage.get` and `storage.set` only"
             ),
             span,
         )),
