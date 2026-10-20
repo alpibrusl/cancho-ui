@@ -272,6 +272,11 @@ clock.
   handler that also falls inside the advance fires in the same step. The clock
   ends at `old + ms`. It never moves backwards.
 - `sleep` resolves with `Ok(unit)`; it cannot fail, as in the adapter.
+- Schedules ([`schedules.md`](schedules.md)): every `start` event runs once before the first step, in written order,
+  and is reported with that step. An `advance` fires each `every` tick whose time falls inside it, in time order and,
+  at one instant, in the order the `every` lines are written, before a `sleep` due at that instant. A tick is skipped
+  (`"ran": false`) while a run of its event is in flight. The step report carries `ticks: [{event, at, ran}]` (absent
+  when none); `expect.ticks` is compared as a subset, and absent means `[]`.
 
 ---
 

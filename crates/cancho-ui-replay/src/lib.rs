@@ -24,7 +24,7 @@ use value::{Value, num_json, subset};
 pub use eval::{JSON_ITEMS_MAX, json_get, json_items};
 pub use report::{
     Failure, FiredJson, IssuedJson, NOT_CLAIMED, REPORT_SCHEMA, REPORT_VERSION, RequestJson,
-    SpanJson, StepReport, TestReport, WriteJson, render_human,
+    SpanJson, StepReport, TestReport, TickJson, WriteJson, render_human,
 };
 pub use trace::{SCHEMA as TRACE_SCHEMA, VERSION as TRACE_VERSION};
 
@@ -214,6 +214,19 @@ fn run_step(
         }
     }
     let mut fx = StepEffects::default();
+    // The component has mounted: its `start` events run before the first step, and are reported with it.
+    if i == 0
+        && let Err(f) = m.start(&mut fx)
+    {
+        return Err(Box::new(failure(
+            f.rule,
+            Some(i),
+            at,
+            f.message,
+            file,
+            Some(f.span),
+        )));
+    }
     let (action, detail, outcome) = match &step.action {
         Action::Event { name, params } => {
             if m.disposed {
@@ -334,6 +347,15 @@ fn run_step(
                 outcome: f.outcome.as_str(),
             })
             .collect(),
+        ticks: fx
+            .ticks
+            .iter()
+            .map(|t| TickJson {
+                event: t.event.clone(),
+                at: num_json(t.at),
+                ran: t.ran,
+            })
+            .collect(),
         writes: fx
             .writes
             .iter()
@@ -390,7 +412,13 @@ fn check_expectations(
     let actual_step = serde_json::to_value(sr).unwrap_or(Json::Null);
     for (key, expected) in &step.expect {
         report.checks += 1;
-        let actual = actual_step.get(key).cloned().unwrap_or(Json::Null);
+        // `ticks` is absent from a step in which none fell due: that is the empty list.
+        let absent = if key == "ticks" {
+            Json::Array(Vec::new())
+        } else {
+            Json::Null
+        };
+        let actual = actual_step.get(key).cloned().unwrap_or(absent);
         if !subset(expected, &actual) {
             let mut f = failure(
                 "test-expect-mismatch",

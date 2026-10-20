@@ -199,6 +199,15 @@ pub enum CheckError {
         "the lambda body must be pure: it may not `await(...)` or call effectful/suspending builtins"
     )]
     PureLambdaRequired { span: Span },
+
+    /// A refused `start` or `every` (docs/schedules.md section 3): `code` is one of the four `schedule-*` codes.
+    #[error("{message}")]
+    Schedule {
+        code: &'static str,
+        component: String,
+        message: String,
+        span: Span,
+    },
 }
 
 /// Run the shape pass + the capability pass. Returns the first
@@ -290,6 +299,15 @@ pub fn check_file_with_externals(
         Err(cancho_ui_ir::lower::LowerError::PureLambdaRequired { span }) => {
             Err(CheckError::PureLambdaRequired { span })
         }
+        Err(e) => match e.schedule_refusal() {
+            Some((code, component, span)) => Err(CheckError::Schedule {
+                code,
+                component: component.to_string(),
+                message: e.to_string(),
+                span,
+            }),
+            None => unreachable!("every other lowering refusal is matched above"),
+        },
     }
 }
 

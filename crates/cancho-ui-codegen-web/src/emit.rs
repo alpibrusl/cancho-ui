@@ -592,7 +592,8 @@ fn emit_component(
     // a dispose handle that cancels their pending requests.
     let has_awaits = c.events.iter().any(|e| e.body.iter().any(body_uses_await))
         || view_node_uses_await_or_sleep(&c.view.body);
-    let needs_dispose = has_awaits || has_instances;
+    let has_schedules = !c.schedules.is_empty();
+    let needs_dispose = has_awaits || has_instances || has_schedules;
     let mut out = String::new();
     out.push_str("// Component: ");
     out.push_str(&c.name);
@@ -650,6 +651,27 @@ fn emit_component(
     // awaiting the same effect never cancel each other's requests.
     if has_awaits {
         out.push_str("        const __cui_inflight = { };\n");
+    }
+    // docs/schedules.md section 7: the timers of `every`, cleared on disposal, and for each event an `every` runs,
+    // the number of its runs in flight (a click's included): a tick that finds one running is skipped.
+    let ticked: Vec<&str> = c
+        .schedules
+        .iter()
+        .filter(|s| matches!(s.kind, IrScheduleKind::Every(_)))
+        .map(|s| s.event.as_str())
+        .collect();
+    if has_schedules {
+        out.push_str("        const __cui_timers = [];\n");
+        if !ticked.is_empty() {
+            let mut names: Vec<&str> = ticked.clone();
+            names.sort_unstable();
+            names.dedup();
+            let fields: Vec<String> = names.iter().map(|n| format!("{n}: 0")).collect();
+            out.push_str(&format!(
+                "        const __cui_busy = {{ {} }};\n",
+                fields.join(", ")
+            ));
+        }
     }
     // docs/adapters.md 10: the hosts other than this page's own that `net.get` may reach, from the bounds of
     // `requires Network(..)`, lower-cased. Per instance, so two components keep their own allow-lists.
@@ -719,6 +741,10 @@ fn emit_component(
         // slower old request cannot clobber the newer one's
         // state. Other exceptions rethrow.
         let first_await = e.body.iter().position(body_uses_await);
+        let counted = ticked.contains(&e.name.as_str());
+        if counted {
+            out.push_str(&format!("            __cui_busy.{}++;\n", e.name));
+        }
         out.push_str("            try {\n");
         for (i, s) in e.body.iter().enumerate() {
             out.push_str("                ");
@@ -731,6 +757,10 @@ fn emit_component(
         out.push_str("                __render();\n");
         out.push_str("            } catch (e) {\n");
         out.push_str("                if (e !== __cui_cancelled) { throw e; }\n");
+        if counted {
+            out.push_str("            } finally {\n");
+            out.push_str(&format!("                __cui_busy.{}--;\n", e.name));
+        }
         out.push_str("            }\n");
         out.push_str("        }\n");
     }
@@ -760,6 +790,21 @@ fn emit_component(
     out.push_str("        }\n");
 
     out.push_str("        __render();\n");
+
+    // docs/schedules.md: `start` runs after the first render, in the order written; `every` arms its timer.
+    for s in &c.schedules {
+        match s.kind {
+            IrScheduleKind::Start => {
+                out.push_str(&format!("        __on_{}();\n", s.event));
+            }
+            IrScheduleKind::Every(ms) => {
+                out.push_str(&format!(
+                    "        __cui_timers.push(setInterval(function () {{ if (__cui_busy.{0} === 0) {{ __on_{0}(); }} }}, {1}));\n",
+                    s.event, ms
+                ));
+            }
+        }
+    }
 
     // Tier 15: prop-consuming components return an update handle.
     // The parent re-render moves a slot wrapper (which keeps the
@@ -805,6 +850,12 @@ fn emit_component(
                 fields.push_str("                        __ds.inst.__cui_dispose();\n");
                 fields.push_str("                    }\n");
                 fields.push_str("                }\n");
+            }
+            if has_schedules {
+                fields.push_str(
+                    "                __cui_timers.forEach(function (t) { clearInterval(t); });\n",
+                );
+                fields.push_str("                __cui_timers.length = 0;\n");
             }
             if has_awaits {
                 // Then the instance's own pending requests: their

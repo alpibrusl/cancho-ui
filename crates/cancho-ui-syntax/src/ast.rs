@@ -48,8 +48,25 @@ pub struct Component {
     pub name: String,
     pub state: Vec<StateField>,
     pub requires: Vec<CapabilityRef>,
+    /// `start Event;` and `every <ms> Event;` (docs/schedules.md), in the order written.
+    pub schedules: Vec<Schedule>,
     pub events: Vec<EventHandler>,
     pub view: ViewBlock,
+    pub span: Span,
+}
+
+/// When an event runs without the user: once at mount, or on a period (docs/schedules.md section 1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScheduleKind {
+    Start,
+    /// The period in milliseconds, as written (its range is checked in lowering).
+    Every(i64),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Schedule {
+    pub kind: ScheduleKind,
+    pub event: String,
     pub span: Span,
 }
 

@@ -26,6 +26,11 @@ component Plant {
     state nroutes: Int = 0;
     state upstreams: List[String] = [];
 
+    // Read once when the page opens, then every 5 seconds while it is open (docs/schedules.md). A refresh still in flight
+    // when the next tick falls due is not started again; the Refresh button works as before.
+    start Refresh;
+    every 5000 Refresh;
+
     on Refresh {
         note = "loading";
         m = await(net.get("admin/metrics"));

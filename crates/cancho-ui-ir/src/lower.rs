@@ -11,8 +11,8 @@
 
 use cancho_ui_syntax::ast::{
     BinOp, Binding, BindingValue, CapabilityRef, Component, ElementKind, EventHandler, Expr, File,
-    MatchArm, Pattern, Role, StateField, Stmt, StmtBlock, TextPart, TextValue, Type, UnOp,
-    ViewNode,
+    MatchArm, Pattern, Role, ScheduleKind, StateField, Stmt, StmtBlock, TextPart, TextValue, Type,
+    UnOp, ViewNode,
 };
 use cancho_ui_syntax::span::{Position, Span};
 use std::collections::BTreeSet;
@@ -42,6 +42,43 @@ pub enum LowerError {
     CapabilityUnused {
         component: String,
         capability: String,
+        span: Span,
+    },
+
+    #[error(
+        "component `{component}`: schedule `{schedule}` names the event `{event}`, which it does not handle"
+    )]
+    ScheduleEventUnknown {
+        component: String,
+        schedule: String,
+        event: String,
+        span: Span,
+    },
+
+    #[error(
+        "component `{component}`: schedule `{schedule}` runs `{event}`, which takes parameters; a scheduled run has none to give"
+    )]
+    ScheduleEventParams {
+        component: String,
+        schedule: String,
+        event: String,
+        span: Span,
+    },
+
+    #[error(
+        "component `{component}`: `every {period}` is not a period; write an integer from 100 to 86400000 (milliseconds)"
+    )]
+    SchedulePeriodInvalid {
+        component: String,
+        period: i64,
+        span: Span,
+    },
+
+    #[error("component `{component}`: `{schedule}` is declared twice for `{event}`")]
+    ScheduleDuplicate {
+        component: String,
+        schedule: String,
+        event: String,
         span: Span,
     },
 
@@ -93,6 +130,28 @@ pub enum LowerError {
     PureLambdaRequired { span: Span },
 }
 
+impl LowerError {
+    /// For the four refusals of a schedule (docs/schedules.md section 3): the stable diagnostic code, the
+    /// component, and the span.
+    pub fn schedule_refusal(&self) -> Option<(&'static str, &str, Span)> {
+        match self {
+            LowerError::ScheduleEventUnknown {
+                component, span, ..
+            } => Some(("schedule-event-unknown", component, *span)),
+            LowerError::ScheduleEventParams {
+                component, span, ..
+            } => Some(("schedule-event-params", component, *span)),
+            LowerError::SchedulePeriodInvalid {
+                component, span, ..
+            } => Some(("schedule-period-invalid", component, *span)),
+            LowerError::ScheduleDuplicate {
+                component, span, ..
+            } => Some(("schedule-duplicate", component, *span)),
+            _ => None,
+        }
+    }
+}
+
 pub fn lower_file(file: &File) -> Result<IrFile, LowerError> {
     let mut next_id = 0u32;
     let mut components = Vec::with_capacity(file.components.len());
@@ -136,6 +195,7 @@ fn lower_component(c: &Component, next_id: &mut u32) -> Result<IrComponent, Lowe
         state.push(lower_state(s)?);
     }
     let requires = c.requires.iter().map(lower_capability).collect();
+    let schedules = lower_schedules(c)?;
     let mut events = Vec::with_capacity(c.events.len());
     let mut reachable_effects: Vec<IrReachableEffect> = Vec::new();
     for e in &c.events {
@@ -154,11 +214,77 @@ fn lower_component(c: &Component, next_id: &mut u32) -> Result<IrComponent, Lowe
         name: c.name.clone(),
         state,
         requires,
+        schedules,
         reachable_effects,
         events,
         view,
         span: c.span,
     })
+}
+
+/// The shortest and longest period of `every` (docs/schedules.md section 3), in milliseconds.
+pub const MIN_PERIOD_MS: i64 = 100;
+pub const MAX_PERIOD_MS: i64 = 86_400_000;
+
+/// Check the component's schedules against its events and lower them.
+fn lower_schedules(c: &Component) -> Result<Vec<IrSchedule>, LowerError> {
+    let mut out: Vec<IrSchedule> = Vec::with_capacity(c.schedules.len());
+    for s in &c.schedules {
+        let text = match s.kind {
+            ScheduleKind::Start => format!("start {}", s.event),
+            ScheduleKind::Every(ms) => format!("every {ms} {}", s.event),
+        };
+        let Some(handler) = c.events.iter().find(|e| e.name == s.event) else {
+            return Err(LowerError::ScheduleEventUnknown {
+                component: c.name.clone(),
+                schedule: text,
+                event: s.event.clone(),
+                span: s.span,
+            });
+        };
+        if !handler.params.is_empty() {
+            return Err(LowerError::ScheduleEventParams {
+                component: c.name.clone(),
+                schedule: text,
+                event: s.event.clone(),
+                span: s.span,
+            });
+        }
+        let kind = match s.kind {
+            ScheduleKind::Start => IrScheduleKind::Start,
+            ScheduleKind::Every(ms) => {
+                if !(MIN_PERIOD_MS..=MAX_PERIOD_MS).contains(&ms) {
+                    return Err(LowerError::SchedulePeriodInvalid {
+                        component: c.name.clone(),
+                        period: ms,
+                        span: s.span,
+                    });
+                }
+                IrScheduleKind::Every(ms as u32)
+            }
+        };
+        let same_kind = |k: &IrScheduleKind| {
+            matches!(
+                (k, &kind),
+                (IrScheduleKind::Start, IrScheduleKind::Start)
+                    | (IrScheduleKind::Every(_), IrScheduleKind::Every(_))
+            )
+        };
+        if out.iter().any(|o| o.event == s.event && same_kind(&o.kind)) {
+            return Err(LowerError::ScheduleDuplicate {
+                component: c.name.clone(),
+                schedule: text,
+                event: s.event.clone(),
+                span: s.span,
+            });
+        }
+        out.push(IrSchedule {
+            kind,
+            event: s.event.clone(),
+            span: s.span,
+        });
+    }
+    Ok(out)
 }
 
 fn lower_state(s: &StateField) -> Result<IrStateField, LowerError> {

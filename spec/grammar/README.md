@@ -100,6 +100,7 @@ component_member :=
     | requires_decl
     | on_clause
     | view_clause
+    | schedule_decl
     | lifecycle_hook
     | target_override
     ;
@@ -188,6 +189,17 @@ view_clause :=
         view_node
     "}" ;
 ```
+
+### 4.5a `schedule_decl`
+
+```ebnf
+schedule_decl :=
+      "start" identifier ";"
+    | "every" integer_literal identifier ";" ;
+```
+
+`start` and `every` are contextual: identifiers everywhere except at the start of a component member. The event
+must exist and take no parameters; the period is 100 to 86,400,000 ms. Semantics: [`docs/schedules.md`](../../docs/schedules.md).
 
 ### 4.6 `lifecycle_hook`
 

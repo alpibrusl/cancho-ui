@@ -277,11 +277,16 @@ impl Parser {
         self.expect(Token::LBrace)?;
         let mut state = Vec::new();
         let mut requires = Vec::new();
+        let mut schedules = Vec::new();
         let mut events = Vec::new();
         let mut view: Option<ViewBlock> = None;
         loop {
             match &self.peek().token {
                 Token::RBrace => break,
+                // `start` and `every` are keywords only here, at the start of a member (docs/schedules.md section 3).
+                Token::Ident(word) if word == "start" || word == "every" => {
+                    schedules.push(self.parse_schedule_decl()?)
+                }
                 Token::State => state.push(self.parse_state_decl()?),
                 Token::Requires => requires.push(self.parse_requires_decl()?),
                 Token::On => events.push(self.parse_on_clause()?),
@@ -298,7 +303,7 @@ impl Parser {
                 }
                 other => {
                     return Err(ParseError::Unexpected {
-                        expected: "component member (`state`, `requires`, `on`, `view`)",
+                        expected: "component member (`state`, `requires`, `start`, `every`, `on`, `view`)",
                         found: other.clone(),
                         line: self.peek().span.start.line,
                         column: self.peek().span.start.column,
@@ -317,6 +322,7 @@ impl Parser {
             name,
             state,
             requires,
+            schedules,
             events,
             view,
             span: Span::new(kw.span.start, close.span.end),
@@ -409,6 +415,46 @@ impl Parser {
             found: Token::Ident(name.clone()),
             line: start.start.line,
             column: start.start.column,
+        })
+    }
+
+    /// `start Event;` or `every <ms> Event;` (docs/schedules.md section 3).
+    fn parse_schedule_decl(&mut self) -> Result<Schedule, ParseError> {
+        let kw = self.bump();
+        let every = matches!(&kw.token, Token::Ident(w) if w == "every");
+        let kind = if every {
+            let tok = self.bump();
+            match tok.token {
+                Token::IntLit(ms) => ScheduleKind::Every(ms),
+                other => {
+                    return Err(ParseError::Unexpected {
+                        expected: "a period in milliseconds (an integer literal)",
+                        found: other,
+                        line: tok.span.start.line,
+                        column: tok.span.start.column,
+                    });
+                }
+            }
+        } else {
+            ScheduleKind::Start
+        };
+        let name_tok = self.bump();
+        let event = match name_tok.token {
+            Token::Ident(s) => s,
+            other => {
+                return Err(ParseError::Unexpected {
+                    expected: "event name (identifier)",
+                    found: other,
+                    line: name_tok.span.start.line,
+                    column: name_tok.span.start.column,
+                });
+            }
+        };
+        let semi = self.expect(Token::Semi)?;
+        Ok(Schedule {
+            kind,
+            event,
+            span: Span::new(kw.span.start, semi.span.end),
         })
     }
 

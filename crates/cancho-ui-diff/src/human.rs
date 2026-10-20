@@ -109,6 +109,12 @@ fn component(out: &mut String, d: &ComponentDiff) {
             e.capability, e.path, e.base_count, e.candidate_count
         );
     }
+    for s in &d.schedules.added {
+        let _ = writeln!(out, "  + schedule {s}");
+    }
+    for s in &d.schedules.removed {
+        let _ = writeln!(out, "  - schedule {s}");
+    }
     for v in &d.view.added {
         let _ = writeln!(out, "  + view {v}");
     }

@@ -5,7 +5,7 @@
 
 use std::collections::BTreeMap;
 
-use cancho_ui_ir::ir::{IrComponent, IrStmt};
+use cancho_ui_ir::ir::{IrComponent, IrScheduleKind, IrStmt};
 use cancho_ui_syntax::span::Span;
 
 use crate::eval::{Ctx, Fault, Journal, Stop, eval, span_of};
@@ -99,8 +99,26 @@ pub struct StepEffects {
     pub issued: Vec<u32>,
     pub fired: Vec<Fired>,
     pub writes: Vec<Write>,
+    /// The `every` ticks that fell due in this step (docs/schedules.md section 6).
+    pub ticks: Vec<TickRecord>,
     /// The handler the step ran or resumed, for locating `expect` failures.
     pub handler_span: Option<Span>,
+}
+
+/// One `every` tick that fell due: when, and whether it ran or was skipped because a run of its event was in flight.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TickRecord {
+    pub event: String,
+    pub at: f64,
+    pub ran: bool,
+}
+
+/// The timer of an `every` declaration.
+#[derive(Debug, Clone)]
+struct TickTimer {
+    handler: usize,
+    period: f64,
+    next: f64,
 }
 
 /// The namespace of the component's `requires Storage("ns")`, or "" when it declares none.
@@ -122,6 +140,8 @@ pub struct Machine<'a> {
     pub requests: Vec<Request>,
     inflight: BTreeMap<&'static str, u32>,
     pub disposed: bool,
+    ticks: Vec<TickTimer>,
+    started: bool,
 }
 
 impl<'a> Machine<'a> {
@@ -163,6 +183,51 @@ impl<'a> Machine<'a> {
             requests: Vec::new(),
             inflight: BTreeMap::new(),
             disposed: false,
+            ticks: comp
+                .schedules
+                .iter()
+                .filter_map(|s| match s.kind {
+                    IrScheduleKind::Every(ms) => comp
+                        .events
+                        .iter()
+                        .position(|e| e.name == s.event)
+                        .map(|handler| TickTimer {
+                            handler,
+                            period: f64::from(ms),
+                            next: clock + f64::from(ms),
+                        }),
+                    IrScheduleKind::Start => None,
+                })
+                .collect(),
+            started: false,
+        })
+    }
+
+    /// Run the `start` events, once, in the order written (docs/schedules.md section 6): the component has mounted.
+    pub fn start(&mut self, fx: &mut StepEffects) -> Result<(), Fault> {
+        if self.started {
+            return Ok(());
+        }
+        self.started = true;
+        let comp = self.comp;
+        for s in &comp.schedules {
+            if s.kind == IrScheduleKind::Start
+                && let Some(h) = comp.events.iter().position(|e| e.name == s.event)
+            {
+                self.dispatch(h, Vec::new(), fx)?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Is a run of handler `h` suspended on a request that is still current? A tick is skipped then
+    /// (docs/schedules.md section 4, rule 3).
+    fn in_flight(&self, h: usize) -> bool {
+        self.requests.iter().any(|r| {
+            r.status == Status::Pending
+                && !r.superseded
+                && !r.disposed
+                && r.task.as_ref().is_some_and(|t| t.handler == h)
         })
     }
 
@@ -221,17 +286,50 @@ impl<'a> Machine<'a> {
     pub fn advance(&mut self, ms: f64, fx: &mut StepEffects) -> Result<Outcome, Fault> {
         let target = self.clock + ms;
         loop {
-            let next = self
+            let sleep = self
                 .requests
                 .iter()
                 .filter(|r| r.status == Status::Pending && r.effect == Effect::Sleep)
                 .filter_map(|r| r.due.filter(|d| *d <= target).map(|d| (d, r.id)))
                 .min_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
-            let Some((due, id)) = next else { break };
-            if due > self.clock {
-                self.clock = due;
+            // A tick due at the same instant as a `sleep` runs first, and ticks due together run in the order the
+            // `every` lines are written (docs/schedules.md section 4, rule 6).
+            let tick = if self.disposed {
+                None
+            } else {
+                self.ticks
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, t)| t.next <= target)
+                    .min_by(|a, b| a.1.next.total_cmp(&b.1.next).then(a.0.cmp(&b.0)))
+                    .map(|(i, t)| (t.next, i))
+            };
+            match (sleep, tick) {
+                (None, None) => break,
+                (Some((due, id)), t) if t.is_none_or(|(at, _)| due < at) => {
+                    if due > self.clock {
+                        self.clock = due;
+                    }
+                    self.deliver(id, Value::Ok(Box::new(Value::Unit)), fx)?;
+                }
+                (_, Some((at, i))) => {
+                    if at > self.clock {
+                        self.clock = at;
+                    }
+                    let handler = self.ticks[i].handler;
+                    let ran = !self.in_flight(handler);
+                    self.ticks[i].next += self.ticks[i].period;
+                    fx.ticks.push(TickRecord {
+                        event: self.comp.events[handler].name.clone(),
+                        at,
+                        ran,
+                    });
+                    if ran {
+                        self.dispatch(handler, Vec::new(), fx)?;
+                    }
+                }
+                (Some(_), None) => unreachable!("a sleep with no tick is the first arm"),
             }
-            self.deliver(id, Value::Ok(Box::new(Value::Unit)), fx)?;
         }
         self.clock = target;
         Ok(Outcome::Ok)
