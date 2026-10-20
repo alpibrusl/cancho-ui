@@ -119,10 +119,10 @@ program is usable on a phone, and an author replaces it freely:
   the capabilities real on every web target, phones included. Each needs its
   own design (what the capability allows, what the trace replays). They are the
   next slice after this one.
-- **Lifecycle.** Mapping `pagehide` to disposal (`Cancelled`) and
-  `visibilitychange` to inactive/active is designed in
-  [`semantics.md`](semantics.md) and not wired. Until it is, a component does
-  not know the page was hidden.
+- **Lifecycle.** *(Built for schedules, 2026-10-20: `schedules.md` section 11. The page's visibility pauses `every`
+  timers; `pagehide` pauses and `pageshow` with `persisted` resumes. This bullet used to say `pagehide` maps to disposal;
+  it does not, because a page restored from the back-forward cache cannot be restored from disposal.)* Beyond schedules, a
+  component does not know the page was hidden, and there is no `on Pause` or `on Resume` event.
 - **Icons.** The generated icons are placeholders. A `--icon` option, and a
   maskable variant, are not built.
 - **Native shells (levels 1 and 2), a React Native comparison, push

@@ -1,177 +1,234 @@
 {
- "schema": "cancho-ui-trace",
- "version": "0.1.0",
- "component": "Plant",
- "note": "The console refreshes by itself: `start` reads the gateway when the page opens, `every 5000` again every 5 seconds, and a tick that falls due while a refresh is still waiting for the gateway is skipped (docs/schedules.md). The metrics are the shape of cancho-gateway GET /metrics; readiness is read with net.fetch so a 503 keeps its reasons (docs/adapters.md sections 14 and 15).",
- "steps": [
-  {
-   "resolve": 1,
-   "with": {
-    "Ok": "{\"v\":1,\"uptime_ms\":86400000,\"sessions_active\":3,\"le_ms\":[1,2,5,10,25,50,100,250,500,1000,2500,5000,10000],\"routes\":[{\"name\":\"api\",\"requests\":{\"none\":0,\"1xx\":0,\"2xx\":4021,\"3xx\":0,\"4xx\":12,\"5xx\":2}},{\"name\":\"web\",\"requests\":{\"none\":0,\"1xx\":0,\"2xx\":950,\"3xx\":4,\"4xx\":1,\"5xx\":0}}],\"upstreams\":[{\"name\":\"api\",\"responses\":4035,\"retries\":1,\"failures\":2,\"pool_idle\":3,\"circuit_open\":false},{\"name\":\"web\",\"responses\":955,\"retries\":0,\"failures\":0,\"pool_idle\":4,\"circuit_open\":true}],\"log\":{\"dropped\":0,\"write_failures\":0}}"
-   },
-   "expect": {
-    "issued": [
-     {
-      "request": 1,
-      "effect": "net.get",
-      "args": [
-       "admin/metrics"
-      ]
-     },
-     {
-      "request": 2,
-      "effect": "net.fetch",
-      "args": [
-       "admin/readyz"
-      ]
-     }
-    ]
-   },
-   "state": {
-    "note": "loading"
-   }
-  },
-  {
-   "resolve": 2,
-   "with": {
-    "Ok": "{\"status\":200,\"body\":\"{\\\"ready\\\":true}\"}"
-   },
-   "state": {
-    "note": "updated",
-    "ready": "true",
-    "uptime": "86400000",
-    "sessions": "3",
-    "nroutes": 2
-   }
-  },
-  {
-   "advance": 4999,
-   "expect": {
-    "ticks": []
-   }
-  },
-  {
-   "advance": 1,
-   "expect": {
-    "ticks": [
-     {
-      "event": "Refresh",
-      "at": 5000,
-      "ran": true
-     }
-    ],
-    "issued": [
-     {
-      "request": 3,
-      "effect": "net.get"
-     }
-    ]
-   },
-   "state": {
-    "note": "loading"
-   }
-  },
-  {
-   "advance": 5000,
-   "expect": {
-    "ticks": [
-     {
-      "event": "Refresh",
-      "at": 10000,
-      "ran": false
-     }
-    ],
-    "issued": [],
-    "pending": [
-     3
-    ]
-   },
-   "state": {
-    "note": "loading"
-   }
-  },
-  {
-   "resolve": 3,
-   "with": {
-    "Ok": "{\"v\":1,\"uptime_ms\":86400000,\"sessions_active\":3,\"le_ms\":[1,2,5,10,25,50,100,250,500,1000,2500,5000,10000],\"routes\":[{\"name\":\"api\",\"requests\":{\"none\":0,\"1xx\":0,\"2xx\":4021,\"3xx\":0,\"4xx\":12,\"5xx\":2}},{\"name\":\"web\",\"requests\":{\"none\":0,\"1xx\":0,\"2xx\":950,\"3xx\":4,\"4xx\":1,\"5xx\":0}}],\"upstreams\":[{\"name\":\"api\",\"responses\":4035,\"retries\":1,\"failures\":2,\"pool_idle\":3,\"circuit_open\":false},{\"name\":\"web\",\"responses\":955,\"retries\":0,\"failures\":0,\"pool_idle\":4,\"circuit_open\":true}],\"log\":{\"dropped\":0,\"write_failures\":0}}"
-   },
-   "expect": {
-    "issued": [
-     {
-      "request": 4,
-      "effect": "net.fetch"
-     }
-    ]
-   }
-  },
-  {
-   "resolve": 4,
-   "with": {
-    "Ok": "{\"status\":503,\"body\":\"{\\\"ready\\\":false,\\\"why\\\":[\\\"upstream web: circuit open\\\",\\\"log: a write failed in the last 10 s\\\"]}\"}"
-   },
-   "state": {
-    "note": "updated",
-    "ready": "false",
-    "nroutes": 2,
-    "why": [
-     "\"upstream web: circuit open\"",
-     "\"log: a write failed in the last 10 s\""
-    ]
-   }
-  },
-  {
-   "advance": 5000,
-   "expect": {
-    "ticks": [
-     {
-      "event": "Refresh",
-      "at": 15000,
-      "ran": true
-     }
-    ],
-    "issued": [
-     {
-      "request": 5,
-      "effect": "net.get"
-     }
-    ]
-   }
-  },
-  {
-   "resolve": 5,
-   "with": {
-    "Err": "network error"
-   },
-   "expect": {
-    "issued": [
-     {
-      "request": 6,
-      "effect": "net.fetch"
-     }
-    ]
-   }
-  },
-  {
-   "resolve": 6,
-   "with": {
-    "Err": "network error"
-   },
-   "state": {
-    "note": "error: network error",
-    "uptime": "-",
-    "sessions": "-",
-    "nroutes": 0,
-    "ready": "unknown (network error)"
-   }
-  },
-  {
-   "dispose": true
-  },
-  {
-   "advance": 20000,
-   "expect": {
-    "ticks": []
-   }
-  }
- ]
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "component": "Plant",
+  "note": "The console refreshes by itself: `start` reads the gateway when the page opens, `every 5000` again every 5 seconds, and a tick that falls due while a refresh is still waiting for the gateway is skipped (docs/schedules.md). The metrics are the shape of cancho-gateway GET /metrics; readiness is read with net.fetch so a 503 keeps its reasons (docs/adapters.md sections 14 and 15).",
+  "steps": [
+    {
+      "resolve": 1,
+      "with": {
+        "Ok": "{\"v\":1,\"uptime_ms\":86400000,\"sessions_active\":3,\"le_ms\":[1,2,5,10,25,50,100,250,500,1000,2500,5000,10000],\"routes\":[{\"name\":\"api\",\"requests\":{\"none\":0,\"1xx\":0,\"2xx\":4021,\"3xx\":0,\"4xx\":12,\"5xx\":2}},{\"name\":\"web\",\"requests\":{\"none\":0,\"1xx\":0,\"2xx\":950,\"3xx\":4,\"4xx\":1,\"5xx\":0}}],\"upstreams\":[{\"name\":\"api\",\"responses\":4035,\"retries\":1,\"failures\":2,\"pool_idle\":3,\"circuit_open\":false},{\"name\":\"web\",\"responses\":955,\"retries\":0,\"failures\":0,\"pool_idle\":4,\"circuit_open\":true}],\"log\":{\"dropped\":0,\"write_failures\":0}}"
+      },
+      "expect": {
+        "issued": [
+          {
+            "request": 1,
+            "effect": "net.get",
+            "args": [
+              "admin/metrics"
+            ]
+          },
+          {
+            "request": 2,
+            "effect": "net.fetch",
+            "args": [
+              "admin/readyz"
+            ]
+          }
+        ]
+      },
+      "state": {
+        "note": "loading"
+      }
+    },
+    {
+      "resolve": 2,
+      "with": {
+        "Ok": "{\"status\":200,\"body\":\"{\\\"ready\\\":true}\"}"
+      },
+      "state": {
+        "note": "updated",
+        "ready": "true",
+        "uptime": "86400000",
+        "sessions": "3",
+        "nroutes": 2
+      }
+    },
+    {
+      "advance": 4999,
+      "expect": {
+        "ticks": []
+      }
+    },
+    {
+      "advance": 1,
+      "expect": {
+        "ticks": [
+          {
+            "event": "Refresh",
+            "at": 5000,
+            "ran": true
+          }
+        ],
+        "issued": [
+          {
+            "request": 3,
+            "effect": "net.get"
+          }
+        ]
+      },
+      "state": {
+        "note": "loading"
+      }
+    },
+    {
+      "advance": 5000,
+      "expect": {
+        "ticks": [
+          {
+            "event": "Refresh",
+            "at": 10000,
+            "ran": false
+          }
+        ],
+        "issued": [],
+        "pending": [
+          3
+        ]
+      },
+      "state": {
+        "note": "loading"
+      }
+    },
+    {
+      "resolve": 3,
+      "with": {
+        "Ok": "{\"v\":1,\"uptime_ms\":86400000,\"sessions_active\":3,\"le_ms\":[1,2,5,10,25,50,100,250,500,1000,2500,5000,10000],\"routes\":[{\"name\":\"api\",\"requests\":{\"none\":0,\"1xx\":0,\"2xx\":4021,\"3xx\":0,\"4xx\":12,\"5xx\":2}},{\"name\":\"web\",\"requests\":{\"none\":0,\"1xx\":0,\"2xx\":950,\"3xx\":4,\"4xx\":1,\"5xx\":0}}],\"upstreams\":[{\"name\":\"api\",\"responses\":4035,\"retries\":1,\"failures\":2,\"pool_idle\":3,\"circuit_open\":false},{\"name\":\"web\",\"responses\":955,\"retries\":0,\"failures\":0,\"pool_idle\":4,\"circuit_open\":true}],\"log\":{\"dropped\":0,\"write_failures\":0}}"
+      },
+      "expect": {
+        "issued": [
+          {
+            "request": 4,
+            "effect": "net.fetch"
+          }
+        ]
+      }
+    },
+    {
+      "resolve": 4,
+      "with": {
+        "Ok": "{\"status\":503,\"body\":\"{\\\"ready\\\":false,\\\"why\\\":[\\\"upstream web: circuit open\\\",\\\"log: a write failed in the last 10 s\\\"]}\"}"
+      },
+      "state": {
+        "note": "updated",
+        "ready": "false",
+        "nroutes": 2,
+        "why": [
+          "\"upstream web: circuit open\"",
+          "\"log: a write failed in the last 10 s\""
+        ]
+      }
+    },
+    {
+      "advance": 5000,
+      "expect": {
+        "ticks": [
+          {
+            "event": "Refresh",
+            "at": 15000,
+            "ran": true
+          }
+        ],
+        "issued": [
+          {
+            "request": 5,
+            "effect": "net.get"
+          }
+        ]
+      }
+    },
+    {
+      "resolve": 5,
+      "with": {
+        "Err": "network error"
+      },
+      "expect": {
+        "issued": [
+          {
+            "request": 6,
+            "effect": "net.fetch"
+          }
+        ]
+      }
+    },
+    {
+      "resolve": 6,
+      "with": {
+        "Err": "network error"
+      },
+      "state": {
+        "note": "error: network error",
+        "uptime": "-",
+        "sessions": "-",
+        "nroutes": 0,
+        "ready": "unknown (network error)"
+      }
+    },
+    {
+      "hide": true,
+      "note": "the phone is locked: the page is hidden",
+      "state": {
+        "note": "error: network error"
+      }
+    },
+    {
+      "advance": 20000,
+      "expect": {
+        "ticks": [],
+        "issued": []
+      },
+      "state": {
+        "note": "error: network error"
+      }
+    },
+    {
+      "show": true,
+      "expect": {
+        "ticks": [
+          {
+            "event": "Refresh",
+            "at": 35000,
+            "ran": true,
+            "catch_up": true
+          }
+        ],
+        "issued": [
+          {
+            "request": 7,
+            "effect": "net.get"
+          }
+        ]
+      },
+      "state": {
+        "note": "loading"
+      }
+    },
+    {
+      "advance": 4999,
+      "expect": {
+        "ticks": []
+      }
+    },
+    {
+      "advance": 1,
+      "expect": {
+        "ticks": [
+          {
+            "event": "Refresh",
+            "at": 40000,
+            "ran": false
+          }
+        ]
+      }
+    },
+    {
+      "dispose": true
+    },
+    {
+      "advance": 20000,
+      "expect": {
+        "ticks": []
+      }
+    }
+  ]
 }

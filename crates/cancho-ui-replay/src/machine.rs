@@ -111,6 +111,8 @@ pub struct TickRecord {
     pub event: String,
     pub at: f64,
     pub ran: bool,
+    /// The tick that ran when the page became visible again after one fell due while it was hidden.
+    pub catch_up: bool,
 }
 
 /// The most ticks one `advance` may fire: a mutated or careless trace cannot make replay run (and report) forever.
@@ -146,6 +148,8 @@ pub struct Machine<'a> {
     pub disposed: bool,
     ticks: Vec<TickTimer>,
     started: bool,
+    /// Is the page visible? While it is not, no `every` tick runs (docs/schedules.md section 11).
+    pub visible: bool,
 }
 
 impl<'a> Machine<'a> {
@@ -205,6 +209,7 @@ impl<'a> Machine<'a> {
                 })
                 .collect(),
             started: false,
+            visible: true,
         })
     }
 
@@ -300,7 +305,7 @@ impl<'a> Machine<'a> {
                 .min_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
             // A tick due at the same instant as a `sleep` runs first, and ticks due together run in the order the
             // `every` lines are written (docs/schedules.md section 4, rule 6).
-            let tick = if self.disposed {
+            let tick = if self.disposed || !self.visible {
                 None
             } else {
                 self.ticks
@@ -339,6 +344,7 @@ impl<'a> Machine<'a> {
                         event: self.comp.events[handler].name.clone(),
                         at,
                         ran,
+                        catch_up: false,
                     });
                     if ran {
                         self.dispatch(handler, Vec::new(), fx)?;
@@ -348,6 +354,39 @@ impl<'a> Machine<'a> {
             }
         }
         self.clock = target;
+        Ok(Outcome::Ok)
+    }
+
+    /// The page is hidden: no tick runs until it is shown again (docs/schedules.md section 11, rule 8).
+    pub fn hide(&mut self) -> Outcome {
+        self.visible = false;
+        Outcome::Ok
+    }
+
+    /// The page is visible again: each `every` whose tick fell due while it was hidden runs once now, in the order
+    /// written (unless a run of its event is in flight), and its next tick is one period from now; the others keep the
+    /// time they had left (rule 9).
+    pub fn show(&mut self, fx: &mut StepEffects) -> Result<Outcome, Fault> {
+        self.visible = true;
+        if self.disposed {
+            return Ok(Outcome::Ok);
+        }
+        for i in 0..self.ticks.len() {
+            if self.ticks[i].next <= self.clock {
+                let handler = self.ticks[i].handler;
+                let ran = !self.in_flight(handler);
+                self.ticks[i].next = self.clock + self.ticks[i].period;
+                fx.ticks.push(TickRecord {
+                    event: self.comp.events[handler].name.clone(),
+                    at: self.clock,
+                    ran,
+                    catch_up: true,
+                });
+                if ran {
+                    self.dispatch(handler, Vec::new(), fx)?;
+                }
+            }
+        }
         Ok(Outcome::Ok)
     }
 

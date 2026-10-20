@@ -306,6 +306,26 @@ fn run_step(
             ("advance", num_json(*ms), out)
         }
         Action::Dispose => ("dispose", Json::Null, Ok(m.dispose())),
+        Action::Hide => {
+            if !m.visible {
+                return Err(stop(
+                    "trace-bad-step",
+                    "hide",
+                    "the page is already hidden; the browser fires `visibilitychange` only when the state changes".to_string(),
+                ));
+            }
+            ("hide", Json::Null, Ok(m.hide()))
+        }
+        Action::Show => {
+            if m.visible {
+                return Err(stop(
+                    "trace-bad-step",
+                    "show",
+                    "the page is already visible; the browser fires `visibilitychange` only when the state changes".to_string(),
+                ));
+            }
+            ("show", Json::Null, m.show(&mut fx))
+        }
     };
     let outcome = match outcome {
         Ok(o) => o,
@@ -354,6 +374,7 @@ fn run_step(
                 event: t.event.clone(),
                 at: num_json(t.at),
                 ran: t.ran,
+                catch_up: t.catch_up,
             })
             .collect(),
         writes: fx
