@@ -1,0 +1,114 @@
+{
+ "schema": "cancho-ui-trace",
+ "version": "0.1.0",
+ "component": "Plant",
+ "note": "A refresh reads the admin metrics and readiness, then takes them apart with json.get and json.items (docs/adapters.md section 14). The metrics are the shape of cancho-gateway GET /metrics; the second refresh is a gateway that is not ready.",
+ "steps": [
+  {
+   "event": "Refresh",
+   "expect": {
+    "issued": [
+     {
+      "effect": "net.get",
+      "args": [
+       "admin/metrics"
+      ]
+     }
+    ]
+   },
+   "state": {
+    "note": "loading"
+   }
+  },
+  {
+   "resolve": 1,
+   "with": {
+    "Ok": "{\"v\":1,\"uptime_ms\":86400000,\"sessions_active\":3,\"le_ms\":[1,2,5,10,25,50,100,250,500,1000,2500,5000,10000],\"routes\":[{\"name\":\"api\",\"requests\":{\"none\":0,\"1xx\":0,\"2xx\":4021,\"3xx\":0,\"4xx\":12,\"5xx\":2}},{\"name\":\"web\",\"requests\":{\"none\":0,\"1xx\":0,\"2xx\":950,\"3xx\":4,\"4xx\":1,\"5xx\":0}}],\"upstreams\":[{\"name\":\"api\",\"responses\":4035,\"retries\":1,\"failures\":2,\"pool_idle\":3,\"circuit_open\":false},{\"name\":\"web\",\"responses\":955,\"retries\":0,\"failures\":0,\"pool_idle\":4,\"circuit_open\":true}],\"log\":{\"dropped\":0,\"write_failures\":0}}"
+   },
+   "expect": {
+    "issued": [
+     {
+      "effect": "net.get",
+      "args": [
+       "admin/readyz"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "resolve": 2,
+   "with": {
+    "Ok": "{\"ready\":true}"
+   },
+   "state": {
+    "note": "updated",
+    "ready": "true",
+    "uptime": "86400000",
+    "sessions": "3",
+    "nroutes": 2
+   }
+  },
+  {
+   "event": "Refresh"
+  },
+  {
+   "resolve": 3,
+   "with": {
+    "Ok": "{\"v\":1,\"uptime_ms\":86400000,\"sessions_active\":3,\"le_ms\":[1,2,5,10,25,50,100,250,500,1000,2500,5000,10000],\"routes\":[{\"name\":\"api\",\"requests\":{\"none\":0,\"1xx\":0,\"2xx\":4021,\"3xx\":0,\"4xx\":12,\"5xx\":2}},{\"name\":\"web\",\"requests\":{\"none\":0,\"1xx\":0,\"2xx\":950,\"3xx\":4,\"4xx\":1,\"5xx\":0}}],\"upstreams\":[{\"name\":\"api\",\"responses\":4035,\"retries\":1,\"failures\":2,\"pool_idle\":3,\"circuit_open\":false},{\"name\":\"web\",\"responses\":955,\"retries\":0,\"failures\":0,\"pool_idle\":4,\"circuit_open\":true}],\"log\":{\"dropped\":0,\"write_failures\":0}}"
+   },
+   "expect": {
+    "issued": [
+     {
+      "effect": "net.get",
+      "args": [
+       "admin/readyz"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "resolve": 4,
+   "with": {
+    "Err": "HTTP 503"
+   },
+   "state": {
+    "ready": "not ready (HTTP 503)",
+    "nroutes": 2
+   }
+  },
+  {
+   "event": "Refresh"
+  },
+  {
+   "resolve": 5,
+   "with": {
+    "Err": "network error"
+   },
+   "expect": {
+    "issued": [
+     {
+      "effect": "net.get",
+      "args": [
+       "admin/readyz"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "resolve": 6,
+   "with": {
+    "Err": "network error"
+   },
+   "state": {
+    "note": "error: network error",
+    "uptime": "-",
+    "sessions": "-",
+    "nroutes": 0,
+    "ready": "not ready (network error)"
+   }
+  }
+ ]
+}

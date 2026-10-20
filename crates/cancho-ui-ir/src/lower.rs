@@ -79,7 +79,7 @@ pub enum LowerError {
     LambdaUnsupported { span: Span },
 
     #[error(
-        "`{name}` is misused here (expected {detail}); see the builtin call forms: `filter(list, x => cond)`, `map(list, x => body)`, `len(value)`, `storage.get(key, default)`, `storage.set(key, value)`, `net.get(url)`"
+        "`{name}` is misused here (expected {detail}); see the builtin call forms: `filter(list, x => cond)`, `map(list, x => body)`, `len(value)`, `storage.get(key, default)`, `storage.set(key, value)`, `net.get(url)`, `json.get(text, path, default)`, `json.items(text, path)`"
     )]
     BuiltinMisuse {
         name: String,
@@ -322,6 +322,21 @@ fn lower_expr_with_effects(e: &Expr) -> Result<(IrExpr, Vec<IrReachableEffect>),
                 return Err(LowerError::BuiltinMisuse {
                     name: "net.get".to_string(),
                     detail: "exactly one argument: net.get(url)".to_string(),
+                    span: *span,
+                });
+            }
+            if path.len() == 2 && path[0] == "json" && path[1] == "items" && args.len() != 2 {
+                return Err(LowerError::BuiltinMisuse {
+                    name: "json.items".to_string(),
+                    detail: "exactly two arguments: json.items(text, path)".to_string(),
+                    span: *span,
+                });
+            }
+            if path.len() == 2 && path[0] == "json" && path[1] == "get" && args.len() != 3 {
+                // docs/language-design.md decision 13: text, path and default, always.
+                return Err(LowerError::BuiltinMisuse {
+                    name: "json.get".to_string(),
+                    detail: "exactly three arguments: json.get(text, path, default)".to_string(),
                     span: *span,
                 });
             }

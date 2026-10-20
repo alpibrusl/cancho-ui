@@ -132,6 +132,7 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
     }
 
     let component_names: Vec<String> = ir.components.iter().map(|c| c.name.clone()).collect();
+    let adapters_end = out.len();
     for c in &ir.components {
         out.push_str(&emit_component(
             c,
@@ -140,6 +141,13 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
             keep_focus,
         ));
         out.push('\n');
+    }
+
+    // `json.get` is pure, so no capability tells the emitter it is used: look at what was emitted.
+    if out[adapters_end..].contains("__cui_json_get(")
+        || out[adapters_end..].contains("__cui_json_items(")
+    {
+        out.insert_str(adapters_end, JSON_GET_JS);
     }
 
     if let Some(last) = ir.components.last() {
@@ -154,6 +162,70 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
 
     out
 }
+
+/// `json.get(text, path, default)` (docs/language-design.md decision 13): a pure read of one value of a JSON text.
+/// Its model is `cancho_ui_replay::eval::json_get`; `tests/json_get_corpus.json` is checked against both.
+const JSON_GET_JS: &str = "\
+// Builtins: json.get(text, path, default) and json.items(text, path) (docs/language-design.md decision 13). Pure; never throw.
+function __cui_json_depth(t) {
+    var d = 0, m = 0, s = false;
+    for (var i = 0; i < t.length; i++) {
+        var c = t.charCodeAt(i);
+        if (s) { if (c === 92) { i++; } else if (c === 34) { s = false; } }
+        else if (c === 34) { s = true; }
+        else if (c === 91 || c === 123) { d++; if (d > m) { m = d; } }
+        else if (c === 93 || c === 125) { d--; }
+    }
+    return m;
+}
+// The value at `path` of the JSON `text` as {v: value}, or null when there is none.
+function __cui_json_at(text, path) {
+    var lone = /[\\ud800-\\udbff](?![\\udc00-\\udfff])|(?:^|[^\\ud800-\\udbff])[\\udc00-\\udfff]/;
+    try {
+        text = String(text);
+        path = String(path);
+        if (__cui_json_depth(text) > 127) { return null; }
+        var cur = JSON.parse(text, function (k, v) {
+            if (lone.test(k)) { throw 0; }
+            if (typeof v === 'string' && lone.test(v)) { throw 0; }
+            if (typeof v === 'number' && !isFinite(v)) { throw 0; }
+            return v;
+        });
+        if (path !== '') {
+            var parts = path.split('.');
+            for (var i = 0; i < parts.length; i++) {
+                var p = parts[i];
+                if (Array.isArray(cur)) {
+                    if (!/^(0|[1-9][0-9]{0,8})$/.test(p) || Number(p) >= cur.length) { return null; }
+                    cur = cur[Number(p)];
+                } else if (cur !== null && typeof cur === 'object') {
+                    if (!Object.prototype.hasOwnProperty.call(cur, p)) { return null; }
+                    cur = cur[p];
+                } else {
+                    return null;
+                }
+            }
+        }
+        return { v: cur };
+    } catch (e) {
+        return null;
+    }
+}
+function __cui_json_get(text, path, fallback) {
+    var at = __cui_json_at(text, path);
+    if (at === null) { return fallback; }
+    var cur = at.v;
+    if (typeof cur === 'string') { return cur; }
+    if (typeof cur === 'boolean') { return cur ? 'true' : 'false'; }
+    if (typeof cur === 'number' && Number.isInteger(cur) && Math.abs(cur) <= 9007199254740992) { return String(cur); }
+    return fallback;
+}
+function __cui_json_items(text, path) {
+    var at = __cui_json_at(text, path);
+    if (at === null || !Array.isArray(at.v)) { return []; }
+    return at.v.slice(0, 1000).map(function (x) { return JSON.stringify(x); });
+}
+";
 
 /// The `Storage` adapter (docs/adapters.md): a string-to-string store under the key prefix `cui:` in
 /// `localStorage`, with a page-lifetime fallback when `localStorage` is absent or throws (a private window,
@@ -1088,6 +1160,11 @@ fn emit_call_runtime(path: &[String], args: &[IrExpr], params: &[&str]) -> Strin
             path[1],
             rendered_args.join(", ")
         );
+    }
+    if path.len() == 2 && path[0] == "json" && (path[1] == "get" || path[1] == "items") {
+        let rendered_args: Vec<String> =
+            args.iter().map(|a| emit_expr_runtime(a, params)).collect();
+        return format!("__cui_json_{}({})", path[1], rendered_args.join(", "));
     }
     if path.len() == 2 && path[0] == "location" && path[1] == "current" {
         return "__cui_location_current(__cui_location_digits)".to_string();

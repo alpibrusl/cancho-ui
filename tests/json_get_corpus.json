@@ -1,0 +1,549 @@
+[
+ {
+  "why": "a string member",
+  "text": "{\"name\":\"gw-1\"}",
+  "path": "name",
+  "default": "?",
+  "expect": "gw-1"
+ },
+ {
+  "why": "a nested member",
+  "text": "{\"a\":{\"b\":{\"c\":\"deep\"}}}",
+  "path": "a.b.c",
+  "default": "?",
+  "expect": "deep"
+ },
+ {
+  "why": "an array index",
+  "text": "{\"r\":[\"x\",\"y\",\"z\"]}",
+  "path": "r.1",
+  "default": "?",
+  "expect": "y"
+ },
+ {
+  "why": "the first index is 0",
+  "text": "[\"x\"]",
+  "path": "0",
+  "default": "?",
+  "expect": "x"
+ },
+ {
+  "why": "an index past the end",
+  "text": "[\"x\"]",
+  "path": "1",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "an index with a leading zero",
+  "text": "[\"x\",\"y\"]",
+  "path": "01",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "a signed index",
+  "text": "[\"x\",\"y\"]",
+  "path": "-1",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "a ten-digit index",
+  "text": "[\"x\"]",
+  "path": "0000000000",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "a word as an index",
+  "text": "[\"x\"]",
+  "path": "first",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "a digit string is a key of an object",
+  "text": "{\"0\":\"zero\"}",
+  "path": "0",
+  "default": "?",
+  "expect": "zero"
+ },
+ {
+  "why": "arrays in arrays",
+  "text": "[[1,2],[3,4]]",
+  "path": "1.0",
+  "default": "?",
+  "expect": "3"
+ },
+ {
+  "why": "true",
+  "text": "{\"ok\":true}",
+  "path": "ok",
+  "default": "?",
+  "expect": "true"
+ },
+ {
+  "why": "false",
+  "text": "{\"ok\":false}",
+  "path": "ok",
+  "default": "?",
+  "expect": "false"
+ },
+ {
+  "why": "an integer",
+  "text": "{\"n\":1234}",
+  "path": "n",
+  "default": "?",
+  "expect": "1234"
+ },
+ {
+  "why": "a negative integer",
+  "text": "{\"n\":-7}",
+  "path": "n",
+  "default": "?",
+  "expect": "-7"
+ },
+ {
+  "why": "zero",
+  "text": "{\"n\":0}",
+  "path": "n",
+  "default": "?",
+  "expect": "0"
+ },
+ {
+  "why": "minus zero is 0",
+  "text": "{\"n\":-0}",
+  "path": "n",
+  "default": "?",
+  "expect": "0"
+ },
+ {
+  "why": "1.0 is the integer 1",
+  "text": "{\"n\":1.0}",
+  "path": "n",
+  "default": "?",
+  "expect": "1"
+ },
+ {
+  "why": "1e3 is the integer 1000",
+  "text": "{\"n\":1e3}",
+  "path": "n",
+  "default": "?",
+  "expect": "1000"
+ },
+ {
+  "why": "a decimal is not read",
+  "text": "{\"n\":1.5}",
+  "path": "n",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "2^53 is read",
+  "text": "{\"n\":9007199254740992}",
+  "path": "n",
+  "default": "?",
+  "expect": "9007199254740992"
+ },
+ {
+  "why": "2^53+1 rounds to 2^53, as in JS",
+  "text": "{\"n\":9007199254740993}",
+  "path": "n",
+  "default": "?",
+  "expect": "9007199254740992"
+ },
+ {
+  "why": "2^53+2 is past the limit",
+  "text": "{\"n\":9007199254740994}",
+  "path": "n",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "a large number is not read",
+  "text": "{\"n\":1e300}",
+  "path": "n",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "null is the default",
+  "text": "{\"n\":null}",
+  "path": "n",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "an object is the default",
+  "text": "{\"o\":{}}",
+  "path": "o",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "an array is the default",
+  "text": "{\"o\":[1]}",
+  "path": "o",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "a missing member",
+  "text": "{\"a\":1}",
+  "path": "b",
+  "default": "none",
+  "expect": "none"
+ },
+ {
+  "why": "a path through a string",
+  "text": "{\"a\":\"text\"}",
+  "path": "a.b",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "a path through a number",
+  "text": "{\"a\":1}",
+  "path": "a.b",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "the empty path is the root (string)",
+  "text": "\"hello\"",
+  "path": "",
+  "default": "?",
+  "expect": "hello"
+ },
+ {
+  "why": "the empty path is the root (number)",
+  "text": "42",
+  "path": "",
+  "default": "?",
+  "expect": "42"
+ },
+ {
+  "why": "the empty path at an object",
+  "text": "{}",
+  "path": "",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "an empty segment is the key \"\"",
+  "text": "{\"\":{\"\":\"e\"}}",
+  "path": ".",
+  "default": "?",
+  "expect": "e"
+ },
+ {
+  "why": "a trailing dot is an empty key",
+  "text": "{\"a\":{\"x\":1}}",
+  "path": "a.",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "not JSON",
+  "text": "not json",
+  "path": "a",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "empty text",
+  "text": "",
+  "path": "",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "trailing garbage",
+  "text": "{\"a\":\"x\"} x",
+  "path": "a",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "a truncated document",
+  "text": "{\"a\":\"x\"",
+  "path": "a",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "a trailing comma",
+  "text": "{\"a\":\"x\",}",
+  "path": "a",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "single quotes",
+  "text": "{'a':'x'}",
+  "path": "a",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "a leading zero in a number",
+  "text": "{\"a\":01}",
+  "path": "a",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "a byte order mark",
+  "text": "﻿{\"a\":\"x\"}",
+  "path": "a",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "surrounding whitespace",
+  "text": " \n\t{ \"a\" : \"x\" } \r\n",
+  "path": "a",
+  "default": "?",
+  "expect": "x"
+ },
+ {
+  "why": "a duplicate key: the last wins",
+  "text": "{\"a\":\"first\",\"a\":\"last\"}",
+  "path": "a",
+  "default": "?",
+  "expect": "last"
+ },
+ {
+  "why": "a key named __proto__",
+  "text": "{\"__proto__\":\"p\"}",
+  "path": "__proto__",
+  "default": "?",
+  "expect": "p"
+ },
+ {
+  "why": "no __proto__ key",
+  "text": "{\"a\":1}",
+  "path": "__proto__",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "no constructor key",
+  "text": "{\"a\":1}",
+  "path": "constructor",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "an escape in a string",
+  "text": "{\"a\":\"caf\\u00e9 \\n \\\"q\\\"\"}",
+  "path": "a",
+  "default": "?",
+  "expect": "café \n \"q\""
+ },
+ {
+  "why": "a non-ASCII key",
+  "text": "{\"é\":\"accent\"}",
+  "path": "é",
+  "default": "?",
+  "expect": "accent"
+ },
+ {
+  "why": "a surrogate pair",
+  "text": "{\"a\":\"\\ud83d\\ude00\"}",
+  "path": "a",
+  "default": "?",
+  "expect": "😀"
+ },
+ {
+  "why": "a lone high surrogate invalidates the document",
+  "text": "{\"a\":\"ok\",\"b\":\"\\ud800\"}",
+  "path": "a",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "a lone low surrogate invalidates the document",
+  "text": "{\"a\":\"ok\",\"b\":\"\\udc00\"}",
+  "path": "a",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "a lone surrogate in a key",
+  "text": "{\"\\ud800\":1,\"a\":\"ok\"}",
+  "path": "a",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "a number out of range invalidates the document",
+  "text": "{\"a\":\"ok\",\"b\":1e999}",
+  "path": "a",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "a control character in a string",
+  "text": "{\"a\":\"x\ty\"}",
+  "path": "a",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "the default may be empty",
+  "text": "{}",
+  "path": "a",
+  "default": "",
+  "expect": ""
+ },
+ {
+  "why": "the default is returned as given",
+  "text": "{}",
+  "path": "a",
+  "default": "n/a \"x\"",
+  "expect": "n/a \"x\""
+ },
+ {
+  "why": "nesting 127 deep is read",
+  "nest": 127,
+  "expect": "7"
+ },
+ {
+  "why": "nesting 128 deep is the default",
+  "nest": 128,
+  "expect": "?"
+ },
+ {
+  "why": "items: an array of objects, read by name",
+  "items": true,
+  "text": "{\"routes\":[{\"name\":\"api\",\"n\":1},{\"name\":\"web\",\"n\":2}]}",
+  "path": "routes",
+  "then": "name",
+  "expect": [
+   "api",
+   "web"
+  ]
+ },
+ {
+  "why": "items: read a number of each",
+  "items": true,
+  "text": "{\"routes\":[{\"name\":\"api\",\"n\":1},{\"name\":\"web\",\"n\":2}]}",
+  "path": "routes",
+  "then": "n",
+  "expect": [
+   "1",
+   "2"
+  ]
+ },
+ {
+  "why": "items: an array of scalars",
+  "items": true,
+  "text": "[\"a\",\"b\",3,true,null,1.5]",
+  "path": "",
+  "then": "",
+  "expect": [
+   "a",
+   "b",
+   "3",
+   "true",
+   "?",
+   "?"
+  ]
+ },
+ {
+  "why": "items: nested array by path",
+  "items": true,
+  "text": "{\"a\":{\"b\":[[1],[2,3]]}}",
+  "path": "a.b",
+  "then": "0",
+  "expect": [
+   "1",
+   "2"
+  ]
+ },
+ {
+  "why": "items: an empty array",
+  "items": true,
+  "text": "{\"r\":[]}",
+  "path": "r",
+  "then": "x",
+  "expect": []
+ },
+ {
+  "why": "items: an object is not an array",
+  "items": true,
+  "text": "{\"r\":{\"a\":1}}",
+  "path": "r",
+  "then": "a",
+  "expect": []
+ },
+ {
+  "why": "items: a string is not an array",
+  "items": true,
+  "text": "{\"r\":\"abc\"}",
+  "path": "r",
+  "then": "",
+  "expect": []
+ },
+ {
+  "why": "items: a missing path",
+  "items": true,
+  "text": "{\"r\":[1]}",
+  "path": "q",
+  "then": "",
+  "expect": []
+ },
+ {
+  "why": "items: not JSON",
+  "items": true,
+  "text": "[1,2",
+  "path": "",
+  "then": "",
+  "expect": []
+ },
+ {
+  "why": "items: duplicate keys keep the last",
+  "items": true,
+  "text": "{\"r\":[{\"a\":\"x\",\"a\":\"y\"}]}",
+  "path": "r",
+  "then": "a",
+  "expect": [
+   "y"
+  ]
+ },
+ {
+  "why": "items: an element with a surrogate pair",
+  "items": true,
+  "text": "{\"r\":[\"\\ud83d\\ude00\"]}",
+  "path": "r",
+  "then": "",
+  "expect": [
+   "😀"
+  ]
+ },
+ {
+  "why": "items: a lone surrogate invalidates the document",
+  "items": true,
+  "text": "{\"r\":[\"ok\"],\"s\":\"\\ud800\"}",
+  "path": "r",
+  "then": "",
+  "expect": []
+ },
+ {
+  "why": "items: the first 1000 only",
+  "items_n": 1500,
+  "expect_len": 1000
+ },
+ {
+  "why": "items: exactly 1000",
+  "items_n": 1000,
+  "expect_len": 1000
+ },
+ {
+  "why": "items: 3 elements",
+  "items_n": 3,
+  "expect_len": 3
+ }
+]

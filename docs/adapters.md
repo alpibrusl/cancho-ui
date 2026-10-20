@@ -400,6 +400,66 @@ program*, not between this program and the page.
 
 ---
 
+## 14. `json.get` and `json.items`, and an operator console for the plant-floor stack
+
+Written 2026-10-20, after `alpibrusl/cancho-industrial` made the question concrete: its gateway answers `GET /metrics`
+as JSON, and a page that can fetch (section 9) could only show the document whole.
+
+### 14.1 The decision
+
+Two pure builtins (`docs/language-design.md` decision 13). They need no capability: the program already holds the text.
+
+* `json.get(text, path, default)`: the String at `path` of the JSON `text`, or `default`. A path is dot-separated: an
+  object key, or, in an array, a decimal index (`0`, `12`; no sign, no leading zero, at most 9 digits); the empty path is
+  the root. A String is returned as it is, a Boolean as `true` or `false`, a Number only when it is an integer of
+  magnitude 2^53 or less, as decimal digits (`1.0` and `1e3` are `1` and `1000`; `1.5` is the default). `null`, an object,
+  an array, a missing member and a path through a scalar are the default.
+* `json.items(text, path)`: a `List[String]` of the elements of the array at `path`, at most 1000, each the compact JSON text
+  of the element. They are **opaque**: for `json.get` and `json.items` only (the key order of an element is the runtime's:
+  insertion order in the browser, sorted in replay).
+
+Both are total. A text that is not JSON, that is nested past 127 levels, that has a number out of range or a lone
+surrogate escape (the whole document is refused, as `serde_json` refuses it) is the default or the empty list.
+
+What they do not do, on purpose: decimals, a key that holds a dot, wildcards, filters, building JSON. The first is the
+most missed; it needs a decision on how a number prints that both runtimes agree on.
+
+### 14.2 Checked on both runtimes
+
+`tests/json_get_corpus.json` has 75 cases (every shape above, duplicate keys, `__proto__`, escapes, surrogates, the depth
+limit, lists of 3, 1000 and 1500). `cargo test` runs it through the replay model (`cancho_ui_replay::json_get` and
+`json_items`, over `serde_json`); `scripts/check-json-get.js` runs the same file through the emitted JavaScript, plus five
+hostile texts that must not throw. Both agree on all 75. *(Found by the corpus: the depth limit is 127, not the 128 the
+first version of the JavaScript used; `serde_json` fails the 128th level.)*
+
+### 14.3 The console
+
+`examples/plant/plant.cui` reads `admin/metrics` and `admin/readyz` with `net.get` and shows readiness, uptime, sessions,
+each route's 2xx and 5xx counts and each upstream's circuit. Its trace (`plant.trace.json`, 9 steps, 17 checks) replays the
+gateway's `GET /metrics` shape, a gateway that answers `503`, and a transport error. `scripts/check-plant.js` runs the built
+page in Chromium against a server that plays the gateway: the values appear, a `503` shows "not ready (HTTP 503)", and a
+document that is not JSON gives the defaults.
+
+### 14.4 What this showed about the stack (for `alpibrusl/cancho-industrial`)
+
+* **The admin listener is another origin.** The gateway's admin port is a different port, so the browser will not let a
+  page served from the proxy's port read it, and it sends no CORS headers. The console works from a path of its own origin:
+  the deployment forwards `admin/…` to the admin listener (a route whose upstream is the gateway's own admin port), or serves
+  the page from the admin origin. Neither was run against the real gateway here; the check uses a stand-in.
+* **A non-2xx response comes back with no body** (section 9: `Err("HTTP 503")`). `GET /readyz` explains *why* it is not
+  ready only in the body of that `503`, so the console can say "not ready" and not why. The adapter would have to carry the
+  body of an error status to change that.
+* **The page asks for `Network` only.** Nothing else is declared, so the console's authority report is the one line
+  `Network` (`cancho-ui inspect effects examples/plant/plant.cui Plant`: one reachable effect, `net.get`).
+
+### 14.5 Not done
+
+Polling (the language has no timer or start event: the page refreshes on a button), decimals, the real gateway in the loop,
+a `Text` that mixes a literal and a call with a string argument (`"{json.get(t, "a", "-")}"` still ends the string at the
+inner quote; the concatenation form is the way round it), sorting or filtering the routes.
+
+---
+
 ## 12. Where the adapters stand
 
 | Capability | Calls | Bound | Real in the browser |

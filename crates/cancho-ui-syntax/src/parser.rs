@@ -1177,7 +1177,13 @@ impl Parser {
         // becomes the text. Tier 6 supports both because
         // `Text { match result { ... } }` needs the expression
         // form to render a `Result` value conditionally.
-        if matches!(self.peek().token, Token::StringLit(_)) {
+        // A string literal followed by `+` is the start of a concatenation, an expression like any other
+        // (`Text { "ready: " + ready }`); on its own it is the interpolated text.
+        let concatenation = matches!(
+            self.tokens.get(self.pos + 1).map(|t| &t.token),
+            Some(Token::Plus)
+        );
+        if matches!(self.peek().token, Token::StringLit(_)) && !concatenation {
             let tok = self.bump();
             let value = match tok.token {
                 Token::StringLit(s) => s,

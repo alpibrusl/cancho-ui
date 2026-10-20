@@ -88,6 +88,71 @@ fn storage_key(ns: &str, key: &str) -> String {
     }
 }
 
+/// The value at `path` of the JSON `text` (docs/language-design.md decision 13), or None when the text is not JSON,
+/// is nested more than 127 deep, holds a number out of range, or the path does not lead to a value. A path is
+/// dot-separated: an object key, or, in an array, a decimal index (no leading zero, at most 9 digits); the empty
+/// path is the root.
+fn json_at(text: &str, path: &str) -> Option<serde_json::Value> {
+    use serde_json::Value as J;
+    let root = serde_json::from_str::<J>(text).ok()?;
+    let mut cur = &root;
+    if !path.is_empty() {
+        for part in path.split('.') {
+            cur = match cur {
+                J::Array(items) => items.get(array_index(part)?)?,
+                J::Object(map) => map.get(part)?,
+                _ => return None,
+            };
+        }
+    }
+    Some(cur.clone())
+}
+
+/// `json.get(text, path, default)`, the model of the emitted `__cui_json_get`. A pure function: the String at `path`
+/// of the JSON `text`, or `default` when there is no such value or it is not a String, a Boolean or an
+/// integer-valued Number of magnitude 2^53 or less (rendered as decimal digits).
+pub fn json_get(text: &str, path: &str, default: &str) -> String {
+    use serde_json::Value as J;
+    match json_at(text, path) {
+        Some(J::String(s)) => s,
+        Some(J::Bool(b)) => b.to_string(),
+        Some(J::Number(n)) => match n.as_f64() {
+            Some(f) if f.is_finite() && f.fract() == 0.0 && f.abs() <= 9_007_199_254_740_992.0 => {
+                format!("{}", f as i64)
+            }
+            _ => default.to_string(),
+        },
+        _ => default.to_string(),
+    }
+}
+
+/// The most elements `json.items` answers.
+pub const JSON_ITEMS_MAX: usize = 1000;
+
+/// `json.items(text, path)`, the model of the emitted `__cui_json_items`: the elements of the array at `path`, each
+/// as the compact JSON text of the element (opaque: it is for `json.get` and `json.items`), at most `JSON_ITEMS_MAX`
+/// of them; an empty list when there is no such array.
+pub fn json_items(text: &str, path: &str) -> Vec<String> {
+    match json_at(text, path) {
+        Some(serde_json::Value::Array(items)) => items
+            .iter()
+            .take(JSON_ITEMS_MAX)
+            .map(|v| v.to_string())
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// `0` or a decimal without a leading zero, at most 9 digits.
+fn array_index(part: &str) -> Option<usize> {
+    let b = part.as_bytes();
+    let ok = !b.is_empty()
+        && b.len() <= 9
+        && b.iter().all(u8::is_ascii_digit)
+        && (b[0] != b'0' || b.len() == 1);
+    if ok { part.parse().ok() } else { None }
+}
+
 pub struct Ctx<'a> {
     pub state: &'a BTreeMap<String, Value>,
     pub clock: f64,
@@ -346,6 +411,42 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
             ctx.journal.record(Value::Bool(true));
             Ok(Value::Bool(true))
         }
+        ("json.items", 2) => {
+            let text = eval(ctx, &args[0])?;
+            let path = eval(ctx, &args[1])?;
+            match (&text, &path) {
+                (Value::Str(t), Value::Str(p)) => Ok(Value::List(
+                    json_items(t, p).into_iter().map(Value::Str).collect(),
+                )),
+                _ => Err(fault(
+                    "replay-type-error",
+                    format!(
+                        "`json.items` needs two Strings (text, path), got {} and {}",
+                        describe(&text),
+                        describe(&path)
+                    ),
+                    span,
+                )),
+            }
+        }
+        ("json.get", 3) => {
+            let text = eval(ctx, &args[0])?;
+            let path = eval(ctx, &args[1])?;
+            let fallback = eval(ctx, &args[2])?;
+            match (&text, &path, &fallback) {
+                (Value::Str(t), Value::Str(p), Value::Str(d)) => Ok(Value::Str(json_get(t, p, d))),
+                _ => Err(fault(
+                    "replay-type-error",
+                    format!(
+                        "`json.get` needs three Strings (text, path, default), got {}, {} and {}",
+                        describe(&text),
+                        describe(&path),
+                        describe(&fallback)
+                    ),
+                    span,
+                )),
+            }
+        }
         ("location.current", 0) => Ok(Value::Request(Req {
             effect: Effect::LocationCurrent,
             args: Vec::new(),
@@ -384,7 +485,7 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
         },
         (
             "clock.now" | "net.search" | "net.get" | "location.current" | "sleep" | "storage.get"
-            | "storage.set",
+            | "storage.set" | "json.get" | "json.items",
             n,
         ) => Err(fault(
             "replay-type-error",
@@ -396,7 +497,7 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
         _ => Err(fault(
             "replay-unsupported",
             format!(
-                "call to `{name}`: replay models `clock.now`, `net.search`, `net.get`, `location.current`, `sleep`, `storage.get` and `storage.set` only"
+                "call to `{name}`: replay models `clock.now`, `net.search`, `net.get`, `location.current`, `sleep`, `storage.get`, `storage.set`, `json.get` and `json.items` only"
             ),
             span,
         )),
