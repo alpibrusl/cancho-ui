@@ -187,7 +187,7 @@ cannot be observed**: with the origin check in front, every request is same-orig
 *(Aborting a superseded or disposed request: built 2026-10-20, section 16.)*
 
 `Network("host")` narrowing and cross-origin fetches (and with them CORS handling and any credentials), methods
-other than GET, request bodies and headers, streaming, a retry policy, and the service worker caching API replies. Chromium
+other than GET (a POST exists since section 17, with its own capability), request bodies and headers for a read, streaming, a retry policy, and the service worker caching API replies. Chromium
 only; iOS Safari is not tested.
 
 ---
@@ -508,7 +508,7 @@ the cost of the shape, and why `net.get` stays: most pages should not have to ch
 
 ### 15.4 Not done
 
-The response headers, a method other than GET, a body, and a status that is a redirect (still `blocked: redirect`). The
+The response headers, a method other than GET (`net.post`: section 17), a body for a read, and a status that is a redirect (still `blocked: redirect`). The
 envelope is built in the browser; replay's trace has to write it by hand, and a trace that writes it wrongly tests
 nothing about the adapter (the Chromium check does).
 
@@ -541,8 +541,82 @@ adapter answers the aborted fetch `Err("aborted")`, which nobody reads (the toke
 
 ### 16.4 Not done
 
-An abort the server may not notice (a proxy that keeps the upstream), and the same for `net.post` when it exists: an
-aborted write may or may not have been applied, which is why section 17 will not retry one.
+An abort the server may not notice (a proxy that keeps the upstream). A write (`net.post`, section 17) is deliberately not
+aborted: a write cut off half way may or may not have been applied.
+
+---
+
+## 17. `net.post(url, body)`: a write, with its own capability
+
+### 17.1 The decision
+
+```
+requires NetworkWrite;
+await(net.post(url: String, body: String))  ->  Ok(envelope: String) | Err(reason: String) | Cancelled
+```
+
+* **Its own capability.** A write is a stronger authority than a read: a component that may read the server's
+  state must not, by that, be able to change it. `Network` stays read-only (`net.get`, `net.fetch`, `net.search`);
+  `net.post` needs `NetworkWrite`, and a program that declares only `Network` is `capability-missing`, one that
+  declares `NetworkWrite` and never writes is `capability-unused`. `cancho-ui diff` shows the capability added, so
+  the review of "this release can now change things" is a line, not an inference.
+* **This page's origin only, with no bound.** `NetworkWrite("host")` is `capability-narrowing-illegal`, and a
+  literal URL naming a host is `capability-bound-violated`; at run time any other origin is
+  `Err("blocked: a write reaches only this site's own origin")` before a request is made. A cross-origin write is an
+  exfiltration channel and a CSRF target; if a deployment needs one, it is a design of its own, not a widening of
+  this call.
+* **The answer is `net.fetch`'s envelope**: `Ok` of the JSON text `{"status":N,"body":"..."}` for any HTTP status,
+  because for a write the status is the answer (`201` made it, `409` already exists, `422` refused). `Err` is left
+  for what produced no HTTP answer: `blocked: ...`, `network error`, `timeout`, `too large`. `json.get(reply,
+  "status", "0")` takes it apart.
+* **The body is a String sent as `application/json`** with `credentials: "same-origin"` (this origin's cookies);
+  no other header, no method but POST. The program builds the JSON text; a body that is not JSON is the server's
+  to refuse (a `4xx` is an answer). Redirects are refused (`blocked: redirect`), a reply over 1 MiB is `too large`,
+  and a reply later than 10 s is `timeout`.
+* **A write is not aborted when it is superseded or disposed.** Section 16 aborts a read that nobody will look at.
+  For a write the same abort would leave the server in a state the page cannot know (applied, or not); letting it
+  finish leaves it known and the answer is still dropped (superseded) or `Cancelled` (disposed), exactly as for a
+  read. The cost is that a superseded write still happens; the program that must not issue two should not offer the
+  button twice (a state flag), and the server should make the write idempotent.
+* **Never retried.** There is no retry policy for any request, and for a write there never will be one in the adapter:
+  a retry of a write that may have applied is the program's decision, made with the server's help.
+* The cancellation group is `net_post`, shared with no other call: a newer `net.post` supersedes the answer of the
+  previous one only.
+
+### 17.2 What it touches
+
+* **Lowering:** `net.post` has exactly two arguments (`builtin-shape-mismatch` otherwise) and performs `NetworkWrite`.
+  The literal-URL host check applies with an empty allow-list.
+* **Emit:** `__cui_net_post(url, body)` is emitted only into a program that uses it (a read-only program carries no
+  `method: "POST"`), and is a separate function from `__cui_net_request` on purpose: the guards of a read and of a write
+  are not one piece of code that a change to one can loosen in the other.
+* **Replay:** an effect `net.post` with its own group, scripted by a trace like `net.fetch`; the step report shows
+  `issued #n net.post("/api/notes", "hello")`. A URL or a body that is not a String is `replay-type-error`.
+
+### 17.3 Checked
+
+* `cargo test` (`crates/cancho-ui/tests/net_post.rs`, 6 tests): the adapter is emitted only for a program that writes and
+  carries no abort wiring; `capability-missing` for none and for `Network`, `capability-unused`; arity 0, 1 and 3;
+  a bound, and three literals on other hosts; a trace with a `201` and a `409` where the newer write's answer wins;
+  a non-String body.
+* `scripts/check-post.js` (Chromium, real servers, outside the gate): the POST arrives as a POST with the body, the JSON
+  content type and this origin's cookie; `201`, `409` and `503` are answers; another origin is blocked **and that server
+  receives 0 requests**; a redirect is refused and not followed; a 2 MiB reply is `too large`; two writes in a row both
+  reach the server (neither is cut off) and the newer answer is shown; with the server stopped the answer is
+  `network error`.
+
+**The checks can fail.** Five deliberate breaks of the adapter, each run against the browser script: the origin check
+removed (killed by 2 checks, including the request count of the other server), redirects followed (2), the size bound
+removed (1), `credentials: "omit"` (1, the cookie) and the method changed (1). Unlike `net.get` (9.3) the credentials
+setting is observable here, because the check looks at the cookie the server received.
+
+### 17.4 Not done
+
+Cross-origin writes, other methods (`PUT`, `DELETE`, `PATCH`), headers (a CSRF token, an `Authorization`), a body that
+is not text, a timeout the program chooses, an idempotency key, and a way to say "this write must not be superseded"
+(today: a state flag). A server that relies on cookies alone for authority is open to a cross-site form post whatever
+this adapter does; the `Content-Type: application/json` is not a defence, only a convention a server can check. iOS
+Safari is not tested.
 
 ---
 
@@ -553,6 +627,7 @@ aborted write may or may not have been applied, which is why section 17 will not
 | `Clock` | `clock.now()`, `sleep(ms)` | none | `Date.now`, `setTimeout` |
 | `Storage` | `storage.get(k, d)`, `storage.set(k, v)` | `Storage("ns")` keeps keys under `cui:ns:` | `localStorage`, with a page-lifetime fallback |
 | `Network` | `net.get(url)`, `net.fetch(url)` (keeps an error status); `net.search(q)` is the simulated demo | `Network("host", ..)` adds hosts | `fetch`, same-origin plus the allow-list |
+| `NetworkWrite` | `net.post(url, body)` (the envelope of `net.fetch`) | none: this origin only | `fetch` POST, same-origin, not aborted |
 | `Location` | `location.current()` | `Location("coarse" \| "fine")` | Geolocation, rounded in the adapter |
 
 Not built anywhere: wildcard or per-path `Network` bounds, `watchPosition`, a typed position,

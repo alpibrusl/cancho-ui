@@ -477,6 +477,25 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                 span,
             )),
         },
+        ("net.post", 2) => {
+            let url = eval(ctx, &args[0])?;
+            let body = eval(ctx, &args[1])?;
+            match (&url, &body) {
+                (Value::Str(_), Value::Str(_)) => Ok(Value::Request(Req {
+                    effect: Effect::NetPost,
+                    args: vec![url, body],
+                })),
+                _ => Err(fault(
+                    "replay-type-error",
+                    format!(
+                        "`net.post` needs a String URL and a String body, got {} and {}",
+                        describe(&url),
+                        describe(&body)
+                    ),
+                    span,
+                )),
+            }
+        }
         ("net.search", 1) => {
             let q = eval(ctx, &args[0])?;
             Ok(Value::Request(Req {
@@ -499,8 +518,8 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
             )),
         },
         (
-            "clock.now" | "net.search" | "net.get" | "net.fetch" | "location.current" | "sleep"
-            | "storage.get" | "storage.set" | "json.get" | "json.items",
+            "clock.now" | "net.search" | "net.get" | "net.fetch" | "net.post" | "location.current"
+            | "sleep" | "storage.get" | "storage.set" | "json.get" | "json.items",
             n,
         ) => Err(fault(
             "replay-type-error",
@@ -512,7 +531,7 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
         _ => Err(fault(
             "replay-unsupported",
             format!(
-                "call to `{name}`: replay models `clock.now`, `net.search`, `net.get`, `net.fetch`, `location.current`, `sleep`, `storage.get`, `storage.set`, `json.get` and `json.items` only"
+                "call to `{name}`: replay models `clock.now`, `net.search`, `net.get`, `net.fetch`, `net.post`, `location.current`, `sleep`, `storage.get`, `storage.set`, `json.get` and `json.items` only"
             ),
             span,
         )),

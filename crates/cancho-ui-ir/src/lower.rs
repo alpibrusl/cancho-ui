@@ -116,7 +116,7 @@ pub enum LowerError {
     LambdaUnsupported { span: Span },
 
     #[error(
-        "`{name}` is misused here (expected {detail}); see the builtin call forms: `filter(list, x => cond)`, `map(list, x => body)`, `len(value)`, `storage.get(key, default)`, `storage.set(key, value)`, `net.get(url)`, `net.fetch(url)`, `json.get(text, path, default)`, `json.items(text, path)`"
+        "`{name}` is misused here (expected {detail}); see the builtin call forms: `filter(list, x => cond)`, `map(list, x => body)`, `len(value)`, `storage.get(key, default)`, `storage.set(key, value)`, `net.get(url)`, `net.fetch(url)`, `net.post(url, body)`, `json.get(text, path, default)`, `json.items(text, path)`"
     )]
     BuiltinMisuse {
         name: String,
@@ -451,6 +451,14 @@ fn lower_expr_with_effects(e: &Expr) -> Result<(IrExpr, Vec<IrReachableEffect>),
                     span: *span,
                 });
             }
+            if path.len() == 2 && path[0] == "net" && path[1] == "post" && args.len() != 2 {
+                // docs/adapters.md section 17: the URL and the body.
+                return Err(LowerError::BuiltinMisuse {
+                    name: "net.post".to_string(),
+                    detail: "exactly two arguments: net.post(url, body)".to_string(),
+                    span: *span,
+                });
+            }
             if path.len() == 2 && path[0] == "net" && path[1] == "get" && args.len() != 1 {
                 // docs/adapters.md section 9: one argument, the URL.
                 return Err(LowerError::BuiltinMisuse {
@@ -752,6 +760,9 @@ fn builtin_capability(path: &[String]) -> Option<&'static str> {
         // effect. `await(net.search(q))` resolves to Ok | Err |
         // Cancelled with an Ok payload of `List[String]`.
         Some("Network")
+    } else if path.len() == 2 && path[0] == "net" && path[1] == "post" {
+        // docs/adapters.md section 17: a write is a stronger authority than a read, so it is its own capability.
+        Some("NetworkWrite")
     } else if path.len() == 2 && path[0] == "location" && path[1] == "current" {
         // docs/adapters.md section 11: `await(location.current())` resolves to Ok("lat,lon") | Err | Cancelled.
         Some("Location")
@@ -1092,10 +1103,12 @@ fn check_capabilities(ir: &IrFile) -> Result<(), LowerError> {
                     span: eff.span,
                 });
             }
-            if (eff.path == ["net", "get"] || eff.path == ["net", "fetch"])
+            // `net.post` reaches this page's own origin only (section 17): no host is ever allowed for it.
+            let is_post = eff.path == ["net", "post"];
+            if (eff.path == ["net", "get"] || eff.path == ["net", "fetch"] || is_post)
                 && let Some(url) = &eff.literal_arg
                 && let Some(host) = literal_host(url)
-                && !allowed.contains(&host)
+                && (is_post || !allowed.contains(&host))
             {
                 return Err(LowerError::BoundViolated {
                     component: c.name.clone(),

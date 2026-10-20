@@ -1342,6 +1342,7 @@ fn capability_to_example_call(capability: &str) -> &'static str {
     match capability {
         "Clock" => "clock.now()",
         "Network" => "net.search(query)",
+        "NetworkWrite" => "net.post(url, body)",
         _ => "an effect requiring this capability",
     }
 }

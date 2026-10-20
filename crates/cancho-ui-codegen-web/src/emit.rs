@@ -50,6 +50,7 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
     let mut any_sleep = false;
     let mut any_network = false;
     let mut any_net_get = false;
+    let mut any_net_post = false;
     let mut any_location = false;
     let mut any_storage = false;
     let mut any_cancel = false;
@@ -64,6 +65,9 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
                 any_net_get = true;
             } else if e.capability == "Network" {
                 any_network = true;
+            }
+            if e.capability == "NetworkWrite" {
+                any_net_post = true;
             }
             if e.capability == "Storage" {
                 any_storage = true;
@@ -106,6 +110,10 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
     }
     if any_net_get {
         out.push_str(NET_GET_ADAPTER_JS);
+        out.push('\n');
+    }
+    if any_net_post {
+        out.push_str(NET_POST_ADAPTER_JS);
         out.push('\n');
     }
     if any_location {
@@ -408,6 +416,52 @@ function __cui_net_request(url, hosts, envelope) {
             });
         }).catch(function (e) {
             return err(e && e.name === \"AbortError\" ? (stopped ? \"aborted\" : \"timeout\") : \"network error\");
+        }).then(function (result) {
+            if (timer !== null) { clearTimeout(timer); }
+            resolve(result);
+        });
+    });
+}
+";
+
+/// The `net.post` adapter (docs/adapters.md section 17): a same-origin POST of a JSON text, answered like `net.fetch`.
+const NET_POST_ADAPTER_JS: &str = "\
+// Platform adapter: NetworkWrite capability, `net.post(url, body)` (docs/adapters.md section 17).
+// A POST to this page's own origin and no other, with `body` as the request body (Content-Type: application/json) and
+// the cookies of this origin. Answered like `net.fetch`: Ok with {\"status\":N,\"body\":\"...\"} for any HTTP status, Err for
+// what produced no answer. A redirect is refused, a reply over 1 MiB is `too large`, a reply later than 10 s is `timeout`.
+// It is not aborted when superseded or disposed: a write cut off half way is in an unknown state (section 17.3).
+function __cui_net_post(url, body) {
+    var err = function (reason) { return {__cui_tag: \"Err\", reason: reason}; };
+    return new Promise(function (resolve) {
+        var target;
+        try {
+            target = new URL(String(url), window.location.href);
+        } catch (e) {
+            resolve(err(\"blocked: not a URL\"));
+            return;
+        }
+        if (target.protocol !== \"http:\" && target.protocol !== \"https:\") {
+            resolve(err(\"blocked: not an http(s) URL\"));
+            return;
+        }
+        if (target.origin !== window.location.origin) {
+            resolve(err(\"blocked: a write reaches only this site's own origin\"));
+            return;
+        }
+        var timer = null;
+        var controller = typeof AbortController === \"function\" ? new AbortController() : null;
+        if (controller) { timer = setTimeout(function () { controller.abort(); }, 10000); }
+        var init = { method: \"POST\", credentials: \"same-origin\", redirect: \"manual\", headers: { \"Content-Type\": \"application/json\" }, body: String(body) };
+        if (controller) { init.signal = controller.signal; }
+        fetch(target.href, init).then(function (response) {
+            if (response.type === \"opaqueredirect\") { return err(\"blocked: redirect\"); }
+            return response.text().then(function (text) {
+                if (text.length > 1048576) { return err(\"too large\"); }
+                return {__cui_tag: \"Ok\", value: JSON.stringify({status: response.status, body: text})};
+            });
+        }).catch(function (e) {
+            return err(e && e.name === \"AbortError\" ? \"timeout\" : \"network error\");
         }).then(function (result) {
             if (timer !== null) { clearTimeout(timer); }
             resolve(result);
@@ -1279,6 +1333,11 @@ fn emit_call_runtime(path: &[String], args: &[IrExpr], params: &[&str]) -> Strin
             path[1],
             rendered_args.join(", ")
         );
+    }
+    if path.len() == 2 && path[0] == "net" && path[1] == "post" {
+        let rendered_args: Vec<String> =
+            args.iter().map(|a| emit_expr_runtime(a, params)).collect();
+        return format!("__cui_net_post({})", rendered_args.join(", "));
     }
     if path.len() == 2 && path[0] == "net" && path[1] == "search" {
         // Tier 9: `net.search(q)` resolves to
