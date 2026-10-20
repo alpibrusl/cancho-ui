@@ -8,7 +8,7 @@
 //! component_decl := "component" identifier "{" component_member { component_member } "}"
 //! component_member := state_decl | requires_decl | on_clause | view_clause
 //! state_decl := "state" identifier ":" type "=" expr ";"
-//! requires_decl := "requires" identifier ";"
+//! requires_decl := "requires" identifier [ "(" string_literal { "," string_literal } ")" ] ";"
 //! on_clause := "on" identifier [ "(" [ identifier { "," identifier } ] ")" ] "{" stmt_block "}"
 //! type := "Int" | "Float" | "Bool" | "String"
 //! stmt_block := { stmt }
@@ -426,9 +426,34 @@ impl Parser {
                 });
             }
         };
+        let mut bounds = Vec::new();
+        if self.peek().token == Token::LParen {
+            self.bump();
+            loop {
+                let tok = self.bump();
+                match tok.token {
+                    Token::StringLit(s) => bounds.push(s),
+                    other => {
+                        return Err(ParseError::Unexpected {
+                            expected: "a string literal bound (a capability bound is written in the source, not computed)",
+                            found: other,
+                            line: tok.span.start.line,
+                            column: tok.span.start.column,
+                        });
+                    }
+                }
+                if self.peek().token == Token::Comma {
+                    self.bump();
+                } else {
+                    break;
+                }
+            }
+            self.expect(Token::RParen)?;
+        }
         let end_tok = self.expect(Token::Semi)?;
         Ok(CapabilityRef {
             name,
+            bounds,
             span: Span::new(kw.span.start, end_tok.span.end),
         })
     }

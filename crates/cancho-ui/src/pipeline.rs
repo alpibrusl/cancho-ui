@@ -575,6 +575,60 @@ fn check_to_diag(e: &cancho_ui_types::CheckError, file: &Path) -> Diagnostic {
                 notes: Vec::new(),
             }
         }
+        cancho_ui_types::CheckError::NarrowingIllegal {
+            component,
+            capability,
+            reason,
+            span,
+        } => Diagnostic {
+            code: "capability-narrowing-illegal".into(),
+            severity: Severity::Error,
+            tier: Tier::Static,
+            subject: Subject::Capability {
+                name: capability.clone(),
+            },
+            message: format!(
+                "component `{component}`: `requires {capability}(..)` is not a legal bound: {reason}"
+            ),
+            span: Some(SpanOut::from_span(*span, file)),
+            expected: None,
+            actual: None,
+            remediation: Some(Remediation {
+                description: "Write a bound only on `Network`, as `requires Network(\"name\");` or `requires Network(\"name:port\");`.".to_string(),
+                suggestion: None,
+                confidence: Confidence::Medium,
+            }),
+            related: Vec::new(),
+            notes: Vec::new(),
+        },
+        cancho_ui_types::CheckError::BoundViolated {
+            component,
+            host,
+            url,
+            span,
+        } => Diagnostic {
+            code: "capability-bound-violated".into(),
+            severity: Severity::Error,
+            tier: Tier::Static,
+            subject: Subject::Capability {
+                name: "Network".to_string(),
+            },
+            message: format!(
+                "component `{component}` fetches `{url}`, whose host `{host}` its `Network` does not allow"
+            ),
+            span: Some(SpanOut::from_span(*span, file)),
+            expected: None,
+            actual: None,
+            remediation: Some(Remediation {
+                description: format!(
+                    "If this component should reach `{host}`, declare `requires Network(\"{host}\");` (that widens its authority: review it); otherwise fetch a path on this site."
+                ),
+                suggestion: None,
+                confidence: Confidence::Medium,
+            }),
+            related: Vec::new(),
+            notes: Vec::new(),
+        },
         cancho_ui_types::CheckError::CapabilityUnused {
             component,
             capability,
@@ -1083,6 +1137,52 @@ fn lower_to_diag(e: &LowerError, file: &Path) -> Diagnostic {
                 description: format!("Add `requires {};` to the component header.", capability),
                 suggestion: None,
                 confidence: Confidence::High,
+            }),
+        ),
+        LowerError::NarrowingIllegal {
+            component,
+            capability,
+            reason,
+            span,
+        } => (
+            "capability-narrowing-illegal",
+            Severity::Error,
+            Tier::Static,
+            Subject::Capability {
+                name: capability.clone(),
+            },
+            format!(
+                "component `{component}`: `requires {capability}(..)` is not a legal bound: {reason}"
+            ),
+            Some(*span),
+            Some(Remediation {
+                description: "Write a bound only on `Network`, as `requires Network(\"name\");` or `requires Network(\"name:port\");`.".to_string(),
+                suggestion: None,
+                confidence: Confidence::Medium,
+            }),
+        ),
+        LowerError::BoundViolated {
+            component,
+            host,
+            url,
+            span,
+        } => (
+            "capability-bound-violated",
+            Severity::Error,
+            Tier::Static,
+            Subject::Capability {
+                name: "Network".to_string(),
+            },
+            format!(
+                "component `{component}` fetches `{url}`, whose host `{host}` its `Network` does not allow"
+            ),
+            Some(*span),
+            Some(Remediation {
+                description: format!(
+                    "If this component should reach `{host}`, declare `requires Network(\"{host}\");` (that widens its authority: review it); otherwise fetch a path on this site."
+                ),
+                suggestion: None,
+                confidence: Confidence::Medium,
             }),
         ),
         LowerError::CapabilityUnused {

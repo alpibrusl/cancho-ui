@@ -278,10 +278,10 @@ function __cui_net_search(q) {
 /// The `net.get` adapter (docs/adapters.md section 9): a same-origin GET with a size bound and a deadline.
 const NET_GET_ADAPTER_JS: &str = "\
 // Platform adapter: Network capability, `net.get(url)` (docs/adapters.md section 9).
-// A GET of this page's own origin and nothing else: a URL on another origin is answered with Err before any
-// request is made, a redirect is refused (it could leave the origin), a body over 1 MiB or a reply later than
-// 10 s is an Err, and every failure is a value, never a throw.
-function __cui_net_get(url) {
+// A GET of this page's own origin, or of a host the component's `requires Network(\"host\")` names: any other
+// URL is answered with Err before a request is made, a redirect is refused (it could leave the allowed set), a
+// body over 1 MiB or a reply later than 10 s is an Err, and every failure is a value, never a throw.
+function __cui_net_get(url, hosts) {
     var err = function (reason) { return {__cui_tag: \"Err\", reason: reason}; };
     return new Promise(function (resolve) {
         var target;
@@ -291,8 +291,12 @@ function __cui_net_get(url) {
             resolve(err(\"blocked: not a URL\"));
             return;
         }
-        if (target.origin !== window.location.origin) {
-            resolve(err(\"blocked: only this site's own origin may be fetched\"));
+        if (target.protocol !== \"http:\" && target.protocol !== \"https:\") {
+            resolve(err(\"blocked: not an http(s) URL\"));
+            return;
+        }
+        if (target.origin !== window.location.origin && hosts.indexOf(target.host.toLowerCase()) === -1) {
+            resolve(err(\"blocked: \" + target.host + \" is neither this site nor an allowed host\"));
             return;
         }
         var timer = null;
@@ -529,6 +533,21 @@ fn emit_component(
     // awaiting the same effect never cancel each other's requests.
     if has_awaits {
         out.push_str("        const __cui_inflight = { };\n");
+    }
+    // docs/adapters.md 10: the hosts other than this page's own that `net.get` may reach, from the bounds of
+    // `requires Network(..)`, lower-cased. Per instance, so two components keep their own allow-lists.
+    if c.requires.iter().any(|r| r.name == "Network") {
+        let hosts: Vec<String> = c
+            .requires
+            .iter()
+            .filter(|r| r.name == "Network")
+            .flat_map(|r| r.bounds.iter())
+            .map(|b| format!("\"{}\"", b.to_ascii_lowercase()))
+            .collect();
+        out.push_str(&format!(
+            "        const __cui_net_hosts = [{}];\n",
+            hosts.join(", ")
+        ));
     }
 
     for e in &c.events {
@@ -1012,7 +1031,10 @@ fn emit_call_runtime(path: &[String], args: &[IrExpr], params: &[&str]) -> Strin
     if path.len() == 2 && path[0] == "net" && path[1] == "get" {
         let rendered_args: Vec<String> =
             args.iter().map(|a| emit_expr_runtime(a, params)).collect();
-        return format!("__cui_net_get({})", rendered_args.join(", "));
+        return format!(
+            "__cui_net_get({}, __cui_net_hosts)",
+            rendered_args.join(", ")
+        );
     }
     if path.len() == 2 && path[0] == "net" && path[1] == "search" {
         // Tier 9: `net.search(q)` resolves to

@@ -45,6 +45,24 @@ pub enum LowerError {
         span: Span,
     },
 
+    #[error("component `{component}`: `requires {capability}(..)` is not a legal bound: {reason}")]
+    NarrowingIllegal {
+        component: String,
+        capability: String,
+        reason: String,
+        span: Span,
+    },
+
+    #[error(
+        "component `{component}` fetches `{url}`, whose host `{host}` its `Network` does not allow; add `requires Network(\"{host}\");`"
+    )]
+    BoundViolated {
+        component: String,
+        host: String,
+        url: String,
+        span: Span,
+    },
+
     #[error(
         "`match` on `{field}` in component `{component}` is not exhaustive; missing arm(s): {missing:?}"
     )]
@@ -177,6 +195,7 @@ fn lower_type(t: &Type) -> IrType {
 fn lower_capability(c: &CapabilityRef) -> IrCapabilityRef {
     IrCapabilityRef {
         name: c.name.clone(),
+        bounds: c.bounds.clone(),
         span: c.span,
     }
 }
@@ -405,6 +424,10 @@ fn lower_expr_with_effects(e: &Expr) -> Result<(IrExpr, Vec<IrReachableEffect>),
                 effects.push(IrReachableEffect {
                     capability: capability.to_string(),
                     path: path.clone(),
+                    literal_arg: match args.first() {
+                        Some(Expr::StringLit { value, .. }) => Some(value.clone()),
+                        _ => None,
+                    },
                     span: *span,
                 });
             }
@@ -778,15 +801,107 @@ fn lower_unop(op: UnOp) -> IrUnOp {
 /// Walk the lowered IR's `reachable_effects` against the
 /// component's `requires`. Refuses on `CapabilityMissing` and
 /// `CapabilityUnused`.
+/// `name` or `name:port`: letters, digits, `-` and `.` (no scheme, path, wildcard or empty label), lower-cased by
+/// the caller. The form `URL.host` takes in a browser (docs/adapters.md 10.1).
+fn host_is_legal(host: &str) -> bool {
+    let (name, port) = match host.split_once(':') {
+        Some((n, p)) => (n, Some(p)),
+        None => (host, None),
+    };
+    let name_ok = !name.is_empty()
+        && !name.starts_with(['.', '-'])
+        && !name.ends_with(['.', '-'])
+        && !name.contains("..")
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '.');
+    let port_ok = port.is_none_or(|p| {
+        !p.is_empty() && p.len() <= 5 && p.chars().all(|c| c.is_ascii_digit()) && p != "0"
+    });
+    name_ok && port_ok
+}
+
+/// The host (with a non-default port) a string literal URL names, or `None` for a relative one. Only `http://`,
+/// `https://` and `//` literals are read; anything else is the runtime guard's.
+fn literal_host(url: &str) -> Option<String> {
+    let lower = url.to_ascii_lowercase();
+    let (rest, default_port) = if let Some(r) = lower.strip_prefix("https://") {
+        (r, ":443")
+    } else if let Some(r) = lower.strip_prefix("http://") {
+        (r, ":80")
+    } else {
+        (lower.strip_prefix("//")?, "")
+    };
+    let authority = rest.split(['/', '?', '#']).next().unwrap_or("");
+    let host = authority.rsplit('@').next().unwrap_or("");
+    let host = if !default_port.is_empty() {
+        host.strip_suffix(default_port).unwrap_or(host)
+    } else {
+        host
+    };
+    Some(host.to_string())
+}
+
+fn check_bounds_legal(c: &IrComponent) -> Result<(), LowerError> {
+    for req in &c.requires {
+        if req.bounds.is_empty() {
+            continue;
+        }
+        if req.name != "Network" {
+            return Err(LowerError::NarrowingIllegal {
+                component: c.name.clone(),
+                capability: req.name.clone(),
+                reason: format!(
+                    "`{}` takes no bound yet; only `Network(\"host\")` does",
+                    req.name
+                ),
+                span: req.span,
+            });
+        }
+        for b in &req.bounds {
+            if !host_is_legal(&b.to_ascii_lowercase()) {
+                return Err(LowerError::NarrowingIllegal {
+                    component: c.name.clone(),
+                    capability: req.name.clone(),
+                    reason: format!(
+                        "`{b}` is not a host; write `name` or `name:port` (letters, digits, `-` and `.`; no scheme, path or wildcard)"
+                    ),
+                    span: req.span,
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
 fn check_capabilities(ir: &IrFile) -> Result<(), LowerError> {
     for c in &ir.components {
+        check_bounds_legal(c)?;
         let declared: BTreeSet<String> = c.requires.iter().map(|r| r.name.clone()).collect();
+        let allowed: BTreeSet<String> = c
+            .requires
+            .iter()
+            .filter(|r| r.name == "Network")
+            .flat_map(|r| r.bounds.iter().map(|b| b.to_ascii_lowercase()))
+            .collect();
         for eff in &c.reachable_effects {
             if !declared.contains(&eff.capability) {
                 return Err(LowerError::CapabilityMissing {
                     component: c.name.clone(),
                     capability: eff.capability.clone(),
                     call_path: eff.path.join("."),
+                    span: eff.span,
+                });
+            }
+            if eff.path == ["net", "get"]
+                && let Some(url) = &eff.literal_arg
+                && let Some(host) = literal_host(url)
+                && !allowed.contains(&host)
+            {
+                return Err(LowerError::BoundViolated {
+                    component: c.name.clone(),
+                    host,
+                    url: url.clone(),
                     span: eff.span,
                 });
             }

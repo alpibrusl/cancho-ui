@@ -188,3 +188,90 @@ cannot be observed**: with the origin check in front, every request is same-orig
 other than GET, request bodies and headers, streaming, aborting the underlying request when it is superseded
 (the answer is dropped; the request completes), a retry policy, and the service worker caching API replies. Chromium
 only; iOS Safari is not tested.
+
+---
+
+## 10. Narrowing: `requires Network("host")`
+
+> **Status: designed, then built (written before the code; measured in 10.3 to 10.6).** Answers
+> [`security-model.md`](security-model.md) section 2.3, for `Network` only.
+
+### 10.1 The decision
+
+```
+requires Network;                          // this page's own origin (section 9)
+requires Network("api.example.com");       // and that host
+requires Network("a.example", "b.example:8443");
+```
+
+* **A bound adds hosts; it never replaces the page's origin.** `security-model.md` section 2.3 says a narrowed
+  capability *restricts* ("`Network("api.example.com")`: restrict outbound requests to one host"). In this
+  backend the bare `Network` is already the narrowest useful thing (the page's own origin), so a bound cannot
+  restrict further without making a component unable to reach the server that served it, which no deployment
+  wants. A bound is therefore the **allow-list of other hosts** a component may fetch. The honest cost is that
+  the bound is a widening of the bare form, not a narrowing of it, and the semantic diff reports it as one (10.5).
+* **A host is `name` or `name:port`**: letters, digits, `-` and `.`; compared lower-cased and exactly (no
+  wildcards, no subdomains, no paths, no scheme). Both `http` and `https` are accepted for an allowed host (the
+  browser refuses an insecure request from a secure page on its own, and `localhost` development needs `http`).
+* **Only `Network` takes a bound for now.** `Clock("x")`, `Storage("ns")` and an unknown capability with a bound
+  are `capability-narrowing-illegal`, with the reason (`Storage("ns")` is designed in section 2.3 of the security
+  model and not built). So is a host that is not `name[:port]`.
+* **Two tiers.** Static: a `net.get` whose URL is a *string literal* naming a host that is neither allowed nor
+  the page's own is `capability-bound-violated` at compile time (a relative literal is always fine); the
+  remediation names the `requires` line to add. Runtime: the adapter checks the host of the resolved URL for
+  every call, literal or not, and answers `Err("blocked: ...")` before any request is made. A computed URL is
+  therefore never unchecked, only checked later.
+* **Cross-origin means CORS.** The server has to allow the page's origin. A refused CORS preflight or response
+  is `Err("network error")`, which the page cannot tell from being offline: the browser withholds the reason
+  from scripts. Credentials are never sent to another origin (`credentials: "same-origin"`).
+
+### 10.2 What it touches
+
+Parser (`requires Name("..", ..)`), AST and IR (`bounds` on a capability reference, left out of the IR JSON when
+empty so existing IR is byte-identical), the two refusals, the web adapter (`__cui_net_get(url, hosts)`, with the
+component's `hosts` as a constant of its instance), the semantic diff and `inspect` (the bound is part of the
+declared authority), replay (the bound is not modelled: the trace scripts the answer; the static check still
+runs on the source).
+
+### 10.3 What was built
+
+`requires Network("a.example", "b.example:8443");` parses (a bound must be a string literal: anything else is
+`parse-unexpected-token`, "a capability bound is written in the source, not computed"). The bounds are on
+`IrCapabilityRef` and in the IR JSON only when present. `capability-narrowing-illegal` and
+`capability-bound-violated` are in `spec/diagnostics/README.md`. The adapter is `__cui_net_get(url, hosts)`; each
+component instance declares `const __cui_net_hosts = [...]` (lower-cased) and a program without a bound gets `[]`.
+The adapter also refuses a URL that is not `http:` or `https:` (a `blob:` URL of this origin, for one, is not a
+fetch the program should make). The semantic diff lists a declaration with its bounds, so adding a host shows
+as `Network` removed and `Network("a.example")` added: a widening, visibly.
+
+### 10.4 Checked
+
+In the gate (`crates/cancho-ui/tests/narrowing.rs`, 6 tests): the accepted literals (relative, an allowed host,
+an uppercase host, a default port, a port, userinfo before an allowed host); seven literals that are
+`capability-bound-violated` (no bound, another host, protocol-relative, a different port, a suffix of the allowed
+host, the allowed host as userinfo of another, an empty host) and that the remediation names the line to add;
+ten bounds that are `capability-narrowing-illegal` (on `Clock` and `Storage`, a URL, a path, a wildcard, empty, a
+space, a bare colon, a bad port, a leading dot); a computed bound is a parse error; the emitted hosts; the IR has
+no `bounds` key for a bare capability; the diff.
+
+In the browser (`scripts/check-network.js`, section B): the same program built with the second server's host in
+its bound fetches that server (which sees exactly one request); a third server is blocked and sees none; the
+scheme and host compare case-insensitively; this site still works.
+
+**The checks can fail.** Nine deliberate breaks: eight of the compiler (the literal check inverted, host legality
+always true, default ports not stripped, userinfo not stripped, a bound allowed on any capability,
+protocol-relative URLs not read, bounds not lower-cased, the diff ignoring a bound) all killed by the gate, and the
+runtime host check removed, killed by 4 browser checks. The userinfo break survived the first version of the
+tests, because the case I had written is a violation either way; the accepted case `https://user@api.example.com/`
+was added and kills it.
+
+### 10.5 Not done, and the limits
+
+* `Storage("ns")` and `Location` bounds (the plumbing exists; the meaning does not), wildcards and subdomains, a
+  bound per path, and CORS diagnostics (the browser withholds the reason: a refused request is `network error`).
+* A **computed** URL on a disallowed host is caught at run time only (`Err("blocked: ...")`), never at compile
+  time; a literal is caught at both.
+* The bound widens, it does not narrow (10.1). Anyone reading `cancho-ui diff` for authority has the new
+  `Network("host")` line in front of them; there is no "this program can reach nothing" form below the bare
+  `Network`, because the bare `Network` already cannot leave the origin.
+

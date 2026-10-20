@@ -140,8 +140,11 @@ impl Serialize for IrType {
 impl Serialize for IrCapabilityRef {
     fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
-        let mut s = ser.serialize_struct("IrCapabilityRef", 2)?;
+        let mut s = ser.serialize_struct("IrCapabilityRef", 3)?;
         s.serialize_field("name", &self.name)?;
+        if !self.bounds.is_empty() {
+            s.serialize_field("bounds", &self.bounds)?;
+        }
         s.serialize_field("span", &IrSpan::from(self.span))?;
         s.end()
     }

@@ -155,6 +155,24 @@ pub enum CheckError {
         span: Span,
     },
 
+    #[error("component `{component}`: `requires {capability}(..)` is not a legal bound: {reason}")]
+    NarrowingIllegal {
+        component: String,
+        capability: String,
+        reason: String,
+        span: Span,
+    },
+
+    #[error(
+        "component `{component}` fetches `{url}`, whose host `{host}` its `Network` does not allow; add `requires Network(\"{host}\");`"
+    )]
+    BoundViolated {
+        component: String,
+        host: String,
+        url: String,
+        span: Span,
+    },
+
     #[error(
         "`match` on `{field}` in component `{component}` is not exhaustive; missing arm(s): {missing:?}"
     )]
@@ -228,6 +246,28 @@ pub fn check_file_with_externals(
         }) => Err(CheckError::CapabilityUnused {
             component,
             capability,
+            span,
+        }),
+        Err(cancho_ui_ir::lower::LowerError::NarrowingIllegal {
+            component,
+            capability,
+            reason,
+            span,
+        }) => Err(CheckError::NarrowingIllegal {
+            component,
+            capability,
+            reason,
+            span,
+        }),
+        Err(cancho_ui_ir::lower::LowerError::BoundViolated {
+            component,
+            host,
+            url,
+            span,
+        }) => Err(CheckError::BoundViolated {
+            component,
+            host,
+            url,
             span,
         }),
         Err(cancho_ui_ir::lower::LowerError::MatchNonExhaustive {

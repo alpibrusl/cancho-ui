@@ -59,8 +59,11 @@ fn check_codes(src: &str, name: &str) -> Vec<String> {
 #[test]
 fn only_the_adapter_a_program_uses_is_emitted() {
     let js = build_js(FETCH, "fetch.cui");
-    assert!(js.contains("function __cui_net_get(url)"));
-    assert!(js.contains("__cui_net_get(__state_url)"), "{js}");
+    assert!(js.contains("function __cui_net_get(url, hosts)"));
+    assert!(
+        js.contains("__cui_net_get(__state_url, __cui_net_hosts)"),
+        "{js}"
+    );
     assert!(
         !js.contains("__CUI_CORPUS") && !js.contains("__cui_net_search"),
         "a program that only fetches carries no simulated search"
@@ -82,7 +85,7 @@ fn only_the_adapter_a_program_uses_is_emitted() {
 fn the_adapter_keeps_its_four_guards() {
     let js = build_js(FETCH, "fetch-guards.cui");
     for needle in [
-        "target.origin !== window.location.origin",
+        "target.origin !== window.location.origin && hosts.indexOf(target.host.toLowerCase()) === -1",
         "redirect: \"manual\"",
         "text.length > 1048576",
         "setTimeout(function () { controller.abort(); }, 10000)",
