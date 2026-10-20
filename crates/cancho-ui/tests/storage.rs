@@ -65,18 +65,19 @@ fn check_codes(src: &str, name: &str) -> Vec<String> {
 #[test]
 fn the_adapter_is_emitted_for_a_program_that_requires_storage_and_for_no_other() {
     let js = build_js(NOTES, "notes.cui");
-    assert!(js.contains("function __cui_storage_get(key, fallback)"));
-    assert!(js.contains("function __cui_storage_set(key, value)"));
+    assert!(js.contains("function __cui_storage_get(key, fallback, ns)"));
+    assert!(js.contains("function __cui_storage_set(key, value, ns)"));
     assert_eq!(
-        js.matches("'cui:' + String(key)").count(),
+        js.matches("'cui:' + (ns ? ns + ':' : '') + String(key)")
+            .count(),
         2,
         "get and set both prefix the key"
     );
     assert!(
-        js.contains("__cui_storage_set(\"note\", __state_draft)"),
+        js.contains("__cui_storage_set(\"note\", __state_draft, __cui_storage_ns)"),
         "{js}"
     );
-    assert!(js.contains("__cui_storage_get(\"note\", \"nothing yet\")"));
+    assert!(js.contains("__cui_storage_get(\"note\", \"nothing yet\", __cui_storage_ns)"));
     let counter = std::fs::read_to_string(
         Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/counter/counter.cui"),
     )
@@ -224,4 +225,85 @@ fn the_semantic_diff_reports_storage_as_a_new_capability() {
         added.iter().any(|c| c["capability"] == "Storage"),
         "{report}"
     );
+}
+
+/// The notes example with its declaration replaced.
+fn notes_with(requires: &str) -> String {
+    let src = NOTES.replace("requires Storage;", requires);
+    assert_ne!(src, NOTES, "the declaration was replaced");
+    src
+}
+
+#[test]
+fn a_namespace_prefixes_every_key_and_each_component_keeps_its_own() {
+    let bare = build_js(NOTES, "bare.cui");
+    assert!(bare.contains("const __cui_storage_ns = \"\";"), "{bare}");
+    let ns = build_js(&notes_with("requires Storage(\"notes\");"), "ns.cui");
+    assert!(ns.contains("const __cui_storage_ns = \"notes\";"), "{ns}");
+    assert!(
+        ns.contains("__cui_storage_get(\"note\", \"nothing yet\", __cui_storage_ns)"),
+        "{ns}"
+    );
+    assert!(
+        ns.contains("'cui:' + (ns ? ns + ':' : '') + String(key)"),
+        "{ns}"
+    );
+    let two = format!(
+        "{}\n{}",
+        notes_with("requires Storage(\"a\");"),
+        notes_with("requires Storage(\"b\");").replace("component Notes", "component Other")
+    );
+    let js = build_js(&two, "two.cui");
+    assert_eq!(
+        js.matches("const __cui_storage_ns = \"a\";").count(),
+        1,
+        "{js}"
+    );
+    assert_eq!(
+        js.matches("const __cui_storage_ns = \"b\";").count(),
+        1,
+        "{js}"
+    );
+}
+
+#[test]
+fn a_namespace_that_could_spell_another_key_is_narrowing_illegal() {
+    for requires in [
+        "requires Storage(\"\");",
+        "requires Storage(\"a:b\");",
+        "requires Storage(\"Notes\");",
+        "requires Storage(\"-a\");",
+        "requires Storage(\"a b\");",
+        "requires Storage(\"a\", \"b\");",
+        "requires Storage(\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\");",
+    ] {
+        assert_eq!(
+            check_codes(&notes_with(requires), "ns-bad.cui"),
+            ["capability-narrowing-illegal"],
+            "{requires}"
+        );
+    }
+}
+
+#[test]
+fn a_namespaced_trace_reads_and_writes_namespaced_keys() {
+    let src = scratch("ns-replay.cui", &notes_with("requires Storage(\"notes\");"));
+    let trace = scratch(
+        "ns-replay.trace.json",
+        r#"{"schema":"cancho-ui-trace","version":"0.1.0","component":"Notes","steps":[
+            {"event":"Change","params":["buy milk"],"state":{"draft":"buy milk"}},
+            {"event":"Save","expect":{"storage":{"notes:note":"buy milk"}}},
+            {"event":"Change","params":["x"],"state":{"draft":"x"}},
+            {"event":"Restore","state":{"draft":"buy milk"}}]}"#,
+    );
+    let (code, stdout, stderr) = run(&["test", p(&src), p(&trace)]);
+    assert_eq!(code, 0, "{stdout}{stderr}");
+    // The same trace seeded under the bare key finds nothing: the namespace is part of the key.
+    let seeded = scratch(
+        "ns-seeded.trace.json",
+        r#"{"schema":"cancho-ui-trace","version":"0.1.0","component":"Notes","storage":{"note":"not mine"},"steps":[
+            {"event":"Restore","state":{"draft":""}}]}"#,
+    );
+    let (code, stdout, stderr) = run(&["test", p(&src), p(&seeded)]);
+    assert_eq!(code, 0, "{stdout}{stderr}");
 }

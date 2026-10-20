@@ -160,19 +160,20 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
 /// blocked site data, a full quota). `set` answers whether the value is persisted.
 const STORAGE_ADAPTER_JS: &str = "\
 // Platform adapter: Storage capability (docs/adapters.md).
-// Keys live under the prefix `cui:` in localStorage; a program cannot read or write any other key. When
-// localStorage is unavailable the store lasts as long as the page, and `storage.set` answers false.
+// Keys live under the prefix `cui:` in localStorage, or `cui:<ns>:` for a component that declares
+// `requires Storage(\"ns\")`; a program cannot read or write any other key. When localStorage is
+// unavailable the store lasts as long as the page, and `storage.set` answers false.
 var __cui_storage_memory = {};
-function __cui_storage_get(key, fallback) {
-    var k = 'cui:' + String(key);
+function __cui_storage_get(key, fallback, ns) {
+    var k = 'cui:' + (ns ? ns + ':' : '') + String(key);
     try {
         var v = window.localStorage.getItem(k);
         if (v !== null) { return v; }
     } catch (e) { /* unavailable: fall through to memory */ }
     return Object.prototype.hasOwnProperty.call(__cui_storage_memory, k) ? __cui_storage_memory[k] : fallback;
 }
-function __cui_storage_set(key, value) {
-    var k = 'cui:' + String(key);
+function __cui_storage_set(key, value, ns) {
+    var k = 'cui:' + (ns ? ns + ':' : '') + String(key);
     try {
         window.localStorage.setItem(k, String(value));
         delete __cui_storage_memory[k];
@@ -569,6 +570,18 @@ fn emit_component(
     }
     // docs/adapters.md 10: the hosts other than this page's own that `net.get` may reach, from the bounds of
     // `requires Network(..)`, lower-cased. Per instance, so two components keep their own allow-lists.
+    if c.requires.iter().any(|r| r.name == "Storage") {
+        // docs/adapters.md 12: `requires Storage("ns")` keeps this component's keys under `cui:ns:`;
+        // without a bound the keys are under `cui:` as before.
+        let ns = c
+            .requires
+            .iter()
+            .filter(|r| r.name == "Storage")
+            .find_map(|r| r.bounds.first())
+            .map(String::as_str)
+            .unwrap_or("");
+        out.push_str(&format!("        const __cui_storage_ns = \"{ns}\";\n"));
+    }
     if c.requires.iter().any(|r| r.name == "Location") {
         let fine = c
             .requires
@@ -1070,7 +1083,11 @@ fn emit_call_runtime(path: &[String], args: &[IrExpr], params: &[&str]) -> Strin
         // docs/adapters.md: synchronous; `get(key, default)` answers a String, `set(key, value)` a Bool.
         let rendered_args: Vec<String> =
             args.iter().map(|a| emit_expr_runtime(a, params)).collect();
-        return format!("__cui_storage_{}({})", path[1], rendered_args.join(", "));
+        return format!(
+            "__cui_storage_{}({}, __cui_storage_ns)",
+            path[1],
+            rendered_args.join(", ")
+        );
     }
     if path.len() == 2 && path[0] == "location" && path[1] == "current" {
         return "__cui_location_current(__cui_location_digits)".to_string();

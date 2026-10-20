@@ -103,6 +103,16 @@ pub struct StepEffects {
     pub handler_span: Option<Span>,
 }
 
+/// The namespace of the component's `requires Storage("ns")`, or "" when it declares none.
+fn storage_ns(comp: &IrComponent) -> &str {
+    comp.requires
+        .iter()
+        .filter(|r| r.name == "Storage")
+        .find_map(|r| r.bounds.first())
+        .map(String::as_str)
+        .unwrap_or("")
+}
+
 pub struct Machine<'a> {
     comp: &'a IrComponent,
     pub state: BTreeMap<String, Value>,
@@ -126,6 +136,7 @@ impl<'a> Machine<'a> {
                     state: &state,
                     clock,
                     storage: &mut no_storage,
+                    storage_ns: "",
                     journal: &mut journal,
                     locals: Vec::new(),
                     init: true,
@@ -299,6 +310,7 @@ impl<'a> Machine<'a> {
                     state: &self.state,
                     clock: self.clock,
                     storage: &mut self.storage,
+                    storage_ns: storage_ns(comp),
                     journal: &mut task.journal,
                     locals: task.params.clone(),
                     init: false,

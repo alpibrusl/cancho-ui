@@ -2,7 +2,7 @@
 
 > **Status: designed, and two adapters built: `Storage` (sections 1 to 8) and `Network` as `net.get`
 > (section 9).** Written before the code ([`CONTRIBUTING.md`](../CONTRIBUTING.md) section 1); where building
-> disagreed with it, the correction is made in place and listed in section 8. `Location` is **not built**.
+> disagreed with it, the correction is made in place and listed in section 8. *(Corrected: `Location` (section 11) and the `Storage("ns")` narrowing (section 13) are built since.)*
 > This answers the first item of [`mobile-backend.md`](mobile-backend.md) section 6 ("real adapters").
 
 ## 1. What exists, and what this adds
@@ -42,7 +42,7 @@ storage.set(key: String, value: String)   -> Bool      // true when the value is
 
 The adapter is emitted only for a program that has a reachable `Storage` use, about 1 KB:
 
-* **Keys are prefixed `cui:`.** `storage.get("note", ...)` reads `localStorage["cui:note"]`. The program can
+* **Keys are prefixed `cui:`** *(and `cui:ns:` for a component that declares `Storage("ns")`, section 13)*. `storage.get("note", ...)` reads `localStorage["cui:note"]`. The program can
   neither read nor overwrite a key that something else on the origin wrote, and nothing it writes collides with
   one. This is the first form of `Storage("namespace")` narrowing of `security-model.md` section 2.3, fixed
   rather than chosen by the program; the declared narrowing (`requires Storage("user-prefs")`) is still Phase 2.
@@ -213,9 +213,9 @@ requires Network("a.example", "b.example:8443");
 * **A host is `name` or `name:port`**: letters, digits, `-` and `.`; compared lower-cased and exactly (no
   wildcards, no subdomains, no paths, no scheme). Both `http` and `https` are accepted for an allowed host (the
   browser refuses an insecure request from a secure page on its own, and `localhost` development needs `http`).
-* **Only `Network` takes a bound for now.** `Clock("x")`, `Storage("ns")` and an unknown capability with a bound
-  are `capability-narrowing-illegal`, with the reason (`Storage("ns")` is designed in section 2.3 of the security
-  model and not built). So is a host that is not `name[:port]`.
+* **Only `Network` took a bound here** *(corrected: `Location` and `Storage` take one now, sections 11 and 13)*. `Clock("x")` and an unknown capability with a bound
+  are `capability-narrowing-illegal`, with the reason (`Storage("ns")` was designed in section 2.3 of the security
+  model and is built in section 13). So is a host that is not `name[:port]`.
 * **Two tiers.** Static: a `net.get` whose URL is a *string literal* naming a host that is neither allowed nor
   the page's own is `capability-bound-violated` at compile time (a relative literal is always fine); the
   remediation names the `requires` line to add. Runtime: the adapter checks the host of the resolved URL for
@@ -267,7 +267,7 @@ was added and kills it.
 
 ### 10.5 Not done, and the limits
 
-* `Storage("ns")` and `Location` bounds (the plumbing exists; the meaning does not), wildcards and subdomains, a
+* *(`Storage("ns")` and `Location` bounds: built, sections 11 and 13.)* Wildcards and subdomains, a
   bound per path, and CORS diagnostics (the browser withholds the reason: a refused request is `network error`).
 * A **computed** URL on a disallowed host is caught at run time only (`Err("blocked: ...")`), never at compile
   time; a literal is caught at both.
@@ -356,15 +356,58 @@ language question the adapters raise, not an adapter one.
 
 ---
 
+## 13. Narrowing: `requires Storage("ns")`
+
+### 13.1 The decision
+
+`Storage` had one fixed prefix, `cui:`, so every component on an origin could read every other component's keys,
+and a component that only needs its own preferences held the whole store. `requires Storage("notes")` narrows it:
+
+* the component's keys live under `cui:notes:` (`storage.get("note", ..)` reads `localStorage["cui:notes:note"]`),
+  and it cannot spell a key outside that prefix, because the adapter appends the key to a fixed prefix;
+* a bare `requires Storage;` is unchanged, holds the whole `cui:` store and is therefore the wider grant (it can
+  read `notes:note` by asking for the key `notes:note`). That is the narrowing rule working as everywhere: a bound
+  makes the declaration smaller, and the semantic diff shows `Storage` becoming `Storage(notes)`;
+* a namespace is exactly one string: 1 to 32 lower-case letters, digits and `-`, starting with a letter or a digit.
+  No `:` (so one namespace cannot spell another's prefix), no upper case (so two spellings are never two
+  namespaces on a case-insensitive reading), nothing that needs escaping. Anything else, an empty string or a
+  second bound is `capability-narrowing-illegal` with the reason.
+
+### 13.2 What it touches
+
+* **Emit:** each component carries `const __cui_storage_ns = "notes";` (or `""`) beside its other per-instance
+  constants, and the two adapter functions take it as a last argument, so two components in one program keep their
+  own namespaces.
+* **Replay:** the trace's `storage` keys are the full `ns:key` for a namespaced component (the adapter's `cui:` is
+  still left off). A trace that seeds the bare `note` for a component in namespace `notes` finds nothing.
+
+### 13.3 Checked
+
+* `cargo test`: the namespace and the two-component case in the emitted JavaScript; seven illegal bounds
+  (empty, `a:b`, upper case, leading `-`, a space, two bounds, 33 characters); a namespaced trace that writes
+  `notes:note` and one seeded under the bare key; the existing narrowing test now uses `a:b` as its illegal
+  `Storage` bound (it used `prefs`, which is legal now).
+* `scripts/check-storage.js` in Chromium (outside the gate): with a bare program's `cui:note` already in
+  `localStorage`, the namespaced program does not see it, Save writes `cui:notes:note` and leaves `cui:note` alone,
+  and a reload shows the note.
+
+### 13.4 Not done
+
+Nothing stops a bare `requires Storage;` component from reading a namespaced one's keys: the bare form is the whole
+store by definition. A program that wants isolation gives every component a namespace. Keys are not encrypted, and
+another script on the same origin can read all of them; the namespace is a boundary between *components of this
+program*, not between this program and the page.
+
+---
+
 ## 12. Where the adapters stand
 
 | Capability | Calls | Bound | Real in the browser |
 |---|---|---|---|
 | `Clock` | `clock.now()`, `sleep(ms)` | none | `Date.now`, `setTimeout` |
-| `Storage` | `storage.get(k, d)`, `storage.set(k, v)` | none (prefix `cui:` fixed) | `localStorage`, with a page-lifetime fallback |
+| `Storage` | `storage.get(k, d)`, `storage.set(k, v)` | `Storage("ns")` keeps keys under `cui:ns:` | `localStorage`, with a page-lifetime fallback |
 | `Network` | `net.get(url)`; `net.search(q)` is the simulated demo | `Network("host", ..)` adds hosts | `fetch`, same-origin plus the allow-list |
 | `Location` | `location.current()` | `Location("coarse" \| "fine")` | Geolocation, rounded in the adapter |
 
-Not built anywhere: `Storage("ns")`, wildcard or per-path `Network` bounds, `watchPosition`, a typed position,
+Not built anywhere: wildcard or per-path `Network` bounds, `watchPosition`, a typed position,
 IndexedDB, and any of it on iOS Safari (nothing here was run there).
-
