@@ -515,6 +515,26 @@ fn check_to_diag(e: &cancho_ui_types::CheckError, file: &Path) -> Diagnostic {
                 notes: Vec::new(),
             }
         }
+        cancho_ui_types::CheckError::Schedule {
+            code,
+            component,
+            message,
+            span,
+        } => Diagnostic {
+            code: (*code).into(),
+            severity: Severity::Error,
+            tier: Tier::Static,
+            subject: Subject::Component {
+                name: component.clone(),
+            },
+            message: message.clone(),
+            span: Some(SpanOut::from_span(*span, file)),
+            expected: None,
+            actual: None,
+            remediation: Some(schedule_remediation(code)),
+            related: Vec::new(),
+            notes: Vec::new(),
+        },
         cancho_ui_types::CheckError::PureLambdaRequired { span } => {
             let (code, severity, tier, subject, message, span) = (
                 "pure-lambda-required",
@@ -1255,6 +1275,23 @@ fn lower_to_diag(e: &LowerError, file: &Path) -> Diagnostic {
             Some(*span),
             None,
         ),
+        e @ (LowerError::ScheduleEventUnknown { .. }
+        | LowerError::ScheduleEventParams { .. }
+        | LowerError::SchedulePeriodInvalid { .. }
+        | LowerError::ScheduleDuplicate { .. }) => {
+            let (code, component, span) = e.schedule_refusal().expect("a schedule refusal");
+            (
+                code,
+                Severity::Error,
+                Tier::Static,
+                Subject::Component {
+                    name: component.to_string(),
+                },
+                e.to_string(),
+                Some(span),
+                Some(schedule_remediation(code)),
+            )
+        }
         LowerError::PureLambdaRequired { span } => (
             "pure-lambda-required",
             Severity::Error,
@@ -1277,6 +1314,27 @@ fn lower_to_diag(e: &LowerError, file: &Path) -> Diagnostic {
         remediation,
         related: Vec::new(),
         notes: Vec::new(),
+    }
+}
+
+/// What to do about a refused schedule (docs/schedules.md section 3).
+fn schedule_remediation(code: &str) -> Remediation {
+    let description = match code {
+        "schedule-event-unknown" => {
+            "Name an event the component handles with `on Name { ... }`, or add the handler."
+        }
+        "schedule-event-params" => {
+            "Schedule an event that takes no parameters; a scheduled run has none to give."
+        }
+        "schedule-period-invalid" => {
+            "Write the period as an integer literal of milliseconds from 100 to 86400000."
+        }
+        _ => "Declare each of `start Event;` and `every <ms> Event;` once per event.",
+    };
+    Remediation {
+        description: description.to_string(),
+        suggestion: None,
+        confidence: Confidence::High,
     }
 }
 

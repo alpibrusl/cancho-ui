@@ -68,6 +68,7 @@ does not force premature changes to cancho Core.
 | **Adapters** | `Storage` (with `Storage("ns")`), `Network` (`net.get`, with `Network("host")`) and `Location`, built: the calls, what each guards, replay, what is not built | [`adapters.md`](adapters.md) |
 | **Mobile** | The mobile decision (an installable web app, fewest dependencies), what `build --pwa` writes, what is and is not built, and how it is checked | [`mobile-backend.md`](mobile-backend.md) |
 | **Semantic diff** | What `cancho-ui diff` compares, its JSON shape, exit codes, and what it does not claim | [`semantic-diff.md`](semantic-diff.md) |
+| **Schedules** | `start Event;` and `every N Event;`: when they run, skip-not-queue, disposal, replay and diff | [`schedules.md`](schedules.md) |
 | **Replay** | What `cancho-ui test` replays (a trace of events, a scripted network, a fake clock), its rules, and what it does not claim | [`replay.md`](replay.md) |
 | **Diagnostic format** | Rule codes, severity, span, subject, expected/actual, remediation, tier | [`../spec/diagnostics/README.md`](../spec/diagnostics/README.md) |
 | **Grammar sketch** | EBNF for the syntax in `language-design.md` (Phase 0 only — not implemented) | [`../spec/grammar/README.md`](../spec/grammar/README.md) |

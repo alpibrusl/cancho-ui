@@ -66,7 +66,7 @@ pub struct Trace {
     pub steps: Vec<Step>,
 }
 
-const EXPECT_KEYS: &[&str] = &["outcome", "issued", "pending", "fired", "storage"];
+const EXPECT_KEYS: &[&str] = &["outcome", "issued", "pending", "fired", "ticks", "storage"];
 
 pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {
     let root: Json = serde_json::from_str(text).map_err(|e| TraceError {

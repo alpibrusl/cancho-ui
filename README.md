@@ -26,7 +26,7 @@ $ echo $?
   `clock.now()` is reachable. A missing declaration is `capability-missing`; a
   declaration nothing uses is `capability-unused`. The rule is cancho's
   exact-row rule for effects, lifted to the UI. `Storage` (`storage.get`, `storage.set`) and `net.get`
-  (a same-origin `fetch`) are real adapters, and `json.get` / `json.items` take a fetched document apart: [`docs/adapters.md`](docs/adapters.md).
+  (a same-origin `fetch`) are real adapters, and `json.get` / `json.items` take a fetched document apart: [`docs/adapters.md`](docs/adapters.md). `start Event;` and `every N Event;` refresh a page without a button: [`docs/schedules.md`](docs/schedules.md).
 - **Diagnostics are data.** `--output json` gives a locked shape with a stable
   `code`, a source span and a remediation. Consumers match on the code, not on
   the prose ([`spec/diagnostics`](spec/diagnostics/README.md)).

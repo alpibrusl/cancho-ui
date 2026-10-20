@@ -21,9 +21,26 @@ pub struct IrComponent {
     pub name: String,
     pub state: Vec<IrStateField>,
     pub requires: Vec<IrCapabilityRef>,
+    /// `start` and `every` declarations (docs/schedules.md), in the order written.
+    pub schedules: Vec<IrSchedule>,
     pub reachable_effects: Vec<IrReachableEffect>,
     pub events: Vec<IrEventHandler>,
     pub view: IrViewBlock,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IrScheduleKind {
+    Start,
+    /// The period in milliseconds, 100 to 86,400,000.
+    Every(u32),
+}
+
+/// An event that runs without the user (docs/schedules.md): the event exists and takes no parameters.
+#[derive(Debug, Clone, PartialEq)]
+pub struct IrSchedule {
+    pub kind: IrScheduleKind,
+    pub event: String,
     pub span: Span,
 }
 

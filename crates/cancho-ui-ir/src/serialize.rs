@@ -65,14 +65,36 @@ impl Serialize for IrFile {
 impl Serialize for IrComponent {
     fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
-        let mut s = ser.serialize_struct("IrComponent", 7)?;
+        let mut s = ser.serialize_struct("IrComponent", 8)?;
         s.serialize_field("id", &self.id.0)?;
         s.serialize_field("name", &self.name)?;
         s.serialize_field("state", &self.state)?;
         s.serialize_field("requires", &self.requires)?;
+        s.serialize_field("schedules", &self.schedules)?;
         s.serialize_field("reachable_effects", &self.reachable_effects)?;
         s.serialize_field("events", &self.events)?;
         s.serialize_field("view", &self.view)?;
+        s.serialize_field("span", &IrSpan::from(self.span))?;
+        s.end()
+    }
+}
+
+impl Serialize for IrSchedule {
+    fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let every = matches!(self.kind, IrScheduleKind::Every(_));
+        let mut s = ser.serialize_struct("IrSchedule", if every { 4 } else { 3 })?;
+        s.serialize_field(
+            "kind",
+            match self.kind {
+                IrScheduleKind::Start => "start",
+                IrScheduleKind::Every(_) => "every",
+            },
+        )?;
+        s.serialize_field("event", &self.event)?;
+        if let IrScheduleKind::Every(ms) = self.kind {
+            s.serialize_field("period_ms", &ms)?;
+        }
         s.serialize_field("span", &IrSpan::from(self.span))?;
         s.end()
     }

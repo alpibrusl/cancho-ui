@@ -91,6 +91,14 @@ pub struct FiredJson {
     pub outcome: &'static str,
 }
 
+/// An `every` tick that fell due in a step (docs/schedules.md section 6).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct TickJson {
+    pub event: String,
+    pub at: Json,
+    pub ran: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct WriteJson {
     pub field: String,
@@ -108,6 +116,9 @@ pub struct StepReport {
     pub issued: Vec<IssuedJson>,
     pub pending: Vec<u32>,
     pub fired: Vec<FiredJson>,
+    /// The `every` ticks that fell due; absent when none did.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub ticks: Vec<TickJson>,
     pub writes: Vec<WriteJson>,
     pub clock: Json,
     /// The `Storage` store after the step; absent when the trace never seeds or writes it.

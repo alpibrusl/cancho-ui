@@ -30,6 +30,8 @@ const METRICS = '{"v":1,"uptime_ms":86400000,"sessions_active":3,"le_ms":[1,2,5,
 function serve(dir, admin) {
   const server = http.createServer((req, res) => {
     const url = decodeURIComponent(req.url.split('?')[0]);
+    if (url === '/admin/metrics') { admin.metricsRequests++; }
+    if (url === '/admin/readyz' && admin.hold) { admin.held.push(() => { res.writeHead(admin.readyStatus, { 'content-type': 'application/json' }); res.end(admin.ready); }); return; }
     if (url === '/admin/metrics') { res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(admin.metrics); return; }
     if (url === '/admin/readyz' && admin.dead) { req.socket.destroy(); return; }
     if (url === '/admin/readyz') { res.writeHead(admin.readyStatus, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(admin.ready); return; }
@@ -50,36 +52,58 @@ async function shown(page) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'check-plant-'));
   const r = spawnSync(CANCHO_UI, ['build', path.join(ROOT, 'examples/plant/plant.cui'), '--pwa', '-o', dir], { encoding: 'utf8' });
   if (r.status !== 0) { throw new Error(r.stderr); }
-  const admin = { metrics: METRICS, ready: '{"ready":true}\n', readyStatus: 200 };
+  const admin = { metrics: METRICS, ready: '{"ready":true}\n', readyStatus: 200, metricsRequests: 0, hold: false, held: [] };
   const server = await serve(dir, admin);
   const url = `http://localhost:${server.address().port}/`;
   const browser = await chromium.launch({ args: ['--no-proxy-server'] });
   const page = await browser.newPage();
+  await page.clock.install({ time: 0 });
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
+  const settle = async (text) => { for (let i = 0; i < 100; i++) { if ((await page.evaluate(() => document.body.innerText)).includes(text)) { return true; } await page.waitForTimeout(50); } return false; };
   await page.goto(url);
   await page.waitForSelector('#root *');
-  check('before a refresh nothing is claimed', (await shown(page)).includes('ready: unknown') && (await shown(page)).includes('Routes (0)'), await shown(page));
 
-  await page.click('text=Refresh');
-  await page.waitForFunction(() => document.body.innerText.includes('status: updated'));
+  // `start Refresh`: the page reads the gateway when it opens, without a click
+  check('the page reads the gateway by itself when it opens', await settle('status: updated'), await shown(page));
   const t = await shown(page);
   check('the status, readiness, uptime and sessions are read', ['status: updated', 'ready: true', 'uptime (ms): 86400000', 'sessions: 3'].every((x) => t.includes(x)), t);
   check('both routes are listed with their counters', t.includes('Routes (2)') && t.includes('api|  2xx: 4021|  5xx: 2|web|  2xx: 950|  5xx: 0'), t);
   check('both upstreams are listed with their circuit', t.includes('api|  circuit open: false|  failures: 2|web|  circuit open: true|  failures: 0'), t);
+  check('one read of the metrics so far', admin.metricsRequests === 1, String(admin.metricsRequests));
+
+  // `every 5000 Refresh`: a tick reads again, with no click
+  admin.metrics = METRICS.replace('86400000', '90000000');
+  await page.clock.runFor(5000);
+  check('a tick after 5 seconds reads the gateway again', await settle('uptime (ms): 90000000') && admin.metricsRequests === 2, `${admin.metricsRequests} reads; ${await shown(page)}`);
+
+  // a tick that falls due while a refresh is waiting is skipped, not started on top
+  admin.hold = true;
+  admin.metrics = METRICS.replace('86400000', '91000000');
+  await page.clock.runFor(5000);
+  await settle('status: loading');
+  check('a refresh waiting on readiness is in flight', admin.metricsRequests === 3 && (await shown(page)).includes('status: loading'), `${admin.metricsRequests} reads; ${await shown(page)}`);
+  await page.clock.runFor(5000);
+  await page.waitForTimeout(300);
+  check('the next tick, while that refresh waits, is skipped', admin.metricsRequests === 3, String(admin.metricsRequests));
+  admin.hold = false;
+  admin.held.splice(0).forEach((reply) => reply());
+  check('the waiting refresh finishes when the gateway answers', await settle('status: updated') && (await shown(page)).includes('uptime (ms): 91000000'), await shown(page));
+  await page.clock.runFor(5000);
+  check('and the tick after that runs', await settle('status: updated') && admin.metricsRequests === 4, String(admin.metricsRequests));
 
   // a gateway that is not ready: 503 with its reasons in the body, which net.fetch keeps (docs/adapters.md section 15)
   admin.ready = '{"ready":false,"why":["upstream web: circuit open","log: a write failed in the last 10 s"]}\n';
   admin.readyStatus = 503;
   await page.click('text=Refresh');
-  await page.waitForFunction(() => document.body.innerText.includes('ready: false'));
+  await settle('ready: false');
   const nr = await shown(page);
   check('a 503 on readiness is shown with its reasons', nr.includes('ready: false') && nr.includes('because: upstream web: circuit open') && nr.includes('because: log: a write failed in the last 10 s'), nr);
 
   // a transport error on readiness
   admin.dead = true;
   await page.click('text=Refresh');
-  await page.waitForFunction(() => document.body.innerText.includes('ready: unknown (network error)'));
+  await settle('ready: unknown (network error)');
   check('a transport error on readiness is unknown, with the reason', (await shown(page)).includes('ready: unknown (network error)') && !(await shown(page)).includes('because'), await shown(page));
   admin.dead = false;
 
@@ -88,7 +112,7 @@ async function shown(page) {
   admin.readyStatus = 200;
   admin.ready = 'also not json';
   await page.click('text=Refresh');
-  await page.waitForFunction(() => document.body.innerText.includes('status: updated') && document.body.innerText.includes('Routes (0)'));
+  await settle('Routes (0)');
   const bad = await shown(page);
   check('a document that is not JSON gives the defaults', bad.includes('ready: unknown') && bad.includes('uptime (ms): -') && bad.includes('sessions: -') && bad.includes('Routes (0)'), bad);
 

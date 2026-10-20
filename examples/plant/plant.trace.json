@@ -2,24 +2,8 @@
  "schema": "cancho-ui-trace",
  "version": "0.1.0",
  "component": "Plant",
- "note": "A refresh reads the admin metrics (net.get) and readiness (net.fetch), then takes them apart with json.get and json.items (docs/adapters.md sections 14 and 15). The metrics are the shape of cancho-gateway GET /metrics. The second refresh is a gateway that answers 503 with its reasons; the third, a transport error.",
+ "note": "The console refreshes by itself: `start` reads the gateway when the page opens, `every 5000` again every 5 seconds, and a tick that falls due while a refresh is still waiting for the gateway is skipped (docs/schedules.md). The metrics are the shape of cancho-gateway GET /metrics; readiness is read with net.fetch so a 503 keeps its reasons (docs/adapters.md sections 14 and 15).",
  "steps": [
-  {
-   "event": "Refresh",
-   "expect": {
-    "issued": [
-     {
-      "effect": "net.get",
-      "args": [
-       "admin/metrics"
-      ]
-     }
-    ]
-   },
-   "state": {
-    "note": "loading"
-   }
-  },
   {
    "resolve": 1,
    "with": {
@@ -28,12 +12,23 @@
    "expect": {
     "issued": [
      {
+      "request": 1,
+      "effect": "net.get",
+      "args": [
+       "admin/metrics"
+      ]
+     },
+     {
+      "request": 2,
       "effect": "net.fetch",
       "args": [
        "admin/readyz"
       ]
      }
     ]
+   },
+   "state": {
+    "note": "loading"
    }
   },
   {
@@ -50,12 +45,63 @@
    }
   },
   {
-   "event": "Refresh"
+   "advance": 4999,
+   "expect": {
+    "ticks": []
+   }
+  },
+  {
+   "advance": 1,
+   "expect": {
+    "ticks": [
+     {
+      "event": "Refresh",
+      "at": 5000,
+      "ran": true
+     }
+    ],
+    "issued": [
+     {
+      "request": 3,
+      "effect": "net.get"
+     }
+    ]
+   },
+   "state": {
+    "note": "loading"
+   }
+  },
+  {
+   "advance": 5000,
+   "expect": {
+    "ticks": [
+     {
+      "event": "Refresh",
+      "at": 10000,
+      "ran": false
+     }
+    ],
+    "issued": [],
+    "pending": [
+     3
+    ]
+   },
+   "state": {
+    "note": "loading"
+   }
   },
   {
    "resolve": 3,
    "with": {
     "Ok": "{\"v\":1,\"uptime_ms\":86400000,\"sessions_active\":3,\"le_ms\":[1,2,5,10,25,50,100,250,500,1000,2500,5000,10000],\"routes\":[{\"name\":\"api\",\"requests\":{\"none\":0,\"1xx\":0,\"2xx\":4021,\"3xx\":0,\"4xx\":12,\"5xx\":2}},{\"name\":\"web\",\"requests\":{\"none\":0,\"1xx\":0,\"2xx\":950,\"3xx\":4,\"4xx\":1,\"5xx\":0}}],\"upstreams\":[{\"name\":\"api\",\"responses\":4035,\"retries\":1,\"failures\":2,\"pool_idle\":3,\"circuit_open\":false},{\"name\":\"web\",\"responses\":955,\"retries\":0,\"failures\":0,\"pool_idle\":4,\"circuit_open\":true}],\"log\":{\"dropped\":0,\"write_failures\":0}}"
+   },
+   "expect": {
+    "issued": [
+     {
+      "request": 4,
+      "effect": "net.fetch"
+     }
+    ]
    }
   },
   {
@@ -64,6 +110,7 @@
     "Ok": "{\"status\":503,\"body\":\"{\\\"ready\\\":false,\\\"why\\\":[\\\"upstream web: circuit open\\\",\\\"log: a write failed in the last 10 s\\\"]}\"}"
    },
    "state": {
+    "note": "updated",
     "ready": "false",
     "nroutes": 2,
     "why": [
@@ -73,7 +120,22 @@
    }
   },
   {
-   "event": "Refresh"
+   "advance": 5000,
+   "expect": {
+    "ticks": [
+     {
+      "event": "Refresh",
+      "at": 15000,
+      "ran": true
+     }
+    ],
+    "issued": [
+     {
+      "request": 5,
+      "effect": "net.get"
+     }
+    ]
+   }
   },
   {
    "resolve": 5,
@@ -83,10 +145,8 @@
    "expect": {
     "issued": [
      {
-      "effect": "net.fetch",
-      "args": [
-       "admin/readyz"
-      ]
+      "request": 6,
+      "effect": "net.fetch"
      }
     ]
    }
@@ -102,6 +162,15 @@
     "sessions": "-",
     "nroutes": 0,
     "ready": "unknown (network error)"
+   }
+  },
+  {
+   "dispose": true
+  },
+  {
+   "advance": 20000,
+   "expect": {
+    "ticks": []
    }
   }
  ]

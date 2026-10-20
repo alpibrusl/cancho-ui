@@ -456,7 +456,7 @@ defaults. *(Corrected the same day: the first version showed `not ready (HTTP 50
 
 ### 14.5 Not done
 
-Polling (the language has no timer or start event: the page refreshes on a button), decimals, the real gateway in the loop,
+Decimals, the real gateway in the loop,
 a `Text` that mixes a literal and a call with a string argument (`"{json.get(t, "a", "-")}"` still ends the string at the
 inner quote; the concatenation form is the way round it), sorting or filtering the routes.
 

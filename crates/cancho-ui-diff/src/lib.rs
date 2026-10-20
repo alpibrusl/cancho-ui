@@ -10,7 +10,7 @@ mod render;
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use cancho_ui_ir::ir::{IrComponent, IrFile, IrStmt};
+use cancho_ui_ir::ir::{IrComponent, IrFile, IrScheduleKind, IrStmt};
 use cancho_ui_ir::serialize::IrSpan;
 use serde::Serialize;
 
@@ -96,6 +96,9 @@ pub struct ComponentDiff {
     pub name: String,
     pub authority: Authority,
     pub requires: Delta<String>,
+    /// `start Event` and `every <ms> Event`, as written; a changed period is one removed and one added
+    /// (docs/schedules.md section 5). A change in how often a component acts is a behavioural change.
+    pub schedules: Delta<String>,
     pub state: StateChanges,
     pub events: EventChanges,
     pub effects: EffectChanges,
@@ -183,6 +186,7 @@ pub struct EffectCount {
 /// A component reduced to the facets the diff compares.
 struct Facets {
     requires: BTreeSet<String>,
+    schedules: BTreeSet<String>,
     state: BTreeMap<String, (String, String)>,
     events: BTreeMap<String, EventFacet>,
     effects: BTreeMap<(String, String), Vec<IrSpan>>,
@@ -229,6 +233,14 @@ fn facets(c: &IrComponent) -> Facets {
         *view.entry(d).or_insert(0usize) += 1;
     }
     Facets {
+        schedules: c
+            .schedules
+            .iter()
+            .map(|s| match s.kind {
+                IrScheduleKind::Start => format!("start {}", s.event),
+                IrScheduleKind::Every(ms) => format!("every {ms} {}", s.event),
+            })
+            .collect(),
         // A bound is part of the declared authority: `Network("a.example")` is not `Network`.
         requires: c
             .requires
@@ -288,6 +300,10 @@ fn diff_component(name: &str, b: &IrComponent, c: &IrComponent) -> ComponentDiff
     let requires = Delta {
         added: cf.requires.difference(&bf.requires).cloned().collect(),
         removed: bf.requires.difference(&cf.requires).cloned().collect(),
+    };
+    let schedules = Delta {
+        added: cf.schedules.difference(&bf.schedules).cloned().collect(),
+        removed: bf.schedules.difference(&cf.schedules).cloned().collect(),
     };
     let authority = if !requires.added.is_empty() {
         Authority::Expanded
@@ -427,6 +443,7 @@ fn diff_component(name: &str, b: &IrComponent, c: &IrComponent) -> ComponentDiff
         name: name.to_string(),
         authority,
         requires,
+        schedules,
         state,
         events,
         effects,
@@ -437,6 +454,8 @@ fn diff_component(name: &str, b: &IrComponent, c: &IrComponent) -> ComponentDiff
 fn leaf_count(d: &ComponentDiff) -> usize {
     d.requires.added.len()
         + d.requires.removed.len()
+        + d.schedules.added.len()
+        + d.schedules.removed.len()
         + d.state.added.len()
         + d.state.removed.len()
         + d.state.changed.len()

@@ -124,6 +124,7 @@ consumer never has to test for missing keys.
         "name": "Clock",
         "authority": "expanded",
         "requires": { "added": ["Network"], "removed": [] },
+        "schedules": { "added": ["every 100 Tick"], "removed": ["every 5000 Tick"] },
         "state": {
           "added":   [ { "name": "n", "ty": "Int", "initial": "0" } ],
           "removed": [ { "name": "ticking", "ty": "Bool", "initial": "false" } ],
@@ -285,6 +286,7 @@ the *declared* authority in the typed IR.
 - **Not a proof of equivalence.** `changed: false` means *none of the
   categories above differ*. The category list is the claim. It is not
   "the two programs behave the same".
+- **Schedules are compared** (`start E`, `every N E`, as strings; a rate is not authority, so `authority` is unchanged by them).
 - **The IR has no foreign/trust boundaries, component properties, lifecycle
   hooks, target overrides or async-ordering structures yet.** There is
   nothing to diff, so `not_compared` names them. When the IR grows them, the
