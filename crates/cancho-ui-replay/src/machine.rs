@@ -113,12 +113,16 @@ pub struct TickRecord {
     pub ran: bool,
 }
 
+/// The most ticks one `advance` may fire: a mutated or careless trace cannot make replay run (and report) forever.
+const MAX_TICKS_PER_ADVANCE: usize = 10_000;
+
 /// The timer of an `every` declaration.
 #[derive(Debug, Clone)]
 struct TickTimer {
     handler: usize,
     period: f64,
     next: f64,
+    span: Span,
 }
 
 /// The namespace of the component's `requires Storage("ns")`, or "" when it declares none.
@@ -195,6 +199,7 @@ impl<'a> Machine<'a> {
                             handler,
                             period: f64::from(ms),
                             next: clock + f64::from(ms),
+                            span: s.span,
                         }),
                     IrScheduleKind::Start => None,
                 })
@@ -285,6 +290,7 @@ impl<'a> Machine<'a> {
     /// clock reading each one's due time as it fires (docs/replay.md §5).
     pub fn advance(&mut self, ms: f64, fx: &mut StepEffects) -> Result<Outcome, Fault> {
         let target = self.clock + ms;
+        let mut fired = 0usize;
         loop {
             let sleep = self
                 .requests
@@ -315,6 +321,16 @@ impl<'a> Machine<'a> {
                 (_, Some((at, i))) => {
                     if at > self.clock {
                         self.clock = at;
+                    }
+                    fired += 1;
+                    if fired > MAX_TICKS_PER_ADVANCE {
+                        return Err(Fault {
+                            rule: "replay-tick-limit",
+                            message: format!(
+                                "one `advance` fires more than {MAX_TICKS_PER_ADVANCE} ticks; split it into shorter steps or lengthen the period"
+                            ),
+                            span: self.ticks[i].span,
+                        });
                     }
                     let handler = self.ticks[i].handler;
                     let ran = !self.in_flight(handler);

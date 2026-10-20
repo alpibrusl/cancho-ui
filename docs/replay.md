@@ -402,6 +402,7 @@ Every refusal has a stable tag. Tier **tested** throughout.
 | `trace-bad-response` | `with` is not `{"Ok": v}` or `{"Err": v}` | yes |
 | `trace-event-after-dispose` | an event after `dispose` | yes |
 | `replay-unsupported` | a construct outside the replayed subset (§9) | yes |
+| `replay-tick-limit` | one `advance` would fire more than 10,000 ticks | yes |
 | `replay-type-error` | an operator or builtin applied to values it is not defined on | yes |
 | `replay-unknown-identifier` | an identifier that is neither a local nor a state field | yes |
 | `replay-no-match-arm` | a `match` fell through | yes |

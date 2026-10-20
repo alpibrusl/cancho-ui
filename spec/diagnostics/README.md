@@ -154,7 +154,7 @@ tags: `test-state-mismatch`, `test-expect-mismatch`, `trace-no-assertions`,
 `trace-unknown-event`, `trace-params-arity`, `trace-unknown-state-field`,
 `trace-unknown-request`, `trace-request-not-pending`,
 `trace-request-not-scriptable`, `trace-bad-response`,
-`trace-event-after-dispose`, `replay-unsupported`, `replay-type-error`,
+`trace-event-after-dispose`, `replay-unsupported`, `replay-tick-limit`, `replay-type-error`,
 `replay-unknown-identifier`, `replay-no-match-arm`, `replay-non-finite`,
 `replay-number-format`. Their meanings are in `docs/replay.md` §7.1. A program that
 does not compile is still refused with the §3 rule that refuses it (exit `1`).

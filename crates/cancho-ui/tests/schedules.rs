@@ -343,3 +343,14 @@ fn the_diff_reports_a_schedule_added_removed_or_changed_in_period() {
         serde_json::json!(["every 5000 Tick"])
     );
 }
+
+#[test]
+fn an_advance_that_would_fire_too_many_ticks_is_refused_with_a_rule_tag() {
+    let (code, out) = replay(
+        &counter("    every 100 Tick;"),
+        r#"{"schema":"cancho-ui-trace","version":"0.1.0","steps":[
+            {"advance":1000000000000,"state":{"n":0}}]}"#,
+    );
+    assert_ne!(code, 0, "{out}");
+    assert!(out.contains("replay-tick-limit"), "{out}");
+}
