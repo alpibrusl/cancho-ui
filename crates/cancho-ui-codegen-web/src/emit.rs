@@ -374,6 +374,7 @@ function __cui_net_fetch(url, hosts) {
     return __cui_net_request(url, hosts, true);
 }
 function __cui_net_request(url, hosts, envelope) {
+    var owner = typeof __cui_owner !== \"undefined\" ? __cui_owner : null;
     var err = function (reason) { return {__cui_tag: \"Err\", reason: reason}; };
     return new Promise(function (resolve) {
         var target;
@@ -392,8 +393,10 @@ function __cui_net_request(url, hosts, envelope) {
             return;
         }
         var timer = null;
+        var stopped = false;
         var controller = typeof AbortController === \"function\" ? new AbortController() : null;
         if (controller) { timer = setTimeout(function () { controller.abort(); }, 10000); }
+        if (owner && controller) { owner.abort = function () { stopped = true; controller.abort(); }; }
         var init = { method: \"GET\", credentials: \"same-origin\", redirect: \"manual\" };
         if (controller) { init.signal = controller.signal; }
         fetch(target.href, init).then(function (response) {
@@ -404,7 +407,7 @@ function __cui_net_request(url, hosts, envelope) {
                 return {__cui_tag: \"Ok\", value: envelope ? JSON.stringify({status: response.status, body: text}) : text};
             });
         }).catch(function (e) {
-            return err(e && e.name === \"AbortError\" ? \"timeout\" : \"network error\");
+            return err(e && e.name === \"AbortError\" ? (stopped ? \"aborted\" : \"timeout\") : \"network error\");
         }).then(function (result) {
             if (timer !== null) { clearTimeout(timer); }
             resolve(result);
@@ -459,12 +462,19 @@ const CANCEL_ADAPTER_JS: &str = "\
 //     component's handler always has the program's cancellation
 //     design to run; it then continues on a detached subtree.
 const __cui_cancelled = Symbol(\"__cui_cancelled\");
+//   - a request that can be stopped says how: `__cui_net_request` reads `__cui_owner` as it starts and sets
+//     `token.abort`, and a superseded or disposed request is aborted, so the browser stops the underlying fetch
+//     (docs/adapters.md 9.5) instead of letting it complete to a result nobody reads.
+let __cui_owner = null;
 function __cui_call(group, start, inflight) {
     const prev = inflight[group];
-    if (prev) { prev.cancelled = true; }
-    const token = { cancelled: false, disposed: false };
+    if (prev) { prev.cancelled = true; if (prev.abort) { prev.abort(); } }
+    const token = { cancelled: false, disposed: false, abort: null };
     inflight[group] = token;
-    return start().then(function (res) {
+    __cui_owner = token;
+    const started = start();
+    __cui_owner = null;
+    return started.then(function (res) {
         if (token.cancelled) { throw __cui_cancelled; }
         if (token.disposed) { return {__cui_tag: \"Cancelled\"}; }
         if (inflight[group] === token) { inflight[group] = null; }
@@ -894,7 +904,7 @@ fn emit_component(
                 fields.push_str("                for (const g in __cui_inflight) {\n");
                 fields.push_str("                    const t = __cui_inflight[g];\n");
                 fields.push_str(
-                    "                    if (t) { t.disposed = true; __cui_inflight[g] = null; }\n",
+                    "                    if (t) { t.disposed = true; __cui_inflight[g] = null; if (t.abort) { t.abort(); } }\n",
                 );
                 fields.push_str("                }\n");
             }
