@@ -287,13 +287,14 @@ fn run_step(
                 value::Effect::NetSearch
                     | value::Effect::NetGet
                     | value::Effect::NetFetch
+                    | value::Effect::NetPost
                     | value::Effect::LocationCurrent
             ) {
                 return Err(stop(
                     "trace-request-not-scriptable",
                     "resolve",
                     format!(
-                        "request #{id} is a `{}`; timers resolve by advancing the clock, only `net.search`, `net.get`, `net.fetch` and `location.current` are scripted",
+                        "request #{id} is a `{}`; timers resolve by advancing the clock, only `net.search`, `net.get`, `net.fetch`, `net.post` and `location.current` are scripted",
                         effect.name()
                     ),
                 ));

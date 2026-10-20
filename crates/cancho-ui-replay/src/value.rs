@@ -8,6 +8,7 @@ pub enum Effect {
     NetSearch,
     NetGet,
     NetFetch,
+    NetPost,
     LocationCurrent,
     Sleep,
 }
@@ -18,6 +19,7 @@ impl Effect {
             Effect::NetSearch => "net.search",
             Effect::NetGet => "net.get",
             Effect::NetFetch => "net.fetch",
+            Effect::NetPost => "net.post",
             Effect::LocationCurrent => "location.current",
             Effect::Sleep => "sleep",
         }
@@ -29,6 +31,7 @@ impl Effect {
             Effect::NetSearch => "net_search",
             Effect::NetGet => "net_get",
             Effect::NetFetch => "net_fetch",
+            Effect::NetPost => "net_post",
             Effect::LocationCurrent => "location_current",
             Effect::Sleep => "sleep",
         }

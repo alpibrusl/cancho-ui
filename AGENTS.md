@@ -120,6 +120,11 @@ literal URL on another host is `capability-bound-violated`), awaited like `net.s
 `Ok(text) | Err(reason) | Cancelled` (see `docs/adapters.md` section 9). `"error: {why}"` interpolates in a
 `match` arm as in a `Text`; a `{` in a label or other static text is refused.
 
+`net.post(url, body)` performs `NetworkWrite`, a capability of its own (`Network` is read-only): a POST of a JSON text to this
+site only (no host bound; a literal URL naming a host is `capability-bound-violated`), answered like `net.fetch` with the
+envelope `{"status":N,"body":"..."}` for any HTTP status, never retried and not aborted when superseded (`docs/adapters.md`
+section 17).
+
 `await(location.current())` performs `Location` and resolves to `Ok("lat,lon")` (2 decimals; `requires
 Location("fine");` for 5), `Err(reason)` or `Cancelled`; the browser asks the user
 (`docs/adapters.md` section 11).
