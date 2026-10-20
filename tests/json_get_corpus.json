@@ -133,13 +133,6 @@
   "expect": "1000"
  },
  {
-  "why": "a decimal is not read",
-  "text": "{\"n\":1.5}",
-  "path": "n",
-  "default": "?",
-  "expect": "?"
- },
- {
   "why": "2^53 is read",
   "text": "{\"n\":9007199254740992}",
   "path": "n",
@@ -449,7 +442,7 @@
    "3",
    "true",
    "?",
-   "?"
+   "1.5"
   ]
  },
  {
@@ -545,5 +538,96 @@
   "why": "items: 3 elements",
   "items_n": 3,
   "expect_len": 3
+ },
+ {
+  "why": "a decimal prints as its shortest digits",
+  "text": "{\"n\":1.5}",
+  "path": "n",
+  "default": "?",
+  "expect": "1.5"
+ },
+ {
+  "why": "trailing zeros of a decimal are not kept",
+  "text": "{\"n\":2.50}",
+  "path": "n",
+  "default": "?",
+  "expect": "2.5"
+ },
+ {
+  "why": "a negative decimal",
+  "text": "{\"n\":-0.25}",
+  "path": "n",
+  "default": "?",
+  "expect": "-0.25"
+ },
+ {
+  "why": "0.1 + 0.2 style digits read back exactly",
+  "text": "{\"n\":0.30000000000000004}",
+  "path": "n",
+  "default": "?",
+  "expect": "0.30000000000000004"
+ },
+ {
+  "why": "an exponent decimal in range",
+  "text": "{\"n\":1.5e2}",
+  "path": "n",
+  "default": "?",
+  "expect": "150"
+ },
+ {
+  "why": "a small exponent decimal in range",
+  "text": "{\"n\":2.5e-3}",
+  "path": "n",
+  "default": "?",
+  "expect": "0.0025"
+ },
+ {
+  "why": "the smallest decimal read, 1e-6",
+  "text": "{\"n\":0.000001}",
+  "path": "n",
+  "default": "?",
+  "expect": "0.000001"
+ },
+ {
+  "why": "below 1e-6 is the default",
+  "text": "{\"n\":0.0000009}",
+  "path": "n",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "a decimal at 1e15 is the default",
+  "text": "{\"n\":1000000000000000.5}",
+  "path": "n",
+  "default": "?",
+  "expect": "?"
+ },
+ {
+  "why": "a decimal just under 1e15",
+  "text": "{\"n\":999999999999999.5}",
+  "path": "n",
+  "default": "?",
+  "expect": "999999999999999.5"
+ },
+ {
+  "why": "zero as a decimal is the integer 0",
+  "text": "{\"n\":0.0}",
+  "path": "n",
+  "default": "?",
+  "expect": "0"
+ },
+ {
+  "why": "negative zero is 0",
+  "text": "{\"n\":-0.0}",
+  "path": "n",
+  "default": "?",
+  "expect": "0"
+ },
+ {
+  "why": "more digits than a double keeps",
+  "text": "{\"n\":0.12345678901234567890}",
+  "path": "n",
+  "default": "?",
+  "expect": "0.12345678901234568"
  }
 ]

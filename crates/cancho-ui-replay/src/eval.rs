@@ -110,7 +110,8 @@ fn json_at(text: &str, path: &str) -> Option<serde_json::Value> {
 
 /// `json.get(text, path, default)`, the model of the emitted `__cui_json_get`. A pure function: the String at `path`
 /// of the JSON `text`, or `default` when there is no such value or it is not a String, a Boolean or an
-/// integer-valued Number of magnitude 2^53 or less (rendered as decimal digits).
+/// Number that is an integer of magnitude 2^53 or less, or a decimal with 1e-6 <= |x| < 1e15 (rendered as the
+/// shortest digits that read back as the same number).
 pub fn json_get(text: &str, path: &str, default: &str) -> String {
     use serde_json::Value as J;
     match json_at(text, path) {
@@ -120,6 +121,9 @@ pub fn json_get(text: &str, path: &str, default: &str) -> String {
             Some(f) if f.is_finite() && f.fract() == 0.0 && f.abs() <= 9_007_199_254_740_992.0 => {
                 format!("{}", f as i64)
             }
+            // A decimal prints as its shortest round-trip digits, which Rust and JavaScript agree on while neither
+            // uses an exponent: 1e-6 <= |f| < 1e15 (docs/adapters.md 14.1).
+            Some(f) if f.is_finite() && f.abs() >= 1e-6 && f.abs() < 1e15 => format!("{f}"),
             _ => default.to_string(),
         },
         _ => default.to_string(),
