@@ -437,8 +437,10 @@ first version of the JavaScript used; `serde_json` fails the 128th level.)*
 `examples/plant/plant.cui` reads `admin/metrics` and `admin/readyz` with `net.get` and shows readiness, uptime, sessions,
 each route's 2xx and 5xx counts and each upstream's circuit. Its trace (`plant.trace.json`, 9 steps, 17 checks) replays the
 gateway's `GET /metrics` shape, a gateway that answers `503`, and a transport error. `scripts/check-plant.js` runs the built
-page in Chromium against a server that plays the gateway: the values appear, a `503` shows "not ready (HTTP 503)", and a
-document that is not JSON gives the defaults.
+page in Chromium against a server that plays the gateway: the values appear, a `503` shows `ready: false` with its
+reasons (section 15), a dropped connection shows `unknown (network error)`, and a document that is not JSON gives the
+defaults. *(Corrected the same day: the first version showed `not ready (HTTP 503)` and no reasons, which is what
+`net.get` allows; section 15 is the change.)*
 
 ### 14.4 What this showed about the stack (for `alpibrusl/cancho-industrial`)
 
@@ -446,9 +448,9 @@ document that is not JSON gives the defaults.
   page served from the proxy's port read it, and it sends no CORS headers. The console works from a path of its own origin:
   the deployment forwards `admin/…` to the admin listener (a route whose upstream is the gateway's own admin port), or serves
   the page from the admin origin. Neither was run against the real gateway here; the check uses a stand-in.
-* **A non-2xx response comes back with no body** (section 9: `Err("HTTP 503")`). `GET /readyz` explains *why* it is not
-  ready only in the body of that `503`, so the console can say "not ready" and not why. The adapter would have to carry the
-  body of an error status to change that.
+* **A non-2xx response comes back with no body** from `net.get` (section 9: `Err("HTTP 503")`). `GET /readyz` explains
+  *why* it is not ready only in the body of that `503`. *(Corrected the same day: `net.fetch`, section 15, keeps the
+  body, and the console reads the reasons.)*
 * **The page asks for `Network` only.** Nothing else is declared, so the console's authority report is the one line
   `Network` (`cancho-ui inspect effects examples/plant/plant.cui Plant`: one reachable effect, `net.get`).
 
@@ -460,13 +462,57 @@ inner quote; the concatenation form is the way round it), sorting or filtering t
 
 ---
 
+## 15. `net.fetch(url)`: the answer of an HTTP error status
+
+### 15.1 The decision
+
+`net.get` answers `Err("HTTP 503")` for a status outside 200 to 299 and drops the body (section 9). That is right for
+a page that wants a document, and wrong for one that wants to know *why* a service refused: the gateway's `/readyz`
+puts its reasons in the body of the `503`. `net.fetch(url)` is the same request (same origin, same `Network("host")`
+allow-list, same size and time bounds, same refusals, same capability) with one difference:
+
+* it resolves to `Ok(text)` for **any** HTTP status, where `text` is the JSON text `{"status":503,"body":"..."}` (the
+  body as a JSON string, escaped by `JSON.stringify`). `Err` is left for what produced no HTTP answer: `blocked: ...`,
+  `network error`, `timeout`, `too large`.
+
+The envelope is a String so that nothing new is needed in the language: `json.get(reply, "status", "0")` and
+`json.get(reply, "body", "")` take it apart, and the body is itself a JSON text for `json.get` and `json.items`.
+Nothing is decided for the program: a `200` and a `404` are both `Ok`, and the program looks at the status. That is
+the cost of the shape, and why `net.get` stays: most pages should not have to check.
+
+### 15.2 What it touches
+
+* **Capability and bounds:** exactly `net.get`'s. A literal URL on another host is `capability-bound-violated` without
+  `Network("host")`; a missing declaration is `capability-missing`. One argument, or `builtin-shape-mismatch`.
+* **Emit:** `__cui_net_get` and `__cui_net_fetch` are two entry points of one `__cui_net_request(url, hosts, envelope)`, so
+  the guards are one piece of code. The redirect refusal comes before the status is looked at.
+* **Replay:** an effect `net.fetch` with its own cancellation group (`net_fetch`), scripted by a trace like `net.get`; the
+  trace writes the envelope as the `Ok` text. Replay does not make the envelope: it plays what the trace says the
+  adapter answered.
+
+### 15.3 Checked
+
+* `cargo test`: the emitted adapter, the arity and capability refusals, the bound on a literal URL, and a trace in which
+  `net.get` and `net.fetch` are two pending requests that resolve independently.
+* `scripts/check-plant.js` (Chromium, outside the gate): the stand-in gateway answers `503` with
+  `{"ready":false,"why":[...]}` and the page shows both reasons; with the connection dropped it shows
+  `ready: unknown (network error)`.
+
+### 15.4 Not done
+
+The response headers, a method other than GET, a body, and a status that is a redirect (still `blocked: redirect`). The
+envelope is built in the browser; replay's trace has to write it by hand, and a trace that writes it wrongly tests
+nothing about the adapter (the Chromium check does).
+
+---
+
 ## 12. Where the adapters stand
 
 | Capability | Calls | Bound | Real in the browser |
 |---|---|---|---|
 | `Clock` | `clock.now()`, `sleep(ms)` | none | `Date.now`, `setTimeout` |
 | `Storage` | `storage.get(k, d)`, `storage.set(k, v)` | `Storage("ns")` keeps keys under `cui:ns:` | `localStorage`, with a page-lifetime fallback |
-| `Network` | `net.get(url)`; `net.search(q)` is the simulated demo | `Network("host", ..)` adds hosts | `fetch`, same-origin plus the allow-list |
+| `Network` | `net.get(url)`, `net.fetch(url)` (keeps an error status); `net.search(q)` is the simulated demo | `Network("host", ..)` adds hosts | `fetch`, same-origin plus the allow-list |
 | `Location` | `location.current()` | `Location("coarse" \| "fine")` | Geolocation, rounded in the adapter |
 
 Not built anywhere: wildcard or per-path `Network` bounds, `watchPosition`, a typed position,

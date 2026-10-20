@@ -462,6 +462,17 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                 span,
             )),
         },
+        ("net.fetch", 1) => match eval(ctx, &args[0])? {
+            url @ Value::Str(_) => Ok(Value::Request(Req {
+                effect: Effect::NetFetch,
+                args: vec![url],
+            })),
+            other => Err(fault(
+                "replay-type-error",
+                format!("`net.fetch` needs a String URL, got {}", describe(&other)),
+                span,
+            )),
+        },
         ("net.search", 1) => {
             let q = eval(ctx, &args[0])?;
             Ok(Value::Request(Req {
@@ -484,8 +495,8 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
             )),
         },
         (
-            "clock.now" | "net.search" | "net.get" | "location.current" | "sleep" | "storage.get"
-            | "storage.set" | "json.get" | "json.items",
+            "clock.now" | "net.search" | "net.get" | "net.fetch" | "location.current" | "sleep"
+            | "storage.get" | "storage.set" | "json.get" | "json.items",
             n,
         ) => Err(fault(
             "replay-type-error",
@@ -497,7 +508,7 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
         _ => Err(fault(
             "replay-unsupported",
             format!(
-                "call to `{name}`: replay models `clock.now`, `net.search`, `net.get`, `location.current`, `sleep`, `storage.get`, `storage.set`, `json.get` and `json.items` only"
+                "call to `{name}`: replay models `clock.now`, `net.search`, `net.get`, `net.fetch`, `location.current`, `sleep`, `storage.get`, `storage.set`, `json.get` and `json.items` only"
             ),
             span,
         )),
