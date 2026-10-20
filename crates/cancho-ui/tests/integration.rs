@@ -862,7 +862,7 @@ fn lambda_outside_filter_map_is_refused() {
     // Tier 11 has no first-class function values: a lambda that
     // is not a `filter`/`map` predicate is refused with
     // `lambda-unsupported`.
-    let src = "component T {\n    state l: List[String] = [\"a\"];\n    view { Text { \"{reverse(l, n => n)}\" } }\n}\n";
+    let src = "component T {\n    state l: List[String] = [\"a\"];\n    view { Text { \"{rotate(l, n => n)}\" } }\n}\n";
     let toks = lex(src).unwrap();
     let ast = parse(toks).unwrap();
     match check_file(&ast) {

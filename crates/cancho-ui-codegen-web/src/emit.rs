@@ -160,6 +160,12 @@ pub fn emit_module(ir: &IrFile, source_name: Option<&str>) -> String {
         out.insert_str(adapters_end, JSON_GET_JS);
     }
 
+    // The list builtins (docs/lists.md) are pure too: emit the helpers that the emitted program calls.
+    out.insert_str(
+        adapters_end,
+        &crate::lists::helpers_used(&out[adapters_end..]),
+    );
+
     if let Some(last) = ir.components.last() {
         out.push_str("const root = (typeof document !== 'undefined') ? document.getElementById('root') : null;\n");
         out.push_str("if (root) { mount_");
@@ -1070,6 +1076,14 @@ fn emit_expr_init(e: &IrExpr) -> String {
                 emit_expr_init(body)
             )
         }
+        IrExpr::SortBy {
+            list, item, key, ..
+        } => format!(
+            "__cui_sort({}, function ({}) {{ return {}; }})",
+            emit_expr_init(list),
+            item,
+            emit_expr_init(key)
+        ),
         IrExpr::Len { list, .. } => format!("({}).length", emit_expr_init(list)),
         // `match` is not a legal state-field initial value in Tier 6
         // (a state field's initial is an expression but a match
@@ -1183,6 +1197,18 @@ fn emit_expr_runtime(e: &IrExpr, params: &[&str]) -> String {
                 emit_expr_runtime(list, params),
                 item,
                 emit_expr_runtime(body, &local_params)
+            )
+        }
+        IrExpr::SortBy {
+            list, item, key, ..
+        } => {
+            let mut local_params: Vec<&str> = params.to_vec();
+            local_params.push(item.as_str());
+            format!(
+                "__cui_sort({}, function ({}) {{ return {}; }})",
+                emit_expr_runtime(list, params),
+                item,
+                emit_expr_runtime(key, &local_params)
             )
         }
         IrExpr::Len { list, .. } => {
@@ -1321,6 +1347,11 @@ fn emit_call_runtime(path: &[String], args: &[IrExpr], params: &[&str]) -> Strin
         let rendered_args: Vec<String> =
             args.iter().map(|a| emit_expr_runtime(a, params)).collect();
         return format!("__cui_json_{}({})", path[1], rendered_args.join(", "));
+    }
+    if path.len() == 1 && matches!(path[0].as_str(), "reverse" | "contains" | "lower") {
+        let rendered_args: Vec<String> =
+            args.iter().map(|a| emit_expr_runtime(a, params)).collect();
+        return format!("__cui_{}({})", path[0], rendered_args.join(", "));
     }
     if path.len() == 2 && path[0] == "location" && path[1] == "current" {
         return "__cui_location_current(__cui_location_digits)".to_string();

@@ -14,5 +14,6 @@
 //! - add a minimal stylesheet (cui-col, cui-row).
 
 pub mod emit;
+mod lists;
 
 pub use emit::{emit_module, module_for_file};

@@ -191,6 +191,7 @@ pub fn span_of(e: &IrExpr) -> Span {
         | IrExpr::ListLit { span, .. }
         | IrExpr::Filter { span, .. }
         | IrExpr::Map { span, .. }
+        | IrExpr::SortBy { span, .. }
         | IrExpr::Len { span, .. } => *span,
     }
 }
@@ -275,6 +276,21 @@ pub fn eval(ctx: &mut Ctx, e: &IrExpr) -> Result<Value, Stop> {
                 out.push(mapped?);
             }
             Ok(Value::List(out))
+        }
+        IrExpr::SortBy {
+            list, item, key, ..
+        } => {
+            let items = list_of(eval(ctx, list)?, "sort", span)?;
+            let mut rows = Vec::with_capacity(items.len());
+            for v in items {
+                ctx.locals.push((item.clone(), v.clone()));
+                let k = eval_lambda(ctx, key);
+                ctx.locals.pop();
+                rows.push((k?, v));
+            }
+            // `sort_by` is stable, as `Array.prototype.sort` is.
+            rows.sort_by(|a, b| sort_key_order(&a.0, &b.0));
+            Ok(Value::List(rows.into_iter().map(|(_, v)| v).collect()))
         }
         IrExpr::Match {
             scrutinee, arms, ..
@@ -451,6 +467,35 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                 )),
             }
         }
+        ("reverse", 1) => {
+            let mut items = list_of(eval(ctx, &args[0])?, "reverse", span)?;
+            items.reverse();
+            Ok(Value::List(items))
+        }
+        ("contains", 2) => {
+            let text = eval(ctx, &args[0])?;
+            let needle = eval(ctx, &args[1])?;
+            match (&text, &needle) {
+                (Value::Str(t), Value::Str(n)) => Ok(Value::Bool(t.contains(n.as_str()))),
+                _ => Err(fault(
+                    "replay-type-error",
+                    format!(
+                        "`contains` needs two Strings (text, needle), got {} and {}",
+                        describe(&text),
+                        describe(&needle)
+                    ),
+                    span,
+                )),
+            }
+        }
+        ("lower", 1) => match eval(ctx, &args[0])? {
+            Value::Str(t) => Ok(Value::Str(t.to_ascii_lowercase())),
+            other => Err(fault(
+                "replay-type-error",
+                format!("`lower` needs a String, got {}", describe(&other)),
+                span,
+            )),
+        },
         ("location.current", 0) => Ok(Value::Request(Req {
             effect: Effect::LocationCurrent,
             args: Vec::new(),
@@ -519,7 +564,8 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
         },
         (
             "clock.now" | "net.search" | "net.get" | "net.fetch" | "net.post" | "location.current"
-            | "sleep" | "storage.get" | "storage.set" | "json.get" | "json.items",
+            | "sleep" | "storage.get" | "storage.set" | "json.get" | "json.items" | "reverse"
+            | "contains" | "lower",
             n,
         ) => Err(fault(
             "replay-type-error",
@@ -536,6 +582,43 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
             span,
         )),
     }
+}
+
+/// The order `sort` puts keys in (docs/lists.md), the same as the emitted `__cui_sort`: numbers (NaN last), then
+/// strings by UTF-16 code units, then anything else, which compares equal.
+fn sort_key_order(a: &Value, b: &Value) -> std::cmp::Ordering {
+    use std::cmp::Ordering;
+    let rank = |v: &Value| match v {
+        Value::Num(_) => 0,
+        Value::Str(_) => 1,
+        _ => 2,
+    };
+    match (a, b) {
+        (Value::Num(x), Value::Num(y)) => match (x.is_nan(), y.is_nan()) {
+            (true, true) => Ordering::Equal,
+            (true, false) => Ordering::Greater,
+            (false, true) => Ordering::Less,
+            _ => x.partial_cmp(y).unwrap_or(Ordering::Equal),
+        },
+        (Value::Str(x), Value::Str(y)) => x.encode_utf16().cmp(y.encode_utf16()),
+        _ => rank(a).cmp(&rank(b)),
+    }
+}
+
+/// `sort_key_order` on JSON-shaped keys, for the corpus check (`tests/lists_corpus.json`): `{"nan": true}` is NaN and
+/// `null` is a key that is neither a number nor a string.
+pub fn sort_key_order_json(a: &serde_json::Value, b: &serde_json::Value) -> std::cmp::Ordering {
+    fn value(j: &serde_json::Value) -> Value {
+        match j {
+            serde_json::Value::Number(n) => Value::Num(n.as_f64().unwrap_or(0.0)),
+            serde_json::Value::String(s) => Value::Str(s.clone()),
+            serde_json::Value::Bool(b) => Value::Bool(*b),
+            serde_json::Value::Array(a) => Value::List(a.iter().map(value).collect()),
+            serde_json::Value::Object(_) => Value::Num(f64::NAN),
+            serde_json::Value::Null => Value::Unit,
+        }
+    }
+    sort_key_order(&value(a), &value(b))
 }
 
 fn list_of(v: Value, what: &str, span: Span) -> Result<Vec<Value>, Stop> {

@@ -116,7 +116,7 @@ pub enum LowerError {
     LambdaUnsupported { span: Span },
 
     #[error(
-        "`{name}` is misused here (expected {detail}); see the builtin call forms: `filter(list, x => cond)`, `map(list, x => body)`, `len(value)`, `storage.get(key, default)`, `storage.set(key, value)`, `net.get(url)`, `net.fetch(url)`, `net.post(url, body)`, `json.get(text, path, default)`, `json.items(text, path)`"
+        "`{name}` is misused here (expected {detail}); see the builtin call forms: `filter(list, x => cond)`, `map(list, x => body)`, `sort(list, x => key)`, `reverse(list)`, `contains(text, needle)`, `lower(text)`, `len(value)`, `storage.get(key, default)`, `storage.set(key, value)`, `net.get(url)`, `net.fetch(url)`, `net.post(url, body)`, `json.get(text, path, default)`, `json.items(text, path)`"
     )]
     BuiltinMisuse {
         name: String,
@@ -561,6 +561,46 @@ fn lower_expr_with_effects(e: &Expr) -> Result<(IrExpr, Vec<IrReachableEffect>),
                     },
                     vec![],
                 ));
+            }
+            if path.len() == 1 && path[0] == "sort" {
+                if args.len() != 2 {
+                    return Err(LowerError::BuiltinMisuse {
+                        name: "sort".to_string(),
+                        detail: "exactly two arguments: sort(list, x => key)".to_string(),
+                        span: *span,
+                    });
+                }
+                let list = Box::new(lower_expr_pure(&args[0])?);
+                let (item, key, key_span) = match &args[1] {
+                    Expr::Lambda { param, body, .. } => {
+                        (param.clone(), lower_expr_pure(body)?, body.span())
+                    }
+                    _ => {
+                        return Err(LowerError::BuiltinMisuse {
+                            name: "sort".to_string(),
+                            detail: "second argument must be a lambda: x => key".to_string(),
+                            span: args[1].span(),
+                        });
+                    }
+                };
+                return Ok((
+                    IrExpr::SortBy {
+                        list,
+                        item,
+                        key: Box::new(key),
+                        span: key_span,
+                    },
+                    vec![],
+                ));
+            }
+            for (name, arity, form) in PURE_BUILTINS {
+                if path.len() == 1 && path[0] == *name && args.len() != *arity {
+                    return Err(LowerError::BuiltinMisuse {
+                        name: (*name).to_string(),
+                        detail: (*form).to_string(),
+                        span: *span,
+                    });
+                }
             }
             if path.len() == 1 && path[0] == "len" {
                 if args.len() != 1 {
@@ -1264,6 +1304,17 @@ fn await_driven_fields(c: &IrComponent) -> BTreeSet<String> {
     set
 }
 
+/// The pure builtins that are plain calls (docs/lists.md): name, argument count, the form shown on a misuse.
+const PURE_BUILTINS: &[(&str, usize, &str)] = &[
+    ("reverse", 1, "exactly one argument: reverse(list)"),
+    (
+        "contains",
+        2,
+        "exactly two arguments: contains(text, needle)",
+    ),
+    ("lower", 1, "exactly one argument: lower(text)"),
+];
+
 /// Lower a Tier 11 list-operation operand. Filter predicates,
 /// map bodies, and list arguments must be pure: no effects (the
 /// capability check) and no suspends (`await`, `sleep`) — the
@@ -1294,6 +1345,7 @@ fn ir_expr_suspends(e: &IrExpr) -> bool {
         IrExpr::ListLit { items, .. } => items.iter().any(ir_expr_suspends),
         IrExpr::Filter { list, cond, .. } => ir_expr_suspends(list) || ir_expr_suspends(cond),
         IrExpr::Map { list, body, .. } => ir_expr_suspends(list) || ir_expr_suspends(body),
+        IrExpr::SortBy { list, key, .. } => ir_expr_suspends(list) || ir_expr_suspends(key),
         IrExpr::Len { list, .. } => ir_expr_suspends(list),
         IrExpr::Match {
             scrutinee, arms, ..
