@@ -188,6 +188,11 @@ pub enum CheckError {
     )]
     LambdaUnsupported { span: Span },
 
+    #[error(
+        "`{name}` as a match pattern is a binding that matches everything, not the literal; write `_` for \"anything else\" or branch on a state flag"
+    )]
+    PatternLiteralUnsupported { name: String, span: Span },
+
     #[error("`{name}` is misused here (expected {detail})")]
     BuiltinMisuse {
         name: String,
@@ -292,6 +297,9 @@ pub fn check_file_with_externals(
         }),
         Err(cancho_ui_ir::lower::LowerError::LambdaUnsupported { span }) => {
             Err(CheckError::LambdaUnsupported { span })
+        }
+        Err(cancho_ui_ir::lower::LowerError::PatternLiteralUnsupported { name, span }) => {
+            Err(CheckError::PatternLiteralUnsupported { name, span })
         }
         Err(cancho_ui_ir::lower::LowerError::BuiltinMisuse { name, detail, span }) => {
             Err(CheckError::BuiltinMisuse { name, detail, span })

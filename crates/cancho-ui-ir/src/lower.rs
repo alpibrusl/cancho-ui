@@ -115,6 +115,13 @@ pub enum LowerError {
     )]
     LambdaUnsupported { span: Span },
 
+    /// `true` / `false` as a match arm pattern (docs/semantics.md, `pattern-literal-unsupported`): a pattern that is a
+    /// bare name binds it and matches everything, so the arm that looks like a literal would always match.
+    #[error(
+        "`{name}` as a match pattern is a binding that matches everything, not the literal; write `_` for \"anything else\" or branch on a state flag"
+    )]
+    PatternLiteralUnsupported { name: String, span: Span },
+
     #[error(
         "`{name}` is misused here (expected {detail}); see the builtin call forms: `filter(list, x => cond)`, `map(list, x => body)`, `sort(list, x => key)`, `reverse(list)`, `contains(text, needle)`, `lower(text)`, `len(value)`, `storage.get(key, default)`, `storage.set(key, value)`, `net.get(url)`, `net.fetch(url)`, `net.post(url, body)`, `json.get(text, path, default)`, `json.items(text, path)`"
     )]
@@ -683,6 +690,14 @@ fn lower_expr_with_effects(e: &Expr) -> Result<(IrExpr, Vec<IrReachableEffect>),
                 span: arm_span,
             } in arms
             {
+                if let Pattern::Ident { name, span } = pattern
+                    && (name == "true" || name == "false")
+                {
+                    return Err(LowerError::PatternLiteralUnsupported {
+                        name: name.clone(),
+                        span: *span,
+                    });
+                }
                 let ir_pattern = lower_pattern(pattern);
                 let (ir_body, mut e) = lower_expr_with_effects(body)?;
                 effects.append(&mut e);
