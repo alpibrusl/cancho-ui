@@ -508,7 +508,7 @@ the cost of the shape, and why `net.get` stays: most pages should not have to ch
 
 ### 15.4 Not done
 
-The response headers, a method other than GET (`net.post`: section 17), a body for a read, and a status that is a redirect (still `blocked: redirect`). The
+The response headers, a method other than GET (`net.post`: section 17), headers and credentials (section 18, a decision is requested), a body for a read, and a status that is a redirect (still `blocked: redirect`). The
 envelope is built in the browser; replay's trace has to write it by hand, and a trace that writes it wrongly tests
 nothing about the adapter (the Chromium check does).
 
@@ -617,6 +617,65 @@ is not text, a timeout the program chooses, an idempotency key, and a way to say
 (today: a state flag). A server that relies on cookies alone for authority is open to a cross-site form post whatever
 this adapter does; the `Content-Type: application/json` is not a defence, only a convention a server can check. iOS
 Safari is not tested.
+
+---
+
+## 18. Credentials: how a component sends one and still declares it
+
+> **Status: DESIGN ONLY, a decision is requested (nothing in this section is built).** Asked for by `alpibrusl/cancho-ui#17`,
+> found by the plant-floor spike in `alpibrusl/cancho-industrial#9` (`docs/ui-spike.md` there). It touches what a page may do
+> with a secret, so it is written for a maintainer to choose from, not decided here.
+
+### 18.1 What exists today (read from the code, and measured where marked)
+
+* `net.get`, `net.fetch` and `net.post` send **no header** the program chooses; `net.post` adds only `Content-Type:
+  application/json` (section 17). Requests use `credentials: "same-origin"`, so this origin's **cookies** go with them (measured
+  for `net.post`: `scripts/check-post.js` asserts the server received the cookie; `net.get` uses the same setting in the
+  adapter and is not separately measured).
+* So the cookie pattern the spike used works today: the page's script sets a cookie from the URL fragment and the server accepts
+  it on `GET`. Its limits, stated plainly: the cookie is not `HttpOnly` (script set it, so any script of the origin can read it),
+  and the credential **never appears in the component's `requires`**, so `cancho-ui diff` and `report` cannot show that the page
+  now carries an admin credential. The capability story stops at the glue.
+
+### 18.2 Options
+
+| | Option | The credential is declared | The value lives in | Replay can assert | Cost |
+|---|---|---|---|---|---|
+| A | **Named credential** `requires Credential("api");` | yes, in `requires`, so a diff shows it | the page's glue, handed to the module at mount | which credential a request carried (never the value) | a new capability and a `mount_X(root, options)` argument |
+| B | **Header allow-list on `Network`**, e.g. `requires Network("host", header "Authorization")` | yes | `Storage`, read by the component | the header and its value | the secret is program state, so it is in traces, reports and the diff of an initial value; a header allow-list is a new bound shape |
+| C | **Say plainly it is the page's business**, keep the cookie pattern | no | a cookie | no | nothing built; the gap stays open and is documented |
+
+### 18.3 Recommendation: A
+
+* **Declaration.** `requires Credential("api");` is a capability with a name as its bound, like `Storage("ns")`. A name is 1 to 32
+  lower-case letters, digits and `-`. The diff shows `Credential("api")` added, so "this release now sends a credential" is one line.
+* **Use.** A component with exactly one declared `Credential` sends it as `Authorization: Bearer <value>` on its `net.get`,
+  `net.fetch` and `net.post`, **only to hosts those calls may reach** (this origin, and the hosts of `Network("host")` or, for a
+  write, this origin): the credential is never attached to a request the allow-list would have blocked, so it cannot be sent to a
+  host the component did not declare. Two declared credentials are `credential-ambiguous` (a call cannot choose between them without a
+  language change this section does not propose). A `Credential` that no call can use is `capability-unused`, as for any capability.
+* **Supply.** The value is given by the page when it mounts: `mount_Readings(root, { credentials: { api: token } })` (the
+  new argument is optional; `--no-auto-mount`, section 9 of `mobile-backend.md`, is what makes this possible, because the auto-mounted
+  default has no place to pass it). A component that declares a credential and is mounted without it gets `Err("blocked: no credential
+  api")` from every request, before the request is made, never a request without it.
+* **Replay and reports.** A trace may list `"credentials": ["api"]`; the step report shows `issued #1 net.get("/x") [credential api]`;
+  a request issued without the credential available is the `Err` above. The value is never in a trace, a report or the IR.
+* **What it does not fix, said first.** The token is readable by any script of the page's origin (an XSS reads it), exactly as in
+  the cookie pattern; the custody of the value is the page's. The gain is that the **use** of a credential becomes declared,
+  reviewable authority, and that it cannot be sent to an undeclared host.
+
+### 18.4 What is needed from the maintainers
+
+1. A, B or C? (A is recommended; B puts a secret into program state and traces, which is the cost it cannot avoid.)
+2. If A: is `Authorization: Bearer` the only form, or must the scheme be declarable (`Credential("api", "basic")`)?
+3. If A: attaching the credential to **every** request of a component (the simplest rule) or only to those whose URL host is
+   named in the declaration (`Credential("api", "host")`)? The second is stricter and one more token.
+4. Is breaking the "mounted without the credential" case with an `Err` right, or should it be a build-time refusal for a
+   module built without `--no-auto-mount` (which cannot supply one)?
+
+### 18.5 Not done
+
+Everything: no parser, IR, adapter, replay or diagnostic change has been made for this section.
 
 ---
 
