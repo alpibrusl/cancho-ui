@@ -123,12 +123,14 @@ Looked at in the screenshots (`5-wide.png`, 1280 px):
 * the two text boxes had **no visible label** on the first draft: `label:` is an `aria-label` only. The page now sets
   `placeholder:` as well, which is visible; it vanishes once the operator types.
 
-### 2.10 Offline, the list is empty. Issue #44
+### 2.10 Offline, the list is empty. Issue #44. Fixed in the program, not in the service worker
 
-With the service stopped, the installed page still opens (the service worker precaches the page files) and says
-`status: error: network error` and `0 of 0 machines`. The service worker does not cache API answers
-(`docs/adapters.md` 9.5). For a console that is the difference between "the line is down" and "I have no idea". (A
-test note: Playwright's `setOffline` does not reach a service worker's own requests, so the check stops the server.)
+With the service stopped, the installed page opened (the service worker precaches the page files) and said
+`status: error: network error` and `0 of 0 machines`: the service worker does not cache API answers, and the program held the
+list only in memory. The console now keeps the last good answer in `Storage("ops-console")` and shows it when the read fails,
+with a status that says so (`error: network error (showing the last saved list, if any)`). Why the program and not the worker:
+`docs/adapters.md` section 19. (A test note: Playwright's `setOffline` does not reach a service worker's own requests, so the
+checks stop the server.)
 
 ### 2.11 Replay and the browser disagree about NaN. Not an issue: a documented refusal.
 
@@ -161,7 +163,7 @@ was added**; the first trace did not cover it), broken lines kept (1, 6), the id
 search made case-sensitive (2, 2), Next not clamped (2, 4), Flip doing nothing (2, 6). And `is_known_call` made always true:
 the `call-unknown` tests fail (10).
 
-Two checks assert a gap **as it is today** ("KNOWN GAP": Unicode search, offline list; the double submit and Enter were fixed, #35 and #36), so
+Two checks assert a gap **as it is today** ("KNOWN GAP": Unicode search; the double submit and Enter were fixed, #35 and #36, and the offline list, #44), so
 that fixing one fails the check and forces this document to be updated.
 
 ## 5. Not done

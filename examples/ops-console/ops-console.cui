@@ -8,6 +8,7 @@
 component OpsConsole {
     requires Network;
     requires NetworkWrite;
+    requires Storage("ops-console");
 
     state rows: List[String] = [];
     state shown: List[String] = [];
@@ -16,6 +17,7 @@ component OpsConsole {
     state dir: Int = 1;
     state page: Int = 0;
     state note: String = "not loaded";
+    state last: String = "";
     state r: Result[String, String] = Ok("");
     state target: String = "";
     state setpoint: String = "";
@@ -28,17 +30,20 @@ component OpsConsole {
 
     on Refresh {
         note = "loading";
+        last = storage.get("machines", last);
         r = await(net.get("api/machines"));
         note = match r {
             Ok(_) => { "updated" }
-            Err(e) => { "error: " + e }
+            Err(e) => { "error: " + e + " (showing the last saved list, if any)" }
             Cancelled => { "cancelled" }
         };
-        rows = match r {
-            Ok(text) => { filter(lines(text), x => len(json.get(x, "id", "")) > 0) }
-            Err(_) => { rows }
-            Cancelled => { rows }
+        last = match r {
+            Ok(text) => { text }
+            Err(_) => { last }
+            Cancelled => { last }
         };
+        storage.set("machines", last);
+        rows = filter(lines(last), x => len(json.get(x, "id", "")) > 0);
         shown = sort(filter(rows, x => contains(lower(json.get(x, "name", "")), lower(q))), x => dir * num(json.get(x, "temp", ""), dir * 1000000000));
         page = page * len(take(skip(shown, page * 5), 1));
         paged = take(skip(shown, page * 5), 5);

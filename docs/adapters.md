@@ -187,7 +187,7 @@ cannot be observed**: with the origin check in front, every request is same-orig
 *(Aborting a superseded or disposed request: built 2026-10-20, section 16.)*
 
 `Network("host")` narrowing and cross-origin fetches (and with them CORS handling and any credentials), methods
-other than GET (a POST exists since section 17, with its own capability), request bodies and headers for a read, streaming, a retry policy, and the service worker caching API replies. Chromium
+other than GET (a POST exists since section 17, with its own capability), request bodies and headers for a read, streaming, a retry policy, and the service worker caching API replies (section 19: not done on purpose). Chromium
 only; iOS Safari is not tested.
 
 ---
@@ -703,6 +703,40 @@ added) and cannot reach an undeclared host.
 
 A scheme other than Bearer; a credential for `net.search`; a credential attached to a path rather than a host; refreshing or
 expiring a token (the page passes a new one by remounting).
+
+## 19. The installed page, started with the service down (issue #44)
+
+**Measured** (`scripts/check-offline.js`, Chromium, the server stopped because `setOffline` does not reach a service worker): the
+page opens from the service worker's precache and, before the change below, showed `status: error: network error` and `0 of 0
+machines`. The worker answers `GET`s from its cache only for the precached files; a data `GET` goes to the network and fails.
+Inside one session the list was never lost (an `Err` keeps `rows`); only a **cold start** was empty.
+
+**Decision: do not cache API answers in the service worker; keep the last good answer in the program, with `Storage`.** The
+issue proposed stale-while-revalidate in the worker with the staleness reported to the program. Reasons for not doing it:
+
+* The worker sits below the program. A cached reply reaching `net.get` as `Ok(text)` is **indistinguishable from a fresh one**, and
+  telling the program needs a new arm (`Stale(text)` or an age) in the `Ok | Err | Cancelled` answer of every `net.*` call: a
+  language change that makes every existing `match r` non-exhaustive (`match-non-exhaustive`) until edited. Not proposed here.
+* A worker cache keyed by URL has no bound on size or age unless one is designed, and it would cover every same-origin `GET`,
+  including ones whose answer must never be shown late.
+* The program already has the right tool. `storage.get`/`storage.set` are declared (`Storage("ns")`), seeded and asserted in
+  replay, and the program knows what it is showing, so it can say so.
+
+**What the console does** (`examples/ops-console`): a `last: String` state holds the last good answer; `Refresh` starts with
+`last = storage.get("machines", last)`, writes `last` back after every read, and builds `rows` from `last` whatever the answer was.
+An `Err` keeps `last`, and the status says `error: <why> (showing the last saved list, if any)`, so an old list is never presented
+as fresh. No new language feature, no conditional (`docs/conditionals.md` is not needed for it).
+
+**Checked.** `examples/ops-console/ops-console.offline.trace.json` (replay: storage seeded, the first read fails, the saved list is
+shown, the next read replaces and saves it); the existing 37-step trace still passes with the one changed status text;
+`scripts/check-offline.js` and the former "KNOWN GAP #4" of `scripts/check-ops-console.js`. Against the previous program the new
+check fails three of its five checks (`0 of 0 machines`), so it measures the change.
+
+**Not done, and the limits.** A first-ever start with no network still shows nothing (there is nothing to show; the status says
+so). The saved list is the whole text of the last answer in `localStorage` (1,697 bytes for 23 machines, measured), which has a
+per-origin quota of a few MB: a program with a large answer must not use this pattern unmodified. Saved data is not aged: the page
+cannot say *how old*, only that the read failed (a `Clock` could add that; not built). Other pages need the same few lines; there is
+no builtin for it. iOS Safari is not tested.
 
 ---
 

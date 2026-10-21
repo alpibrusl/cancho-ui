@@ -1,0 +1,47 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "component": "OpsConsole",
+  "note": "The installed page started with the service down (docs/adapters.md section 19): the first read fails, the list the previous session saved is shown and the status says the read failed. The next read that succeeds replaces the list and saves it.",
+  "storage": {
+    "ops-console:machines": "{\"id\":\"M-101\",\"name\":\"Press 1\",\"state\":\"running\",\"temp\":71.5}\n{\"id\":\"M-102\",\"name\":\"Press 2\",\"state\":\"idle\",\"temp\":64}\n"
+  },
+  "steps": [
+    {
+      "resolve": 1,
+      "with": {
+        "Err": "network error"
+      },
+      "state": {
+        "note": "error: network error (showing the last saved list, if any)",
+        "rows": [
+          "{\"id\":\"M-101\",\"name\":\"Press 1\",\"state\":\"running\",\"temp\":71.5}",
+          "{\"id\":\"M-102\",\"name\":\"Press 2\",\"state\":\"idle\",\"temp\":64}"
+        ]
+      }
+    },
+    {
+      "advance": 5000,
+      "state": {
+        "note": "loading"
+      }
+    },
+    {
+      "resolve": 2,
+      "with": {
+        "Ok": "{\"id\":\"M-101\",\"name\":\"Press 1\",\"state\":\"running\",\"temp\":72}\n"
+      },
+      "state": {
+        "note": "updated",
+        "rows": [
+          "{\"id\":\"M-101\",\"name\":\"Press 1\",\"state\":\"running\",\"temp\":72}"
+        ]
+      },
+      "expect": {
+        "storage": {
+          "ops-console:machines": "{\"id\":\"M-101\",\"name\":\"Press 1\",\"state\":\"running\",\"temp\":72}\n"
+        }
+      }
+    }
+  ]
+}
