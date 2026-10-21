@@ -1,4 +1,4 @@
-# Lists and text: `sort`, `reverse`, `contains`, `lower`
+# Lists and text: `sort`, `reverse`, `contains`, `lower`, `num`
 
 > **Status: built (written before the code; measured in section 4).** The third item of the ui order that helps
 > `cancho-industrial`: a console shows rows, and a person filters and orders them. `filter`, `map` and `len`
@@ -11,6 +11,7 @@ sort(list, x => key)        -> a new list, stable, ascending by key
 reverse(list)               -> a new list, the elements in the opposite order
 contains(text, needle)      -> Bool; case-sensitive; an empty needle is in every text
 lower(text)                 -> the text with ASCII A to Z made a to z
+num(text, default)          -> the number the text spells, or default
 ```
 
 All four are **pure**: no capability, no effect, they run inside the render pass or a handler. `sort`'s second
@@ -25,12 +26,19 @@ argument is a lambda like `filter`'s and `map`'s, it never escapes, and it must 
 * **Stable.** Equal keys keep their order; `reverse(sort(..))` therefore reverses ties too.
 * **`lower` is ASCII only,** on purpose: `toLowerCase` and Rust's `to_lowercase` disagree on `İ` and on a final
   sigma, and a page and its replay must not disagree. `contains(lower(a), lower(b))` is the case-insensitive search.
+* **`num` reads exactly a JSON number** (`-?(0|[1-9][0-9]*)(.[0-9]+)?([eE][+-]?[0-9]+)?`, ASCII digits only) and
+  nothing else: no space, no `+`, no leading zero, no `.5` or `5.`, no hex, no `NaN`/`Infinity`, no decimal comma. A
+  text that is not one, and a number that overflows to infinity (`1e999`), is `default`; the result is never NaN and
+  `num` never throws. `-0` stays `-0`; decimals are correctly rounded in both runtimes (Rust's `parse::<f64>` and
+  JavaScript's `Number`). The default is a number (a String default is `replay-type-error` in replay). `json.get`
+  answers a String, so `num(json.get(row, "n", ""), 0)` is a number to sort by: `sort(rows, r => num(json.get(r,
+  "n", ""), 0))`. The type is a number, not an `Int`: the checker does not track it, as it does not track `json.get`.
 * **No sort descending.** `reverse(sort(..))` is it; one way to say it.
 
 ## 2. What it touches
 
 * **IR:** a node `SortBy { list, item, key }` (the shape of `Filter`/`Map`), serialized, rendered by `cancho-ui diff`
-  as `sort(list, x => key)`. The other three are `Call`s of a one-segment path that need no capability, so a
+  as `sort(list, x => key)`. The other four are `Call`s of a one-segment path that need no capability, so a
   program's authority is unchanged by using them.
 * **Emit:** the helpers live in `crates/cancho-ui-codegen-web/src/lists.rs` (`emit.rs` is near the 2,000-line
   ceiling) and are emitted only when the program calls them, found by looking at what was emitted, as `json.get` is.
@@ -54,16 +62,18 @@ argument is a lambda like `filter`'s and `map`'s, it never escapes, and it must 
   emitted only when used; seven misuses refused with their form; an impure key; a trace that filters, sorts and
   reverses as the query changes; a sort by a constant key and a non-text `contains` argument do not panic.
 * `scripts/check-lists.js` (Chromium, outside the gate): **the same corpus against the emitted `__cui_sort`**, the
-  `lower`/`contains`/`reverse` helpers, and a page where typing filters a sorted list and a button reverses it.
+  `lower`/`contains`/`reverse`/`num` helpers, and a page where typing filters a sorted list and a button reverses it.
+
+* `num` (added after): `tests/num_corpus.json` (45 cases: the grammar and every way to leave it, overflow, `-0`, rounding, Arabic-Indic and full-width digits, a trailing newline) against `num_of_text` in `cargo test` and against the emitted `__cui_num` in `scripts/check-lists.js`, and a page that sorts text rows by number.
 
 **The checks can fail.** Six deliberate breaks of the emitted helpers, each run against the browser script: numbers
 and strings swapped in the rank (killed by 4 checks), NaN not last (1), `lower` over more than ASCII (3), `contains`
 case-insensitive (1), `reverse` in place (1). **One survives, and cannot be observed:** removing the index tie-break
 from `__cui_sort`. `Array.prototype.sort` is stable in every engine since ES2019, so the tie-break changes nothing
-there; it stays so that the result does not depend on the engine.
+there; it stays so that the result does not depend on the engine. Six more for `num`, on the emitted helper: the finite check removed (killed by 2 corpus cases), leading zeros allowed (2), a plus sign allowed (1), `5.` allowed (2), the end anchor removed (7); and in the Rust model the leading-zero rule removed (killed by the corpus test).
 
 ## 5. Not done
 
-A text-to-number builtin (so rows can be sorted by a number held in JSON), `starts_with`/`ends_with`/`split`/`join`/
+*(A text-to-number builtin: built, `num`, section 1.)* `starts_with`/`ends_with`/`split`/`join`/
 `trim`, `upper`, a locale-aware collation, `sort` over anything but the keys above, and `take`/`skip` for paging.
 Chromium only.

@@ -5,10 +5,11 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use cancho_ui_replay::sort_key_order_json;
+use cancho_ui_replay::{num_of_text, sort_key_order_json};
 use serde_json::Value;
 
 const CORPUS: &str = include_str!("../../../tests/lists_corpus.json");
+const NUM_CORPUS: &str = include_str!("../../../tests/num_corpus.json");
 
 fn run(args: &[&str]) -> (i32, String, String) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -145,6 +146,62 @@ fn sorting_keys_of_mixed_kinds_and_non_text_arguments_do_not_panic() {
     let trace = scratch(
         "mixed.trace.json",
         r#"{"schema":"cancho-ui-trace","version":"0.1.0","component":"C","steps":[{"event":"Go","state":{"r":["b","a"]}}]}"#,
+    );
+    let (code, stdout, _) = run(&["test", p(&file), p(&trace), "--output", "json"]);
+    assert_eq!(code, 4, "{stdout}");
+    assert!(stdout.contains("replay-type-error"), "{stdout}");
+}
+
+#[test]
+fn num_agrees_with_every_case_of_its_corpus() {
+    let corpus: Value = serde_json::from_str(NUM_CORPUS).expect("the corpus is JSON");
+    let entries = corpus.as_array().expect("a list");
+    assert!(entries.len() >= 40, "{} cases", entries.len());
+    for e in entries {
+        let text = e["text"].as_str().expect("text");
+        let default = e["default"].as_f64().expect("default");
+        let got = num_of_text(text, default);
+        let want = if e["negzero"].as_bool() == Some(true) {
+            -0.0
+        } else {
+            e["expect"].as_f64().expect("expect")
+        };
+        assert_eq!(got.to_bits(), want.to_bits(), "{text:?}: {got} vs {want}");
+        assert!(!got.is_nan());
+    }
+}
+
+#[test]
+fn num_sorts_rows_by_a_number_held_in_text() {
+    let src = "component Rows {\n    state rows: List[String] = [\"{\\\"n\\\":\\\"10\\\"}\"];\n    state out: List[String] = [];\n    on Go { out = reverse(sort([\"9\", \"10\", \"x\", \"2.5\", \"-1\"], s => num(s, 1000))); }\n    view { Text { \"x\" } }\n}\n";
+    let file = scratch("num.cui", src);
+    let trace = scratch(
+        "num.trace.json",
+        r#"{"schema":"cancho-ui-trace","version":"0.1.0","component":"Rows","steps":[
+            {"event":"Go","state":{"out":["x","10","9","2.5","-1"]}}]}"#,
+    );
+    let (code, stdout, stderr) = run(&["test", p(&file), p(&trace)]);
+    assert_eq!(code, 0, "{stdout}{stderr}");
+}
+
+#[test]
+fn num_is_refused_with_the_wrong_arguments_and_rejects_a_non_number_default() {
+    for call in ["num(\"1\")", "num(\"1\", 2, 3)", "num()"] {
+        let src = PROGRAM.replace(
+            "sort(filter(names, n => contains(lower(n), lower(q))), n => lower(n))",
+            call,
+        );
+        assert_eq!(
+            codes(&src, "numbad.cui"),
+            ["builtin-shape-mismatch"],
+            "{call}"
+        );
+    }
+    let src = "component C {\n    state n: Int = 0;\n    on Go { n = num(\"1\", \"2\"); }\n    view { Text { \"x\" } }\n}\n";
+    let file = scratch("baddefault.cui", src);
+    let trace = scratch(
+        "baddefault.trace.json",
+        r#"{"schema":"cancho-ui-trace","version":"0.1.0","component":"C","steps":[{"event":"Go","state":{"n":0}}]}"#,
     );
     let (code, stdout, _) = run(&["test", p(&file), p(&trace), "--output", "json"]);
     assert_eq!(code, 4, "{stdout}");

@@ -488,6 +488,22 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                 )),
             }
         }
+        ("num", 2) => {
+            let text = eval(ctx, &args[0])?;
+            let default = eval(ctx, &args[1])?;
+            match (&text, &default) {
+                (Value::Str(t), Value::Num(d)) => Ok(Value::Num(num_of_text(t, *d))),
+                _ => Err(fault(
+                    "replay-type-error",
+                    format!(
+                        "`num` needs a String and a number default, got {} and {}",
+                        describe(&text),
+                        describe(&default)
+                    ),
+                    span,
+                )),
+            }
+        }
         ("lower", 1) => match eval(ctx, &args[0])? {
             Value::Str(t) => Ok(Value::Str(t.to_ascii_lowercase())),
             other => Err(fault(
@@ -565,7 +581,7 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
         (
             "clock.now" | "net.search" | "net.get" | "net.fetch" | "net.post" | "location.current"
             | "sleep" | "storage.get" | "storage.set" | "json.get" | "json.items" | "reverse"
-            | "contains" | "lower",
+            | "contains" | "lower" | "num",
             n,
         ) => Err(fault(
             "replay-type-error",
@@ -581,6 +597,47 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
             ),
             span,
         )),
+    }
+}
+
+/// `num(text, default)` (docs/lists.md section 5): `text` must be exactly a JSON number, and finite once read;
+/// otherwise `default`. The emitted `__cui_num` is the same function; `tests/num_corpus.json` is checked against both.
+pub fn num_of_text(text: &str, default: f64) -> f64 {
+    let b = text.as_bytes();
+    let digits = |from: usize| b[from..].iter().take_while(|c| c.is_ascii_digit()).count();
+    let mut i = 0;
+    if b.get(i) == Some(&b'-') {
+        i += 1;
+    }
+    match b.get(i) {
+        Some(b'0') => i += 1,
+        Some(b'1'..=b'9') => i += digits(i),
+        _ => return default,
+    }
+    if b.get(i) == Some(&b'.') {
+        let n = digits(i + 1);
+        if n == 0 {
+            return default;
+        }
+        i += 1 + n;
+    }
+    if matches!(b.get(i), Some(b'e' | b'E')) {
+        i += 1;
+        if matches!(b.get(i), Some(b'+' | b'-')) {
+            i += 1;
+        }
+        let n = digits(i);
+        if n == 0 {
+            return default;
+        }
+        i += n;
+    }
+    if i != b.len() {
+        return default;
+    }
+    match text.parse::<f64>() {
+        Ok(n) if n.is_finite() => n,
+        _ => default,
     }
 }
 

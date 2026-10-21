@@ -32,11 +32,13 @@ component Rows {
         shown = sort(filter(names, s => contains(lower(s), lower(v))), s => lower(s));
     }
     on Flip { shown = reverse(shown); }
+    on Order { shown = reverse(sort(["9", "10", "x", "2.5", "-1"], s => num(s, 1000))); }
 
     view {
         Column {
             TextField { label: "Search" value: q on: Query }
             Button { label: "Flip" on: Flip }
+            Button { label: "Order" on: Order }
             Text { "{len(shown)} matches" }
             For {
                 over: shown
@@ -60,7 +62,7 @@ component Rows {
   const from = js.indexOf('function __cui_sort');
   const to = js.indexOf('function mount_', from);
   if (from < 0 || to < 0) { throw new Error('the helpers are not in the built program'); }
-  const lib = new Function(js.slice(from, to) + '\nreturn { sort: __cui_sort, lower: __cui_lower, contains: __cui_contains, reverse: __cui_reverse };')();
+  const lib = new Function(js.slice(from, to) + '\nreturn { sort: __cui_sort, lower: __cui_lower, contains: __cui_contains, reverse: __cui_reverse, num: __cui_num };')();
   const corpus = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'lists_corpus.json'), 'utf8'));
   for (const e of corpus) {
     const keys = e.keys.map((k) => (k !== null && typeof k === 'object' && !Array.isArray(k) ? NaN : k));
@@ -71,6 +73,13 @@ component Rows {
   check('contains: case-sensitive, empty needle', lib.contains('Apple', 'pp') && !lib.contains('Apple', 'PP') && lib.contains('x', ''));
   const orig = [1, 2, 3];
   check('reverse: a new list', JSON.stringify(lib.reverse(orig)) === '[3,2,1]' && orig[0] === 1);
+
+  const nums = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'num_corpus.json'), 'utf8'));
+  for (const e of nums) {
+    const got = lib.num(e.text, e.default);
+    const want = e.negzero ? -0 : e.expect;
+    check(`num ${JSON.stringify(e.text)} -> ${e.negzero ? '-0' : e.expect}`, Object.is(got, want), `got ${got}`);
+  }
 
   // the page
   const server = http.createServer((req, res) => {
@@ -97,6 +106,8 @@ component Rows {
   await page.fill('input', '');
   await page.click('text=Flip');
   check('reversed', JSON.stringify(await rows()) === JSON.stringify(['pear', 'Fig', 'fig', 'apple', 'Apple']), JSON.stringify(await rows()));
+  await page.click('text=Order');
+  check('rows sorted by a number held in text', JSON.stringify(await rows()) === JSON.stringify(['x', '10', '9', '2.5', '-1']), JSON.stringify(await rows()));
   check('no script errors', errors.length === 0, errors.join(' | '));
   await browser.close();
   server.close();

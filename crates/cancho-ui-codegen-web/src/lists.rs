@@ -39,6 +39,18 @@ function __cui_lower(text) {
 }
 ";
 
+const NUM_JS: &str = "\
+// Builtin: num(text, default) (docs/lists.md section 5). A JSON number, exactly: -?(0|[1-9]d*)(.d+)?([eE][+-]?d+)?, no
+// space, no plus sign, no hex, no NaN or Infinity; anything else, and a number that overflows to infinity, is `default`.
+// Never NaN, never throws.
+function __cui_num(text, fallback) {
+    var s = typeof text === \"string\" ? text : String(text);
+    if (!/^-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][+-]?[0-9]+)?$/.test(s)) { return fallback; }
+    var n = Number(s);
+    return isFinite(n) ? n : fallback;
+}
+";
+
 /// The helpers that `emitted` (the components, after the adapters) calls, as one block of JavaScript.
 pub fn helpers_used(emitted: &str) -> String {
     let mut out = String::new();
@@ -47,6 +59,7 @@ pub fn helpers_used(emitted: &str) -> String {
         ("__cui_reverse(", REVERSE_JS),
         ("__cui_contains(", CONTAINS_JS),
         ("__cui_lower(", LOWER_JS),
+        ("__cui_num(", NUM_JS),
     ] {
         if emitted.contains(call) {
             out.push_str(js);
