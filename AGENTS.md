@@ -131,6 +131,8 @@ A component that sends a secret declares `requires Credential("api", "host"..)` 
 (`credential-needs-mount-options`). A trace lists `"credentials": ["api"]`; a missing one answers `Err("blocked: no credential api")`
 (`docs/adapters.md` section 18).
 
+`Button { label: "Select " + n on: Pick(n, 1) }`: `label:` is a string literal or an expression, and `on: Pick(a, b)` calls the handler `on Pick(x, y)` with the arguments, evaluated when the view is drawn, so a button in a `For` names its row (`docs/row-actions.md`). A click has no arguments of its own: a bare `on: Pick` for a handler with parameters is `event-arity-mismatch`, an event the component does not declare is `event-unknown`, and arguments on anything but a `Button` are `event-args-unsupported`.
+
 `Button` and `TextField` take `disabled: true | false | <a Bool state field>` (the native attribute, so a double click on a
 `disabled: sending` button that sets `sending = true` before its `await` sends one write); any other key that is not `label`,
 `role`, `on`, `value`, `disabled`, `submit` or `placeholder` is `binding-unknown` (`docs/controls.md`). `TextField { ... submit: Apply }`

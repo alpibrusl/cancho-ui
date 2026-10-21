@@ -465,6 +465,13 @@
       "state": {
         "note": "error: HTTP 503 (showing the last saved list, if any)"
       }
+    },
+    {
+      "event": "Pick",
+      "params": ["M-102"],
+      "state": {
+        "target": "M-102"
+      }
     }
   ]
 }

@@ -636,6 +636,25 @@ impl Parser {
         self.parse_binary_expr(0)
     }
 
+    /// Is the token after the current one a binary operator (so the current string literal starts an expression)?
+    fn next_is_binary_operator(&self) -> bool {
+        matches!(
+            self.tokens.get(self.pos + 1).map(|t| &t.token),
+            Some(
+                Token::Plus
+                    | Token::Minus
+                    | Token::Star
+                    | Token::Slash
+                    | Token::EqEq
+                    | Token::BangEq
+                    | Token::Lt
+                    | Token::LtEq
+                    | Token::Gt
+                    | Token::GtEq
+            )
+        )
+    }
+
     fn parse_binary_expr(&mut self, min_prec: u8) -> Result<Expr, ParseError> {
         let mut left = self.parse_unary()?;
         loop {
@@ -1328,6 +1347,7 @@ impl Parser {
         let mut accessibility = Accessibility {
             role: None,
             label: None,
+            label_expr: None,
             span: open.span,
         };
         let mut bindings: Vec<Binding> = Vec::new();
@@ -1357,20 +1377,38 @@ impl Parser {
                     let _kw = self.bump();
                     let _ = _kw;
                     self.expect(Token::DotDot)?;
-                    let label_tok = self.bump();
-                    let label = match label_tok.token {
-                        Token::StringLit(s) => static_text(s, label_tok.span)?,
-                        other => {
-                            return Err(ParseError::Unexpected {
-                                expected: "label string literal",
-                                found: other,
-                                line: label_tok.span.start.line,
-                                column: label_tok.span.start.column,
-                            });
+                    // A lone string literal is the static label (a `{` in it is refused); anything else is an
+                    // expression, evaluated at each render (docs/row-actions.md section 1).
+                    let lone_literal = matches!(self.peek().token, Token::StringLit(_))
+                        && !self.next_is_binary_operator();
+                    if lone_literal {
+                        let label_tok = self.bump();
+                        let Token::StringLit(s) = label_tok.token else {
+                            unreachable!("checked above")
+                        };
+                        accessibility.label = Some(static_text(s, label_tok.span)?);
+                        accessibility.span =
+                            Span::new(accessibility.span.start, label_tok.span.end);
+                    } else {
+                        match &self.peek().token {
+                            Token::StringLit(_)
+                            | Token::Ident(_)
+                            | Token::IntLit(_)
+                            | Token::FloatLit(_)
+                            | Token::LParen => {}
+                            other => {
+                                return Err(ParseError::Unexpected {
+                                    expected: "label string literal or expression",
+                                    found: other.clone(),
+                                    line: self.peek().span.start.line,
+                                    column: self.peek().span.start.column,
+                                });
+                            }
                         }
-                    };
-                    accessibility.label = Some(label);
-                    accessibility.span = Span::new(accessibility.span.start, label_tok.span.end);
+                        let expr = self.parse_expr()?;
+                        accessibility.span = Span::new(accessibility.span.start, expr.span().end);
+                        accessibility.label_expr = Some(expr);
+                    }
                 }
                 Token::RBrace => break,
                 Token::StringLit(_) => break,
@@ -1509,6 +1547,23 @@ impl Parser {
                         });
                     }
                 };
+                // `on: Pick(m)`: the arguments are expressions of the view (docs/row-actions.md section 2).
+                if key == "on" && matches!(self.peek().token, Token::LParen) {
+                    self.bump();
+                    let mut args = Vec::new();
+                    if !matches!(self.peek().token, Token::RParen) {
+                        loop {
+                            args.push(self.parse_expr()?);
+                            if matches!(self.peek().token, Token::Comma) {
+                                self.bump();
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+                    self.expect(Token::RParen)?;
+                    return Ok(BindingValue::EventCall { name, args });
+                }
                 Ok(BindingValue::EventRef(name))
             }
             "role" => {

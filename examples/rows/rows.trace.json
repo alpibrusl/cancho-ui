@@ -1,0 +1,11 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "component": "Rows",
+  "note": "A row's event carries the element it was drawn for: the params are what the browser passes (docs/row-actions.md).",
+  "steps": [
+    { "event": "Pick", "params": ["M-102", 2], "state": { "picked": "M-102 at 2", "clicks": 1 } },
+    { "event": "Reverse", "state": { "names": ["M-103", "M-102", "M-101"] } },
+    { "event": "Pick", "params": ["M-103", 2], "state": { "picked": "M-103 at 2", "clicks": 2 } }
+  ]
+}

@@ -18,7 +18,7 @@ component Half {
                     Err(e) => { "err" }
                 }
             }
-            Button { label: "Set 5"  on: Set }
+            Button { label: "Set 5"  on: Set(5) }
             Button { label: "Fail"   on: Fail }
         }
     }

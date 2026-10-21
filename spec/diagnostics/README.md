@@ -127,6 +127,9 @@ in `examples/refusal/`, and by the evidence report.
 | `binding-unknown` | `Component` | `Error` | `Static` | A key that is not a binding of the built-in element it is on (`title:` on a `Button`, `disabled:` on a `Column`). It used to be accepted and dropped or written as a stray attribute. *(Built 2026-10-21, issue #35, `docs/controls.md`.)* |
 | `disabled-not-bool` | `Component` | `Error` | `Static` | A `disabled:` that is not `true`, `false` or the name of a `Bool` state field of the component. *(Built 2026-10-21, issue #35.)* |
 | `submit-event-invalid` | `Component` | `Error` | `Static` | A `submit:` on a `TextField` naming an event the component does not declare, or one that takes parameters (Enter gives none). *(Built 2026-10-21, issue #36, `docs/controls.md` section 3.)* |
+| `event-unknown` | `Component` | `Error` | `Static` | An `on:` naming an event the component does not declare (with or without arguments). It used to compile and kill the page on its first render. *(Built 2026-10-21, issue #41, `docs/row-actions.md`.)* |
+| `event-arity-mismatch` | `Component` | `Error` | `Static` | An `on:` whose arguments are not the parameters of the handler: the wrong number of arguments, a bare `on:` on a button for a handler with parameters (a click has none; it used to receive the `MouseEvent`), or a field for a handler with two. *(Built 2026-10-21, issue #41.)* |
+| `event-args-unsupported` | `Component` | `Error` | `Static` | `on: Event(..)` with arguments on anything but a `Button`. *(Built 2026-10-21, issue #41.)* |
 | `capability-missing` | `Capability` | `Error` | `Static` | A component using an effect without `requires Capability` |
 | `capability-unused` | `Capability` | `Error` | `Static` | A `requires` declaration with no reachable use |
 | `capability-insufficient` | `Capability` | `Error` | `Static` | A `requires` narrower than the effect's needs |

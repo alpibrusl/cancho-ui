@@ -88,6 +88,12 @@ function check(label, ok, detail) {
   check('and the second answer is shown', await until(async () => (await texts()).includes('status: updated')));
   server.release();
 
+  // choosing a machine by clicking its row (issue #41): the row names the machine, the field is filled by the click
+  const firstId = (await rows())[0].split('  ')[0];
+  check('every row on the page has a button named by its machine', (await page.locator('button[aria-label^="Select M-"]').count()) === (await rows()).length, String(await page.locator('button[aria-label^="Select M-"]').count()));
+  await page.click(`button[aria-label="Select ${firstId}"]`);
+  check('clicking a row puts its machine id in the id field', await until(async () => (await page.inputValue('input[aria-label="Machine id"]')) === firstId), `${firstId} / ${await page.inputValue('input[aria-label="Machine id"]')}`);
+
   // posting a change
   await page.fill('input[aria-label="Machine id"]', 'M-101');
   await page.fill('input[aria-label="Setpoint"]', '80');

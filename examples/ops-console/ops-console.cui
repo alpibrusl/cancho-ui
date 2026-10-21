@@ -77,6 +77,7 @@ component OpsConsole {
         paged = take(skip(shown, page * 5), 5);
     }
 
+    on Pick(id) { target = id; }
     on SetTarget(v) { target = v; }
     on SetSetpoint(v) { setpoint = v; }
 
@@ -104,7 +105,10 @@ component OpsConsole {
             For {
                 over: paged
                 as: m
-                Text { json.get(m, "id", "?") + "  " + json.get(m, "name", "?") + "  " + json.get(m, "state", "?") + "  " + json.get(m, "temp", "no reading") }
+                Row {
+                    Button { label: "Select " + json.get(m, "id", "?") on: Pick(json.get(m, "id", "")) }
+                    Text { json.get(m, "id", "?") + "  " + json.get(m, "name", "?") + "  " + json.get(m, "state", "?") + "  " + json.get(m, "temp", "no reading") }
+                }
             }
             Row {
                 Button { label: "Previous page" on: Prev }

@@ -309,7 +309,12 @@ impl<'a> Machine<'a> {
                     let fires = |key: &str| {
                         bindings.iter().any(|b| {
                             b.key == key
-                                && matches!(&b.value, IrBindingValue::EventRef(e) if e == event)
+                                && match &b.value {
+                                    IrBindingValue::EventRef(e) => e == event,
+                                    // `on: Pick(m)` fires `Pick` like `on: Pick` does (docs/row-actions.md).
+                                    IrBindingValue::EventCall { name, .. } => name == event,
+                                    _ => false,
+                                }
                         })
                     };
                     let off = bindings.iter().any(|b| {

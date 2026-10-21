@@ -1,0 +1,27 @@
+// examples/rows/rows.cui — a row that can be clicked (docs/row-actions.md, issue #41): a Button inside a For names its
+// element in its label and in the arguments of its event.
+component Rows {
+    state names: List[String] = ["M-101", "M-102", "M-103"];
+    state picked: String = "nothing";
+    state clicks: Int = 0;
+
+    on Pick(id, position) {
+        picked = id + " at " + position;
+        clicks = clicks + 1;
+    }
+
+    on Reverse { names = reverse(names); }
+
+    view {
+        Column {
+            Text { role: status "picked: {picked}" }
+            Button { label: "Reverse" on: Reverse }
+            For {
+                over: names
+                as: n
+                Button { label: "Select " + n on: Pick(n, len(names) - 1) }
+            }
+            Text { "clicks: {clicks}" }
+        }
+    }
+}

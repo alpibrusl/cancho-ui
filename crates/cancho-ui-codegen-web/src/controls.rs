@@ -16,7 +16,12 @@ fn disabled_conditions(node: &IrViewNode, event: &str, out: &mut Vec<String>) {
             bindings, children, ..
         } => {
             let fires = bindings.iter().any(|b| {
-                b.key == "on" && matches!(&b.value, IrBindingValue::EventRef(e) if e == event)
+                b.key == "on"
+                    && match &b.value {
+                        IrBindingValue::EventRef(e) => e == event,
+                        IrBindingValue::EventCall { name, .. } => name == event,
+                        _ => false,
+                    }
             });
             if fires {
                 for b in bindings.iter().filter(|b| b.key == "disabled") {

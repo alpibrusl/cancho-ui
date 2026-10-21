@@ -896,12 +896,12 @@ fn lower_view_node_with_effects(
             }
             let mut lowered_bindings = Vec::with_capacity(bindings.len());
             for b in bindings {
-                lowered_bindings.push(lower_binding(b, Some(kind))?);
+                lowered_bindings.push(lower_binding(b, Some(kind), &mut effects)?);
             }
             Ok((
                 IrViewNode::Element {
                     kind: lower_kind(kind),
-                    accessibility: lower_accessibility(accessibility),
+                    accessibility: lower_accessibility(accessibility, &mut effects)?,
                     bindings: lowered_bindings,
                     children: lowered_children,
                     span: *span,
@@ -973,11 +973,23 @@ fn lower_kind(k: &ElementKind) -> IrElementKind {
     }
 }
 
-fn lower_accessibility(acc: &cancho_ui_syntax::ast::Accessibility) -> IrAccessibility {
-    IrAccessibility {
+fn lower_accessibility(
+    acc: &cancho_ui_syntax::ast::Accessibility,
+    effects: &mut Vec<IrReachableEffect>,
+) -> Result<IrAccessibility, LowerError> {
+    let label_expr = match &acc.label_expr {
+        Some(e) => {
+            let (ir, mut e) = lower_expr_with_effects(e)?;
+            effects.append(&mut e);
+            Some(Box::new(ir))
+        }
+        None => None,
+    };
+    Ok(IrAccessibility {
         role: acc.role.as_ref().map(lower_role),
         label: acc.label.clone(),
-    }
+        label_expr,
+    })
 }
 
 fn lower_role(r: &Role) -> IrRole {
@@ -989,7 +1001,11 @@ fn lower_role(r: &Role) -> IrRole {
     }
 }
 
-fn lower_binding(b: &Binding, kind: Option<&ElementKind>) -> Result<IrBinding, LowerError> {
+fn lower_binding(
+    b: &Binding,
+    kind: Option<&ElementKind>,
+    effects: &mut Vec<IrReachableEffect>,
+) -> Result<IrBinding, LowerError> {
     let value = match &b.value {
         BindingValue::String(s) => {
             // Tier 13: on a component instance, a string binding
@@ -1009,6 +1025,19 @@ fn lower_binding(b: &Binding, kind: Option<&ElementKind>) -> Result<IrBinding, L
             }
         }
         BindingValue::EventRef(name) => IrBindingValue::EventRef(name.clone()),
+        BindingValue::EventCall { name, args } => {
+            // Evaluated at render time, like a `Text` part: an effect it reaches is the component's (a `storage.get`).
+            let mut lowered = Vec::with_capacity(args.len());
+            for a in args {
+                let (ir, mut e) = lower_expr_with_effects(a)?;
+                effects.append(&mut e);
+                lowered.push(ir);
+            }
+            IrBindingValue::EventCall {
+                name: name.clone(),
+                args: lowered,
+            }
+        }
         BindingValue::Role(r) => IrBindingValue::Role(lower_role(r)),
         BindingValue::StateRef(name) => {
             // Tier 14: on a component instance, a `StateRef` value

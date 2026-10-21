@@ -222,6 +222,9 @@ pub enum ElementKind {
 pub struct Accessibility {
     pub role: Option<Role>,
     pub label: Option<String>,
+    /// `label: m` / `label: "Pick " + m` (docs/row-actions.md): a label that is an expression, evaluated at each render.
+    /// A lone string literal is `label` instead, so a program with literal labels has none of these.
+    pub label_expr: Option<Expr>,
     pub span: Span,
 }
 
@@ -247,6 +250,9 @@ pub enum BindingValue {
     /// `on: Increment` — reference to an event declared in the
     /// enclosing component.
     EventRef(String),
+    /// `on: Pick(m)` — an event reference with arguments, evaluated at render time (docs/row-actions.md): a row of a
+    /// `For` can name the element it is for.
+    EventCall { name: String, args: Vec<Expr> },
     /// `role: heading` etc.
     Role(Role),
     /// `value: query` — reference to a state field. Tier 5
