@@ -30,7 +30,7 @@ later work; nothing here prevents them.
 
 ## 2. What the web backend does on a phone today (measured, not hoped)
 
-Read from the code generator (`crates/cancho-ui-codegen-web/src/emit.rs`) and
+Read from the code generator (`crates/cancho-ui-codegen-web/src/`, `emit.rs` and the modules beside it) and
 from compiled output (`examples/search`):
 
 - The emitted JavaScript contains no `import`, no `fetch`, no `localStorage`,

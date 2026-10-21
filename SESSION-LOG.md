@@ -211,7 +211,11 @@ cancho-ui/
       src/serialize.rs                            # canonical JSON
     cancho-ui-codegen-web/                        # JS + DOM emitter
       src/lib.rs
-      src/emit.rs                                 # IR → ES module
+      src/emit.rs                                 # IR → ES module (module, component, statements)
+      src/expr.rs                                 # expressions and builtin calls
+      src/view.rs                                 # the view walk and component slots
+      src/adapters.rs                             # the JavaScript adapters copied in when used
+      src/lists.rs                                # the list and text builtins' helpers
     cancho-ui/                                    # CLI binary
       src/main.rs                                 # cancho-ui check / build
       src/pipeline.rs                             # lex → parse → IR → JS
