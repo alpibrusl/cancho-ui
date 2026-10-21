@@ -48,33 +48,33 @@ function check(label, ok, detail) {
 
   await page.goto(url);
   await page.waitForSelector('#root *');
-  check('the list loads on start, 23 of 23, page 0', await until(async () => (await texts()).includes('23 of 23 machines, page 0')), JSON.stringify((await texts()).slice(0, 4)));
+  check('the list loads on start, 23 of 23, page 1 of 5', await until(async () => (await texts()).includes('23 of 23 machines, page 1 of 5')), JSON.stringify((await texts()).slice(0, 4)));
   check('the first page is the five lowest temperatures, in numeric order (not text order)', JSON.stringify(await temps()) === JSON.stringify(ascTemps.slice(0, 5)), JSON.stringify(await temps()));
   await page.screenshot({ path: path.join(shots, '1-loaded.png') });
 
   // filter
   await page.fill('input[aria-label="Search by name"]', 'PRESS');
-  check('typing PRESS keeps the three presses, case-insensitively, and resets the page', await until(async () => (await texts()).includes('3 of 23 machines, page 0')) && (await names()).every((n) => /^Press /.test(n)), JSON.stringify(await names()));
+  check('typing PRESS keeps the three presses, case-insensitively, and resets the page', await until(async () => (await texts()).includes('3 of 23 machines, page 1 of 1')) && (await names()).every((n) => /^Press /.test(n)), JSON.stringify(await names()));
   check('the filtered rows are still ordered by temperature', sorted(await temps(), 1), JSON.stringify(await temps()));
   await page.screenshot({ path: path.join(shots, '2-filtered.png') });
   await page.fill('input[aria-label="Search by name"]', 'zzz');
-  check('a query that matches nothing shows no rows and says so', await until(async () => (await texts()).includes('0 of 23 machines, page 0')) && (await rows()).length === 0);
+  check('a query that matches nothing shows no rows and says so', await until(async () => (await texts()).includes('0 of 23 machines, page 1 of 1')) && (await rows()).length === 0);
   await page.fill('input[aria-label="Search by name"]', '');
-  check('clearing the query brings all 23 back', await until(async () => (await texts()).includes('23 of 23 machines, page 0')));
+  check('clearing the query brings all 23 back', await until(async () => (await texts()).includes('23 of 23 machines, page 1 of 5')));
 
   // sort direction and paging
   await page.click('button[aria-label^="Sort by temperature"]');
   check('the other direction lists the five highest first', await until(async () => JSON.stringify(await temps()) === JSON.stringify(ascTemps.slice(-5).reverse())), JSON.stringify(await temps()));
   const first = await rows();
   await page.click('button[aria-label="Next page"]');
-  check('Next goes to page 1 with different rows, still descending', await until(async () => (await texts()).includes('23 of 23 machines, page 1')) && JSON.stringify(await rows()) !== JSON.stringify(first) && sorted(await temps(), -1));
+  check('Next goes to page 1 with different rows, still descending', await until(async () => (await texts()).includes('23 of 23 machines, page 2 of 5')) && JSON.stringify(await rows()) !== JSON.stringify(first) && sorted(await temps(), -1));
   for (let i = 0; i < 8; i++) { await page.click('button[aria-label="Next page"]'); }
   await page.waitForTimeout(150);
   const last = (await texts()).find((t) => /^23 of 23 machines, page/.test(t));
-  check('Next stops at the last page (23 rows, 5 per page: page 4, three rows)', last === '23 of 23 machines, page 4' && (await rows()).length === 3, `${last} ${(await rows()).length}`);
+  check('Next stops at the last page (23 rows, 5 per page: page 5 of 5, three rows)', last === '23 of 23 machines, page 5 of 5' && (await rows()).length === 3, `${last} ${(await rows()).length}`);
   for (let i = 0; i < 8; i++) { await page.click('button[aria-label="Previous page"]'); }
   await page.waitForTimeout(150);
-  check('Previous stops at page 0', (await texts()).includes('23 of 23 machines, page 0') && JSON.stringify(await rows()) === JSON.stringify(first));
+  check('Previous stops at page 1', (await texts()).includes('23 of 23 machines, page 1 of 5') && JSON.stringify(await rows()) === JSON.stringify(first));
   await page.click('button[aria-label^="Sort by temperature"]');
   await until(async () => JSON.stringify(await temps()) === JSON.stringify(ascTemps.slice(0, 5)));
 
@@ -156,14 +156,14 @@ function check(label, ok, detail) {
   const click2 = (label) => p2.click(`button[aria-label="${label}"]`);
   const walk = async (dirClicks) => { const out = []; for (let i = 0; i < 8; i++) { out.push(...(await rows2())); await click2('Next page'); await p2.waitForTimeout(40); } for (let i = 0; i < 8; i++) { await click2('Previous page'); } return out; };
   await p2.goto(url);
-  await until2(async () => (await total2()) === '23 of 23 machines, page 0');
+  await until2(async () => (await total2()) === '23 of 23 machines, page 1 of 5');
 
   // the list shrinks under an open page
   for (let i = 0; i < 4; i++) { await click2('Next page'); }
-  check('on the last page before the list shrinks', (await total2()) === '23 of 23 machines, page 4' && (await rows2()).length === 3);
+  check('on the last page before the list shrinks', (await total2()) === '23 of 23 machines, page 5 of 5' && (await rows2()).length === 3);
   behaviour.limit = 20;
   await click2('Refresh');
-  check('the list shrinks to 20: the page returns to 0 instead of showing an empty page 4', await until2(async () => (await total2()) === '20 of 20 machines, page 0' && (await rows2()).length === 5), String(await total2()));
+  check('the list shrinks to 20: the page returns to 0 instead of showing an empty page 5', await until2(async () => (await total2()) === '20 of 20 machines, page 1 of 4' && (await rows2()).length === 5), String(await total2()));
   behaviour.limit = 0;
 
   // awkward records: markup, a malformed line, a line that is not JSON, a blank line, no temperature, a bad one, null
@@ -174,7 +174,7 @@ function check(label, ok, detail) {
     '{"id":"M-207","name":"Pumpe \u00dcnit","state":"idle","temp":2}', '{"id":"M-208","name":"pumpe \u00fcnit","state":"idle","temp":3}',
   ];
   await click2('Refresh');
-  check('a truncated line, a line that is not JSON and a blank line are dropped: 23 + 6 records, not 23 + 9', await until2(async () => (await total2()) === '29 of 29 machines, page 0'), String(await total2()));
+  check('a truncated line, a line that is not JSON and a blank line are dropped: 23 + 6 records, not 23 + 9', await until2(async () => (await total2()) === '29 of 29 machines, page 1 of 6'), String(await total2()));
   const seen = await walk();
   check('markup in a name is shown as text and runs nothing', seen.some((t) => t.includes('<img src=x onerror=window.__pwned=1>')) && (await p2.evaluate(() => window.__pwned)) === undefined);
   const lastAsc = seen.slice(-3);
@@ -192,7 +192,7 @@ function check(label, ok, detail) {
 
   behaviour.crlf = true;
   await click2('Refresh');
-  check('lines ending in CRLF are read as the same 23 records', await until2(async () => (await total2()) === '23 of 23 machines, page 0') && !(await rows2()).some((t) => t.includes('\r')));
+  check('lines ending in CRLF are read as the same 23 records', await until2(async () => (await total2()) === '23 of 23 machines, page 1 of 5') && !(await rows2()).some((t) => t.includes('\r')));
   behaviour.crlf = false;
 
   // the form
@@ -233,7 +233,7 @@ function check(label, ok, detail) {
   await p3.goto(url);
   await p3.waitForSelector('#root span');
   const total3 = async () => p3.evaluate(() => (Array.from(document.querySelectorAll('#root span')).map((e) => e.textContent).find((t) => /machines, page/.test(t))));
-  for (let t = 0; t < 4000 && (await total3()) !== '23 of 23 machines, page 0'; t += 40) { await p3.waitForTimeout(40); }
+  for (let t = 0; t < 4000 && (await total3()) !== '23 of 23 machines, page 1 of 5'; t += 40) { await p3.waitForTimeout(40); }
   await p3.clock.pauseAt((await p3.evaluate(() => Date.now())) + 1);
   await p3.focus('input[aria-label="Search by name"]');
   await p3.keyboard.type('Fur', { delay: 20 });
@@ -245,7 +245,7 @@ function check(label, ok, detail) {
   await p3.waitForTimeout(200);
   const typed = await p3.evaluate(() => ({ value: document.querySelector('input[aria-label="Search by name"]').value, focused: document.activeElement && document.activeElement.getAttribute('aria-label') }));
   check('typing carries on across a refresh that lands in the middle of it: the text and the focus survive', typed.value === 'Furnace' && typed.focused === 'Search by name', JSON.stringify(typed));
-  check('and the filtered list is the three furnaces', (await total3()) === '3 of 23 machines, page 0', String(await total3()));
+  check('and the filtered list is the three furnaces', (await total3()) === '3 of 23 machines, page 1 of 1', String(await total3()));
   await p3.close();
 
   // ---------------------------------------------------------------- phase 4: the service is gone, with the service worker (real clock)

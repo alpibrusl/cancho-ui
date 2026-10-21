@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The emitted `__cui_sort`, `__cui_reverse`, `__cui_contains` and `__cui_lower` against the corpus tests/lists_corpus.json
+// The emitted `__cui_sort`, `__cui_reverse`, `__cui_contains`, `__cui_lower` and the number helpers against the corpus tests/lists_corpus.json
 // (docs/lists.md), the same file the Rust model is checked against by `cargo test`, and a page in Chromium that filters,
 // sorts and reverses a list as the user types. Outside the gate: needs node, the `playwright` package with a Chromium,
 // and a built `cancho-ui`.
@@ -30,6 +30,7 @@ component Rows {
     state body: String = "";
     state recs: List[String] = [];
     state joined: String = "";
+    state pages: Int = 0;
     state r: Result[String, String] = Ok("");
 
     on Query(v) {
@@ -44,6 +45,7 @@ component Rows {
         recs = match r { Ok(t) => { map(lines(t), l => trim(upper(l))) } Err(e) => { [] } Cancelled => { [] } };
         joined = join(filter(recs, l => starts_with(l, "T")), "|") + "/" + join(filter(recs, l => ends_with(l, "3")), "|");
     }
+    on Pages { pages = max(ceil(len(names) / 2), 1) + min(1, 2) + abs(0 - 1) + floor(1.5) + round(1.5); }
     on Order { shown = reverse(sort(["9", "10", "x", "2.5", "-1"], s => num(s, 1000))); }
 
     view {
@@ -53,6 +55,8 @@ component Rows {
             Button { label: "Order" on: Order }
             Button { label: "Next" on: Next }
             Button { label: "Load" on: Load }
+            Button { label: "Pages" on: Pages }
+            Text { "pages {pages}" }
             Text { "joined: {joined}" }
             For {
                 over: recs
@@ -83,7 +87,7 @@ component Rows {
   const from = js.indexOf('function __cui_sort');
   const to = js.indexOf('function mount_', from);
   if (from < 0 || to < 0) { throw new Error('the helpers are not in the built program'); }
-  const lib = new Function(js.slice(from, to) + '\nreturn { sort: __cui_sort, lower: __cui_lower, contains: __cui_contains, reverse: __cui_reverse, num: __cui_num, take: __cui_take, skip: __cui_skip, lines: __cui_lines, split: __cui_split, join: __cui_join, trim: __cui_trim, upper: __cui_upper, starts_with: __cui_starts_with, ends_with: __cui_ends_with, quote: __cui_json_quote };')();
+  const lib = new Function(js.slice(from, to) + '\nreturn { sort: __cui_sort, lower: __cui_lower, contains: __cui_contains, reverse: __cui_reverse, num: __cui_num, take: __cui_take, skip: __cui_skip, lines: __cui_lines, split: __cui_split, join: __cui_join, trim: __cui_trim, upper: __cui_upper, starts_with: __cui_starts_with, ends_with: __cui_ends_with, quote: __cui_json_quote, min: __cui_min, max: __cui_max, abs: __cui_abs, floor: __cui_floor, ceil: __cui_ceil, round: __cui_round };')();
   const corpus = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'lists_corpus.json'), 'utf8'));
   for (const e of corpus) {
     const keys = e.keys.map((k) => (k !== null && typeof k === 'object' && !Array.isArray(k) ? NaN : k));
@@ -114,6 +118,15 @@ component Rows {
     check(`unchanged: ${e.why}`, JSON.stringify(e.list) === input);
   }
   check('take/skip: a count that is not a number is 0', lib.take([1, 2], 'x').length === 0 && lib.take([1, 2, 3], '2').length === 0 && lib.skip([1, 2], undefined).length === 2);
+
+  const math = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'math_corpus.json'), 'utf8'));
+  const special_num = { NaN: NaN, Infinity: Infinity, '-Infinity': -Infinity };
+  const num_of = (v) => (typeof v === 'string' ? special_num[v] : v);
+  for (const e of math) {
+    const got = lib[e.op](...e.args.map(num_of));
+    check(`${e.op}(${e.args.join(', ')}): ${e.why}`, Object.is(got, num_of(e.expect)), `got ${Object.is(got, -0) ? '-0' : got}`);
+  }
+  check('math: a value that is not a number is NaN, not coerced', Number.isNaN(lib.min('1', 2)) && Number.isNaN(lib.abs('-3')) && Number.isNaN(lib.ceil(undefined)) && Number.isNaN(lib.floor(null)));
 
   const texts = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'text_corpus.json'), 'utf8'));
   for (const e of texts) {
@@ -159,6 +172,8 @@ component Rows {
   check('rows sorted by a number held in text', JSON.stringify(await rows()) === JSON.stringify(['x', '10', '9', '2.5', '-1']), JSON.stringify(await rows()));
   await page.click('text=Next');
   check('paged: skip one, take two', JSON.stringify(await rows()) === JSON.stringify(['10', '9']), JSON.stringify(await rows()));
+  await page.click('text=Pages');
+  check('min, max, abs, floor, ceil and round on the page', (await page.locator('#root').innerText()).includes('pages 8'), (await page.locator('#root').innerText()).split('\n').find((l) => l.startsWith('pages')));
   await page.click('text=Load');
   const recs = async () => (await page.locator('#root').innerText()).split('\n').filter((l) => l === 'rec' || l.startsWith('rec ')).map((l) => l.slice(4));
   for (let i = 0; i < 100 && (await recs()).length === 0; i++) { await page.waitForTimeout(30); }
