@@ -180,3 +180,71 @@ path's length; the script's own totals (43,580 and 49,989) are that, 21 bytes mo
   and the mutants re-run.
 - **Not measured:** iOS Safari, a real phone, Lighthouse, update behaviour (a new version
   taking over after the old tabs close), and what any browser does with the install prompt.
+
+---
+
+## 9. The emitted module: embedding it, and what it guarantees
+
+> **Status: built (written before the code; measured in 9.4).** Asked for by `alpibrusl/cancho-ui#20`, found when
+> `alpibrusl/cancho-industrial#9` (`docs/ui-spike.md` there) compiled the emitted JavaScript into a program that has no file
+> access and had to embed it as a string literal in a language with a small escape set.
+
+### 9.1 Mounting is a choice: `--no-auto-mount`
+
+`cancho-ui build` ends the module with a side effect: it looks up `#root` and mounts the last component into it. That
+stays the default (nothing existing changes). `cancho-ui build <file.cui> --no-auto-mount` omits those two lines and keeps
+the export, so a page that imports the module mounts it where it wants, and as many times as it wants:
+
+```js
+import { mount_Readings } from "./readings.js";   // imports without mounting
+mount_Readings(document.getElementById("left"));
+mount_Readings(document.getElementById("right"));
+```
+
+The flag changes **exactly** the mount lines: with it, the output is the default output with `const root = ...` and
+`if (root) { mount_X(root); }` removed (checked byte for byte, 9.4). `--no-auto-mount` with `--pwa` is a usage error:
+the installed page's `index.html` relies on the module mounting itself.
+
+### 9.2 The module is ASCII
+
+Every byte of the emitted module is printable ASCII (32 to 126) or a newline or tab. This is a guarantee, not a habit:
+
+* the emitter's own comments and adapters contain no other byte (four comments had a U+2014 dash; they use `-` now);
+* a string from the program (text, a label, a state default) reaches the module only through `js_string`, which writes every
+  character above 126 and every control character as a `\uXXXX` escape (UTF-16 units, so an astral character is a surrogate pair,
+  which JavaScript reads back as the same string);
+* the `// Source:` comment shows the source path with every character outside 32 to 126 replaced by `?`.
+
+The value of a string is unchanged: `"caf\u00e9"` in the module is the same JavaScript string as `"café"` was. The guarantee covers
+the `.js` module; the PWA's `index.html`, manifest and service worker are separate files and carry the app name as given.
+
+### 9.3 What it touches
+
+`EmitOptions { auto_mount }` and `emit_module_with` in `codegen-web` (`emit_module` is the default-options wrapper, so every
+existing caller is unchanged), `js_string`, the `// Source:` line, the four adapter comments, `BuildOpts` and `compile_to_js_with`
+in the CLI (and the usage text and `introspect` listing).
+
+### 9.4 Checked
+
+* `cargo test` (`crates/cancho-ui/tests/build_output.rs`, 5 tests): **every example** (14 programs) builds to ASCII; a program
+  with non-ASCII text, a label, a state default and an astral character, in a **non-ASCII directory**, builds to ASCII
+  with the expected `\u` escapes (a surrogate pair for the astral character) and a `// Source:` line with `?`; the
+  `--no-auto-mount` output equals the default output with exactly the two mount lines removed, and keeps the export;
+  `--no-auto-mount --pwa` is a usage error (exit 2) and writes nothing; a non-ASCII identifier is refused and nothing is written.
+* `scripts/check-embed.js` (Chromium, outside the gate): the default build mounts into `#root` on import; a non-ASCII
+  string written as escapes is **the same string on the page** (`café 😀 —`, and a button label `Über`); the
+  `--no-auto-mount` build mounts nothing on import, can be mounted twice into two elements, leaves `#root` empty, and its two
+  instances are independent (a click in one does not change the other).
+
+**The checks can fail.** Seven deliberate breaks, all killed: `js_string` passing everything through (2 tests, 2 browser
+checks), escapes without zero padding (2 tests; the module no longer parses), an astral character losing its low surrogate
+(2 tests, 1 browser check: the page shows a different string), the `Source` comment not sanitized (2), the option ignored
+(2 tests, 2 browser checks), the export dropped under the flag (2), and an em dash put back in an adapter comment (2).
+
+### 9.5 Not done
+
+A guarantee for the PWA's `index.html`, manifest and service worker (they carry the app name as given); a way to ask for
+the mount point by name (`--no-auto-mount` leaves it to the page); a build that emits an ES module without the `export` line;
+and non-ASCII identifiers (a component or state name with a non-ASCII letter is `lex-unexpected-char`, so no identifier in the module is non-ASCII; `tests/build_output.rs` pins it).
+
+

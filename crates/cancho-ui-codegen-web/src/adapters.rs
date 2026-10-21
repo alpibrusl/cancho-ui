@@ -147,7 +147,7 @@ pub(crate) const SLEEP_ADAPTER_JS: &str = "\
 // `{__cui_tag: \"Ok\", value: undefined}` after `ms` milliseconds.
 // The `await(...)` expression in cancho-ui lowers to `await expr`
 // in JS, so the resolved value flows into the surrounding
-// statement. Tier 7 does not implement cancellation yet — the
+// statement. Tier 7 does not implement cancellation yet - the
 // `Cancelled` variant is matched but never produced.
 function __cui_sleep_ms(ms) {
     return new Promise(function (resolve) {
@@ -163,7 +163,7 @@ pub(crate) const NETWORK_ADAPTER_JS: &str = "\
 // delay. Tier 9 stub: the search filters a fixed corpus by
 // substring, so the demo is fully interactive offline. The delay
 // grows with the query length so slow requests demonstrably
-// return AFTER fast ones — which is exactly what Tier 10
+// return AFTER fast ones - which is exactly what Tier 10
 // cancellation protects against. A failing deadline resolves
 // with `{__cui_tag: \"Err\", reason}` instead.
 const __CUI_CORPUS = [
@@ -320,13 +320,13 @@ pub(crate) const CANCEL_ADAPTER_JS: &str = "\
 //     other's requests;
 //   - within one component, starting a call cancels the group's
 //     still-pending request (stale-result protection: a newer
-//     search supersedes an older one) — a superseded request
+//     search supersedes an older one) - a superseded request
 //     resolving later throws the `__cui_cancelled` sentinel and
 //     the handler's try/catch swallows it: the rest of that
 //     handler is *dropped* (drop at the await);
 //   - component disposal (a slot removal, or the parent's
 //     disposal) marks the pending token `disposed`, and the
-//     pending await *resolves* to `{__cui_tag:\"Cancelled\"}` —
+//     pending await *resolves* to `{__cui_tag:\"Cancelled\"}` -
 //     the `match`'s `Cancelled` arm dispatches. The arm is
 //     compile-time mandatory for an awaited field, so a disposed
 //     component's handler always has the program's cancellation

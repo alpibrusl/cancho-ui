@@ -39,7 +39,7 @@ cancho-ui — Cancho UI compiler CLI
 
 USAGE:
     cancho-ui check <file.cui>... [--output json]
-    cancho-ui build <file.cui>... [-o <path>] [--target web] [--output json]
+    cancho-ui build <file.cui>... [-o <path>] [--target web] [--no-auto-mount] [--output json]
     cancho-ui build <file.cui> --pwa -o <dir> [--name <text>]   an installable web app (docs/mobile-backend.md)
     cancho-ui inspect component <file.cui> <name> [--output json]
     cancho-ui inspect effects   <file.cui> <name> [--output json]
@@ -155,7 +155,10 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
     let mut failures = 0;
     let mut all_diags: Vec<pipeline::Diagnostic> = Vec::new();
     for file in &opts.files {
-        match pipeline::compile_to_js(file, opts.target.as_deref()) {
+        let emit = cancho_ui_codegen_web::EmitOptions {
+            auto_mount: !opts.no_auto_mount,
+        };
+        match pipeline::compile_to_js(file, opts.target.as_deref(), &emit) {
             Ok(out) if opts.pwa => {
                 let dir = opts.output.as_ref().expect("parse requires -o with --pwa");
                 let name = opts.name.clone().unwrap_or_else(|| {
@@ -348,7 +351,7 @@ fn run_introspect(args: &[String]) -> Result<ExitCode, CliError> {
         "version": "0.1.0",
         "commands": [
             { "name": "check",       "args": ["<file.cui>...", "--output json"] },
-            { "name": "build",       "args": ["<file.cui>...", "-o <path>", "--target web", "--pwa", "--name <text>", "--output json"] },
+            { "name": "build",       "args": ["<file.cui>...", "-o <path>", "--target web", "--no-auto-mount", "--pwa", "--name <text>", "--output json"] },
             { "name": "inspect",     "subcommands": ["component <file> <name>", "effects <file> <name>", "ir <file>"], "args": ["--output json"] },
             { "name": "diff",        "args": ["<base.cui>", "<candidate.cui>", "--output json"], "exit_codes": { "0": "no semantic change", "1": "a file was refused", "2": "command line wrong", "3": "environment failed", "5": "the programs differ semantically" } },
             { "name": "test",        "args": ["<file.cui>", "<trace.json>", "--output json"], "exit_codes": { "0": "the trace passed", "1": "the program did not compile", "2": "command line wrong", "3": "environment failed", "4": "a test failed (expectation, malformed trace, or a construct replay refuses)" } },
@@ -437,6 +440,7 @@ struct BuildOpts {
     target: Option<String>,
     output_format: OutputFormat,
     pwa: bool,
+    no_auto_mount: bool,
     name: Option<String>,
 }
 
@@ -457,6 +461,11 @@ impl BuildOpts {
                 }
                 "--pwa" => {
                     out.pwa = true;
+                    i += 1;
+                    continue;
+                }
+                "--no-auto-mount" => {
+                    out.no_auto_mount = true;
                     i += 1;
                     continue;
                 }
@@ -502,6 +511,12 @@ impl BuildOpts {
         }
         if out.files.is_empty() {
             return Err(CliError::Usage("`build` requires at least one file".into()));
+        }
+        if out.pwa && out.no_auto_mount {
+            return Err(CliError::Usage(
+                "`--no-auto-mount` cannot be combined with `--pwa`: the installed page relies on the module mounting itself"
+                    .into(),
+            ));
         }
         if out.pwa {
             if out.files.len() != 1 {
