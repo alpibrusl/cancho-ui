@@ -463,7 +463,7 @@
         "Err": "HTTP 503"
       },
       "state": {
-        "note": "error: HTTP 503"
+        "note": "error: HTTP 503 (showing the last saved list, if any)"
       }
     }
   ]
