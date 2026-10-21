@@ -490,6 +490,27 @@ fn check_to_diag(e: &cancho_ui_types::CheckError, file: &Path) -> Diagnostic {
                 notes: Vec::new(),
             }
         }
+        cancho_ui_types::CheckError::PatternLiteralUnsupported { name, span } => Diagnostic {
+            code: "pattern-literal-unsupported".into(),
+            severity: Severity::Error,
+            tier: Tier::Static,
+            subject: Subject::Component {
+                name: String::new(),
+            },
+            message: format!(
+                "`{name}` as a match pattern is a binding that matches everything, not the literal"
+            ),
+            span: Some(SpanOut::from_span(*span, file)),
+            expected: None,
+            actual: None,
+            remediation: Some(Remediation {
+                description: pattern_literal_remediation(),
+                suggestion: None,
+                confidence: Confidence::High,
+            }),
+            related: Vec::new(),
+            notes: Vec::new(),
+        },
         cancho_ui_types::CheckError::BuiltinMisuse { name, detail, span } => {
             let (code, severity, tier, subject, message, span) = (
                 "builtin-shape-mismatch",
@@ -1266,6 +1287,19 @@ fn lower_to_diag(e: &LowerError, file: &Path) -> Diagnostic {
             Some(*span),
             None,
         ),
+        LowerError::PatternLiteralUnsupported { name, span } => (
+            "pattern-literal-unsupported",
+            Severity::Error,
+            Tier::Static,
+            Subject::Component { name: String::new() },
+            format!("`{name}` as a match pattern is a binding that matches everything, not the literal"),
+            Some(*span),
+            Some(Remediation {
+                description: pattern_literal_remediation(),
+                suggestion: None,
+                confidence: Confidence::High,
+            }),
+        ),
         LowerError::BuiltinMisuse { name, detail, span } => (
             "builtin-shape-mismatch",
             Severity::Error,
@@ -1336,6 +1370,10 @@ fn schedule_remediation(code: &str) -> Remediation {
         suggestion: None,
         confidence: Confidence::High,
     }
+}
+
+fn pattern_literal_remediation() -> String {
+    "There are no literal patterns: a bare name in a `match` arm binds the value and matches everything, so `true => ..` would always win. Branch on the Bool another way (a state flag per case, or two derived values), or use `_` for the arm that means \"anything else\".".to_string()
 }
 
 fn capability_to_example_call(capability: &str) -> &'static str {

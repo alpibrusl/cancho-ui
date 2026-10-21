@@ -39,9 +39,10 @@ argument is a lambda like `filter`'s and `map`'s, it never escapes, and it must 
 ## 3. Found while building it (not changed here)
 
 1. **A `match` arm `true` or `false` is a binding, not a literal.** `match flag { true => {..} false => {..} }`
-   compiles, and the first arm always matches (`Pattern::Ident` is a catch-all binding; the emitted code is
-   `true ? .. : true ? ..`). The browser check first used it and showed the "desc" order at load. Nothing refuses it;
-   filed as an issue so that it becomes a refusal with a rule tag.
+   compiled, and the first arm always matched (`Pattern::Ident` is a catch-all binding; the emitted code was
+   `true ? .. : true ? ..`). The browser check first used it and showed the "desc" order at load. *(Corrected
+   2026-10-21, issue #26: it is refused now, `pattern-literal-unsupported`, by `check`, `build` and `test`; tests in
+   `crates/cancho-ui/tests/pattern_literals.rs`.)*
 2. **A state initializer that calls a function is `undefined` in the emitted JavaScript** (and replay refuses it:
    `unsupported_init`), as already documented; `sort(..)` in an initializer is the same. Fill a list in a handler.
 
