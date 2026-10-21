@@ -23,6 +23,7 @@ use value::{Value, num_json, subset};
 
 pub use eval::{
     JSON_ITEMS_MAX, json_get, json_items, num_of_text, page_count, sort_key_order_json,
+    text_builtin_json,
 };
 pub use report::{
     Failure, FiredJson, IssuedJson, NOT_CLAIMED, REPORT_SCHEMA, REPORT_VERSION, RequestJson,

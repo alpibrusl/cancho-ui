@@ -62,6 +62,30 @@ function __cui_take(list, n) { return list.slice(0, __cui_page_count(n)); }
 function __cui_skip(list, n) { return list.slice(__cui_page_count(n)); }
 ";
 
+const TEXT_JS: &str = "\
+// Builtins: lines, split, join, trim, upper, starts_with, ends_with (docs/lists.md section 7). Pure and total. lines and
+// split return at most 10000 elements (the rest is dropped); an empty separator does not split; trim and upper are ASCII only.
+function __cui_split(text, sep) {
+    text = String(text); sep = String(sep);
+    return sep === \"\" ? [text] : text.split(sep, 10000);
+}
+function __cui_lines(text) {
+    var parts = String(text).split(\"\\n\");
+    if (parts[parts.length - 1] === \"\") { parts.pop(); }
+    return parts.slice(0, 10000).map(function (l) { return l.charAt(l.length - 1) === \"\\r\" ? l.slice(0, -1) : l; });
+}
+function __cui_join(list, sep) { return list.map(String).join(String(sep)); }
+function __cui_trim(text) { return String(text).replace(/^[ \\t\\n\\r\\f\\v]+|[ \\t\\n\\r\\f\\v]+$/g, \"\"); }
+function __cui_upper(text) {
+    return String(text).replace(/[a-z]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 32); });
+}
+function __cui_starts_with(text, prefix) { return String(text).indexOf(String(prefix)) === 0; }
+function __cui_ends_with(text, suffix) {
+    text = String(text); suffix = String(suffix);
+    return suffix.length <= text.length && text.slice(text.length - suffix.length) === suffix;
+}
+";
+
 /// The helpers that `emitted` (the components, after the adapters) calls, as one block of JavaScript.
 pub fn helpers_used(emitted: &str) -> String {
     let mut out = String::new();
@@ -73,6 +97,18 @@ pub fn helpers_used(emitted: &str) -> String {
         (&["__cui_lower("][..], LOWER_JS),
         (&["__cui_num("][..], NUM_JS),
         (&["__cui_take(", "__cui_skip("][..], PAGING_JS),
+        (
+            &[
+                "__cui_lines(",
+                "__cui_split(",
+                "__cui_join(",
+                "__cui_trim(",
+                "__cui_upper(",
+                "__cui_starts_with(",
+                "__cui_ends_with(",
+            ][..],
+            TEXT_JS,
+        ),
     ] {
         if calls.iter().any(|c| emitted.contains(c)) {
             out.push_str(js);

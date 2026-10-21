@@ -5,11 +5,12 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use cancho_ui_replay::{num_of_text, page_count, sort_key_order_json};
+use cancho_ui_replay::{num_of_text, page_count, sort_key_order_json, text_builtin_json};
 use serde_json::Value;
 
 const CORPUS: &str = include_str!("../../../tests/lists_corpus.json");
 const PAGING_CORPUS: &str = include_str!("../../../tests/paging_corpus.json");
+const TEXT_CORPUS: &str = include_str!("../../../tests/text_corpus.json");
 const NUM_CORPUS: &str = include_str!("../../../tests/num_corpus.json");
 
 fn run(args: &[&str]) -> (i32, String, String) {
@@ -304,4 +305,96 @@ fn take_and_skip_refuse_the_wrong_arguments_and_a_non_number_count() {
     let (code, stdout, _) = run(&["test", p(&file), p(&trace), "--output", "json"]);
     assert_eq!(code, 4, "{stdout}");
     assert!(stdout.contains("replay-type-error"), "{stdout}");
+}
+
+/// An argument of the text corpus: a JSON value, or `{"repeat": [unit, n]}` for a long text.
+fn text_arg(a: &Value) -> Value {
+    match a.get("repeat") {
+        Some(r) => Value::String(
+            r[0].as_str()
+                .expect("a unit")
+                .repeat(r[1].as_u64().expect("a count") as usize),
+        ),
+        None => a.clone(),
+    }
+}
+
+#[test]
+fn the_text_builtins_agree_with_every_case_of_their_corpus() {
+    let corpus: Value = serde_json::from_str(TEXT_CORPUS).expect("the corpus is JSON");
+    let entries = corpus.as_array().expect("a list");
+    assert!(entries.len() >= 55, "{} cases", entries.len());
+    for e in entries {
+        let args: Vec<Value> = e["args"]
+            .as_array()
+            .expect("args")
+            .iter()
+            .map(text_arg)
+            .collect();
+        let got = text_builtin_json(e["op"].as_str().expect("op"), &args)
+            .unwrap_or_else(|| panic!("{}: no answer", e["why"]));
+        if let Some(n) = e["expect_len"].as_u64() {
+            assert_eq!(
+                got.as_array().expect("a list").len() as u64,
+                n,
+                "{}",
+                e["why"]
+            );
+        } else {
+            assert_eq!(got, e["expect"], "{}", e["why"]);
+        }
+    }
+}
+
+#[test]
+fn a_text_builtin_with_the_wrong_arity_or_a_non_text_argument_is_refused() {
+    for (call, form) in [
+        ("lines()", "lines(text)"),
+        ("lines(q, q)", "lines(text)"),
+        ("split(q)", "split(text, sep)"),
+        ("join(names)", "join(list, sep)"),
+        ("trim(q, q)", "trim(text)"),
+        ("upper()", "upper(text)"),
+        ("starts_with(q)", "starts_with(text, prefix)"),
+        ("ends_with(q, q, q)", "ends_with(text, suffix)"),
+    ] {
+        let src = PROGRAM.replace(
+            "sort(filter(names, n => contains(lower(n), lower(q))), n => lower(n))",
+            call,
+        );
+        assert_eq!(
+            codes(&src, "textarity.cui"),
+            ["builtin-shape-mismatch"],
+            "{call}"
+        );
+        let file = scratch("textarity.cui", &src);
+        let (_, stdout, _) = run(&["check", p(&file), "--output", "json"]);
+        assert!(stdout.contains(form), "{call}: {stdout}");
+    }
+    let src = "component C {\n    state r: List[String] = [];\n    on Go { r = lines(1); }\n    view { Text { \"x\" } }\n}\n";
+    let file = scratch("textnotext.cui", src);
+    let trace = scratch(
+        "textnotext.trace.json",
+        r#"{"schema":"cancho-ui-trace","version":"0.1.0","component":"C","steps":[{"event":"Go","state":{"r":[]}}]}"#,
+    );
+    let (code, stdout, _) = run(&["test", p(&file), p(&trace), "--output", "json"]);
+    assert_eq!(code, 4, "{stdout}");
+    assert!(stdout.contains("replay-type-error"), "{stdout}");
+}
+
+#[test]
+fn a_trace_turns_a_text_answer_into_rows() {
+    // The scenario of cancho-ui#18: an endpoint answers one reading per line; the page renders a row for each.
+    let src = "component Readings {\n    requires Network;\n    state rows: List[String] = [];\n    state n: Int = 0;\n    state first: String = \"\";\n    state r: Result[String, String] = Ok(\"\");\n    on Refresh {\n        r = await(net.get(\"readings.txt\"));\n        rows = match r { Ok(t) => { map(lines(t), l => trim(upper(l))) } Err(e) => { [] } Cancelled => { [] } };\n        n = len(rows);\n        first = join(take(rows, 2), \"|\");\n    }\n    view { For { over: rows as: row Text { \"{row}\" } } }\n}\n";
+    let file = scratch("rows.cui", src);
+    let trace = scratch(
+        "rows.trace.json",
+        r#"{"schema":"cancho-ui-trace","version":"0.1.0","component":"Readings","steps":[
+            {"event":"Refresh","expect":{"pending":[1]}},
+            {"resolve":1,"with":{"Ok":"temp 21.5 \r\n  hum 40\n\npress 1013\n"},"state":{"rows":["TEMP 21.5","HUM 40","","PRESS 1013"],"n":4,"first":"TEMP 21.5|HUM 40"}},
+            {"event":"Refresh","expect":{"pending":[2]}},
+            {"resolve":2,"with":{"Ok":""},"state":{"rows":[],"n":0,"first":""}}]}"#,
+    );
+    let (code, stdout, stderr) = run(&["test", p(&file), p(&trace)]);
+    assert_eq!(code, 0, "{stdout}{stderr}");
 }

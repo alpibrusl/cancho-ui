@@ -1,4 +1,4 @@
-# Lists and text: `sort`, `reverse`, `contains`, `lower`, `num`
+# Lists and text: `sort`, `reverse`, `contains`, `lower`, `num`, `take`, `skip`, and the text builtins (section 7)
 
 > **Status: built (written before the code; measured in section 4).** The third item of the ui order that helps
 > `cancho-industrial`: a console shows rows, and a person filters and orders them. `filter`, `map` and `len`
@@ -75,8 +75,7 @@ there; it stays so that the result does not depend on the engine. Six more for `
 
 ## 5. Not done
 
-*(A text-to-number builtin: built, `num`, section 1. Paging: built, `take`/`skip`, section 6.)* `starts_with`/`ends_with`/
-`split`/`join`/`trim`, `upper`, a locale-aware collation, and `sort` over anything but the keys above. Chromium only.
+*(A text-to-number builtin: built, `num`, section 1. Paging: built, `take`/`skip`, section 6.)* *(`starts_with`/`ends_with`/`split`/`join`/`trim`/`upper`/`lines`: built, section 7.)* A locale-aware collation, and `sort` over anything but the keys above. Chromium only.
 
 ---
 
@@ -122,3 +121,84 @@ changes nothing; they stay for the reader.
 
 A page count (`ceil`), a `slice(list, from, to)`, a `last(list, n)`, and keeping the current page when the list shrinks
 (the program's decision). Chromium only.
+
+---
+
+## 7. Text to list and back: `lines`, `split`, `join`, `trim`, `upper`, `starts_with`, `ends_with`
+
+> **Status: built (written before the code; measured in 7.3).** Asked for by `alpibrusl/cancho-ui#18`, found by the
+> plant-floor spike in `alpibrusl/cancho-industrial#9` (`docs/ui-spike.md` there): an endpoint that answers one record per
+> line could not be rendered with `For`, because `net.get` answers a String and the language had no way to a list. The
+> JSON route exists (`json.items`, `adapters.md` 14); this is the plain-text route, which needs no change to the server.
+
+### 7.1 The decision
+
+```
+lines(text)                 -> List[String]
+split(text, sep)            -> List[String]
+join(list, sep)             -> String
+trim(text)                  -> String
+upper(text)                 -> String
+starts_with(text, prefix)   -> Bool
+ends_with(text, suffix)     -> Bool
+```
+
+All pure (no capability), all total, all with the same result in the emitted JavaScript and in replay.
+
+* **`lines`** splits on `\n` and tolerates `\r\n`: one trailing `\r` is removed from each line. A text that ends with a newline has no
+  final empty line, so `"a\nb\n"` is `["a", "b"]`; the empty text is `[]`; `"\n"` is one empty line `[""]`; empty lines in
+  the middle are kept. **At most 10,000 lines**: a longer answer is cut to its first 10,000 (the bound of the issue's
+  fixture; `json.items` has its own, 1,000). The cut is silent, as `json.items`' is, and documented here.
+* **`split(text, sep)`** cuts at each non-overlapping occurrence of `sep`, left to right, and keeps empty pieces
+  (`"a,,b"` is `["a", "", "b"]`; the empty text is `[""]`). An **empty `sep` does not split**: the result is `[text]`
+  (a total answer where JavaScript and Rust would otherwise differ on what "between every character" means for a surrogate
+  pair). The same 10,000 bound.
+* **`join(list, sep)`** is the inverse for a list of Strings. A list with a non-String element is `replay-type-error` in
+  replay; the emitted helper converts the element with `String()` (the same stance as `take`'s count, 6.1).
+* **`trim`** removes ASCII white space from both ends: space, tab, newline, carriage return, form feed, vertical tab.
+  Nothing else: JavaScript's `trim` also removes U+00A0 and U+FEFF and Rust's removes every Unicode `White_Space`, and the two
+  disagree on some, so neither is used.
+* **`upper`** is `lower`'s mirror: ASCII `a` to `z` only.
+* **`starts_with` / `ends_with`** compare code units from the start or the end, case-sensitively; an empty prefix or suffix
+  is always true.
+
+A wrong argument count is `builtin-shape-mismatch`, naming the form. A non-String argument is `replay-type-error` in replay
+(the emitted helper converts with `String()`).
+
+### 7.2 What it touches
+
+`PURE_BUILTINS` in lowering (arity only), the one-segment call list in `expr.rs`, the helpers in
+`crates/cancho-ui-codegen-web/src/lists.rs` (emitted only when called; `lines` and `split` share a bound constant), the
+model in `cancho_ui_replay::eval` with `text_builtin_json` exported for the corpus check. No IR change; no authority change.
+
+### 7.3 Checked
+
+* `cargo test` (`tests/lists.rs`, 3 new tests): the model against `tests/text_corpus.json` (58 cases: the issue's fixtures
+  (a trailing newline, an empty answer, a 10,000-line answer and its bound) plus CRLF, a lone CR, empty lines, a separator
+  that overlaps itself, the empty separator, non-ASCII text, and for `trim` a no-break space, a byte order mark and an ideographic
+  space, none of which is ASCII white space); eight misuses refused with their form and a non-text argument that is
+  `replay-type-error`; and the scenario of the issue as a trace: an answer `"temp 21.5 \r\n  hum 40\n\npress 1013\n"` becomes four rows
+  through `map(lines(t), l => trim(upper(l)))`.
+* `scripts/check-lists.js` (Chromium): **the same corpus against the emitted helpers**, and a page that fetches `readings.txt`,
+  renders a row per line, and filters and joins them with `starts_with`/`ends_with`/`join`.
+
+**The checks can fail.** Eleven deliberate breaks of the emitted helpers, each run against the browser script, all killed:
+`lines` keeping the trailing empty line (10 checks), unbounded (1), keeping the CR (4); `split` splitting on the empty separator
+(2), unbounded (1); `trim` with JavaScript's `\s` (3), trimming only the start (4); `upper` beyond ASCII (1); `starts_with` as
+`contains` (1). In the Rust model, eight breaks (the same ideas, plus `trim` without form feed and vertical tab), all killed by the corpus
+test. **Two survive and cannot be observed:** `ends_with` without its length guard (a suffix longer than the text can never
+equal the shorter tail that `slice` then returns) and `join` without `map(String)` (for a list of Strings, which is all a
+checked program has, the two are the same).
+
+### 7.4 Found while building it
+
+* The language has no `||`, `&&` or `!` (a filter that wants "starts with T or ends with 3" is two filters). Not changed here.
+* A text that is not a `String` reaches the emitted helpers converted with `String()` and `replay-type-error` in replay, the
+  same stance as `take`'s count (6.1): a checked program cannot do it, and the two runtimes differ only on programs the
+  checker does not yet type.
+
+### 7.5 Not done
+
+`replace`, `substring`/`slice` of a text, `index_of`, `lower`'s partner `capitalize`, a locale, `lines` on a bound the program
+chooses, and reporting that a bound cut the answer. Chromium only.
+

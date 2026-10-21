@@ -23,9 +23,13 @@ function check(label, ok, detail) {
 
 const SRC = `
 component Rows {
+    requires Network;
     state names: List[String] = ["pear", "Apple", "fig", "apple", "Fig"];
     state q: String = "";
     state shown: List[String] = [];
+    state recs: List[String] = [];
+    state joined: String = "";
+    state r: Result[String, String] = Ok("");
 
     on Query(v) {
         q = v;
@@ -33,6 +37,11 @@ component Rows {
     }
     on Flip { shown = reverse(shown); }
     on Next { shown = take(skip(shown, 1), 2); }
+    on Load {
+        r = await(net.get("readings.txt"));
+        recs = match r { Ok(t) => { map(lines(t), l => trim(upper(l))) } Err(e) => { [] } Cancelled => { [] } };
+        joined = join(filter(recs, l => starts_with(l, "T")), "|") + "/" + join(filter(recs, l => ends_with(l, "3")), "|");
+    }
     on Order { shown = reverse(sort(["9", "10", "x", "2.5", "-1"], s => num(s, 1000))); }
 
     view {
@@ -41,6 +50,13 @@ component Rows {
             Button { label: "Flip" on: Flip }
             Button { label: "Order" on: Order }
             Button { label: "Next" on: Next }
+            Button { label: "Load" on: Load }
+            Text { "joined: {joined}" }
+            For {
+                over: recs
+                as: rec
+                Text { "rec {rec}" }
+            }
             Text { "{len(shown)} matches" }
             For {
                 over: shown
@@ -64,7 +80,7 @@ component Rows {
   const from = js.indexOf('function __cui_sort');
   const to = js.indexOf('function mount_', from);
   if (from < 0 || to < 0) { throw new Error('the helpers are not in the built program'); }
-  const lib = new Function(js.slice(from, to) + '\nreturn { sort: __cui_sort, lower: __cui_lower, contains: __cui_contains, reverse: __cui_reverse, num: __cui_num, take: __cui_take, skip: __cui_skip };')();
+  const lib = new Function(js.slice(from, to) + '\nreturn { sort: __cui_sort, lower: __cui_lower, contains: __cui_contains, reverse: __cui_reverse, num: __cui_num, take: __cui_take, skip: __cui_skip, lines: __cui_lines, split: __cui_split, join: __cui_join, trim: __cui_trim, upper: __cui_upper, starts_with: __cui_starts_with, ends_with: __cui_ends_with };')();
   const corpus = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'lists_corpus.json'), 'utf8'));
   for (const e of corpus) {
     const keys = e.keys.map((k) => (k !== null && typeof k === 'object' && !Array.isArray(k) ? NaN : k));
@@ -96,7 +112,16 @@ component Rows {
   }
   check('take/skip: a count that is not a number is 0', lib.take([1, 2], 'x').length === 0 && lib.take([1, 2, 3], '2').length === 0 && lib.skip([1, 2], undefined).length === 2);
 
+  const texts = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'text_corpus.json'), 'utf8'));
+  for (const e of texts) {
+    const args = e.args.map((a) => (a !== null && typeof a === 'object' && !Array.isArray(a) ? a.repeat[0].repeat(a.repeat[1]) : a));
+    const got = lib[e.op](...args);
+    const ok = e.expect_len !== undefined ? got.length === e.expect_len : JSON.stringify(got) === JSON.stringify(e.expect);
+    check(`${e.op}: ${e.why}`, ok, `got ${JSON.stringify(got).slice(0, 80)}`);
+  }
+
   // the page
+  fs.writeFileSync(path.join(dir, 'out', 'readings.txt'), 'temp 21.5 \r\n  hum 40\n\npress 1013\n');
   const server = http.createServer((req, res) => {
     const rel = decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '') || 'index.html';
     const file = path.join(dir, 'out', path.normalize(rel));
@@ -125,6 +150,11 @@ component Rows {
   check('rows sorted by a number held in text', JSON.stringify(await rows()) === JSON.stringify(['x', '10', '9', '2.5', '-1']), JSON.stringify(await rows()));
   await page.click('text=Next');
   check('paged: skip one, take two', JSON.stringify(await rows()) === JSON.stringify(['10', '9']), JSON.stringify(await rows()));
+  await page.click('text=Load');
+  const recs = async () => (await page.locator('#root').innerText()).split('\n').filter((l) => l === 'rec' || l.startsWith('rec ')).map((l) => l.slice(4));
+  for (let i = 0; i < 100 && (await recs()).length === 0; i++) { await page.waitForTimeout(30); }
+  check('a text answer is a row per line', JSON.stringify(await recs()) === JSON.stringify(['TEMP 21.5', 'HUM 40', '', 'PRESS 1013']), JSON.stringify(await recs()));
+  check('and is filtered and joined', (await page.locator('#root').innerText()).includes('joined: TEMP 21.5/PRESS 1013'));
   check('no script errors', errors.length === 0, errors.join(' | '));
   await browser.close();
   server.close();
