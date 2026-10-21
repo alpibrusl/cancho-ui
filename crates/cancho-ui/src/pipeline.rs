@@ -490,6 +490,29 @@ fn check_to_diag(e: &cancho_ui_types::CheckError, file: &Path) -> Diagnostic {
                 notes: Vec::new(),
             }
         }
+        cancho_ui_types::CheckError::ControlRefused {
+            code,
+            message,
+            span,
+        } => Diagnostic {
+            code: (*code).into(),
+            severity: Severity::Error,
+            tier: Tier::Static,
+            subject: Subject::Component {
+                name: String::new(),
+            },
+            message: message.clone(),
+            span: Some(SpanOut::from_span(*span, file)),
+            expected: None,
+            actual: None,
+            remediation: Some(Remediation {
+                description: control_remediation(code),
+                suggestion: None,
+                confidence: Confidence::High,
+            }),
+            related: Vec::new(),
+            notes: Vec::new(),
+        },
         cancho_ui_types::CheckError::PatternLiteralUnsupported { name, span } => Diagnostic {
             code: "pattern-literal-unsupported".into(),
             severity: Severity::Error,
@@ -1314,6 +1337,23 @@ fn lower_to_diag(e: &LowerError, file: &Path) -> Diagnostic {
             Some(*span),
             None,
         ),
+        LowerError::ControlRefused {
+            code,
+            message,
+            span,
+        } => (
+            *code,
+            Severity::Error,
+            Tier::Static,
+            Subject::Component { name: String::new() },
+            message.clone(),
+            Some(*span),
+            Some(Remediation {
+                description: control_remediation(code),
+                suggestion: None,
+                confidence: Confidence::High,
+            }),
+        ),
         LowerError::PatternLiteralUnsupported { name, span } => (
             "pattern-literal-unsupported",
             Severity::Error,
@@ -1418,6 +1458,15 @@ fn unknown_call_remediation() -> String {
 
 fn pattern_literal_remediation() -> String {
     "There are no literal patterns: a bare name in a `match` arm binds the value and matches everything, so `true => ..` would always win. Branch on the Bool another way (a state flag per case, or two derived values), or use `_` for the arm that means \"anything else\".".to_string()
+}
+
+/// What to change for a refusal about the bindings of a built-in element (docs/controls.md).
+fn control_remediation(code: &str) -> String {
+    match code {
+        "binding-unknown" => "Use one of the keys of a built-in element: label, role, on, value, disabled, placeholder. `disabled:` is for Button and TextField.".to_string(),
+        "disabled-not-bool" => "Write `disabled: true`, `disabled: false` or `disabled: sending` where `sending` is a `state sending: Bool`.".to_string(),
+        _ => "See docs/controls.md.".to_string(),
+    }
 }
 
 fn capability_to_example_call(capability: &str) -> &'static str {

@@ -21,6 +21,7 @@ component OpsConsole {
     state setpoint: String = "";
     state sent: Result[String, String] = Ok("");
     state outcome: String = "nothing sent";
+    state sending: Bool = false;
 
     start Refresh;
     every 5000 Refresh;
@@ -72,7 +73,9 @@ component OpsConsole {
 
     on Apply {
         outcome = "sending";
+        sending = true;
         sent = await(net.post("api/setpoint", "[\"" + join(map(filter(filter(rows, x => json.get(x, "id", "") == target), x => num(setpoint, 1) == num(setpoint, 2)), x => json.get(x, "id", "")), "") + "\", " + num(setpoint, 0) + "]"));
+        sending = false;
         outcome = match sent {
             Ok(reply) => { json.get(reply, "status", "?") + " " + json.get(reply, "body", "") }
             Err(e) => { "not sent: " + e }
@@ -101,7 +104,7 @@ component OpsConsole {
             Text { role: heading "Change a setpoint" }
             TextField { label: "Machine id" placeholder: "Machine id, e.g. M-101" value: target on: SetTarget }
             TextField { label: "Setpoint" placeholder: "Setpoint, in degrees C" value: setpoint on: SetSetpoint }
-            Button { label: "Apply" on: Apply }
+            Button { label: "Apply" on: Apply disabled: sending }
             Text { role: status "result: {outcome}" }
         }
     }

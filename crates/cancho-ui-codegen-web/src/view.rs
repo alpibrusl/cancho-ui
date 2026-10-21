@@ -349,6 +349,16 @@ pub(crate) fn emit_view_node(
                     continue;
                 }
                 match &b.value {
+                    IrBindingValue::Const { expr, .. } if b.key == "disabled" => {
+                        // `disabled: true` (docs/controls.md): the native attribute, which also stops the click
+                        // and Enter on a button and the typing in a field.
+                        out.push_str(&format!(
+                            "{0}{1}.disabled = {2};\n",
+                            indent,
+                            var,
+                            emit_expr_runtime(expr, params)
+                        ));
+                    }
                     IrBindingValue::Const { .. } => {
                         // A `Const` binding on a primitive (a
                         // non-string label etc.) is not expressible
@@ -407,6 +417,13 @@ pub(crate) fn emit_view_node(
                                 indent, b.key, name
                             ));
                         }
+                    }
+                    IrBindingValue::StateRef(name) if b.key == "disabled" => {
+                        // `disabled: sending`: read from the Bool state field on every render.
+                        out.push_str(&format!(
+                            "{0}{1}.disabled = !!{2}{3};\n",
+                            indent, var, STATE_PREFIX, name
+                        ));
                     }
                     IrBindingValue::StateRef(name) => {
                         if b.key == "value" {

@@ -1531,7 +1531,10 @@ impl Parser {
                             span: lit_tok.span,
                         }))
                     }
-                    Token::Ident(s) if matches!(kind, ElementKind::Named(_)) => {
+                    Token::Ident(s)
+                        if matches!(kind, ElementKind::Named(_)) || key == "disabled" =>
+                    {
+                        // `disabled: sending` names a Bool state field (docs/controls.md section 1).
                         Ok(BindingValue::StateRef(s))
                     }
                     other => Err(ParseError::Unexpected {

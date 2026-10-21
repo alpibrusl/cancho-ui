@@ -191,6 +191,19 @@
       }
     },
     {
+      "event": "Apply",
+      "expect": {
+        "outcome": "disabled",
+        "pending": [
+          2
+        ]
+      },
+      "state": {
+        "outcome": "sending",
+        "sending": true
+      }
+    },
+    {
       "resolve": 2,
       "with": {
         "Ok": "{\"status\":409,\"body\":\"locked by maintenance\"}"
