@@ -40,8 +40,8 @@ argument is a lambda like `filter`'s and `map`'s, it never escapes, and it must 
 * **IR:** a node `SortBy { list, item, key }` (the shape of `Filter`/`Map`), serialized, rendered by `cancho-ui diff`
   as `sort(list, x => key)`. The other four are `Call`s of a one-segment path that need no capability, so a
   program's authority is unchanged by using them.
-* **Emit:** the helpers live in `crates/cancho-ui-codegen-web/src/lists.rs` (`emit.rs` is near the 2,000-line
-  ceiling) and are emitted only when the program calls them, found by looking at what was emitted, as `json.get` is.
+* **Emit:** the helpers live in `crates/cancho-ui-codegen-web/src/lists.rs` (`emit.rs` was near the 2,000-line
+  ceiling and has since been split into `emit.rs`, `expr.rs`, `view.rs` and `adapters.rs`, with byte-identical output) and are emitted only when the program calls them, found by looking at what was emitted, as `json.get` is.
 * **Replay:** `IrExpr::SortBy` and the three calls, with `sort_key_order` as the model of the emitted comparator.
 
 ## 3. Found while building it (not changed here)

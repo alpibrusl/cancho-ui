@@ -13,7 +13,10 @@
 //! - emit accessibility (ARIA) attributes from the IR,
 //! - add a minimal stylesheet (cui-col, cui-row).
 
+mod adapters;
 pub mod emit;
+mod expr;
 mod lists;
+mod view;
 
 pub use emit::{emit_module, module_for_file};
