@@ -309,7 +309,10 @@ inside the render pass:
 Four more pure builtins (`docs/lists.md`): `sort(list, x => key)` (stable, ascending; numbers before strings, strings by
 UTF-16 code units), `reverse(list)`, `contains(text, needle)` (case-sensitive) and `lower(text)` (ASCII only), so
 `sort(filter(rows, r => contains(lower(r), lower(q))), r => lower(r))` is a case-insensitive search that stays ordered.
-Descending is `reverse(sort(..))`. `take(list, n)` and `skip(list, n)` page a list (`n` cut toward zero; negative or NaN is 0; more than the list is all of it), so `take(skip(rows, page * size), size)` is a page (`docs/lists.md` section 6). `num(text, default)` reads a JSON number from a text (or answers `default`), so `sort(rows, r => num(json.get(r, "n", ""), 0))` sorts by a number. There are no literal patterns: a `match` arm `true` or `false` is refused with `pattern-literal-unsupported` (a bare name in a pattern binds and matches everything); branch on a Bool with a state flag per case.
+Descending is `reverse(sort(..))`. `take(list, n)` and `skip(list, n)` page a list (`n` cut toward zero; negative or NaN is 0; more than the list is all of it), so `take(skip(rows, page * size), size)` is a page (`docs/lists.md` section 6). Text to list and back (`docs/lists.md` section 7): `lines(text)` (splits on newline, tolerates CRLF, no final empty line, at most
+10,000), `split(text, sep)` (empty separator does not split), `join(list, sep)`, `trim(text)` and `upper(text)` (ASCII only),
+`starts_with(text, prefix)`, `ends_with(text, suffix)`: so `map(lines(answer), l => trim(l))` turns a one-record-per-line
+endpoint into rows for `For`. `num(text, default)` reads a JSON number from a text (or answers `default`), so `sort(rows, r => num(json.get(r, "n", ""), 0))` sorts by a number. There are no literal patterns: a `match` arm `true` or `false` is refused with `pattern-literal-unsupported` (a bare name in a pattern binds and matches everything); branch on a Bool with a state flag per case.
 
 ```cancho-ui
 state results: List[String] = [];

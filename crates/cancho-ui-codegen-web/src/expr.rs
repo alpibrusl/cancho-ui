@@ -355,7 +355,19 @@ fn emit_call_runtime(path: &[String], args: &[IrExpr], params: &[&str]) -> Strin
     if path.len() == 1
         && matches!(
             path[0].as_str(),
-            "reverse" | "contains" | "lower" | "num" | "take" | "skip"
+            "reverse"
+                | "contains"
+                | "lower"
+                | "num"
+                | "take"
+                | "skip"
+                | "lines"
+                | "split"
+                | "join"
+                | "trim"
+                | "upper"
+                | "starts_with"
+                | "ends_with"
         )
     {
         let rendered_args: Vec<String> =

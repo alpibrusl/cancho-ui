@@ -527,6 +527,15 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                 )),
             }
         }
+        ("lines" | "trim" | "upper" | "split" | "join" | "starts_with" | "ends_with", n)
+            if text_builtin_arity(&name) == Some(n) =>
+        {
+            let mut vals = Vec::with_capacity(n);
+            for a in args {
+                vals.push(eval(ctx, a)?);
+            }
+            text_builtin(&name, &vals).map_err(|why| fault("replay-type-error", why, span))
+        }
         ("lower", 1) => match eval(ctx, &args[0])? {
             Value::Str(t) => Ok(Value::Str(t.to_ascii_lowercase())),
             other => Err(fault(
@@ -604,7 +613,8 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
         (
             "clock.now" | "net.search" | "net.get" | "net.fetch" | "net.post" | "location.current"
             | "sleep" | "storage.get" | "storage.set" | "json.get" | "json.items" | "reverse"
-            | "contains" | "lower" | "num" | "take" | "skip",
+            | "contains" | "lower" | "num" | "take" | "skip" | "lines" | "split" | "join" | "trim"
+            | "upper" | "starts_with" | "ends_with",
             n,
         ) => Err(fault(
             "replay-type-error",
@@ -635,6 +645,116 @@ pub fn page_count(n: f64, len: usize) -> usize {
     } else {
         k as usize
     }
+}
+
+/// The most elements `lines` and `split` return (docs/lists.md section 7.1).
+pub const TEXT_LIST_MAX: usize = 10_000;
+
+fn text_builtin_arity(name: &str) -> Option<usize> {
+    match name {
+        "lines" | "trim" | "upper" => Some(1),
+        "split" | "join" | "starts_with" | "ends_with" => Some(2),
+        _ => None,
+    }
+}
+
+fn ascii_space(c: char) -> bool {
+    matches!(c, ' ' | '\t' | '\n' | '\r' | '\x0c' | '\x0b')
+}
+
+/// `lines`, `split`, `join`, `trim`, `upper`, `starts_with` and `ends_with` (docs/lists.md section 7): the model of the
+/// emitted helpers. An `Err` is a `replay-type-error` message.
+fn text_builtin(name: &str, a: &[Value]) -> Result<Value, String> {
+    let s = |i: usize| match &a[i] {
+        Value::Str(t) => Ok(t.as_str()),
+        other => Err(format!(
+            "`{name}` needs a String for argument {}, got {}",
+            i + 1,
+            describe(other)
+        )),
+    };
+    Ok(match name {
+        "lines" => {
+            let t = s(0)?;
+            let mut parts: Vec<&str> = t.split('\n').collect();
+            if parts.last() == Some(&"") {
+                parts.pop();
+            }
+            Value::List(
+                parts
+                    .into_iter()
+                    .take(TEXT_LIST_MAX)
+                    .map(|l| Value::Str(l.strip_suffix('\r').unwrap_or(l).to_string()))
+                    .collect(),
+            )
+        }
+        "split" => {
+            let (t, sep) = (s(0)?, s(1)?);
+            if sep.is_empty() {
+                Value::List(vec![Value::Str(t.to_string())])
+            } else {
+                Value::List(
+                    t.split(sep)
+                        .take(TEXT_LIST_MAX)
+                        .map(|p| Value::Str(p.to_string()))
+                        .collect(),
+                )
+            }
+        }
+        "join" => {
+            let sep = s(1)?;
+            let Value::List(items) = &a[0] else {
+                return Err(format!("`join` needs a list, got {}", describe(&a[0])));
+            };
+            let mut parts = Vec::with_capacity(items.len());
+            for v in items {
+                match v {
+                    Value::Str(t) => parts.push(t.as_str()),
+                    other => {
+                        return Err(format!(
+                            "`join` needs a list of Strings, found {}",
+                            describe(other)
+                        ));
+                    }
+                }
+            }
+            Value::Str(parts.join(sep))
+        }
+        "trim" => Value::Str(s(0)?.trim_matches(ascii_space).to_string()),
+        "upper" => Value::Str(s(0)?.to_ascii_uppercase()),
+        "starts_with" => Value::Bool(s(0)?.starts_with(s(1)?)),
+        "ends_with" => Value::Bool(s(0)?.ends_with(s(1)?)),
+        _ => return Err(format!("`{name}` is not a text builtin")),
+    })
+}
+
+/// `text_builtin` on JSON values, for the corpus check (`tests/text_corpus.json`): the argument list and the result are
+/// JSON (a list of Strings is an array). `None` for an unknown name or a wrong argument shape.
+pub fn text_builtin_json(name: &str, args: &[serde_json::Value]) -> Option<serde_json::Value> {
+    fn to_value(j: &serde_json::Value) -> Option<Value> {
+        Some(match j {
+            serde_json::Value::String(t) => Value::Str(t.clone()),
+            serde_json::Value::Array(items) => {
+                Value::List(items.iter().map(to_value).collect::<Option<Vec<_>>>()?)
+            }
+            _ => return None,
+        })
+    }
+    fn to_json(v: &Value) -> Option<serde_json::Value> {
+        Some(match v {
+            Value::Str(t) => serde_json::Value::String(t.clone()),
+            Value::Bool(b) => serde_json::Value::Bool(*b),
+            Value::List(items) => {
+                serde_json::Value::Array(items.iter().map(to_json).collect::<Option<Vec<_>>>()?)
+            }
+            _ => return None,
+        })
+    }
+    if text_builtin_arity(name)? != args.len() {
+        return None;
+    }
+    let vals = args.iter().map(to_value).collect::<Option<Vec<_>>>()?;
+    to_json(&text_builtin(name, &vals).ok()?)
 }
 
 /// `num(text, default)` (docs/lists.md section 1): `text` must be exactly a JSON number, and finite once read;
