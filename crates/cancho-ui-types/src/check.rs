@@ -193,6 +193,9 @@ pub enum CheckError {
     )]
     PatternLiteralUnsupported { name: String, span: Span },
 
+    #[error("`{name}` is not a function of this language")]
+    UnknownCall { name: String, span: Span },
+
     #[error("`{name}` is misused here (expected {detail})")]
     BuiltinMisuse {
         name: String,
@@ -300,6 +303,9 @@ pub fn check_file_with_externals(
         }
         Err(cancho_ui_ir::lower::LowerError::PatternLiteralUnsupported { name, span }) => {
             Err(CheckError::PatternLiteralUnsupported { name, span })
+        }
+        Err(cancho_ui_ir::lower::LowerError::UnknownCall { name, span }) => {
+            Err(CheckError::UnknownCall { name, span })
         }
         Err(cancho_ui_ir::lower::LowerError::BuiltinMisuse { name, detail, span }) => {
             Err(CheckError::BuiltinMisuse { name, detail, span })

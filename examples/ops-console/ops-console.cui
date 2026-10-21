@@ -1,0 +1,108 @@
+// examples/ops-console/ops-console.cui — a machine list for a plant-floor operator (docs/ops-console.md).
+//
+// The first page that uses the builtins of the last weeks TOGETHER, instead of one per test page: it reads `api/machines`,
+// a text with one JSON record per line (`lines`), filters it as the operator types (`contains`, `lower`), orders it by a
+// number held in the record (`sort`, `num`), pages it (`take`, `skip`), refreshes by itself (`start`, `every`), and sends
+// a change with `net.post` (the capability `NetworkWrite`, which `Network` does not grant).
+
+component OpsConsole {
+    requires Network;
+    requires NetworkWrite;
+
+    state rows: List[String] = [];
+    state shown: List[String] = [];
+    state paged: List[String] = [];
+    state q: String = "";
+    state dir: Int = 1;
+    state page: Int = 0;
+    state note: String = "not loaded";
+    state r: Result[String, String] = Ok("");
+    state target: String = "";
+    state setpoint: String = "";
+    state sent: Result[String, String] = Ok("");
+    state outcome: String = "nothing sent";
+
+    start Refresh;
+    every 5000 Refresh;
+
+    on Refresh {
+        note = "loading";
+        r = await(net.get("api/machines"));
+        note = match r {
+            Ok(_) => { "updated" }
+            Err(e) => { "error: " + e }
+            Cancelled => { "cancelled" }
+        };
+        rows = match r {
+            Ok(text) => { filter(lines(text), x => len(json.get(x, "id", "")) > 0) }
+            Err(_) => { rows }
+            Cancelled => { rows }
+        };
+        shown = sort(filter(rows, x => contains(lower(json.get(x, "name", "")), lower(q))), x => dir * num(json.get(x, "temp", ""), dir * 1000000000));
+        page = page * len(take(skip(shown, page * 5), 1));
+        paged = take(skip(shown, page * 5), 5);
+    }
+
+    on Query(v) {
+        q = v;
+        page = 0;
+        shown = sort(filter(rows, x => contains(lower(json.get(x, "name", "")), lower(q))), x => dir * num(json.get(x, "temp", ""), dir * 1000000000));
+        paged = take(skip(shown, page * 5), 5);
+    }
+
+    on Flip {
+        dir = 0 - dir;
+        page = 0;
+        shown = sort(filter(rows, x => contains(lower(json.get(x, "name", "")), lower(q))), x => dir * num(json.get(x, "temp", ""), dir * 1000000000));
+        paged = take(skip(shown, page * 5), 5);
+    }
+
+    on Next {
+        page = page + len(take(skip(shown, (page + 1) * 5), 1));
+        paged = take(skip(shown, page * 5), 5);
+    }
+
+    on Prev {
+        page = page - len(take(["x"], page));
+        paged = take(skip(shown, page * 5), 5);
+    }
+
+    on SetTarget(v) { target = v; }
+    on SetSetpoint(v) { setpoint = v; }
+
+    on Apply {
+        outcome = "sending";
+        sent = await(net.post("api/setpoint", "[\"" + join(map(filter(filter(rows, x => json.get(x, "id", "") == target), x => num(setpoint, 1) == num(setpoint, 2)), x => json.get(x, "id", "")), "") + "\", " + num(setpoint, 0) + "]"));
+        outcome = match sent {
+            Ok(reply) => { json.get(reply, "status", "?") + " " + json.get(reply, "body", "") }
+            Err(e) => { "not sent: " + e }
+            Cancelled => { "cancelled" }
+        };
+    }
+
+    view {
+        Column {
+            Text { role: heading "Machines" }
+            Text { role: status "status: {note}" }
+            Button { label: "Refresh" on: Refresh }
+            TextField { label: "Search by name" placeholder: "Search by name" value: q on: Query }
+            Button { label: "Sort by temperature, other direction" on: Flip }
+            Text { "{len(shown)} of {len(rows)} machines, page {page}" }
+            Text { "id  name  state  temperature (C)" }
+            For {
+                over: paged
+                as: m
+                Text { json.get(m, "id", "?") + "  " + json.get(m, "name", "?") + "  " + json.get(m, "state", "?") + "  " + json.get(m, "temp", "no reading") }
+            }
+            Row {
+                Button { label: "Previous page" on: Prev }
+                Button { label: "Next page" on: Next }
+            }
+            Text { role: heading "Change a setpoint" }
+            TextField { label: "Machine id" placeholder: "Machine id, e.g. M-101" value: target on: SetTarget }
+            TextField { label: "Setpoint" placeholder: "Setpoint, in degrees C" value: setpoint on: SetSetpoint }
+            Button { label: "Apply" on: Apply }
+            Text { role: status "result: {outcome}" }
+        }
+    }
+}

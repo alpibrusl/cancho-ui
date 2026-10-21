@@ -123,6 +123,11 @@ pub enum LowerError {
     PatternLiteralUnsupported { name: String, span: Span },
 
     #[error(
+        "`{name}` is not a function of this language; it would be emitted as a JavaScript syntax error"
+    )]
+    UnknownCall { name: String, span: Span },
+
+    #[error(
         "`{name}` is misused here (expected {detail}); see the builtin call forms: `filter(list, x => cond)`, `map(list, x => body)`, `sort(list, x => key)`, `reverse(list)`, `contains(text, needle)`, `lower(text)`, `num(text, default)`, `take(list, n)`, `skip(list, n)`, `lines(text)`, `split(text, sep)`, `join(list, sep)`, `trim(text)`, `upper(text)`, `starts_with(text, prefix)`, `ends_with(text, suffix)`, `len(value)`, `storage.get(key, default)`, `storage.set(key, value)`, `net.get(url)`, `net.fetch(url)`, `net.post(url, body)`, `json.get(text, path, default)`, `json.items(text, path)`"
     )]
     BuiltinMisuse {
@@ -631,6 +636,14 @@ fn lower_expr_with_effects(e: &Expr) -> Result<(IrExpr, Vec<IrReachableEffect>),
                 let (ir, e) = lower_expr_with_effects(a)?;
                 lowered_args.push(ir);
                 effects.extend(e);
+            }
+            // the arguments are lowered first, so that a lambda in a call that is not `filter`/`map`/`sort` stays
+            // `lambda-unsupported`
+            if !is_known_call(path) {
+                return Err(LowerError::UnknownCall {
+                    name: path.join("."),
+                    span: *span,
+                });
             }
             if let Some(capability) = builtin_capability(path) {
                 effects.push(IrReachableEffect {
@@ -1317,6 +1330,25 @@ fn await_driven_fields(c: &IrComponent) -> BTreeSet<String> {
         }
     }
     set
+}
+
+/// Every call the emitters know how to write (`sleep`, the two-segment adapters, and `PURE_BUILTINS`; `filter`, `map`,
+/// `sort` and `len` are lowered before this point). A call to anything else has no emission: the web emitter would
+/// write `x = /* unsupported call */;`, a JavaScript syntax error that stops the whole page, so it is refused here
+/// (`call-unknown`, docs/ops-console.md).
+fn is_known_call(path: &[String]) -> bool {
+    match path {
+        [one] => one == "sleep" || PURE_BUILTINS.iter().any(|(name, _, _)| name == one),
+        [a, b] => matches!(
+            (a.as_str(), b.as_str()),
+            ("clock", "now")
+                | ("storage", "get" | "set")
+                | ("json", "get" | "items")
+                | ("location", "current")
+                | ("net", "search" | "get" | "fetch" | "post")
+        ),
+        _ => false,
+    }
 }
 
 /// The pure builtins that are plain calls (docs/lists.md): name, argument count, the form shown on a misuse.

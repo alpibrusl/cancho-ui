@@ -122,6 +122,7 @@ in `examples/refusal/`, and by the evidence report.
 | `state-not-owned` | `State` | `Error` | `Static` | A transition updating a state field not declared on the component |
 | `test-asserts-unspecified` | `Effect` | `Error` | `Tested` | A test asserting an ordering the language does not guarantee |
 | `match-non-exhaustive` | `Effect` | `Error` | `Static` | A `match` on an effect result missing an `Err` or `Cancelled` arm |
+| `call-unknown` | `Component` | `Error` | `Static` | A call to a function the language does not have (`max(a, b)`, `floor(x)`, a misspelt builtin). It used to pass `check` and be emitted as `x = /* unsupported call */;`, a JavaScript syntax error that stopped the whole page. *(Built 2026-10-21, found building the ops console.)* |
 | `pattern-literal-unsupported` | `Component` | `Error` | `Static` | A `match` arm whose pattern is `true` or `false`: a bare name is a binding that matches everything, so the arm would always win (there are no literal patterns). *(Built 2026-10-21, issue #26.)* |
 | `capability-missing` | `Capability` | `Error` | `Static` | A component using an effect without `requires Capability` |
 | `capability-unused` | `Capability` | `Error` | `Static` | A `requires` declaration with no reachable use |
