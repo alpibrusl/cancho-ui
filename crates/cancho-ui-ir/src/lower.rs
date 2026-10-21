@@ -123,7 +123,7 @@ pub enum LowerError {
     PatternLiteralUnsupported { name: String, span: Span },
 
     #[error(
-        "`{name}` is misused here (expected {detail}); see the builtin call forms: `filter(list, x => cond)`, `map(list, x => body)`, `sort(list, x => key)`, `reverse(list)`, `contains(text, needle)`, `lower(text)`, `len(value)`, `storage.get(key, default)`, `storage.set(key, value)`, `net.get(url)`, `net.fetch(url)`, `net.post(url, body)`, `json.get(text, path, default)`, `json.items(text, path)`"
+        "`{name}` is misused here (expected {detail}); see the builtin call forms: `filter(list, x => cond)`, `map(list, x => body)`, `sort(list, x => key)`, `reverse(list)`, `contains(text, needle)`, `lower(text)`, `num(text, default)`, `len(value)`, `storage.get(key, default)`, `storage.set(key, value)`, `net.get(url)`, `net.fetch(url)`, `net.post(url, body)`, `json.get(text, path, default)`, `json.items(text, path)`"
     )]
     BuiltinMisuse {
         name: String,
@@ -1328,6 +1328,7 @@ const PURE_BUILTINS: &[(&str, usize, &str)] = &[
         "exactly two arguments: contains(text, needle)",
     ),
     ("lower", 1, "exactly one argument: lower(text)"),
+    ("num", 2, "exactly two arguments: num(text, default)"),
 ];
 
 /// Lower a Tier 11 list-operation operand. Filter predicates,
