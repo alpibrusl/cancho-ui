@@ -137,6 +137,20 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
         out.push_str(NETWORK_ADAPTER_JS);
         out.push('\n');
     }
+    // docs/adapters.md section 18: a module in which some component declares a `Credential` carries the helpers
+    // that attach it, and the variable through which a mount hands each component the tokens it was given.
+    let any_credential = ir
+        .components
+        .iter()
+        .any(|c| c.requires.iter().any(|r| r.name == "Credential"));
+    if any_net_get || any_net_post {
+        out.push_str(CREDENTIAL_ADAPTER_JS);
+        out.push('\n');
+    }
+    if any_credential {
+        out.push_str("let __cui_cur_creds = null;\n");
+        out.push('\n');
+    }
     if any_net_get {
         out.push_str(NET_GET_ADAPTER_JS);
         out.push('\n');
@@ -178,6 +192,7 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
             &component_names,
             &prop_consumers,
             keep_focus,
+            any_credential,
         ));
         out.push('\n');
     }
@@ -195,6 +210,16 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
         &crate::lists::helpers_used(&out[adapters_end..]),
     );
 
+    {
+        let set = if any_credential {
+            "__cui_cur_creds = __cui_creds; "
+        } else {
+            ""
+        };
+        let tail = out.split_off(adapters_end);
+        out.push_str(&tail.replace("/*CUI_SETCREDS*/", set));
+    }
+
     if let Some(last) = ir.components.last() {
         if options.auto_mount {
             out.push_str("const root = (typeof document !== 'undefined') ? document.getElementById('root') : null;\n");
@@ -202,9 +227,24 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
             out.push_str(&last.name);
             out.push_str("(root); }\n");
         }
-        out.push_str("export { mount_");
-        out.push_str(&last.name);
-        out.push_str(" };\n");
+        if any_credential {
+            // docs/adapters.md section 18: the entry takes the tokens, `mount_X(root, { credentials: { api: token } })`.
+            out.push_str("function __cui_mount_entry(root, options) {\n");
+            out.push_str("    var given = {};\n");
+            out.push_str("    var from = options && typeof options === 'object' && options.credentials && typeof options.credentials === 'object' ? options.credentials : {};\n");
+            out.push_str("    for (var k in from) { if (Object.prototype.hasOwnProperty.call(from, k) && typeof from[k] === 'string') { given[k] = from[k]; } }\n");
+            out.push_str("    __cui_cur_creds = given;\n");
+            out.push_str("    try { return mount_");
+            out.push_str(&last.name);
+            out.push_str("(root); } finally { __cui_cur_creds = null; }\n}\n");
+            out.push_str("export { __cui_mount_entry as mount_");
+            out.push_str(&last.name);
+            out.push_str(" };\n");
+        } else {
+            out.push_str("export { mount_");
+            out.push_str(&last.name);
+            out.push_str(" };\n");
+        }
     }
 
     out
@@ -323,6 +363,7 @@ fn emit_component(
     component_names: &[String],
     prop_consumers: &[String],
     keep_focus: bool,
+    module_credentials: bool,
 ) -> String {
     // Tier 13: components that some instance passes properties to
     // take a `props` argument; their state initializers consult
@@ -449,6 +490,30 @@ fn emit_component(
             "        const __cui_location_digits = {};\n",
             if fine { 5 } else { 2 }
         ));
+    }
+    if module_credentials {
+        // docs/adapters.md section 18: the tokens this instance was mounted with (a child gets its parent's).
+        out.push_str("        const __cui_creds = __cui_cur_creds;\n");
+    }
+    if c.requires
+        .iter()
+        .any(|r| r.name == "Network" || r.name == "NetworkWrite")
+    {
+        let cred = c.requires.iter().find(|r| r.name == "Credential");
+        match cred {
+            Some(r) => {
+                let name = r.bounds.first().map(String::as_str).unwrap_or("");
+                let hosts: Vec<String> = r.bounds[1..]
+                    .iter()
+                    .map(|h| format!("\"{}\"", h.to_ascii_lowercase()))
+                    .collect();
+                out.push_str(&format!(
+                    "        const __cui_cred = {{ name: \"{name}\", hosts: [{}], token: (__cui_creds && Object.prototype.hasOwnProperty.call(__cui_creds, \"{name}\")) ? __cui_creds[\"{name}\"] : null }};\n",
+                    hosts.join(", ")
+                ));
+            }
+            None => out.push_str("        const __cui_cred = null;\n"),
+        }
     }
     if c.requires.iter().any(|r| r.name == "Network") {
         let hosts: Vec<String> = c

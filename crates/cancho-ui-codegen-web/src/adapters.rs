@@ -191,16 +191,18 @@ pub(crate) const NET_GET_ADAPTER_JS: &str = "\
 // A GET of this page's own origin, or of a host the component's `requires Network(\"host\")` names: any other
 // URL is answered with Err before a request is made, a redirect is refused (it could leave the allowed set), a
 // body over 1 MiB or a reply later than 10 s is an Err, and every failure is a value, never a throw.
-function __cui_net_get(url, hosts) {
-    return __cui_net_request(url, hosts, false);
+function __cui_net_get(url, hosts, cred) {
+    return __cui_net_request(url, hosts, false, cred);
 }
-function __cui_net_fetch(url, hosts) {
-    return __cui_net_request(url, hosts, true);
+function __cui_net_fetch(url, hosts, cred) {
+    return __cui_net_request(url, hosts, true, cred);
 }
-function __cui_net_request(url, hosts, envelope) {
+function __cui_net_request(url, hosts, envelope, cred) {
     var owner = typeof __cui_owner !== \"undefined\" ? __cui_owner : null;
     var err = function (reason) { return {__cui_tag: \"Err\", reason: reason}; };
     return new Promise(function (resolve) {
+        var auth = __cui_credential_check(cred, resolve);
+        if (auth === false) { return; }
         var target;
         try {
             target = new URL(String(url), window.location.href);
@@ -222,6 +224,7 @@ function __cui_net_request(url, hosts, envelope) {
         if (controller) { timer = setTimeout(function () { controller.abort(); }, 10000); }
         if (owner && controller) { owner.abort = function () { stopped = true; controller.abort(); }; }
         var init = { method: \"GET\", credentials: \"same-origin\", redirect: \"manual\" };
+        if (auth !== null && __cui_credential_applies(cred, target)) { init.headers = { Authorization: auth }; }
         if (controller) { init.signal = controller.signal; }
         fetch(target.href, init).then(function (response) {
             if (response.type === \"opaqueredirect\") { return err(\"blocked: redirect\"); }
@@ -240,6 +243,30 @@ function __cui_net_request(url, hosts, envelope) {
 }
 ";
 
+/// The credential helpers (docs/adapters.md section 18), emitted with the request adapters when the module declares one.
+pub(crate) const CREDENTIAL_ADAPTER_JS: &str = "\
+// Credential capability (docs/adapters.md section 18). `cred` is {name, hosts, token} for a component that declared
+// `requires Credential(name, hosts..)`, or null. A declared credential that was not supplied at mount, or that is not
+// a plain visible-ASCII token, answers Err before any request is made; otherwise the value is \"Bearer <token>\".
+// The header is attached only when the target is this page's own origin or a host the declaration names.
+function __cui_credential_check(cred, resolve) {
+    if (!cred) { return null; }
+    var token = cred.token;
+    if (typeof token !== \"string\" || token === \"\") {
+        resolve({__cui_tag: \"Err\", reason: \"blocked: no credential \" + cred.name});
+        return false;
+    }
+    if (!/^[\\x21-\\x7e]{1,4096}$/.test(token)) {
+        resolve({__cui_tag: \"Err\", reason: \"blocked: credential \" + cred.name + \" is not a plain token\"});
+        return false;
+    }
+    return \"Bearer \" + token;
+}
+function __cui_credential_applies(cred, target) {
+    return !!cred && (target.origin === window.location.origin || cred.hosts.indexOf(target.host.toLowerCase()) !== -1);
+}
+";
+
 /// The `net.post` adapter (docs/adapters.md section 17): a same-origin POST of a JSON text, answered like `net.fetch`.
 pub(crate) const NET_POST_ADAPTER_JS: &str = "\
 // Platform adapter: NetworkWrite capability, `net.post(url, body)` (docs/adapters.md section 17).
@@ -247,9 +274,11 @@ pub(crate) const NET_POST_ADAPTER_JS: &str = "\
 // the cookies of this origin. Answered like `net.fetch`: Ok with {\"status\":N,\"body\":\"...\"} for any HTTP status, Err for
 // what produced no answer. A redirect is refused, a reply over 1 MiB is `too large`, a reply later than 10 s is `timeout`.
 // It is not aborted when superseded or disposed: a write cut off half way is in an unknown state (section 17.3).
-function __cui_net_post(url, body) {
+function __cui_net_post(url, body, cred) {
     var err = function (reason) { return {__cui_tag: \"Err\", reason: reason}; };
     return new Promise(function (resolve) {
+        var auth = __cui_credential_check(cred, resolve);
+        if (auth === false) { return; }
         var target;
         try {
             target = new URL(String(url), window.location.href);
@@ -269,6 +298,7 @@ function __cui_net_post(url, body) {
         var controller = typeof AbortController === \"function\" ? new AbortController() : null;
         if (controller) { timer = setTimeout(function () { controller.abort(); }, 10000); }
         var init = { method: \"POST\", credentials: \"same-origin\", redirect: \"manual\", headers: { \"Content-Type\": \"application/json\" }, body: String(body) };
+        if (auth !== null) { init.headers.Authorization = auth; }
         if (controller) { init.signal = controller.signal; }
         fetch(target.href, init).then(function (response) {
             if (response.type === \"opaqueredirect\") { return err(\"blocked: redirect\"); }

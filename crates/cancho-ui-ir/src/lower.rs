@@ -90,6 +90,16 @@ pub enum LowerError {
         span: Span,
     },
 
+    /// A misuse of `requires Credential(..)` that is not a malformed bound (docs/adapters.md section 18): `rule` is
+    /// `credential-ambiguous` or `credential-host-not-allowed`.
+    #[error("component `{component}`: {detail}")]
+    CredentialMisuse {
+        rule: &'static str,
+        component: String,
+        detail: String,
+        span: Span,
+    },
+
     #[error(
         "component `{component}` fetches `{url}`, whose host `{host}` its `Network` does not allow; add `requires Network(\"{host}\");`"
     )]
@@ -1115,6 +1125,14 @@ fn namespace_is_legal(ns: &str) -> bool {
 
 fn check_bounds_legal(c: &IrComponent) -> Result<(), LowerError> {
     for req in &c.requires {
+        if req.name == "Credential" && req.bounds.is_empty() {
+            return Err(LowerError::NarrowingIllegal {
+                component: c.name.clone(),
+                capability: req.name.clone(),
+                reason: "a `Credential` has a name: `requires Credential(\"api\");`".to_string(),
+                span: req.span,
+            });
+        }
         if req.bounds.is_empty() {
             continue;
         }
@@ -1128,6 +1146,30 @@ fn check_bounds_legal(c: &IrComponent) -> Result<(), LowerError> {
                     reason: "a `Location` bound is exactly one of \"coarse\" (2 decimals, the default) or \"fine\" (5 decimals)".to_string(),
                     span: req.span,
                 });
+            }
+            continue;
+        }
+        if req.name == "Credential" {
+            // docs/adapters.md section 18: a name (the first bound), then the extra hosts it may be sent to.
+            if !namespace_is_legal(&req.bounds[0]) {
+                return Err(LowerError::NarrowingIllegal {
+                    component: c.name.clone(),
+                    capability: req.name.clone(),
+                    reason: "a `Credential` is named by its first bound: 1 to 32 lower-case letters, digits and `-`, starting with a letter or digit".to_string(),
+                    span: req.span,
+                });
+            }
+            for b in &req.bounds[1..] {
+                if !host_is_legal(&b.to_ascii_lowercase()) {
+                    return Err(LowerError::NarrowingIllegal {
+                        component: c.name.clone(),
+                        capability: req.name.clone(),
+                        reason: format!(
+                            "`{b}` is not a host; after the name, a `Credential` takes hosts as `name` or `name:port`"
+                        ),
+                        span: req.span,
+                    });
+                }
             }
             continue;
         }
@@ -1148,7 +1190,7 @@ fn check_bounds_legal(c: &IrComponent) -> Result<(), LowerError> {
                 component: c.name.clone(),
                 capability: req.name.clone(),
                 reason: format!(
-                    "`{}` takes no bound yet; only `Network(\"host\")`, `Location(\"coarse\" or \"fine\")` and `Storage(\"ns\")` do",
+                    "`{}` takes no bound yet; only `Network(\"host\")`, `Location(\"coarse\" or \"fine\")`, `Storage(\"ns\")` and `Credential(\"name\", \"host\"..)` do",
                     req.name
                 ),
                 span: req.span,
@@ -1204,8 +1246,49 @@ fn check_capabilities(ir: &IrFile) -> Result<(), LowerError> {
                 });
             }
         }
+        // docs/adapters.md section 18: one credential per component, and the hosts it names are hosts `Network` allows.
+        let credentials: Vec<_> = c
+            .requires
+            .iter()
+            .filter(|r| r.name == "Credential")
+            .collect();
+        if credentials.len() > 1 {
+            return Err(LowerError::CredentialMisuse {
+                rule: "credential-ambiguous",
+                component: c.name.clone(),
+                detail: format!(
+                    "declares {} credentials; a request cannot choose between them, so a component declares one `Credential`",
+                    credentials.len()
+                ),
+                span: credentials[1].span,
+            });
+        }
+        for cred in &credentials {
+            for host in &cred.bounds[1..] {
+                if !allowed.contains(&host.to_ascii_lowercase()) {
+                    return Err(LowerError::CredentialMisuse {
+                        rule: "credential-host-not-allowed",
+                        component: c.name.clone(),
+                        detail: format!(
+                            "`Credential(\"{}\", \"{host}\")` names a host its `Network` does not allow; add `requires Network(\"{host}\");` or drop the host",
+                            cred.bounds[0]
+                        ),
+                        span: cred.span,
+                    });
+                }
+            }
+        }
         for req in &c.requires {
-            let used = c.reachable_effects.iter().any(|e| e.capability == req.name);
+            // A credential is used by any request the component can make (`net.get`, `net.fetch`, `net.post`).
+            let used = if req.name == "Credential" {
+                c.reachable_effects.iter().any(|e| {
+                    e.path.len() == 2
+                        && e.path[0] == "net"
+                        && matches!(e.path[1].as_str(), "get" | "fetch" | "post")
+                })
+            } else {
+                c.reachable_effects.iter().any(|e| e.capability == req.name)
+            };
             if !used {
                 return Err(LowerError::CapabilityUnused {
                     component: c.name.clone(),

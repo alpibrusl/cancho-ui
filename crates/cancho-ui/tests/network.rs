@@ -59,9 +59,9 @@ fn check_codes(src: &str, name: &str) -> Vec<String> {
 #[test]
 fn only_the_adapter_a_program_uses_is_emitted() {
     let js = build_js(FETCH, "fetch.cui");
-    assert!(js.contains("function __cui_net_get(url, hosts)"));
+    assert!(js.contains("function __cui_net_get(url, hosts, cred)"));
     assert!(
-        js.contains("__cui_net_get(__state_url, __cui_net_hosts)"),
+        js.contains("__cui_net_get(__state_url, __cui_net_hosts, __cui_cred)"),
         "{js}"
     );
     assert!(

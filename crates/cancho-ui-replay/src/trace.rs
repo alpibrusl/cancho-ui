@@ -66,6 +66,8 @@ pub struct Trace {
     pub clock: f64,
     /// The `Storage` store at the start: key to value (docs/adapters.md).
     pub storage: std::collections::BTreeMap<String, String>,
+    /// The names of the credentials the page supplied at mount (docs/adapters.md section 18); never their values.
+    pub credentials: Vec<String>,
     pub steps: Vec<Step>,
 }
 
@@ -95,6 +97,7 @@ pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {
             "component",
             "clock",
             "storage",
+            "credentials",
             "steps",
             "note",
         ],
@@ -162,6 +165,31 @@ pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {
             ));
         }
     }
+    let mut credentials: Vec<String> = Vec::new();
+    match obj.get("credentials") {
+        None => {}
+        Some(Json::Array(a)) => {
+            for (i, v) in a.iter().enumerate() {
+                match v {
+                    Json::String(s) => credentials.push(s.clone()),
+                    _ => {
+                        return Err(err(
+                            "trace-malformed",
+                            format!("credentials[{i}]"),
+                            "a credential is listed by its name, a string; its value is never in a trace",
+                        ));
+                    }
+                }
+            }
+        }
+        Some(_) => {
+            return Err(err(
+                "trace-malformed",
+                "credentials",
+                "`credentials` is a list of the names of the credentials the page supplied",
+            ));
+        }
+    }
     let steps_json = match obj.get("steps") {
         Some(Json::Array(a)) if !a.is_empty() => a,
         Some(Json::Array(_)) => {
@@ -198,6 +226,7 @@ pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {
         component,
         clock,
         storage,
+        credentials,
         steps,
     })
 }

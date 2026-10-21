@@ -125,6 +125,12 @@ site only (no host bound; a literal URL naming a host is `capability-bound-viola
 envelope `{"status":N,"body":"..."}` for any HTTP status, never retried and not aborted when superseded (`docs/adapters.md`
 section 17).
 
+A component that sends a secret declares `requires Credential("api", "host"..)` (with `Network` for any host it names): `net.get`,
+`net.fetch` and `net.post` then add `Authorization: Bearer <token>`, to this site and the named hosts only. Build with
+`--no-auto-mount` and hand the token to `mount_X(root, { credentials: { "api": token } })`; auto-mount is refused
+(`credential-needs-mount-options`). A trace lists `"credentials": ["api"]`; a missing one answers `Err("blocked: no credential api")`
+(`docs/adapters.md` section 18).
+
 `Button` and `TextField` take `disabled: true | false | <a Bool state field>` (the native attribute, so a double click on a
 `disabled: sending` button that sets `sending = true` before its `await` sends one write); any other key that is not `label`,
 `role`, `on`, `value`, `disabled`, `submit` or `placeholder` is `binding-unknown` (`docs/controls.md`). `TextField { ... submit: Apply }`

@@ -130,7 +130,10 @@ in `examples/refusal/`, and by the evidence report.
 | `capability-missing` | `Capability` | `Error` | `Static` | A component using an effect without `requires Capability` |
 | `capability-unused` | `Capability` | `Error` | `Static` | A `requires` declaration with no reachable use |
 | `capability-insufficient` | `Capability` | `Error` | `Static` | A `requires` narrower than the effect's needs |
-| `capability-narrowing-illegal` | `Capability` | `Error` | `Static` | A bound on a capability that takes none, a `Network` bound that is not `name[:port]`, or a `Location` bound that is not `"coarse"` or `"fine"`. *(A bound that is not a string literal is `parse-unexpected-token`; built 2026-10-20, `docs/adapters.md` section 10.)* |
+| `capability-narrowing-illegal` | `Capability` | `Error` | `Static` | A bound on a capability that takes none, a `Credential` with no name or an illegal name or host, a `Network` bound that is not `name[:port]`, or a `Location` bound that is not `"coarse"` or `"fine"`. *(A bound that is not a string literal is `parse-unexpected-token`; built 2026-10-20, `docs/adapters.md` section 10.)* |
+| `credential-ambiguous` | `Capability` | `Error` | `Static` | A component declaring more than one `Credential`: a call cannot choose between them. *(Built 2026-10-21, `docs/adapters.md` section 18.)* |
+| `credential-host-not-allowed` | `Capability` | `Error` | `Static` | A host named in `Credential("name", "host")` that the component's `Network` does not allow. *(Built 2026-10-21.)* |
+| `credential-needs-mount-options` | `Capability` | `Error` | `Static` | A build with auto-mount (or `--pwa`) of a component declaring `Credential`: nothing can hand it a token; use `--no-auto-mount` and `mount_X(root, { credentials })`. *(Built 2026-10-21.)* |
 | `capability-bound-violated` | `Capability` | `Error` | `Static` | A `net.get` of a literal URL whose host the component's `Network` does not allow (the runtime guard answers `Err("blocked: ...")` for the URLs it cannot see) |
 | `schedule-event-unknown` | `Schedule` | `Error` | `Static` | A `start` or `every` naming an event the component does not declare |
 | `schedule-event-params` | `Schedule` | `Error` | `Static` | A `start` or `every` naming an event that takes parameters |
@@ -154,7 +157,7 @@ in `examples/refusal/`, and by the evidence report.
 `cancho-ui test` reports failures in its own JSON shape
 ([`docs/replay.md`](../../docs/replay.md) §7), tier `tested`, with these stable
 tags: `test-state-mismatch`, `test-expect-mismatch`, `trace-no-assertions`,
-`trace-malformed`, `trace-schema-unsupported`, `trace-unknown-key`,
+`trace-malformed`, `trace-credential-unknown`, `trace-schema-unsupported`, `trace-unknown-key`,
 `trace-bad-step`, `trace-bad-value`, `trace-unknown-component`,
 `trace-unknown-event`, `trace-params-arity`, `trace-unknown-state-field`,
 `trace-unknown-request`, `trace-request-not-pending`,

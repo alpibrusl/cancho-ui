@@ -61,10 +61,10 @@ fn net_fetch_is_emitted_beside_the_shared_request_function() {
     assert_eq!(code, 0, "{stderr}");
     let js = std::fs::read_to_string(out).expect("the built program");
     assert!(
-        js.contains("__cui_net_fetch(__state_url, __cui_net_hosts)"),
+        js.contains("__cui_net_fetch(__state_url, __cui_net_hosts, __cui_cred)"),
         "{js}"
     );
-    assert!(js.contains("function __cui_net_request(url, hosts, envelope)"));
+    assert!(js.contains("function __cui_net_request(url, hosts, envelope, cred)"));
     assert!(js.contains("JSON.stringify({status: response.status, body: text})"));
     assert!(js.contains("if (!response.ok && !envelope)"));
     // docs/adapters.md 16: a superseded or disposed request is aborted

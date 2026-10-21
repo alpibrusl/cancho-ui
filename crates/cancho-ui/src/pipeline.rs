@@ -677,10 +677,30 @@ fn check_to_diag(e: &cancho_ui_types::CheckError, file: &Path) -> Diagnostic {
             expected: None,
             actual: None,
             remediation: Some(Remediation {
-                description: "Write a bound only on `Network`, as `requires Network(\"name\");` or `requires Network(\"name:port\");`.".to_string(),
+                description: "Write a bound as the capability allows: `Network(\"host\"..)`, `Storage(\"ns\")`, `Location(\"coarse\" or \"fine\")` or `Credential(\"name\", \"host\"..)` (docs/adapters.md).".to_string(),
                 suggestion: None,
                 confidence: Confidence::Medium,
             }),
+            related: Vec::new(),
+            notes: Vec::new(),
+        },
+        cancho_ui_types::CheckError::CredentialMisuse {
+            rule,
+            component,
+            detail,
+            span,
+        } => Diagnostic {
+            code: (*rule).into(),
+            severity: Severity::Error,
+            tier: Tier::Static,
+            subject: Subject::Capability {
+                name: "Credential".to_string(),
+            },
+            message: format!("component `{component}`: {detail}"),
+            span: Some(SpanOut::from_span(*span, file)),
+            expected: None,
+            actual: None,
+            remediation: Some(credential_remediation(rule)),
             related: Vec::new(),
             notes: Vec::new(),
         },
@@ -811,6 +831,44 @@ pub fn compile_to_js(
         )));
     }
     let ir = compile_to_ir(file)?;
+    // docs/adapters.md section 18: a module that mounts itself has nowhere to receive a credential.
+    if options.auto_mount
+        && let Some((comp, req)) = ir.components.iter().find_map(|c| {
+            c.requires
+                .iter()
+                .find(|r| r.name == "Credential")
+                .map(|r| (c, r))
+        })
+    {
+        let name = req.bounds.first().map(String::as_str).unwrap_or("");
+        return Err(PipelineError::Refused(Box::new(Diagnostic {
+            code: "credential-needs-mount-options".into(),
+            severity: Severity::Error,
+            tier: Tier::Static,
+            subject: Subject::Capability {
+                name: "Credential".to_string(),
+            },
+            message: format!(
+                "component `{}` declares `Credential(\"{name}\")`, but a module that mounts itself is given no credential, so every request it makes would be refused",
+                comp.name
+            ),
+            span: Some(SpanOut::from_span(req.span, file)),
+            expected: None,
+            actual: None,
+            remediation: Some(Remediation {
+                description: format!(
+                    "Build with `--no-auto-mount` and mount the module from your page, giving it the token: `mount_{}(root, {{ credentials: {{ \"{name}\": token }} }})`. The installed web app (`--pwa`) mounts itself, so it cannot carry a credential.",
+                    ir.components
+                        .last()
+                        .map_or(comp.name.as_str(), |l| l.name.as_str())
+                ),
+                suggestion: None,
+                confidence: Confidence::High,
+            }),
+            related: Vec::new(),
+            notes: Vec::new(),
+        })));
+    }
     Ok(emit_module_with(
         &ir,
         Some(file.to_string_lossy().as_ref()),
@@ -1247,10 +1305,26 @@ fn lower_to_diag(e: &LowerError, file: &Path) -> Diagnostic {
             ),
             Some(*span),
             Some(Remediation {
-                description: "Write a bound only on `Network`, as `requires Network(\"name\");` or `requires Network(\"name:port\");`.".to_string(),
+                description: "Write a bound as the capability allows: `Network(\"host\"..)`, `Storage(\"ns\")`, `Location(\"coarse\" or \"fine\")` or `Credential(\"name\", \"host\"..)` (docs/adapters.md).".to_string(),
                 suggestion: None,
                 confidence: Confidence::Medium,
             }),
+        ),
+        LowerError::CredentialMisuse {
+            rule,
+            component,
+            detail,
+            span,
+        } => (
+            *rule,
+            Severity::Error,
+            Tier::Static,
+            Subject::Capability {
+                name: "Credential".to_string(),
+            },
+            format!("component `{component}`: {detail}"),
+            Some(*span),
+            Some(credential_remediation(rule)),
         ),
         LowerError::BoundViolated {
             component,
@@ -1454,6 +1528,22 @@ fn schedule_remediation(code: &str) -> Remediation {
 
 fn unknown_call_remediation() -> String {
     "The language has a fixed set of functions: `filter`, `map`, `sort`, `len`, `reverse`, `contains`, `lower`, `num`, `take`, `skip`, `lines`, `split`, `join`, `trim`, `upper`, `starts_with`, `ends_with`, `json.get`, `json.items`, `storage.get`, `storage.set`, `clock.now`, `sleep`, `net.get`, `net.fetch`, `net.post`, `net.search`, `location.current`. There is no `max`, `min`, `floor`, `ceil` or `abs`, and no function of your own; write the arithmetic with `+`, `-`, `*`, `/` and the list builtins (`docs/ops-console.md`).".to_string()
+}
+
+fn credential_remediation(rule: &str) -> Remediation {
+    let description = match rule {
+        "credential-ambiguous" => {
+            "Declare one `Credential` per component (`requires Credential(\"api\");`); a request cannot choose between two. Split the component if two services need two credentials."
+        }
+        _ => {
+            "A credential is sent only to this site's own origin and to the hosts named after its name, and each of those must also be allowed by `requires Network(\"host\");`. Add that `Network` host (review the widening) or drop the host from the `Credential`."
+        }
+    };
+    Remediation {
+        description: description.to_string(),
+        suggestion: None,
+        confidence: Confidence::High,
+    }
 }
 
 fn pattern_literal_remediation() -> String {
