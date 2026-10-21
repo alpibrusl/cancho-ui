@@ -127,7 +127,9 @@ section 17).
 
 `Button` and `TextField` take `disabled: true | false | <a Bool state field>` (the native attribute, so a double click on a
 `disabled: sending` button that sets `sending = true` before its `await` sends one write); any other key that is not `label`,
-`role`, `on`, `value`, `disabled` or `placeholder` is `binding-unknown` (`docs/controls.md`).
+`role`, `on`, `value`, `disabled`, `submit` or `placeholder` is `binding-unknown` (`docs/controls.md`). `TextField { ... submit: Apply }`
+fires the parameterless event `Apply` on Enter (not while composing, not on key repeat, and not while a button `on: Apply` is
+disabled), so `Enter` submits a form once (`submit-event-invalid` for an unknown event or one with parameters).
 
 `await(location.current())` performs `Location` and resolves to `Ok("lat,lon")` (2 decimals; `requires
 Location("fine");` for 5), `Err(reason)` or `Cancelled`; the browser asks the user

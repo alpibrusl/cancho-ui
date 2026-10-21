@@ -330,6 +330,7 @@ pub(crate) fn emit_view_node(
             // Apply bindings.
             let mut click_handler: Option<String> = None;
             let mut input_handler: Option<String> = None;
+            let mut submit_handler: Option<String> = None;
             let mut input_value: Option<String> = None;
             let mut button_label: Option<String> = None;
             // Tier 13: on a component instance, `Const` bindings
@@ -411,6 +412,10 @@ pub(crate) fn emit_view_node(
                                     indent, name
                                 ));
                             }
+                        } else if b.key == "submit" {
+                            // Enter in a TextField (docs/controls.md section 3); a refusal already kept it off
+                            // anything else.
+                            submit_handler = Some(name.clone());
                         } else {
                             out.push_str(&format!(
                                 "{0}// {1}: {2} on a primitive (Phase 2+)\n",
@@ -547,6 +552,12 @@ pub(crate) fn emit_view_node(
             if let Some(event_name) = click_handler {
                 out.push_str(&format!(
                     "{0}{1}.addEventListener('click', __on_{2});\n",
+                    indent, var, event_name
+                ));
+            }
+            if let Some(event_name) = submit_handler {
+                out.push_str(&format!(
+                    "{0}{1}.addEventListener('keydown', function (e) {{ if (e.key === 'Enter' && !e.isComposing && !e.repeat) {{ e.preventDefault(); if (!(__submit_blocked.{2} && __submit_blocked.{2}())) {{ __on_{2}(); }} }} }});\n",
                     indent, var, event_name
                 ));
             }

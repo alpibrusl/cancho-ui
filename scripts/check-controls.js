@@ -31,6 +31,7 @@ component Controls {
     state sent: Int = 0;
     state locked: Bool = true;
     state fired: Int = 0;
+    state bumped: Int = 0;
     state note: String = "";
     state r: Result[String, String] = Ok("");
 
@@ -41,6 +42,7 @@ component Controls {
         sent = sent + 1;
     }
     on Locked { fired = fired + 1; }
+    on Bump { bumped = bumped + 1; }
     on Edit(v) { note = v; }
 
     view {
@@ -48,7 +50,9 @@ component Controls {
             Button { label: "Save" on: Save disabled: sending }
             Button { label: "Never" on: Locked disabled: true }
             TextField { label: "Locked note" value: note on: Edit disabled: locked }
-            Text { "sent {sent} fired {fired} note {note}" }
+            TextField { label: "Enter field" value: note on: Edit submit: Save }
+            TextField { label: "Bump field" value: note on: Edit submit: Bump }
+            Text { "sent {sent} fired {fired} bumped {bumped} note {note}" }
         }
     }
 }
@@ -110,10 +114,57 @@ component Controls {
   check('and its event never fires', (await text()).includes('fired 0'), await text());
 
   // a disabled TextField
-  check('a field with `disabled: locked` is disabled', await page.locator('input').isDisabled());
-  await page.locator('input').fill('x', { force: true, timeout: 500 }).catch(() => {});
+  check('a field with `disabled: locked` is disabled', await page.locator('input[aria-label="Locked note"]').isDisabled());
+  await page.locator('input[aria-label="Locked note"]').fill('x', { force: true, timeout: 500 }).catch(() => {});
   await page.waitForTimeout(150);
   check('and takes no typing', !(await text()).includes('note x'), await text());
+
+  // Enter in a field fires its submit event (section 3)
+  const field = page.locator('input[aria-label="Enter field"]');
+  await field.fill('y');
+  const before = posts.count;
+  await field.press('Enter');
+  check('Enter in a field with `submit: Save` sends ONE write', await settle(before + 1), String(posts.count - before));
+  await field.press('Enter');
+  await page.waitForTimeout(150);
+  check('Enter again while that write is in flight sends nothing (the guard of the disabled button)', posts.count === before + 1, String(posts.count - before));
+  posts.held.splice(0).forEach((reply) => reply());
+  check('the answer arrives and is counted', await until('sent 3'));
+  await field.focus();
+  await page.keyboard.down('Enter');
+  await page.keyboard.down('Enter');
+  await page.keyboard.down('Enter');
+  await page.keyboard.up('Enter');
+  check('a held Enter (auto-repeat) sends one write, not three', await settle(before + 2), String(posts.count - before));
+  posts.held.splice(0).forEach((reply) => reply());
+  check('and it is counted', await until('sent 4'));
+  const beforeIme = posts.count;
+  await page.evaluate(() => {
+    const el = document.querySelector('input[aria-label="Enter field"]');
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true, cancelable: true }));
+  });
+  await page.waitForTimeout(200);
+  check('an Enter that confirms an IME composition sends nothing', posts.count === beforeIme, String(posts.count - beforeIme));
+  const typed = await field.inputValue();
+  check('and typing in the field still works', typed === 'y', typed);
+
+  // an event no button guards: the auto-repeat of a held Enter, and other keys
+  const bump = page.locator('input[aria-label="Bump field"]');
+  await bump.focus();
+  await page.keyboard.press('a');
+  await page.keyboard.press('Tab');
+  await bump.focus();
+  await page.waitForTimeout(150);
+  check('a letter or Tab in a field with `submit:` fires nothing', (await text()).includes('bumped 0'), await text());
+  await page.keyboard.down('Enter');
+  await page.keyboard.down('Enter');
+  await page.keyboard.down('Enter');
+  await page.keyboard.up('Enter');
+  await page.waitForTimeout(150);
+  check('a held Enter on an event nothing disables fires it ONCE (auto-repeat is ignored)', (await text()).includes('bumped 1'), await text());
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(150);
+  check('and a new press fires it again', (await text()).includes('bumped 2'), await text());
 
   check('no script errors', errors.length === 0, errors.join(' | '));
   await browser.close();

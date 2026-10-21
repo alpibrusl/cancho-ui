@@ -103,7 +103,7 @@ component OpsConsole {
             }
             Text { role: heading "Change a setpoint" }
             TextField { label: "Machine id" placeholder: "Machine id, e.g. M-101" value: target on: SetTarget }
-            TextField { label: "Setpoint" placeholder: "Setpoint, in degrees C" value: setpoint on: SetSetpoint }
+            TextField { label: "Setpoint" placeholder: "Setpoint, in degrees C" value: setpoint on: SetSetpoint submit: Apply }
             Button { label: "Apply" on: Apply disabled: sending }
             Text { role: status "result: {outcome}" }
         }

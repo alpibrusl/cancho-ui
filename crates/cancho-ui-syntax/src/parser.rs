@@ -1458,7 +1458,7 @@ impl Parser {
         //   - `role: heading` etc.
         // Phase 2 adds typed expressions.
         match key {
-            "on" => {
+            "on" | "submit" => {
                 let name_tok = self.bump();
                 let name = match name_tok.token {
                     Token::Ident(s) => s,
