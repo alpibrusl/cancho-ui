@@ -205,7 +205,7 @@ function check(label, ok, detail) {
   posts = log.posts.length;
   await p2.dblclick('button[aria-label="Apply"]');
   await p2.waitForTimeout(400);
-  check('KNOWN GAP #3: a double click sends two writes (a button cannot be disabled while one is in flight)', log.posts.length === posts + 2, String(log.posts.length - posts));
+  check('a double click sends ONE write: Apply is `disabled: sending` while one is in flight (issue #35, fixed)', log.posts.length === posts + 1, String(log.posts.length - posts));
   await p2.fill('input[aria-label="Machine id"]', 'M-102", 99, "x');
   posts = log.posts.length;
   await click2('Apply');

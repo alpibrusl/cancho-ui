@@ -5,7 +5,7 @@
 
 use std::collections::BTreeMap;
 
-use cancho_ui_ir::ir::{IrComponent, IrScheduleKind, IrStmt};
+use cancho_ui_ir::ir::{IrBindingValue, IrComponent, IrExpr, IrScheduleKind, IrStmt, IrViewNode};
 use cancho_ui_syntax::span::Span;
 
 use crate::eval::{Ctx, Fault, Journal, Stop, eval, span_of};
@@ -16,6 +16,9 @@ pub enum Outcome {
     Completed,
     Suspended,
     Dropped,
+    /// Every control that fires the event is `disabled` (docs/controls.md section 2): the browser would not have
+    /// delivered it, so the handler does not run and nothing changes.
+    Disabled,
     Ok,
 }
 
@@ -25,6 +28,7 @@ impl Outcome {
             Outcome::Completed => "completed",
             Outcome::Suspended => "suspended",
             Outcome::Dropped => "dropped",
+            Outcome::Disabled => "disabled",
             Outcome::Ok => "ok",
         }
     }
@@ -270,6 +274,9 @@ impl<'a> Machine<'a> {
         params: Vec<Value>,
         fx: &mut StepEffects,
     ) -> Result<Outcome, Fault> {
+        if self.event_disabled(&self.comp.events[handler].name) {
+            return Ok(Outcome::Disabled);
+        }
         let names = &self.comp.events[handler].params;
         let task = Task {
             handler,
@@ -278,6 +285,59 @@ impl<'a> Machine<'a> {
             journal: Journal::default(),
         };
         self.run(task, fx)
+    }
+
+    /// Is every control of the view that fires `event` disabled right now? An event no control fires (a schedule's)
+    /// is never disabled. Only `true`, `false` and a `Bool` state field can be `disabled:` (docs/controls.md).
+    fn event_disabled(&self, event: &str) -> bool {
+        fn walk(
+            m: &Machine<'_>,
+            node: &IrViewNode,
+            event: &str,
+            seen: &mut usize,
+            enabled: &mut usize,
+        ) {
+            match node {
+                IrViewNode::Element {
+                    bindings, children, ..
+                } => {
+                    let fires = bindings.iter().any(|b| {
+                        b.key == "on"
+                            && matches!(&b.value, IrBindingValue::EventRef(e) if e == event)
+                    });
+                    if fires {
+                        *seen += 1;
+                        let off = bindings.iter().any(|b| {
+                            b.key == "disabled"
+                                && match &b.value {
+                                    IrBindingValue::Const { expr, .. } => {
+                                        matches!(**expr, IrExpr::BoolLit { value: true, .. })
+                                    }
+                                    IrBindingValue::StateRef(name) => {
+                                        matches!(m.state.get(name), Some(Value::Bool(true)))
+                                    }
+                                    _ => false,
+                                }
+                        });
+                        if !off {
+                            *enabled += 1;
+                        }
+                    }
+                    for c in children {
+                        walk(m, c, event, seen, enabled);
+                    }
+                }
+                IrViewNode::For { children, .. } => {
+                    for c in children {
+                        walk(m, c, event, seen, enabled);
+                    }
+                }
+                IrViewNode::Text { .. } => {}
+            }
+        }
+        let (mut seen, mut enabled) = (0, 0);
+        walk(self, &self.comp.view.body, event, &mut seen, &mut enabled);
+        seen > 0 && enabled == 0
     }
 
     /// The scripted network answers request `id` (`answer` is an `Ok` or `Err`).

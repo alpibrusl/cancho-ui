@@ -22,7 +22,7 @@ A machine list for a plant-floor operator, 23 machines in the stand-in service.
 It asks for exactly two capabilities, `Network` and `NetworkWrite`; either alone is `capability-missing`.
 
 Checked three ways: `cargo test` (`tests/ops_console.rs`: the program checks, its trace passes and a wrong expectation
-fails, neither capability is spare, the built page carries every helper it calls), a replay trace with 36 steps and 52
+fails, neither capability is spare, the built page carries every helper it calls), a replay trace with 37 steps and 56
 checks (`examples/ops-console/ops-console.trace.json`), and **the built page in Chromium** against a stand-in service
 (`scripts/check-ops-console.js`, `scripts/ops-console-server.js`: 52 checks, six screenshots).
 
@@ -55,7 +55,11 @@ These work, are tested, and nobody would find them without this document. The sa
 **written out four times** (Refresh, Query, Flip, and again) because a handler cannot call another and there is no derived
 state or local `let`.
 
-### 2.3 A page cannot refuse to send, or stop a second send. Issue #35
+### 2.3 A page cannot refuse to send, or stop a second send. Issue #35. **Fixed 2026-10-21 (`docs/controls.md`).**
+
+> *Correction:* `Button` and `TextField` take `disabled:` (`true`, `false` or a `Bool` state field) and an unknown key is
+> `binding-unknown`. The page now has `state sending: Bool` set around the POST and `Apply` is `disabled: sending`; a double
+> click sends **one** write (`scripts/check-ops-console.js`, 52 checks and the trace's 37th step). What follows is the finding as it was made.
 
 `Button { disabled: true }` **compiles and is ignored**: no attribute is emitted (an unknown binding key is accepted
 silently). A double click on Apply sends **two** POSTs (measured: 2 in 400 ms); each is a real write. There is no way to say
@@ -137,7 +141,7 @@ rendering has no limit on a value.
 * CRLF line endings, a slow request superseded by a refresh (the service sees the connection close), a hidden page
   (no polls, one catch-up refresh), typing across a refresh that lands in the middle (text and focus survive), a
   409, a 503, a 400, the service down: all as designed.
-* The 36-step trace passes and, with each of seven deliberate breaks of the program (sentinel, page clamps, line filter,
+* The 37-step trace passes and, with each of seven deliberate breaks of the program (sentinel, page clamps, line filter,
   id and validity filters, case-insensitive search, direction), **fails**; the browser script fails on each too.
 
 ## 4. Checks, and how they were made to fail
@@ -148,7 +152,7 @@ was added**; the first trace did not cover it), broken lines kept (1, 6), the id
 search made case-sensitive (2, 2), Next not clamped (2, 4), Flip doing nothing (2, 6). And `is_known_call` made always true:
 the `call-unknown` tests fail (10).
 
-Four checks assert a gap **as it is today** ("KNOWN GAP #1 to #4": Unicode search, Enter, double submit, offline list), so
+Three checks assert a gap **as it is today** ("KNOWN GAP": Unicode search, Enter, offline list; the double submit was fixed, #35), so
 that fixing one fails the check and forces this document to be updated.
 
 ## 5. Not done

@@ -125,6 +125,10 @@ site only (no host bound; a literal URL naming a host is `capability-bound-viola
 envelope `{"status":N,"body":"..."}` for any HTTP status, never retried and not aborted when superseded (`docs/adapters.md`
 section 17).
 
+`Button` and `TextField` take `disabled: true | false | <a Bool state field>` (the native attribute, so a double click on a
+`disabled: sending` button that sets `sending = true` before its `await` sends one write); any other key that is not `label`,
+`role`, `on`, `value`, `disabled` or `placeholder` is `binding-unknown` (`docs/controls.md`).
+
 `await(location.current())` performs `Location` and resolves to `Ok("lat,lon")` (2 decimals; `requires
 Location("fine");` for 5), `Err(reason)` or `Cancelled`; the browser asks the user
 (`docs/adapters.md` section 11).
