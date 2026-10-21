@@ -32,6 +32,7 @@ component Rows {
         shown = sort(filter(names, s => contains(lower(s), lower(v))), s => lower(s));
     }
     on Flip { shown = reverse(shown); }
+    on Next { shown = take(skip(shown, 1), 2); }
     on Order { shown = reverse(sort(["9", "10", "x", "2.5", "-1"], s => num(s, 1000))); }
 
     view {
@@ -39,6 +40,7 @@ component Rows {
             TextField { label: "Search" value: q on: Query }
             Button { label: "Flip" on: Flip }
             Button { label: "Order" on: Order }
+            Button { label: "Next" on: Next }
             Text { "{len(shown)} matches" }
             For {
                 over: shown
@@ -62,7 +64,7 @@ component Rows {
   const from = js.indexOf('function __cui_sort');
   const to = js.indexOf('function mount_', from);
   if (from < 0 || to < 0) { throw new Error('the helpers are not in the built program'); }
-  const lib = new Function(js.slice(from, to) + '\nreturn { sort: __cui_sort, lower: __cui_lower, contains: __cui_contains, reverse: __cui_reverse, num: __cui_num };')();
+  const lib = new Function(js.slice(from, to) + '\nreturn { sort: __cui_sort, lower: __cui_lower, contains: __cui_contains, reverse: __cui_reverse, num: __cui_num, take: __cui_take, skip: __cui_skip };')();
   const corpus = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'lists_corpus.json'), 'utf8'));
   for (const e of corpus) {
     const keys = e.keys.map((k) => (k !== null && typeof k === 'object' && !Array.isArray(k) ? NaN : k));
@@ -80,6 +82,19 @@ component Rows {
     const want = e.negzero ? -0 : e.expect;
     check(`num ${JSON.stringify(e.text)} -> ${e.negzero ? '-0' : e.expect}`, Object.is(got, want), `got ${got}`);
   }
+
+  const paging = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'paging_corpus.json'), 'utf8'));
+  const special = { NaN: NaN, Infinity: Infinity, '-Infinity': -Infinity };
+  for (const e of paging) {
+    const n = typeof e.n === 'string' ? special[e.n] : e.n;
+    const input = JSON.stringify(e.list);
+    const t = lib.take(e.list, n);
+    const k = lib.skip(e.list, n);
+    check(`take: ${e.why}`, JSON.stringify(t) === JSON.stringify(e.take), `got ${JSON.stringify(t)}`);
+    check(`skip: ${e.why}`, JSON.stringify(k) === JSON.stringify(e.skip), `got ${JSON.stringify(k)}`);
+    check(`unchanged: ${e.why}`, JSON.stringify(e.list) === input);
+  }
+  check('take/skip: a count that is not a number is 0', lib.take([1, 2], 'x').length === 0 && lib.take([1, 2, 3], '2').length === 0 && lib.skip([1, 2], undefined).length === 2);
 
   // the page
   const server = http.createServer((req, res) => {
@@ -108,6 +123,8 @@ component Rows {
   check('reversed', JSON.stringify(await rows()) === JSON.stringify(['pear', 'Fig', 'fig', 'apple', 'Apple']), JSON.stringify(await rows()));
   await page.click('text=Order');
   check('rows sorted by a number held in text', JSON.stringify(await rows()) === JSON.stringify(['x', '10', '9', '2.5', '-1']), JSON.stringify(await rows()));
+  await page.click('text=Next');
+  check('paged: skip one, take two', JSON.stringify(await rows()) === JSON.stringify(['10', '9']), JSON.stringify(await rows()));
   check('no script errors', errors.length === 0, errors.join(' | '));
   await browser.close();
   server.close();

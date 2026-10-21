@@ -352,7 +352,12 @@ fn emit_call_runtime(path: &[String], args: &[IrExpr], params: &[&str]) -> Strin
             args.iter().map(|a| emit_expr_runtime(a, params)).collect();
         return format!("__cui_json_{}({})", path[1], rendered_args.join(", "));
     }
-    if path.len() == 1 && matches!(path[0].as_str(), "reverse" | "contains" | "lower" | "num") {
+    if path.len() == 1
+        && matches!(
+            path[0].as_str(),
+            "reverse" | "contains" | "lower" | "num" | "take" | "skip"
+        )
+    {
         let rendered_args: Vec<String> =
             args.iter().map(|a| emit_expr_runtime(a, params)).collect();
         return format!("__cui_{}({})", path[0], rendered_args.join(", "));

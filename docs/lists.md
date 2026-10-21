@@ -12,6 +12,7 @@ reverse(list)               -> a new list, the elements in the opposite order
 contains(text, needle)      -> Bool; case-sensitive; an empty needle is in every text
 lower(text)                 -> the text with ASCII A to Z made a to z
 num(text, default)          -> the number the text spells, or default
+take(list, n), skip(list, n) -> the first n elements, the rest (section 6)
 ```
 
 All four are **pure**: no capability, no effect, they run inside the render pass or a handler. `sort`'s second
@@ -38,7 +39,7 @@ argument is a lambda like `filter`'s and `map`'s, it never escapes, and it must 
 ## 2. What it touches
 
 * **IR:** a node `SortBy { list, item, key }` (the shape of `Filter`/`Map`), serialized, rendered by `cancho-ui diff`
-  as `sort(list, x => key)`. The other four are `Call`s of a one-segment path that need no capability, so a
+  as `sort(list, x => key)`. The other six are `Call`s of a one-segment path that need no capability, so a
   program's authority is unchanged by using them.
 * **Emit:** the helpers live in `crates/cancho-ui-codegen-web/src/lists.rs` (`emit.rs` was near the 2,000-line
   ceiling and has since been split into `emit.rs`, `expr.rs`, `view.rs` and `adapters.rs`, with byte-identical output) and are emitted only when the program calls them, found by looking at what was emitted, as `json.get` is.
@@ -74,6 +75,50 @@ there; it stays so that the result does not depend on the engine. Six more for `
 
 ## 5. Not done
 
-*(A text-to-number builtin: built, `num`, section 1.)* `starts_with`/`ends_with`/`split`/`join`/
-`trim`, `upper`, a locale-aware collation, `sort` over anything but the keys above, and `take`/`skip` for paging.
-Chromium only.
+*(A text-to-number builtin: built, `num`, section 1. Paging: built, `take`/`skip`, section 6.)* `starts_with`/`ends_with`/
+`split`/`join`/`trim`, `upper`, a locale-aware collation, and `sort` over anything but the keys above. Chromium only.
+
+---
+
+## 6. Paging: `take` and `skip`
+
+### 6.1 The decision
+
+```
+take(list, n)   -> a new list: the first n elements
+skip(list, n)   -> a new list: everything after the first n
+```
+
+Pure, no capability, plain calls like `reverse`. A page is `take(skip(rows, page * size), size)`; the number of pages is
+`len(rows)` over `size`, computed by the program. Neither changes its argument, and elements of any kind are kept as they
+are.
+
+* **`n` is cut toward zero** (`1.9` counts 1), **a negative `n` counts 0, `NaN` counts 0, `-0` counts 0**, `+Infinity`
+  counts every element and `-Infinity` counts 0; an `n` larger than the list is the whole list (`take`) or nothing
+  (`skip`). So a page number computed from user input (`p * 2` with `p` = `-1`) is the first page, never an error.
+* **Replay and the browser agree on every number** (`tests/paging_corpus.json`, 18 cases). They differ on one thing
+  only, as `num` does: replay refuses an `n` that is not a number (`replay-type-error`, the trace is wrong), while the
+  emitted `__cui_page_count` answers 0 for anything that is not a number (including a numeric string: `"2"` is 0, it is
+  not coerced), because a page must not throw.
+* The helpers are one block (`__cui_page_count`, `__cui_take`, `__cui_skip`) emitted once whether a program uses one or
+  both: a module may not declare a function twice.
+
+### 6.2 Checked
+
+* `cargo test` (`tests/lists.rs`, 4 tests): the model against the corpus; a trace that pages a list (pages 0 to 3 and a
+  negative page); the helper is emitted once when both calls are used and not at all when neither is; wrong arity and a
+  non-number count.
+* `scripts/check-lists.js` (Chromium): **the same corpus against the emitted helpers** (take, skip, and that the input
+  list is unchanged), a count that is not a number, and a page that skips one and takes two.
+
+**The checks can fail.** Six deliberate breaks of the emitted helper, each run against the browser script: `Math.round`
+for `Math.trunc` (killed by 4 checks), a negative count not clamped (2), `take` mutating its argument (12), `skip` off by
+one (14), no number check (1: only the numeric-string case sees it), a negative count taken as 1 (8); and in the Rust
+model `page_count` answering 0 for a count beyond the list (killed by the corpus test). The Rust model's `trunc` and its
+NaN test are **equivalent mutants**: `f64 as usize` already cuts toward zero and saturates NaN to 0, so removing either
+changes nothing; they stay for the reader.
+
+### 6.3 Not done
+
+A page count (`ceil`), a `slice(list, from, to)`, a `last(list, n)`, and keeping the current page when the list shrinks
+(the program's decision). Chromium only.

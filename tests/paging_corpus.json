@@ -1,0 +1,20 @@
+[
+  {"why": "the first two", "list": ["a", "b", "c", "d"], "n": 2, "take": ["a", "b"], "skip": ["c", "d"]},
+  {"why": "zero takes nothing and skips nothing", "list": ["a", "b"], "n": 0, "take": [], "skip": ["a", "b"]},
+  {"why": "all of them", "list": ["a", "b"], "n": 2, "take": ["a", "b"], "skip": []},
+  {"why": "more than there are", "list": ["a", "b"], "n": 5, "take": ["a", "b"], "skip": []},
+  {"why": "the empty list", "list": [], "n": 3, "take": [], "skip": []},
+  {"why": "the empty list and zero", "list": [], "n": 0, "take": [], "skip": []},
+  {"why": "a negative n counts as 0", "list": ["a", "b", "c"], "n": -1, "take": [], "skip": ["a", "b", "c"]},
+  {"why": "a large negative n counts as 0", "list": ["a", "b"], "n": -1000000, "take": [], "skip": ["a", "b"]},
+  {"why": "a fraction is cut toward zero", "list": ["a", "b", "c"], "n": 1.9, "take": ["a"], "skip": ["b", "c"]},
+  {"why": "a fraction below one is 0", "list": ["a", "b"], "n": 0.5, "take": [], "skip": ["a", "b"]},
+  {"why": "a negative fraction is 0 (cut toward zero, then not above zero)", "list": ["a", "b"], "n": -0.5, "take": [], "skip": ["a", "b"]},
+  {"why": "negative zero is 0", "list": ["a", "b"], "n": -0.0, "take": [], "skip": ["a", "b"]},
+  {"why": "NaN counts as 0", "list": ["a", "b"], "n": "NaN", "take": [], "skip": ["a", "b"]},
+  {"why": "+Infinity is every element", "list": ["a", "b"], "n": "Infinity", "take": ["a", "b"], "skip": []},
+  {"why": "-Infinity is 0", "list": ["a", "b"], "n": "-Infinity", "take": [], "skip": ["a", "b"]},
+  {"why": "a huge n is every element", "list": ["a", "b"], "n": 1e300, "take": ["a", "b"], "skip": []},
+  {"why": "pages of 2: page 3 of 5 rows", "list": [1, 2, 3, 4, 5], "n": 4, "take": [1, 2, 3, 4], "skip": [5]},
+  {"why": "elements of any kind are kept as they are", "list": [1, "x", true, [1]], "n": 3, "take": [1, "x", true], "skip": [[1]]}
+]
