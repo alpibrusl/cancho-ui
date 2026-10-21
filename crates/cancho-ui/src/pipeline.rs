@@ -11,7 +11,7 @@
 use std::fs;
 use std::path::Path;
 
-use cancho_ui_codegen_web::emit_module;
+use cancho_ui_codegen_web::{EmitOptions, emit_module_with};
 use cancho_ui_ir::lower::LowerError;
 use cancho_ui_ir::{lower_file, serialize::canonical_json};
 use cancho_ui_syntax::Span;
@@ -755,7 +755,11 @@ fn check_to_diag(e: &cancho_ui_types::CheckError, file: &Path) -> Diagnostic {
     }
 }
 
-pub fn compile_to_js(file: &Path, target: Option<&str>) -> Result<String, PipelineError> {
+pub fn compile_to_js(
+    file: &Path,
+    target: Option<&str>,
+    options: &EmitOptions,
+) -> Result<String, PipelineError> {
     if let Some(t) = target
         && t != "web"
     {
@@ -765,7 +769,11 @@ pub fn compile_to_js(file: &Path, target: Option<&str>) -> Result<String, Pipeli
         )));
     }
     let ir = compile_to_ir(file)?;
-    Ok(emit_module(&ir, Some(file.to_string_lossy().as_ref())))
+    Ok(emit_module_with(
+        &ir,
+        Some(file.to_string_lossy().as_ref()),
+        options,
+    ))
 }
 
 pub fn format_diagnostic(d: &Diagnostic, file: &Path) -> String {

@@ -19,4 +19,4 @@ mod expr;
 mod lists;
 mod view;
 
-pub use emit::{emit_module, module_for_file};
+pub use emit::{EmitOptions, emit_module, emit_module_with, module_for_file};
