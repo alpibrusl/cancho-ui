@@ -5,10 +5,11 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use cancho_ui_replay::{num_of_text, sort_key_order_json};
+use cancho_ui_replay::{num_of_text, page_count, sort_key_order_json};
 use serde_json::Value;
 
 const CORPUS: &str = include_str!("../../../tests/lists_corpus.json");
+const PAGING_CORPUS: &str = include_str!("../../../tests/paging_corpus.json");
 const NUM_CORPUS: &str = include_str!("../../../tests/num_corpus.json");
 
 fn run(args: &[&str]) -> (i32, String, String) {
@@ -202,6 +203,103 @@ fn num_is_refused_with_the_wrong_arguments_and_rejects_a_non_number_default() {
     let trace = scratch(
         "baddefault.trace.json",
         r#"{"schema":"cancho-ui-trace","version":"0.1.0","component":"C","steps":[{"event":"Go","state":{"n":0}}]}"#,
+    );
+    let (code, stdout, _) = run(&["test", p(&file), p(&trace), "--output", "json"]);
+    assert_eq!(code, 4, "{stdout}");
+    assert!(stdout.contains("replay-type-error"), "{stdout}");
+}
+
+fn paging_n(e: &Value) -> f64 {
+    match &e["n"] {
+        Value::String(s) if s == "NaN" => f64::NAN,
+        Value::String(s) if s == "Infinity" => f64::INFINITY,
+        Value::String(s) if s == "-Infinity" => f64::NEG_INFINITY,
+        other => other.as_f64().expect("a number"),
+    }
+}
+
+#[test]
+fn take_and_skip_agree_with_every_case_of_their_corpus() {
+    let corpus: Value = serde_json::from_str(PAGING_CORPUS).expect("the corpus is JSON");
+    let entries = corpus.as_array().expect("a list");
+    assert!(entries.len() >= 15, "{} cases", entries.len());
+    for e in entries {
+        let list = e["list"].as_array().expect("list");
+        let k = page_count(paging_n(e), list.len());
+        assert_eq!(
+            Value::Array(list[..k].to_vec()),
+            e["take"],
+            "take: {}",
+            e["why"]
+        );
+        assert_eq!(
+            Value::Array(list[k..].to_vec()),
+            e["skip"],
+            "skip: {}",
+            e["why"]
+        );
+    }
+}
+
+#[test]
+fn a_trace_pages_a_filtered_list() {
+    let src = "component Rows {\n    state names: List[String] = [\"a\", \"b\", \"c\", \"d\", \"e\"];\n    state page: Int = 0;\n    state shown: List[String] = [];\n    on Page(p) {\n        page = p;\n        shown = take(skip(names, p * 2), 2);\n    }\n    view { Text { \"{page}\" } }\n}\n";
+    let file = scratch("paging.cui", src);
+    let trace = scratch(
+        "paging.trace.json",
+        r#"{"schema":"cancho-ui-trace","version":"0.1.0","component":"Rows","steps":[
+            {"event":"Page","params":[0],"state":{"shown":["a","b"]}},
+            {"event":"Page","params":[1],"state":{"shown":["c","d"]}},
+            {"event":"Page","params":[2],"state":{"shown":["e"]}},
+            {"event":"Page","params":[3],"state":{"shown":[]}},
+            {"event":"Page","params":[-1],"state":{"shown":["a","b"]}}]}"#,
+    );
+    let (code, stdout, stderr) = run(&["test", p(&file), p(&trace)]);
+    assert_eq!(code, 0, "{stdout}{stderr}");
+}
+
+#[test]
+fn take_and_skip_are_emitted_once_even_when_both_are_used() {
+    let src = "component C {\n    state names: List[String] = [\"a\", \"b\", \"c\"];\n    state r: List[String] = [];\n    on Go { r = take(skip(names, 1), 1); }\n    view { Text { \"x\" } }\n}\n";
+    let file = scratch("both.cui", src);
+    let out = scratch("both.js", "");
+    let (code, _, stderr) = run(&["build", p(&file), "-o", p(&out)]);
+    assert_eq!(code, 0, "{stderr}");
+    let js = std::fs::read_to_string(out).expect("the built program");
+    for f in ["__cui_page_count", "__cui_take", "__cui_skip"] {
+        assert_eq!(js.matches(&format!("function {f}(")).count(), 1, "{f}");
+    }
+    // a program that pages nothing carries none of it
+    let plain = "component C {\n    state n: Int = 0;\n    on Go { n = n + 1; }\n    view { Text { \"{n}\" } }\n}\n";
+    let file = scratch("nopage.cui", plain);
+    let out = scratch("nopage.js", "");
+    let (code, _, stderr) = run(&["build", p(&file), "-o", p(&out)]);
+    assert_eq!(code, 0, "{stderr}");
+    assert!(
+        !std::fs::read_to_string(out)
+            .expect("the built program")
+            .contains("__cui_take")
+    );
+}
+
+#[test]
+fn take_and_skip_refuse_the_wrong_arguments_and_a_non_number_count() {
+    for call in ["take(names)", "take(names, 1, 2)", "skip()", "skip(names)"] {
+        let src = PROGRAM.replace(
+            "sort(filter(names, n => contains(lower(n), lower(q))), n => lower(n))",
+            call,
+        );
+        assert_eq!(
+            codes(&src, "pagebad.cui"),
+            ["builtin-shape-mismatch"],
+            "{call}"
+        );
+    }
+    let src = "component C {\n    state names: List[String] = [\"a\"];\n    state r: List[String] = [];\n    on Go { r = take(names, \"1\"); }\n    view { Text { \"x\" } }\n}\n";
+    let file = scratch("pagetype.cui", src);
+    let trace = scratch(
+        "pagetype.trace.json",
+        r#"{"schema":"cancho-ui-trace","version":"0.1.0","component":"C","steps":[{"event":"Go","state":{"r":[]}}]}"#,
     );
     let (code, stdout, _) = run(&["test", p(&file), p(&trace), "--output", "json"]);
     assert_eq!(code, 4, "{stdout}");

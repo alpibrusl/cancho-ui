@@ -123,7 +123,7 @@ pub enum LowerError {
     PatternLiteralUnsupported { name: String, span: Span },
 
     #[error(
-        "`{name}` is misused here (expected {detail}); see the builtin call forms: `filter(list, x => cond)`, `map(list, x => body)`, `sort(list, x => key)`, `reverse(list)`, `contains(text, needle)`, `lower(text)`, `num(text, default)`, `len(value)`, `storage.get(key, default)`, `storage.set(key, value)`, `net.get(url)`, `net.fetch(url)`, `net.post(url, body)`, `json.get(text, path, default)`, `json.items(text, path)`"
+        "`{name}` is misused here (expected {detail}); see the builtin call forms: `filter(list, x => cond)`, `map(list, x => body)`, `sort(list, x => key)`, `reverse(list)`, `contains(text, needle)`, `lower(text)`, `num(text, default)`, `take(list, n)`, `skip(list, n)`, `len(value)`, `storage.get(key, default)`, `storage.set(key, value)`, `net.get(url)`, `net.fetch(url)`, `net.post(url, body)`, `json.get(text, path, default)`, `json.items(text, path)`"
     )]
     BuiltinMisuse {
         name: String,
@@ -1329,6 +1329,8 @@ const PURE_BUILTINS: &[(&str, usize, &str)] = &[
     ),
     ("lower", 1, "exactly one argument: lower(text)"),
     ("num", 2, "exactly two arguments: num(text, default)"),
+    ("take", 2, "exactly two arguments: take(list, n)"),
+    ("skip", 2, "exactly two arguments: skip(list, n)"),
 ];
 
 /// Lower a Tier 11 list-operation operand. Filter predicates,

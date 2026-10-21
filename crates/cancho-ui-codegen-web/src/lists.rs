@@ -40,7 +40,7 @@ function __cui_lower(text) {
 ";
 
 const NUM_JS: &str = "\
-// Builtin: num(text, default) (docs/lists.md section 5). A JSON number, exactly: -?(0|[1-9]d*)(.d+)?([eE][+-]?d+)?, no
+// Builtin: num(text, default) (docs/lists.md section 1). A JSON number, exactly: -?(0|[1-9]d*)(.d+)?([eE][+-]?d+)?, no
 // space, no plus sign, no hex, no NaN or Infinity; anything else, and a number that overflows to infinity, is `default`.
 // Never NaN, never throws.
 function __cui_num(text, fallback) {
@@ -51,17 +51,30 @@ function __cui_num(text, fallback) {
 }
 ";
 
+const PAGING_JS: &str = "\
+// Builtins: take(list, n) and skip(list, n) (docs/lists.md section 6). New lists. n is cut toward zero; a negative n,
+// NaN, or anything not a number is 0; +Infinity is every element. take keeps the first n, skip drops them.
+function __cui_page_count(n) {
+    n = typeof n === \"number\" ? Math.trunc(n) : 0;
+    return n > 0 ? n : 0;
+}
+function __cui_take(list, n) { return list.slice(0, __cui_page_count(n)); }
+function __cui_skip(list, n) { return list.slice(__cui_page_count(n)); }
+";
+
 /// The helpers that `emitted` (the components, after the adapters) calls, as one block of JavaScript.
 pub fn helpers_used(emitted: &str) -> String {
     let mut out = String::new();
-    for (call, js) in [
-        ("__cui_sort(", SORT_JS),
-        ("__cui_reverse(", REVERSE_JS),
-        ("__cui_contains(", CONTAINS_JS),
-        ("__cui_lower(", LOWER_JS),
-        ("__cui_num(", NUM_JS),
+    // A helper shared by two calls (take and skip) is listed once: a module may not declare a function twice.
+    for (calls, js) in [
+        (&["__cui_sort("][..], SORT_JS),
+        (&["__cui_reverse("][..], REVERSE_JS),
+        (&["__cui_contains("][..], CONTAINS_JS),
+        (&["__cui_lower("][..], LOWER_JS),
+        (&["__cui_num("][..], NUM_JS),
+        (&["__cui_take(", "__cui_skip("][..], PAGING_JS),
     ] {
-        if emitted.contains(call) {
+        if calls.iter().any(|c| emitted.contains(c)) {
             out.push_str(js);
             out.push('\n');
         }

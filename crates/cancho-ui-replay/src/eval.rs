@@ -504,6 +504,29 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                 )),
             }
         }
+        ("take", 2) | ("skip", 2) => {
+            let list = eval(ctx, &args[0])?;
+            let n = eval(ctx, &args[1])?;
+            match (list, &n) {
+                (Value::List(items), Value::Num(n)) => {
+                    let k = page_count(*n, items.len());
+                    Ok(Value::List(if name == "take" {
+                        items[..k].to_vec()
+                    } else {
+                        items[k..].to_vec()
+                    }))
+                }
+                (list, _) => Err(fault(
+                    "replay-type-error",
+                    format!(
+                        "`{name}` needs a list and a number, got {} and {}",
+                        describe(&list),
+                        describe(&n)
+                    ),
+                    span,
+                )),
+            }
+        }
         ("lower", 1) => match eval(ctx, &args[0])? {
             Value::Str(t) => Ok(Value::Str(t.to_ascii_lowercase())),
             other => Err(fault(
@@ -581,7 +604,7 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
         (
             "clock.now" | "net.search" | "net.get" | "net.fetch" | "net.post" | "location.current"
             | "sleep" | "storage.get" | "storage.set" | "json.get" | "json.items" | "reverse"
-            | "contains" | "lower" | "num",
+            | "contains" | "lower" | "num" | "take" | "skip",
             n,
         ) => Err(fault(
             "replay-type-error",
@@ -600,7 +623,21 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
     }
 }
 
-/// `num(text, default)` (docs/lists.md section 5): `text` must be exactly a JSON number, and finite once read;
+/// `take(list, n)` / `skip(list, n)` (docs/lists.md section 6): how many elements `n` counts, for a list of `len`. `n`
+/// is cut toward zero; a negative `n` and NaN count 0; more than `len` counts `len`. The emitted `__cui_page_count`
+/// is the same function (it leaves the clamp to `slice`); `tests/paging_corpus.json` is checked against both.
+pub fn page_count(n: f64, len: usize) -> usize {
+    let k = n.trunc();
+    if k.is_nan() || k <= 0.0 {
+        0
+    } else if k >= len as f64 {
+        len
+    } else {
+        k as usize
+    }
+}
+
+/// `num(text, default)` (docs/lists.md section 1): `text` must be exactly a JSON number, and finite once read;
 /// otherwise `default`. The emitted `__cui_num` is the same function; `tests/num_corpus.json` is checked against both.
 pub fn num_of_text(text: &str, default: f64) -> f64 {
     let b = text.as_bytes();
