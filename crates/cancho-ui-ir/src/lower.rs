@@ -137,7 +137,7 @@ pub enum LowerError {
     },
 
     #[error(
-        "`{name}` is misused here (expected {detail}); see the builtin call forms: `filter(list, x => cond)`, `map(list, x => body)`, `sort(list, x => key)`, `reverse(list)`, `contains(text, needle)`, `lower(text)`, `num(text, default)`, `take(list, n)`, `skip(list, n)`, `lines(text)`, `split(text, sep)`, `join(list, sep)`, `trim(text)`, `upper(text)`, `starts_with(text, prefix)`, `ends_with(text, suffix)`, `len(value)`, `storage.get(key, default)`, `storage.set(key, value)`, `net.get(url)`, `net.fetch(url)`, `net.post(url, body)`, `json.get(text, path, default)`, `json.items(text, path)`"
+        "`{name}` is misused here (expected {detail}); see the builtin call forms: `filter(list, x => cond)`, `map(list, x => body)`, `sort(list, x => key)`, `reverse(list)`, `contains(text, needle)`, `lower(text)`, `num(text, default)`, `take(list, n)`, `skip(list, n)`, `lines(text)`, `split(text, sep)`, `join(list, sep)`, `trim(text)`, `upper(text)`, `starts_with(text, prefix)`, `ends_with(text, suffix)`, `len(value)`, `storage.get(key, default)`, `storage.set(key, value)`, `net.get(url)`, `net.fetch(url)`, `net.post(url, body)`, `json.get(text, path, default)`, `json.items(text, path)`, `json.quote(text)`"
     )]
     BuiltinMisuse {
         name: String,
@@ -493,6 +493,14 @@ fn lower_expr_with_effects(e: &Expr) -> Result<(IrExpr, Vec<IrReachableEffect>),
                 return Err(LowerError::BuiltinMisuse {
                     name: "json.items".to_string(),
                     detail: "exactly two arguments: json.items(text, path)".to_string(),
+                    span: *span,
+                });
+            }
+            if path.len() == 2 && path[0] == "json" && path[1] == "quote" && args.len() != 1 {
+                // docs/language-design.md decision 15: the text to write as a JSON string.
+                return Err(LowerError::BuiltinMisuse {
+                    name: "json.quote".to_string(),
+                    detail: "exactly one argument: json.quote(text)".to_string(),
                     span: *span,
                 });
             }
@@ -1353,7 +1361,7 @@ fn is_known_call(path: &[String]) -> bool {
             (a.as_str(), b.as_str()),
             ("clock", "now")
                 | ("storage", "get" | "set")
-                | ("json", "get" | "items")
+                | ("json", "get" | "items" | "quote")
                 | ("location", "current")
                 | ("net", "search" | "get" | "fetch" | "post")
         ),

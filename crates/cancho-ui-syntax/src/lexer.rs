@@ -79,6 +79,12 @@ impl Token {
     }
 }
 
+/// What the lexer writes for `\{` in a string literal until the parser turns it into a brace: a private-use character
+/// (U+E000), so that `"\{"` is text and not the start of an interpolation (docs/language-design.md, decision 15).
+pub const ESCAPED_OPEN: char = '\u{E000}';
+/// What the lexer writes for `\}` (U+E001).
+pub const ESCAPED_CLOSE: char = '\u{E001}';
+
 #[derive(Debug, Clone, Error, PartialEq)]
 pub enum LexError {
     #[error("unexpected character {ch:?} at line {line} column {column}")]
@@ -415,6 +421,10 @@ impl Lexer {
                         '\\' => value.push('\\'),
                         '"' => value.push('"'),
                         '0' => value.push('\0'),
+                        // `\{` and `\}` write a literal brace (see `ESCAPED_OPEN`): kept as private-use
+                        // marks until the interpolation splitter, so that `"\{"` is not the start of an interpolation.
+                        '{' => value.push(ESCAPED_OPEN),
+                        '}' => value.push(ESCAPED_CLOSE),
                         _ => {
                             return Err(LexError::UnknownEscape {
                                 ch: esc,

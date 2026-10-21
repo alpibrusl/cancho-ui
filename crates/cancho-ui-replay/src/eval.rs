@@ -431,6 +431,14 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
             ctx.journal.record(Value::Bool(true));
             Ok(Value::Bool(true))
         }
+        ("json.quote", 1) => match eval(ctx, &args[0])? {
+            Value::Str(t) => Ok(Value::Str(json_quote(&t))),
+            other => Err(fault(
+                "replay-type-error",
+                format!("`json.quote` needs a String, got {}", describe(&other)),
+                span,
+            )),
+        },
         ("json.items", 2) => {
             let text = eval(ctx, &args[0])?;
             let path = eval(ctx, &args[1])?;
@@ -612,9 +620,9 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
         },
         (
             "clock.now" | "net.search" | "net.get" | "net.fetch" | "net.post" | "location.current"
-            | "sleep" | "storage.get" | "storage.set" | "json.get" | "json.items" | "reverse"
-            | "contains" | "lower" | "num" | "take" | "skip" | "lines" | "split" | "join" | "trim"
-            | "upper" | "starts_with" | "ends_with",
+            | "sleep" | "storage.get" | "storage.set" | "json.get" | "json.items" | "json.quote"
+            | "reverse" | "contains" | "lower" | "num" | "take" | "skip" | "lines" | "split"
+            | "join" | "trim" | "upper" | "starts_with" | "ends_with",
             n,
         ) => Err(fault(
             "replay-type-error",
@@ -755,6 +763,28 @@ pub fn text_builtin_json(name: &str, args: &[serde_json::Value]) -> Option<serde
     }
     let vals = args.iter().map(to_value).collect::<Option<Vec<_>>>()?;
     to_json(&text_builtin(name, &vals).ok()?)
+}
+
+/// `json.quote(text)` (docs/language-design.md decision 15): the JSON string literal of a text. The emitted `__cui_json_quote`
+/// is `JSON.stringify`; `tests/json_quote_corpus.json` is checked against both.
+pub fn json_quote(text: &str) -> String {
+    let mut out = String::with_capacity(text.len() + 2);
+    out.push('"');
+    for c in text.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\u{8}' => out.push_str("\\b"),
+            '\u{c}' => out.push_str("\\f"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
 }
 
 /// `num(text, default)` (docs/lists.md section 1): `text` must be exactly a JSON number, and finite once read;

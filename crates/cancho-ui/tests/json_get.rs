@@ -165,7 +165,7 @@ fn the_helper_is_emitted_only_for_a_program_that_calls_json_get() {
 #[test]
 fn json_get_needs_no_capability_and_exactly_three_arguments() {
     // no `requires` for the call itself: it is pure
-    let pure = "component P {\n    state v: String = \"\";\n    on Go { v = json.get(\"{\\\"a\\\":\\\"b\\\"}\", \"a\", \"?\"); }\n    view { Text { v } }\n}\n";
+    let pure = "component P {\n    state v: String = \"\";\n    on Go { v = json.get(\"\\{\\\"a\\\":\\\"b\\\"\\}\", \"a\", \"?\"); }\n    view { Text { v } }\n}\n";
     let file = scratch("pure.cui", pure);
     let (code, stdout, stderr) = run(&["check", p(&file), "--output", "json"]);
     assert_eq!(code, 0, "{stdout}{stderr}");
@@ -175,7 +175,10 @@ fn json_get_needs_no_capability_and_exactly_three_arguments() {
         "json.get(\"a\", \"b\")",
         "json.get(\"a\", \"b\", \"c\", \"d\")",
     ] {
-        let bad = pure.replace("json.get(\"{\\\"a\\\":\\\"b\\\"}\", \"a\", \"?\")", call);
+        let bad = pure.replace(
+            "json.get(\"\\{\\\"a\\\":\\\"b\\\"\\}\", \"a\", \"?\")",
+            call,
+        );
         let file = scratch("bad.cui", &bad);
         let (code, stdout, _) = run(&["check", p(&file), "--output", "json"]);
         assert_eq!(code, 1, "{call}: {stdout}");

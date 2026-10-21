@@ -347,7 +347,10 @@ fn emit_call_runtime(path: &[String], args: &[IrExpr], params: &[&str]) -> Strin
             rendered_args.join(", ")
         );
     }
-    if path.len() == 2 && path[0] == "json" && (path[1] == "get" || path[1] == "items") {
+    if path.len() == 2
+        && path[0] == "json"
+        && (path[1] == "get" || path[1] == "items" || path[1] == "quote")
+    {
         let rendered_args: Vec<String> =
             args.iter().map(|a| emit_expr_runtime(a, params)).collect();
         return format!("__cui_json_{}({})", path[1], rendered_args.join(", "));
