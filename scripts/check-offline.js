@@ -33,7 +33,7 @@ function check(label, ok, detail) {
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
-  const texts = async () => page.evaluate(() => Array.from(document.querySelectorAll('#root span')).map((e) => e.textContent));
+  const texts = async () => page.evaluate(() => Array.from(document.querySelectorAll('#root span')).map((e) => e.textContent).concat(Array.from(document.querySelectorAll('#root tbody tr')).filter((tr) => tr.querySelector('td')).map((tr) => Array.from(tr.querySelectorAll('td')).filter((td) => !td.querySelector('button')).map((td) => td.textContent).join('  '))));
 
   await page.goto(url);
   await page.waitForFunction(() => /23 machines|of 23/.test(document.body.innerText), null, { timeout: 8000 });

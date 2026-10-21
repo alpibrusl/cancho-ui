@@ -137,6 +137,12 @@ Looked at in the screenshots (`5-wide.png`, 1280 px):
 * the two text boxes had **no visible label** on the first draft: `label:` is an `aria-label` only. The page now sets
   `placeholder:` as well, which is visible; it vanishes once the operator types.
 
+**Fixed** (`docs/presentation.md`): a visible `<label>` for every field, the machines in a real `<table>` (five column
+headers, cells aligned to them, a `Select` button per row), a status text with a `tone` (a prefix and a colour: 201 `ok`, 409
+`warn`, 503 `error`, contrast 4.87:1 to 7.43:1), a gap between Previous and Next (0 px to 8 px), and a page at most `90ch`
+wide and centred at 1280 px. The browser script checks each one and takes `5-wide.png` and `6-narrow.png`. Still open: cells
+wrap at a hyphen on a narrow screen, no column widths or alignment.
+
 ### 2.10 Offline, the list is empty. Issue #44. Fixed in the program, not in the service worker
 
 With the service stopped, the installed page opened (the service worker precaches the page files) and said

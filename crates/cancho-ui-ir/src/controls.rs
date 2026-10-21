@@ -16,7 +16,16 @@ pub const ELEMENT_KEYS: &[&str] = &[
     "disabled",
     "placeholder",
     "submit",
+    "tone",
+    "gap",
+    "max_width",
 ];
+
+/// The tones of a status text (docs/presentation.md section 3).
+pub const TONES: &[&str] = &["ok", "warn", "error"];
+/// The `gap:` steps of a `Row` or `Column` (section 2), and the `max_width:` range in characters.
+pub const GAP_MAX: i64 = 4;
+pub const MAX_WIDTH_RANGE: (i64, i64) = (10, 200);
 
 pub fn check_controls(ir: &IrFile) -> Result<(), LowerError> {
     for c in &ir.components {
@@ -56,6 +65,9 @@ fn element_name(kind: &IrElementKind) -> &'static str {
     match kind {
         IrElementKind::Column => "Column",
         IrElementKind::Row => "Row",
+        IrElementKind::Table => "Table",
+        IrElementKind::TableRow => "a row of a Table",
+        IrElementKind::Cell | IrElementKind::HeaderCell => "a cell of a Table",
         IrElementKind::Text => "Text",
         IrElementKind::Button => "Button",
         IrElementKind::TextField => "TextField",
@@ -123,6 +135,90 @@ fn check_on(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), 
     Ok(())
 }
 
+/// `tone:` is a binding of a `Text` (or the cell it becomes in a table): `"ok"`, `"warn"`, `"error"` or a `String` state field.
+fn check_tone(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
+    if !matches!(
+        kind,
+        IrElementKind::Text | IrElementKind::Cell | IrElementKind::HeaderCell
+    ) {
+        return Err(LowerError::ControlRefused {
+            code: "binding-unknown",
+            message: format!(
+                "`tone:` is a binding of Text (a status text), not of {}",
+                element_name(kind)
+            ),
+            span: b.span,
+        });
+    }
+    let bad = |message: String| LowerError::ControlRefused {
+        code: "tone-invalid",
+        message,
+        span: b.span,
+    };
+    match &b.value {
+        IrBindingValue::String(s) if TONES.contains(&s.as_str()) => Ok(()),
+        IrBindingValue::String(s) => Err(bad(format!(
+            "`tone: \"{s}\"`: the tones are {}",
+            TONES.join(", ")
+        ))),
+        IrBindingValue::StateRef(name) => {
+            if c.state
+                .iter()
+                .any(|f| &f.name == name && f.ty == IrType::String)
+            {
+                Ok(())
+            } else {
+                Err(bad(format!(
+                    "`tone: {name}` needs a `String` state field named `{name}` in this component (its value is one of {})",
+                    TONES.join(", ")
+                )))
+            }
+        }
+        _ => Err(bad(format!(
+            "`tone:` takes {} as a string, or the name of a `String` state field",
+            TONES.join(", ")
+        ))),
+    }
+}
+
+/// `gap:` and `max_width:` are bindings of a `Column` or a `Row`, and take an integer literal in a fixed range.
+fn check_layout(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
+    if !matches!(kind, IrElementKind::Column | IrElementKind::Row) {
+        return Err(LowerError::ControlRefused {
+            code: "binding-unknown",
+            message: format!(
+                "`{}:` is a binding of Column and Row, not of {}",
+                b.key,
+                element_name(kind)
+            ),
+            span: b.span,
+        });
+    }
+    let (lo, hi) = if b.key == "gap" {
+        (0, GAP_MAX)
+    } else {
+        MAX_WIDTH_RANGE
+    };
+    match &b.value {
+        IrBindingValue::Const { expr, .. } if matches!(**expr, IrExpr::IntLit { value, .. } if (lo..=hi).contains(&value)) => {
+            Ok(())
+        }
+        _ => Err(LowerError::ControlRefused {
+            code: "layout-value-invalid",
+            message: format!(
+                "`{}:` takes an integer literal from {lo} to {hi}{}",
+                b.key,
+                if b.key == "gap" {
+                    " (a step of 0.25, 0.5, 1 and 2 rem after 0)"
+                } else {
+                    " (a width in characters; the page is centred in it)"
+                }
+            ),
+            span: b.span,
+        }),
+    }
+}
+
 fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
     if !ELEMENT_KEYS.contains(&b.key.as_str()) {
         return Err(LowerError::ControlRefused {
@@ -138,6 +234,12 @@ fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result
     }
     if b.key == "on" {
         check_on(c, kind, b)?;
+    }
+    if b.key == "tone" {
+        check_tone(c, kind, b)?;
+    }
+    if b.key == "gap" || b.key == "max_width" {
+        check_layout(kind, b)?;
     }
     if b.key == "submit" {
         if !matches!(kind, IrElementKind::TextField) {

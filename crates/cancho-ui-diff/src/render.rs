@@ -110,6 +110,10 @@ fn kind(k: &IrElementKind) -> String {
     match k {
         IrElementKind::Column => "Column".into(),
         IrElementKind::Row => "Row".into(),
+        IrElementKind::Table => "Table".into(),
+        IrElementKind::TableRow => "TableRow".into(),
+        IrElementKind::Cell => "Cell".into(),
+        IrElementKind::HeaderCell => "HeaderCell".into(),
         IrElementKind::Text => "Text".into(),
         IrElementKind::Button => "Button".into(),
         IrElementKind::TextField => "TextField".into(),

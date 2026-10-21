@@ -362,6 +362,13 @@ pub enum IrElementKind {
     Text,
     Button,
     TextField,
+    /// `Table { .. }` (docs/presentation.md section 4) and what lowering makes of its descendants: a `Row` of a table is
+    /// a `TableRow`, a `Text` of that row a `Cell` (a `HeaderCell` with `role: columnheader`), and any other element of
+    /// it is wrapped in a `Cell`.
+    Table,
+    TableRow,
+    Cell,
+    HeaderCell,
     Named(String),
 }
 
@@ -373,14 +380,27 @@ impl IrElementKind {
             IrElementKind::Text => "span",
             IrElementKind::Button => "button",
             IrElementKind::TextField => "input",
+            IrElementKind::Table => "table",
+            IrElementKind::TableRow => "tr",
+            IrElementKind::Cell => "td",
+            IrElementKind::HeaderCell => "th",
             IrElementKind::Named(_) => "div",
         }
+    }
+
+    /// The elements whose children are text parts rather than elements.
+    pub fn holds_text(&self) -> bool {
+        matches!(
+            self,
+            IrElementKind::Text | IrElementKind::Cell | IrElementKind::HeaderCell
+        )
     }
 
     pub fn layout_class(&self) -> Option<&'static str> {
         match self {
             IrElementKind::Column => Some("cui-col"),
             IrElementKind::Row => Some("cui-row"),
+            IrElementKind::Table => Some("cui-table"),
             _ => None,
         }
     }

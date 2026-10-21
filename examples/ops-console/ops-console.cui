@@ -25,6 +25,8 @@ component OpsConsole {
     state sent: Result[String, String] = Ok("");
     state outcome: String = "nothing sent";
     state sending: Bool = false;
+    state code: String = "";
+    state tone: String = "";
 
     start Refresh;
     every 5000 Refresh;
@@ -83,6 +85,7 @@ component OpsConsole {
 
     on Apply {
         outcome = "sending";
+        tone = "";
         sending = true;
         sent = await(net.post("api/setpoint", "[\"" + join(map(filter(filter(rows, x => json.get(x, "id", "") == target), x => num(setpoint, 1) == num(setpoint, 2)), x => json.get(x, "id", "")), "") + "\", " + num(setpoint, 0) + "]"));
         sending = false;
@@ -91,23 +94,42 @@ component OpsConsole {
             Err(e) => { "not sent: " + e }
             Cancelled => { "cancelled" }
         };
+        code = match sent {
+            Ok(reply) => { json.get(reply, "status", "x") }
+            Err(_) => { "x" }
+            Cancelled => { "x" }
+        };
+        tone = join(filter(["ok"], t => starts_with(code, "2")), "") + join(filter(["warn"], t => starts_with(code, "4")), "") + join(filter(["error"], t => starts_with(code, "5")), "") + join(filter(["error"], t => starts_with(code, "x")), "");
     }
 
     view {
         Column {
+            max_width: 90
             Text { role: heading "Machines" }
             Text { role: status "status: {note}" }
             Button { label: "Refresh" on: Refresh }
-            TextField { label: "Search by name" placeholder: "Search by name" value: q on: Query }
+            TextField { label: "Search by name" placeholder: "e.g. press" value: q on: Query }
             Button { label: "Sort by temperature, other direction" on: Flip }
             Text { "{len(shown)} of {len(rows)} machines, page {page + 1} of {pages}" }
-            Text { "id  name  state  temperature (C)" }
-            For {
-                over: paged
-                as: m
+            Table {
+                label: "Machines"
                 Row {
-                    Button { label: "Select " + json.get(m, "id", "?") on: Pick(json.get(m, "id", "")) }
-                    Text { json.get(m, "id", "?") + "  " + json.get(m, "name", "?") + "  " + json.get(m, "state", "?") + "  " + json.get(m, "temp", "no reading") }
+                    Text { role: columnheader "id" }
+                    Text { role: columnheader "name" }
+                    Text { role: columnheader "state" }
+                    Text { role: columnheader "temperature (C)" }
+                    Text { role: columnheader "select" }
+                }
+                For {
+                    over: paged
+                    as: m
+                    Row {
+                        Text { json.get(m, "id", "?") }
+                        Text { json.get(m, "name", "?") }
+                        Text { json.get(m, "state", "?") }
+                        Text { json.get(m, "temp", "no reading") }
+                        Button { label: "Select " + json.get(m, "id", "?") on: Pick(json.get(m, "id", "")) }
+                    }
                 }
             }
             Row {
@@ -115,10 +137,10 @@ component OpsConsole {
                 Button { label: "Next page" on: Next }
             }
             Text { role: heading "Change a setpoint" }
-            TextField { label: "Machine id" placeholder: "Machine id, e.g. M-101" value: target on: SetTarget }
-            TextField { label: "Setpoint" placeholder: "Setpoint, in degrees C" value: setpoint on: SetSetpoint submit: Apply }
+            TextField { label: "Machine id" placeholder: "e.g. M-101" value: target on: SetTarget }
+            TextField { label: "Setpoint" placeholder: "degrees C" value: setpoint on: SetSetpoint submit: Apply }
             Button { label: "Apply" on: Apply disabled: sending }
-            Text { role: status "result: {outcome}" }
+            Text { role: status tone: tone "result: {outcome}" }
         }
     }
 }

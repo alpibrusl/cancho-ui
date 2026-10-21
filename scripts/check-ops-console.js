@@ -36,7 +36,12 @@ function check(label, ok, detail) {
   page.on('pageerror', (e) => errors.push(String(e)));
   await page.clock.install({ time: 0 });
 
-  const texts = async () => page.evaluate(() => Array.from(document.querySelectorAll('#root span')).map((e) => e.textContent));
+  // the tone of the status text that shows the result of a write: its attribute, the prefix the stylesheet draws, its colour
+  const toneOf = async (pg) => pg.evaluate(() => {
+    const el = Array.from(document.querySelectorAll('#root span')).find((e) => (e.textContent || '').startsWith('result:'));
+    return `${el.getAttribute('data-tone')}:${getComputedStyle(el, '::before').content.replace(/^"|"$/g, '')}:${getComputedStyle(el).color}`;
+  });
+  const texts = async () => page.evaluate(() => Array.from(document.querySelectorAll('#root span')).map((e) => e.textContent).concat(Array.from(document.querySelectorAll('#root tbody tr')).filter((tr) => tr.querySelector('td')).map((tr) => Array.from(tr.querySelectorAll('td')).filter((td) => !td.querySelector('button')).map((td) => td.textContent).join('  '))));
   const rows = async () => (await texts()).filter((t) => /^M-\d+ /.test(t));
   const names = async () => (await rows()).map((t) => t.split('  ')[1]);
   const temps = async () => (await rows()).map((t) => parseFloat(t.split('  ')[3]));
@@ -99,6 +104,7 @@ function check(label, ok, detail) {
   await page.fill('input[aria-label="Setpoint"]', '80');
   await page.click('button[aria-label="Apply"]');
   check('a valid change is sent as JSON and answered 201', await until(async () => (await texts()).includes('result: 201 applied')) && /json/.test(log.posts[0].type) && log.posts[0].body === '["M-101", 80]', JSON.stringify(log.posts[0]));
+  check('a 201 is shown with the tone ok, and the tone has a prefix as well as a colour', await toneOf(page) === 'ok:\u2713 :rgb(26, 127, 55)', await toneOf(page));
   await page.click('button[aria-label="Refresh"]');
   await page.fill('input[aria-label="Search by name"]', 'press 1');
   check('after a refresh the new value is in the list', await until(async () => (await rows()).some((t) => t.includes('M-101') && t.endsWith('  80'))), JSON.stringify(await rows()));
@@ -106,11 +112,13 @@ function check(label, ok, detail) {
   await page.fill('input[aria-label="Machine id"]', 'M-107');
   await page.click('button[aria-label="Apply"]');
   check('a locked machine answers 409 and the page shows why', await until(async () => (await texts()).includes('result: 409 locked by maintenance')));
+  check('a 409 is shown with the tone warn', await toneOf(page) === 'warn:\u26a0 :rgb(154, 103, 0)', await toneOf(page));
   await page.screenshot({ path: path.join(shots, '3-conflict.png') });
   behaviour.busy = true;
   await page.fill('input[aria-label="Machine id"]', 'M-102');
   await page.click('button[aria-label="Apply"]');
   check('a busy service answers 503 and the page shows it', await until(async () => (await texts()).includes('result: 503 busy, try again')));
+  check('a 503 is shown with the tone error', await toneOf(page) === 'error:\u2717 :rgb(207, 34, 46)', await toneOf(page));
   behaviour.busy = false;
   await page.fill('input[aria-label="Machine id"]', 'M-999');
   await page.click('button[aria-label="Apply"]');
@@ -155,7 +163,7 @@ function check(label, ok, detail) {
   const p2 = await browser.newPage({ viewport: { width: 420, height: 900 } });
   const errors2 = [];
   p2.on('pageerror', (e) => errors2.push(String(e)));
-  const texts2 = async () => p2.evaluate(() => Array.from(document.querySelectorAll('#root span')).map((e) => e.textContent));
+  const texts2 = async () => p2.evaluate(() => Array.from(document.querySelectorAll('#root span')).map((e) => e.textContent).concat(Array.from(document.querySelectorAll('#root tbody tr')).filter((tr) => tr.querySelector('td')).map((tr) => Array.from(tr.querySelectorAll('td')).filter((td) => !td.querySelector('button')).map((td) => td.textContent).join('  '))));
   const rows2 = async () => (await texts2()).filter((t) => /^M-\d+ /.test(t));
   const until2 = async (fn, ms = 4000) => { for (let t = 0; t < ms; t += 40) { if (await fn()) { return true; } await p2.waitForTimeout(40); } return false; };
   const total2 = async () => (await texts2()).find((t) => /machines, page/.test(t));
@@ -224,12 +232,80 @@ function check(label, ok, detail) {
   await click2('Apply');
   check('a setpoint that is not a number blanks the id, so the service refuses it with 400 (the page cannot refuse to send)', await until2(async () => (await texts2()).includes('result: 400 unknown machine or setpoint')) && log.posts[log.posts.length - 1].body === '["", 0]', log.posts[log.posts.length - 1].body);
 
-  // inputs have a visible hint, not only an aria-label
-  const hints = await p2.evaluate(() => Array.from(document.querySelectorAll('input')).map((i) => i.placeholder));
-  check('every input has a visible hint (placeholder), the label alone is aria-only', hints.length === 3 && hints.every((h) => h.length > 0), JSON.stringify(hints));
+  // presentation (issue #42, docs/presentation.md): visible labels, a table, a gap, a width, tones with contrast
+  const fieldLabels = await p2.evaluate(() => Array.from(document.querySelectorAll('label.cui-field')).map((l) => [l.firstChild.textContent, l.querySelector('input').getAttribute('aria-label'), l.getBoundingClientRect().height > 0]));
+  check('every input has a visible <label> with its name', fieldLabels.length === 3 && fieldLabels.every(([t, a, v]) => t === a && t.length > 0 && v), JSON.stringify(fieldLabels));
+  check('and the label names the input for assistive technology', (await p2.getByLabel('Machine id', { exact: true }).count()) === 1 && (await p2.getByRole('textbox', { name: 'Setpoint', exact: true }).count()) === 1);
+  const table = p2.getByRole('table', { name: 'Machines', exact: true });
+  check('the machines are a real table, named', (await table.count()) === 1);
+  const heads = await table.getByRole('columnheader').allTextContents();
+  check('with its five column headers', JSON.stringify(heads) === JSON.stringify(['id', 'name', 'state', 'temperature (C)', 'select']), JSON.stringify(heads));
+  const dataRows = await table.getByRole('row').count();
+  const cellsInFirst = await table.getByRole('row').nth(1).getByRole('cell').count();
+  check('a row per machine on the page (and the header), five cells each', dataRows === 6 && cellsInFirst === 5, `${dataRows} rows, ${cellsInFirst} cells`);
+  const aligned = await p2.evaluate(() => {
+    const t = document.querySelector('table');
+    const heads = Array.from(t.querySelectorAll('th')).map((h) => h.getBoundingClientRect().left);
+    return Array.from(t.querySelectorAll('tbody tr')).filter((r) => r.querySelector('td')).every((r) => Array.from(r.querySelectorAll('td')).every((c, i) => Math.abs(c.getBoundingClientRect().left - heads[i]) < 1));
+  });
+  check('every cell starts where its column header starts: the columns align', aligned);
+  const aria = await table.ariaSnapshot();
+  check('the accessibility tree of the table reads columns and rows', /columnheader "id"/.test(aria) && /columnheader "temperature \(C\)"/.test(aria) && /row "M-101/.test(aria) === false && /cell/.test(aria), aria.split('\n').slice(0, 8).join(' / '));
+  const gapPx = await p2.evaluate(() => {
+    const a = document.querySelector('button[aria-label="Previous page"]').getBoundingClientRect();
+    const b = document.querySelector('button[aria-label="Next page"]').getBoundingClientRect();
+    return b.left - a.right;
+  });
+  check('the Previous and Next buttons no longer touch', gapPx >= 4, `${gapPx}px apart`);
   await p2.setViewportSize({ width: 1280, height: 800 });
+  const wide = await p2.evaluate(() => {
+    const col = document.querySelector('#root > .cui-col');
+    const probe = document.createElement('div');
+    probe.style.width = '90ch';
+    col.appendChild(probe);
+    const limit = probe.getBoundingClientRect().width;
+    col.removeChild(probe);
+    const box = col.getBoundingClientRect();
+    const input = document.querySelector('input').getBoundingClientRect();
+    return { limit, width: box.width, left: box.left, input: input.width, scroll: document.documentElement.scrollWidth, inner: window.innerWidth };
+  });
+  check('at 1280 px the page is no wider than 90 characters and is centred', wide.width <= wide.limit + 1 && wide.left > 20 && wide.input <= wide.limit + 1, JSON.stringify(wide));
   await p2.screenshot({ path: path.join(shots, '5-wide.png') });
   await p2.setViewportSize({ width: 420, height: 900 });
+  const narrow = await p2.evaluate(() => ({ scroll: document.documentElement.scrollWidth, inner: window.innerWidth }));
+  check('at 420 px nothing scrolls sideways', narrow.scroll <= narrow.inner, JSON.stringify(narrow));
+  await p2.screenshot({ path: path.join(shots, '6-narrow.png') });
+  // a tone must be readable in light and in dark: contrast against the page's own background (WCAG AA is 4.5)
+  const ratio = (a, b) => {
+    const lum = ([r, g, bl]) => { const f = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(bl); };
+    const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+  const rgb = (c) => c.match(/\d+/g).slice(0, 3).map(Number);
+  for (const scheme of ['light', 'dark']) {
+    await p2.emulateMedia({ colorScheme: scheme });
+    const colours = await p2.evaluate(() => {
+      const out = {};
+      const canvas = document.createElement('div');
+      canvas.style.background = 'Canvas';
+      document.body.appendChild(canvas);
+      out.bg = getComputedStyle(canvas).backgroundColor;
+      canvas.remove();
+      for (const tone of ['ok', 'warn', 'error']) {
+        const t = document.createElement('span');
+        t.setAttribute('data-tone', tone);
+        document.body.appendChild(t);
+        out[tone] = getComputedStyle(t).color;
+        t.remove();
+      }
+      return out;
+    });
+    for (const tone of ['ok', 'warn', 'error']) {
+      const r = ratio(rgb(colours[tone]), rgb(colours.bg));
+      check(`tone ${tone} has contrast ${r.toFixed(2)}:1 on the ${scheme} background (>= 4.5)`, r >= 4.5);
+    }
+  }
+  await p2.emulateMedia({ colorScheme: 'light' });
   check('no script errors in the second page', errors2.length === 0, errors2.join(' | '));
   await p2.close();
 
