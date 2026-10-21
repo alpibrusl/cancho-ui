@@ -26,8 +26,9 @@ pub use eval::{
     text_builtin_json,
 };
 pub use report::{
-    Failure, FiredJson, IssuedJson, NOT_CLAIMED, REPORT_SCHEMA, REPORT_VERSION, RequestJson,
-    SpanJson, StepReport, TestReport, TickJson, WriteJson, render_human,
+    Failure, FiredJson, HUMAN_VALUE_BOUND, IssuedJson, NOT_CLAIMED, REPORT_SCHEMA, REPORT_VERSION,
+    RequestJson, SpanJson, StepReport, TestReport, TickJson, WriteJson, render_human,
+    render_human_full,
 };
 pub use trace::{SCHEMA as TRACE_SCHEMA, VERSION as TRACE_VERSION};
 

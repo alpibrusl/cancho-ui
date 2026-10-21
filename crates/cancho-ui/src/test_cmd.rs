@@ -1,4 +1,4 @@
-//! `cancho-ui test <file.cui> <trace.json> [--output json]`.
+//! `cancho-ui test <file.cui> <trace.json> [--output json] [--full]`.
 //!
 //! Glue only: the program goes through the same pipeline as `check`, and the
 //! engine in `cancho-ui-replay` interprets the typed IR over the trace. Exit
@@ -19,12 +19,14 @@ struct TestOpts {
     file: PathBuf,
     trace: PathBuf,
     output: OutputFormat,
+    full: bool,
 }
 
 impl TestOpts {
     fn parse(args: &[String]) -> Result<Self, CliError> {
         let mut files: Vec<PathBuf> = Vec::new();
         let mut output = OutputFormat::Human;
+        let mut full = false;
         let mut i = 0;
         while i < args.len() {
             match args[i].as_str() {
@@ -42,6 +44,10 @@ impl TestOpts {
                         }
                     };
                     i += 2;
+                }
+                "--full" => {
+                    full = true;
+                    i += 1;
                 }
                 s if s.starts_with('-') && s.len() > 1 => {
                     return Err(CliError::Usage(format!("unknown flag `{s}`")));
@@ -64,6 +70,7 @@ impl TestOpts {
             file,
             trace,
             output,
+            full,
         })
     }
 }
@@ -97,6 +104,9 @@ pub fn run_test(args: &[String]) -> Result<ExitCode, CliError> {
         &opts.trace.display().to_string(),
     );
     match opts.output {
+        OutputFormat::Human if opts.full => {
+            print!("{}", cancho_ui_replay::render_human_full(&report))
+        }
         OutputFormat::Human => print!("{}", cancho_ui_replay::render_human(&report)),
         OutputFormat::Json => println!(
             "{}",

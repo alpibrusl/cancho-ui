@@ -45,7 +45,7 @@ USAGE:
     cancho-ui inspect effects   <file.cui> <name> [--output json]
     cancho-ui inspect ir       <file.cui>          [--output json]
     cancho-ui diff <base.cui> <candidate.cui>      [--output json]
-    cancho-ui test <file.cui> <trace.json>         [--output json]
+    cancho-ui test <file.cui> <trace.json>         [--output json] [--full]
     cancho-ui report           <file.cui>...       [--output json]
     cancho-ui skill [--output json] [<out-file>]
     cancho-ui introspect [--output json]
@@ -354,7 +354,7 @@ fn run_introspect(args: &[String]) -> Result<ExitCode, CliError> {
             { "name": "build",       "args": ["<file.cui>...", "-o <path>", "--target web", "--no-auto-mount", "--pwa", "--name <text>", "--output json"] },
             { "name": "inspect",     "subcommands": ["component <file> <name>", "effects <file> <name>", "ir <file>"], "args": ["--output json"] },
             { "name": "diff",        "args": ["<base.cui>", "<candidate.cui>", "--output json"], "exit_codes": { "0": "no semantic change", "1": "a file was refused", "2": "command line wrong", "3": "environment failed", "5": "the programs differ semantically" } },
-            { "name": "test",        "args": ["<file.cui>", "<trace.json>", "--output json"], "exit_codes": { "0": "the trace passed", "1": "the program did not compile", "2": "command line wrong", "3": "environment failed", "4": "a test failed (expectation, malformed trace, or a construct replay refuses)" } },
+            { "name": "test",        "args": ["<file.cui>", "<trace.json>", "--output json", "--full"], "exit_codes": { "0": "the trace passed", "1": "the program did not compile", "2": "command line wrong", "3": "environment failed", "4": "a test failed (expectation, malformed trace, or a construct replay refuses)" } },
             { "name": "report",      "args": ["<file.cui>...", "--output json"] },
             { "name": "skill",       "args": ["--output json", "[<out-file>]"] },
             { "name": "introspect",  "args": ["--output json"] },
@@ -713,7 +713,7 @@ cancho-ui inspect component <file.cui> <name>   # one component, as data
 cancho-ui inspect effects <file.cui> <name>     # reachable effects + capabilities
 cancho-ui inspect ir <file.cui>                 # full IR
 cancho-ui diff <base.cui> <candidate.cui>       # semantic diff: authority, state, events, effects
-cancho-ui test <file.cui> <trace.json>          # replay an event trace; check state after each step
+cancho-ui test <file.cui> <trace.json>          # replay an event trace; check state after each step (--full: no value cut to 120 chars)
 cancho-ui report <file.cui>                     # evidence report (5 sections)
 cancho-ui skill                                 # this file
 cancho-ui introspect                            # full command tree as data
