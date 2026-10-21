@@ -27,12 +27,14 @@ component Rows {
     state names: List[String] = ["pear", "Apple", "fig", "apple", "Fig"];
     state q: String = "";
     state shown: List[String] = [];
+    state body: String = "";
     state recs: List[String] = [];
     state joined: String = "";
     state r: Result[String, String] = Ok("");
 
     on Query(v) {
         q = v;
+        body = "\\{\\\"q\\\":" + json.quote(v) + "\\}";
         shown = sort(filter(names, s => contains(lower(s), lower(v))), s => lower(s));
     }
     on Flip { shown = reverse(shown); }
@@ -58,6 +60,7 @@ component Rows {
                 Text { "rec {rec}" }
             }
             Text { "{len(shown)} matches" }
+            Text { "body {body}" }
             For {
                 over: shown
                 as: row
@@ -80,7 +83,7 @@ component Rows {
   const from = js.indexOf('function __cui_sort');
   const to = js.indexOf('function mount_', from);
   if (from < 0 || to < 0) { throw new Error('the helpers are not in the built program'); }
-  const lib = new Function(js.slice(from, to) + '\nreturn { sort: __cui_sort, lower: __cui_lower, contains: __cui_contains, reverse: __cui_reverse, num: __cui_num, take: __cui_take, skip: __cui_skip, lines: __cui_lines, split: __cui_split, join: __cui_join, trim: __cui_trim, upper: __cui_upper, starts_with: __cui_starts_with, ends_with: __cui_ends_with };')();
+  const lib = new Function(js.slice(from, to) + '\nreturn { sort: __cui_sort, lower: __cui_lower, contains: __cui_contains, reverse: __cui_reverse, num: __cui_num, take: __cui_take, skip: __cui_skip, lines: __cui_lines, split: __cui_split, join: __cui_join, trim: __cui_trim, upper: __cui_upper, starts_with: __cui_starts_with, ends_with: __cui_ends_with, quote: __cui_json_quote };')();
   const corpus = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'lists_corpus.json'), 'utf8'));
   for (const e of corpus) {
     const keys = e.keys.map((k) => (k !== null && typeof k === 'object' && !Array.isArray(k) ? NaN : k));
@@ -120,6 +123,12 @@ component Rows {
     check(`${e.op}: ${e.why}`, ok, `got ${JSON.stringify(got).slice(0, 80)}`);
   }
 
+  const quotes = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'json_quote_corpus.json'), 'utf8'));
+  for (const e of quotes) {
+    const got = lib.quote(e.text);
+    check(`json.quote: ${e.why}`, got === e.expect, `got ${JSON.stringify(got)}`);
+  }
+
   // the page
   fs.writeFileSync(path.join(dir, 'out', 'readings.txt'), 'temp 21.5 \r\n  hum 40\n\npress 1013\n');
   const server = http.createServer((req, res) => {
@@ -155,6 +164,8 @@ component Rows {
   for (let i = 0; i < 100 && (await recs()).length === 0; i++) { await page.waitForTimeout(30); }
   check('a text answer is a row per line', JSON.stringify(await recs()) === JSON.stringify(['TEMP 21.5', 'HUM 40', '', 'PRESS 1013']), JSON.stringify(await recs()));
   check('and is filtered and joined', (await page.locator('#root').innerText()).includes('joined: TEMP 21.5/PRESS 1013'));
+  await page.fill('input', 'a"b\\c');
+  check('braces and json.quote on the page: an object body whose text cannot change it', (await page.locator('#root').innerText()).includes('body {"q":"a\\"b\\\\c"}'), (await page.locator('#root').innerText()).split('\n').find((l) => l.startsWith('body')));
   check('no script errors', errors.length === 0, errors.join(' | '));
   await browser.close();
   server.close();

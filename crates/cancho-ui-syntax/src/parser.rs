@@ -76,11 +76,24 @@ fn static_text(value: String, span: Span) -> Result<String, ParseError> {
             column: span.start.column,
         });
     }
-    Ok(value)
+    Ok(unescape_braces(&value))
+}
+
+/// `\{` and `\}` in the source reach the parser as private-use marks (`ESCAPED_OPEN`, `ESCAPED_CLOSE`); here they become
+/// the braces they stand for.
+fn unescape_braces(s: &str) -> String {
+    s.chars()
+        .map(|c| match c {
+            crate::lexer::ESCAPED_OPEN => '{',
+            crate::lexer::ESCAPED_CLOSE => '}',
+            other => other,
+        })
+        .collect()
 }
 
 /// Split the text of a string literal into literal runs and `{expr}` interpolations. A `{` always starts an
-/// interpolation, in a `Text` body and in a string expression alike; there is no escape for a literal brace.
+/// interpolation, in a `Text` body and in a string expression alike; `\{` and `\}` write a literal brace, and anything left
+/// in the interpolation after the expression (`"{\"a\":1}"`) is a parse error, not silently dropped.
 fn interpolation_parts(value: &str, span: Span) -> Result<Vec<TextPart>, ParseError> {
     let mut parts = Vec::new();
     let mut buf = String::new();
@@ -103,7 +116,11 @@ fn interpolation_parts(value: &str, span: Span) -> Result<Vec<TextPart>, ParseEr
                         break;
                     }
                 }
-                expr_src.push(nc);
+                match nc {
+                    crate::lexer::ESCAPED_OPEN => expr_src.push_str("\\{"),
+                    crate::lexer::ESCAPED_CLOSE => expr_src.push_str("\\}"),
+                    other => expr_src.push(other),
+                }
                 chars.next();
             }
             chars.next();
@@ -130,9 +147,22 @@ fn interpolation_parts(value: &str, span: Span) -> Result<Vec<TextPart>, ParseEr
                 line: current_line,
                 column: 0,
             })?;
+            if !sub.at_eof() {
+                let left = sub.peek().clone();
+                return Err(ParseError::Unexpected {
+                    expected: "the end of the interpolation after one expression (to write a literal brace, use `\\{` and `\\}`)",
+                    found: left.token,
+                    line: span.start.line,
+                    column: span.start.column,
+                });
+            }
             parts.push(TextPart::Expr { expr, span });
         } else {
-            buf.push(c);
+            buf.push(match c {
+                crate::lexer::ESCAPED_OPEN => '{',
+                crate::lexer::ESCAPED_CLOSE => '}',
+                other => other,
+            });
         }
     }
     if !buf.is_empty() {
@@ -823,8 +853,16 @@ impl Parser {
                 self.bump();
                 let parts = interpolation_parts(&s, tok.span)?;
                 if !parts.iter().any(|p| matches!(p, TextPart::Expr { .. })) {
+                    // No interpolation: the literal text, with `\{` and `\}` already braces.
+                    let value: String = parts
+                        .iter()
+                        .map(|p| match p {
+                            TextPart::Literal(t) => t.as_str(),
+                            TextPart::Expr { .. } => "",
+                        })
+                        .collect();
                     return Ok(Expr::StringLit {
-                        value: s,
+                        value,
                         span: tok.span,
                     });
                 }

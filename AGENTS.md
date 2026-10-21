@@ -131,6 +131,10 @@ section 17).
 fires the parameterless event `Apply` on Enter (not while composing, not on key repeat, and not while a button `on: Apply` is
 disabled), so `Enter` submits a form once (`submit-event-invalid` for an unknown event or one with parameters).
 
+A string writes a literal brace as `\{` and `\}` (`"\{\"a\":1\}"` is `{"a":1}`); a `{` starts an interpolation, and anything left in
+it after one expression is `parse-unexpected-token`. `json.quote(text)` is the JSON string literal of a text, quotes included, so
+`"\{\"id\":" + json.quote(id) + "\}"` is a body that the text of `id` cannot change (`docs/language-design.md` decision 15).
+
 `await(location.current())` performs `Location` and resolves to `Ok("lat,lon")` (2 decimals; `requires
 Location("fine");` for 5), `Err(reason)` or `Cancelled`; the browser asks the user
 (`docs/adapters.md` section 11).

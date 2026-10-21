@@ -175,7 +175,7 @@ fn num_agrees_with_every_case_of_its_corpus() {
 
 #[test]
 fn num_sorts_rows_by_a_number_held_in_text() {
-    let src = "component Rows {\n    state rows: List[String] = [\"{\\\"n\\\":\\\"10\\\"}\"];\n    state out: List[String] = [];\n    on Go { out = reverse(sort([\"9\", \"10\", \"x\", \"2.5\", \"-1\"], s => num(s, 1000))); }\n    view { Text { \"x\" } }\n}\n";
+    let src = "component Rows {\n    state out: List[String] = [];\n    on Go { out = reverse(sort([\"9\", \"10\", \"x\", \"2.5\", \"-1\"], s => num(s, 1000))); }\n    view { Text { \"x\" } }\n}\n";
     let file = scratch("num.cui", src);
     let trace = scratch(
         "num.trace.json",

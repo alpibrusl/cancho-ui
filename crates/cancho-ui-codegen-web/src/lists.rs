@@ -87,6 +87,13 @@ function __cui_ends_with(text, suffix) {
 ";
 
 /// The helpers that `emitted` (the components, after the adapters) calls, as one block of JavaScript.
+const JSON_QUOTE_JS: &str = "\
+// Builtin: json.quote(text) (docs/language-design.md decision 15). The JSON string literal of a text, quotes included: the
+// quote and the backslash are escaped, control characters get their short escape or a lower-case four-digit hex escape, and
+// nothing else changes. This is JSON.stringify of a string, which is what replay's json_quote writes.
+function __cui_json_quote(text) { return JSON.stringify(String(text)); }
+";
+
 pub fn helpers_used(emitted: &str) -> String {
     let mut out = String::new();
     // A helper shared by two calls (take and skip) is listed once: a module may not declare a function twice.
@@ -96,6 +103,7 @@ pub fn helpers_used(emitted: &str) -> String {
         (&["__cui_contains("][..], CONTAINS_JS),
         (&["__cui_lower("][..], LOWER_JS),
         (&["__cui_num("][..], NUM_JS),
+        (&["__cui_json_quote("][..], JSON_QUOTE_JS),
         (&["__cui_take(", "__cui_skip("][..], PAGING_JS),
         (
             &[
