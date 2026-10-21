@@ -511,6 +511,25 @@ fn check_to_diag(e: &cancho_ui_types::CheckError, file: &Path) -> Diagnostic {
             related: Vec::new(),
             notes: Vec::new(),
         },
+        cancho_ui_types::CheckError::UnknownCall { name, span } => Diagnostic {
+            code: "call-unknown".into(),
+            severity: Severity::Error,
+            tier: Tier::Static,
+            subject: Subject::Component {
+                name: String::new(),
+            },
+            message: format!("`{name}` is not a function of this language"),
+            span: Some(SpanOut::from_span(*span, file)),
+            expected: None,
+            actual: None,
+            remediation: Some(Remediation {
+                description: unknown_call_remediation(),
+                suggestion: None,
+                confidence: Confidence::High,
+            }),
+            related: Vec::new(),
+            notes: Vec::new(),
+        },
         cancho_ui_types::CheckError::BuiltinMisuse { name, detail, span } => {
             let (code, severity, tier, subject, message, span) = (
                 "builtin-shape-mismatch",
@@ -1308,6 +1327,19 @@ fn lower_to_diag(e: &LowerError, file: &Path) -> Diagnostic {
                 confidence: Confidence::High,
             }),
         ),
+        LowerError::UnknownCall { name, span } => (
+            "call-unknown",
+            Severity::Error,
+            Tier::Static,
+            Subject::Component { name: String::new() },
+            format!("`{name}` is not a function of this language"),
+            Some(*span),
+            Some(Remediation {
+                description: unknown_call_remediation(),
+                suggestion: None,
+                confidence: Confidence::High,
+            }),
+        ),
         LowerError::BuiltinMisuse { name, detail, span } => (
             "builtin-shape-mismatch",
             Severity::Error,
@@ -1378,6 +1410,10 @@ fn schedule_remediation(code: &str) -> Remediation {
         suggestion: None,
         confidence: Confidence::High,
     }
+}
+
+fn unknown_call_remediation() -> String {
+    "The language has a fixed set of functions: `filter`, `map`, `sort`, `len`, `reverse`, `contains`, `lower`, `num`, `take`, `skip`, `lines`, `split`, `join`, `trim`, `upper`, `starts_with`, `ends_with`, `json.get`, `json.items`, `storage.get`, `storage.set`, `clock.now`, `sleep`, `net.get`, `net.fetch`, `net.post`, `net.search`, `location.current`. There is no `max`, `min`, `floor`, `ceil` or `abs`, and no function of your own; write the arithmetic with `+`, `-`, `*`, `/` and the list builtins (`docs/ops-console.md`).".to_string()
 }
 
 fn pattern_literal_remediation() -> String {

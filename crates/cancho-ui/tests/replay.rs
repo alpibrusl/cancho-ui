@@ -261,7 +261,6 @@ component Faulty2 {
     on NoArm { n = match 5 { Ok(v) => { 1 } }; }
     on Unknown { n = zzz; }
     on Exp { s = "x" + 1000000000000000000000.0; }
-    on Call { n = nope(1); }
     on Await { n = await(5); }
     view { Text { "{n}" } }
 }
@@ -273,7 +272,6 @@ fn the_remaining_runtime_refusals_have_rules_and_spans() {
         ("NoArm", "replay-no-match-arm"),
         ("Unknown", "replay-unknown-identifier"),
         ("Exp", "replay-number-format"),
-        ("Call", "replay-unsupported"),
         ("Await", "replay-unsupported"),
     ] {
         let r = run(FAULTY2, json!([{"event": event, "state": {"n": 0}}]));

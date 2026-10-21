@@ -1,0 +1,457 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "component": "OpsConsole",
+  "note": "The operator console end to end (docs/ops-console.md): the first read, a search, both sort directions, paging that stops at both ends, a write answered 409, 201, 503, with no answer, and refused for an id nobody has or a setpoint that is not a number, the 5-second refresh, a hidden page, and a refresh superseded by the next. The first answer has a record with no temperature (last in both directions), a truncated line and a blank line (both dropped). The refresh that lands while the operator is on page 1 returns three records: the page returns to 0 instead of showing an empty page.",
+  "steps": [
+    {
+      "resolve": 1,
+      "with": {
+        "Ok": "{\"id\":\"M-101\",\"name\":\"Press 1\",\"state\":\"running\",\"temp\":71.5}\n{\"id\":\"M-102\",\"name\":\"Press 2\",\"state\":\"idle\",\"temp\":64}\n{\"id\":\"M-103\",\"name\":\"Press 3\",\"state\":\"running\",\"temp\":100.25}\n{\"id\":\"M-104\",\"name\":\"Lathe 1\",\"state\":\"fault\",\"temp\":9.5}\n{\"id\":\"M-105\",\"name\":\"Lathe 2\",\"state\":\"running\",\"temp\":88}\n{\"id\":\"M-106\",\"name\":\"Lathe 3\",\"state\":\"running\",\"temp\":-4.5}\n{\"id\":\"M-107\",\"name\":\"Furnace A\",\"state\":\"running\",\"temp\":640}\n{\"id\":\"M-109\",\"name\":\"No temp\",\"state\":\"idle\"}\n{\"id\":\"M-110\",\"name\":\"Trunc\n\n"
+      },
+      "expect": {
+        "issued": [
+          {
+            "request": 1,
+            "effect": "net.get",
+            "args": [
+              "api/machines"
+            ]
+          }
+        ]
+      },
+      "state": {
+        "note": "updated",
+        "page": 0,
+        "shown": [
+          "{\"id\":\"M-106\",\"name\":\"Lathe 3\",\"state\":\"running\",\"temp\":-4.5}",
+          "{\"id\":\"M-104\",\"name\":\"Lathe 1\",\"state\":\"fault\",\"temp\":9.5}",
+          "{\"id\":\"M-102\",\"name\":\"Press 2\",\"state\":\"idle\",\"temp\":64}",
+          "{\"id\":\"M-101\",\"name\":\"Press 1\",\"state\":\"running\",\"temp\":71.5}",
+          "{\"id\":\"M-105\",\"name\":\"Lathe 2\",\"state\":\"running\",\"temp\":88}",
+          "{\"id\":\"M-103\",\"name\":\"Press 3\",\"state\":\"running\",\"temp\":100.25}",
+          "{\"id\":\"M-107\",\"name\":\"Furnace A\",\"state\":\"running\",\"temp\":640}",
+          "{\"id\":\"M-109\",\"name\":\"No temp\",\"state\":\"idle\"}"
+        ],
+        "paged": [
+          "{\"id\":\"M-106\",\"name\":\"Lathe 3\",\"state\":\"running\",\"temp\":-4.5}",
+          "{\"id\":\"M-104\",\"name\":\"Lathe 1\",\"state\":\"fault\",\"temp\":9.5}",
+          "{\"id\":\"M-102\",\"name\":\"Press 2\",\"state\":\"idle\",\"temp\":64}",
+          "{\"id\":\"M-101\",\"name\":\"Press 1\",\"state\":\"running\",\"temp\":71.5}",
+          "{\"id\":\"M-105\",\"name\":\"Lathe 2\",\"state\":\"running\",\"temp\":88}"
+        ]
+      }
+    },
+    {
+      "event": "Query",
+      "params": [
+        "PRESS"
+      ],
+      "state": {
+        "q": "PRESS",
+        "page": 0,
+        "shown": [
+          "{\"id\":\"M-102\",\"name\":\"Press 2\",\"state\":\"idle\",\"temp\":64}",
+          "{\"id\":\"M-101\",\"name\":\"Press 1\",\"state\":\"running\",\"temp\":71.5}",
+          "{\"id\":\"M-103\",\"name\":\"Press 3\",\"state\":\"running\",\"temp\":100.25}"
+        ]
+      }
+    },
+    {
+      "event": "Query",
+      "params": [
+        ""
+      ],
+      "state": {
+        "q": "",
+        "shown": [
+          "{\"id\":\"M-106\",\"name\":\"Lathe 3\",\"state\":\"running\",\"temp\":-4.5}",
+          "{\"id\":\"M-104\",\"name\":\"Lathe 1\",\"state\":\"fault\",\"temp\":9.5}",
+          "{\"id\":\"M-102\",\"name\":\"Press 2\",\"state\":\"idle\",\"temp\":64}",
+          "{\"id\":\"M-101\",\"name\":\"Press 1\",\"state\":\"running\",\"temp\":71.5}",
+          "{\"id\":\"M-105\",\"name\":\"Lathe 2\",\"state\":\"running\",\"temp\":88}",
+          "{\"id\":\"M-103\",\"name\":\"Press 3\",\"state\":\"running\",\"temp\":100.25}",
+          "{\"id\":\"M-107\",\"name\":\"Furnace A\",\"state\":\"running\",\"temp\":640}",
+          "{\"id\":\"M-109\",\"name\":\"No temp\",\"state\":\"idle\"}"
+        ]
+      }
+    },
+    {
+      "event": "Flip",
+      "state": {
+        "dir": -1,
+        "shown": [
+          "{\"id\":\"M-107\",\"name\":\"Furnace A\",\"state\":\"running\",\"temp\":640}",
+          "{\"id\":\"M-103\",\"name\":\"Press 3\",\"state\":\"running\",\"temp\":100.25}",
+          "{\"id\":\"M-105\",\"name\":\"Lathe 2\",\"state\":\"running\",\"temp\":88}",
+          "{\"id\":\"M-101\",\"name\":\"Press 1\",\"state\":\"running\",\"temp\":71.5}",
+          "{\"id\":\"M-102\",\"name\":\"Press 2\",\"state\":\"idle\",\"temp\":64}",
+          "{\"id\":\"M-104\",\"name\":\"Lathe 1\",\"state\":\"fault\",\"temp\":9.5}",
+          "{\"id\":\"M-106\",\"name\":\"Lathe 3\",\"state\":\"running\",\"temp\":-4.5}",
+          "{\"id\":\"M-109\",\"name\":\"No temp\",\"state\":\"idle\"}"
+        ],
+        "paged": [
+          "{\"id\":\"M-107\",\"name\":\"Furnace A\",\"state\":\"running\",\"temp\":640}",
+          "{\"id\":\"M-103\",\"name\":\"Press 3\",\"state\":\"running\",\"temp\":100.25}",
+          "{\"id\":\"M-105\",\"name\":\"Lathe 2\",\"state\":\"running\",\"temp\":88}",
+          "{\"id\":\"M-101\",\"name\":\"Press 1\",\"state\":\"running\",\"temp\":71.5}",
+          "{\"id\":\"M-102\",\"name\":\"Press 2\",\"state\":\"idle\",\"temp\":64}"
+        ]
+      }
+    },
+    {
+      "event": "Next",
+      "state": {
+        "page": 1,
+        "paged": [
+          "{\"id\":\"M-104\",\"name\":\"Lathe 1\",\"state\":\"fault\",\"temp\":9.5}",
+          "{\"id\":\"M-106\",\"name\":\"Lathe 3\",\"state\":\"running\",\"temp\":-4.5}",
+          "{\"id\":\"M-109\",\"name\":\"No temp\",\"state\":\"idle\"}"
+        ]
+      }
+    },
+    {
+      "event": "Next",
+      "state": {
+        "page": 1
+      }
+    },
+    {
+      "event": "Prev",
+      "state": {
+        "page": 0,
+        "paged": [
+          "{\"id\":\"M-107\",\"name\":\"Furnace A\",\"state\":\"running\",\"temp\":640}",
+          "{\"id\":\"M-103\",\"name\":\"Press 3\",\"state\":\"running\",\"temp\":100.25}",
+          "{\"id\":\"M-105\",\"name\":\"Lathe 2\",\"state\":\"running\",\"temp\":88}",
+          "{\"id\":\"M-101\",\"name\":\"Press 1\",\"state\":\"running\",\"temp\":71.5}",
+          "{\"id\":\"M-102\",\"name\":\"Press 2\",\"state\":\"idle\",\"temp\":64}"
+        ]
+      }
+    },
+    {
+      "event": "Prev",
+      "state": {
+        "page": 0
+      }
+    },
+    {
+      "event": "Flip",
+      "state": {
+        "dir": 1,
+        "shown": [
+          "{\"id\":\"M-106\",\"name\":\"Lathe 3\",\"state\":\"running\",\"temp\":-4.5}",
+          "{\"id\":\"M-104\",\"name\":\"Lathe 1\",\"state\":\"fault\",\"temp\":9.5}",
+          "{\"id\":\"M-102\",\"name\":\"Press 2\",\"state\":\"idle\",\"temp\":64}",
+          "{\"id\":\"M-101\",\"name\":\"Press 1\",\"state\":\"running\",\"temp\":71.5}",
+          "{\"id\":\"M-105\",\"name\":\"Lathe 2\",\"state\":\"running\",\"temp\":88}",
+          "{\"id\":\"M-103\",\"name\":\"Press 3\",\"state\":\"running\",\"temp\":100.25}",
+          "{\"id\":\"M-107\",\"name\":\"Furnace A\",\"state\":\"running\",\"temp\":640}",
+          "{\"id\":\"M-109\",\"name\":\"No temp\",\"state\":\"idle\"}"
+        ]
+      }
+    },
+    {
+      "event": "SetTarget",
+      "params": [
+        "M-107"
+      ],
+      "state": {
+        "target": "M-107"
+      }
+    },
+    {
+      "event": "SetSetpoint",
+      "params": [
+        "80"
+      ],
+      "state": {
+        "setpoint": "80"
+      }
+    },
+    {
+      "event": "Apply",
+      "expect": {
+        "issued": [
+          {
+            "request": 2,
+            "effect": "net.post",
+            "args": [
+              "api/setpoint",
+              "[\"M-107\", 80]"
+            ]
+          }
+        ],
+        "pending": [
+          2
+        ]
+      },
+      "state": {
+        "outcome": "sending"
+      }
+    },
+    {
+      "resolve": 2,
+      "with": {
+        "Ok": "{\"status\":409,\"body\":\"locked by maintenance\"}"
+      },
+      "state": {
+        "outcome": "409 locked by maintenance"
+      }
+    },
+    {
+      "event": "SetTarget",
+      "params": [
+        "M-101"
+      ],
+      "state": {
+        "target": "M-101"
+      }
+    },
+    {
+      "event": "Apply",
+      "expect": {
+        "issued": [
+          {
+            "request": 3,
+            "effect": "net.post",
+            "args": [
+              "api/setpoint",
+              "[\"M-101\", 80]"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "resolve": 3,
+      "with": {
+        "Ok": "{\"status\":201,\"body\":\"applied\"}"
+      },
+      "state": {
+        "outcome": "201 applied"
+      }
+    },
+    {
+      "event": "Apply",
+      "expect": {
+        "issued": [
+          {
+            "request": 4,
+            "effect": "net.post",
+            "args": [
+              "api/setpoint",
+              "[\"M-101\", 80]"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "resolve": 4,
+      "with": {
+        "Ok": "{\"status\":503,\"body\":\"busy, try again\"}"
+      },
+      "state": {
+        "outcome": "503 busy, try again"
+      }
+    },
+    {
+      "event": "Apply",
+      "expect": {
+        "issued": [
+          {
+            "request": 5,
+            "effect": "net.post",
+            "args": [
+              "api/setpoint",
+              "[\"M-101\", 80]"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "resolve": 5,
+      "with": {
+        "Err": "network error"
+      },
+      "state": {
+        "outcome": "not sent: network error"
+      }
+    },
+    {
+      "event": "SetSetpoint",
+      "params": [
+        "abc"
+      ],
+      "state": {
+        "setpoint": "abc"
+      }
+    },
+    {
+      "event": "Apply",
+      "expect": {
+        "issued": [
+          {
+            "request": 6,
+            "effect": "net.post",
+            "args": [
+              "api/setpoint",
+              "[\"\", 0]"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "resolve": 6,
+      "with": {
+        "Ok": "{\"status\":400,\"body\":\"unknown machine or setpoint\"}"
+      },
+      "state": {
+        "outcome": "400 unknown machine or setpoint"
+      }
+    },
+    {
+      "event": "SetSetpoint",
+      "params": [
+        "80"
+      ]
+    },
+    {
+      "event": "SetTarget",
+      "params": [
+        "M-101\", 99, \"x"
+      ],
+      "state": {
+        "target": "M-101\", 99, \"x"
+      }
+    },
+    {
+      "event": "Apply",
+      "expect": {
+        "issued": [
+          {
+            "request": 7,
+            "effect": "net.post",
+            "args": [
+              "api/setpoint",
+              "[\"\", 80]"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "resolve": 7,
+      "with": {
+        "Ok": "{\"status\":400,\"body\":\"unknown machine or setpoint\"}"
+      }
+    },
+    {
+      "event": "Next",
+      "state": {
+        "page": 1
+      }
+    },
+    {
+      "advance": 5000,
+      "expect": {
+        "ticks": [
+          {
+            "event": "Refresh",
+            "at": 5000,
+            "ran": true
+          }
+        ],
+        "issued": [
+          {
+            "request": 8,
+            "effect": "net.get",
+            "args": [
+              "api/machines"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "resolve": 8,
+      "with": {
+        "Ok": "{\"id\":\"M-101\",\"name\":\"Press 1\",\"state\":\"running\",\"temp\":71.5}\n{\"id\":\"M-102\",\"name\":\"Press 2\",\"state\":\"idle\",\"temp\":64}\n{\"id\":\"M-103\",\"name\":\"Press 3\",\"state\":\"running\",\"temp\":100.25}\n"
+      },
+      "state": {
+        "note": "updated",
+        "shown": [
+          "{\"id\":\"M-102\",\"name\":\"Press 2\",\"state\":\"idle\",\"temp\":64}",
+          "{\"id\":\"M-101\",\"name\":\"Press 1\",\"state\":\"running\",\"temp\":71.5}",
+          "{\"id\":\"M-103\",\"name\":\"Press 3\",\"state\":\"running\",\"temp\":100.25}"
+        ],
+        "page": 0
+      }
+    },
+    {
+      "hide": true
+    },
+    {
+      "advance": 15000,
+      "expect": {
+        "issued": []
+      }
+    },
+    {
+      "show": true,
+      "expect": {
+        "issued": [
+          {
+            "request": 9,
+            "effect": "net.get",
+            "args": [
+              "api/machines"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "event": "Refresh",
+      "expect": {
+        "issued": [
+          {
+            "request": 10,
+            "effect": "net.get",
+            "args": [
+              "api/machines"
+            ]
+          }
+        ],
+        "pending": [
+          9,
+          10
+        ]
+      }
+    },
+    {
+      "resolve": 9,
+      "with": {
+        "Ok": "{\"id\":\"M-109\",\"name\":\"No temp\",\"state\":\"idle\"}\n"
+      },
+      "expect": {
+        "outcome": "dropped"
+      },
+      "state": {
+        "note": "loading"
+      }
+    },
+    {
+      "resolve": 10,
+      "with": {
+        "Err": "HTTP 503"
+      },
+      "state": {
+        "note": "error: HTTP 503"
+      }
+    }
+  ]
+}
