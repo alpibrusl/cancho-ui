@@ -1329,6 +1329,7 @@ impl Parser {
         let kind = match name.as_str() {
             "Column" => ElementKind::Column,
             "Row" => ElementKind::Row,
+            "Table" => ElementKind::Table,
             "Text" => ElementKind::Text,
             "Button" => ElementKind::Button,
             "TextField" => ElementKind::TextField,
@@ -1409,6 +1410,20 @@ impl Parser {
                         accessibility.span = Span::new(accessibility.span.start, expr.span().end);
                         accessibility.label_expr = Some(expr);
                     }
+                }
+                Token::Ident(name) if name == "tone" => {
+                    // `tone: "error"` or `tone: outcome_tone` (a String state field): a status text's tone
+                    // (docs/presentation.md section 3). It is a binding like the others; it may come first because
+                    // a `Text` has no other place to put one.
+                    let key_tok = self.bump();
+                    self.expect(Token::DotDot)?;
+                    let value = self.parse_binding_value("tone", &kind)?;
+                    let span = Span::new(key_tok.span.start, self.tokens[self.pos - 1].span.end);
+                    bindings.push(Binding {
+                        key: "tone".to_string(),
+                        value,
+                        span,
+                    });
                 }
                 Token::RBrace => break,
                 Token::StringLit(_) => break,
@@ -1580,6 +1595,20 @@ impl Parser {
                     }
                 };
                 Ok(BindingValue::Role(role))
+            }
+            "tone" => {
+                // A literal (`"error"`) or the name of a String state field.
+                let tok = self.bump();
+                match tok.token {
+                    Token::StringLit(s) => Ok(BindingValue::String(static_text(s, tok.span)?)),
+                    Token::Ident(s) => Ok(BindingValue::StateRef(s)),
+                    other => Err(ParseError::Unexpected {
+                        expected: "`\"ok\"`, `\"warn\"`, `\"error\"` or the name of a String state field",
+                        found: other,
+                        line: tok.span.start.line,
+                        column: tok.span.start.column,
+                    }),
+                }
             }
             "value" => {
                 // `value: <ident>` — bind to a state field, or

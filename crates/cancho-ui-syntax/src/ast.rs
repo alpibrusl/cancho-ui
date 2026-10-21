@@ -211,6 +211,8 @@ pub enum TextPart {
 pub enum ElementKind {
     Column,
     Row,
+    /// A table (docs/presentation.md section 4): its `Row`s are rows, the `Text`s in them cells.
+    Table,
     Text,
     Button,
     /// An editable text input. Tier 5 primitive.

@@ -130,6 +130,9 @@ in `examples/refusal/`, and by the evidence report.
 | `event-unknown` | `Component` | `Error` | `Static` | An `on:` naming an event the component does not declare (with or without arguments). It used to compile and kill the page on its first render. *(Built 2026-10-21, issue #41, `docs/row-actions.md`.)* |
 | `event-arity-mismatch` | `Component` | `Error` | `Static` | An `on:` whose arguments are not the parameters of the handler: the wrong number of arguments, a bare `on:` on a button for a handler with parameters (a click has none; it used to receive the `MouseEvent`), or a field for a handler with two. *(Built 2026-10-21, issue #41.)* |
 | `event-args-unsupported` | `Component` | `Error` | `Static` | `on: Event(..)` with arguments on anything but a `Button`. *(Built 2026-10-21, issue #41.)* |
+| `tone-invalid` | `Component` | `Error` | `Static` | A `tone:` on a `Text` that is not `"ok"`, `"warn"`, `"error"` or the name of a `String` state field. *(Built 2026-10-21, issue #42, `docs/presentation.md` section 3.)* |
+| `layout-value-invalid` | `Component` | `Error` | `Static` | A `gap:` outside 0 to 4 or a `max_width:` outside 10 to 200 on a `Column` or `Row`. *(Built 2026-10-21, issue #42, section 2.)* |
+| `table-child-invalid` | `Component` | `Error` | `Static` | A `Table` child that is not a `Row` or a `For` that makes `Row`s. *(Built 2026-10-21, issue #42, section 4.)* |
 | `capability-missing` | `Capability` | `Error` | `Static` | A component using an effect without `requires Capability` |
 | `capability-unused` | `Capability` | `Error` | `Static` | A `requires` declaration with no reachable use |
 | `capability-insufficient` | `Capability` | `Error` | `Static` | A `requires` narrower than the effect's needs |

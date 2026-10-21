@@ -894,6 +894,9 @@ fn lower_view_node_with_effects(
                 lowered_children.push(n);
                 effects.append(&mut e);
             }
+            if matches!(kind, ElementKind::Table) {
+                lowered_children = crate::table::table_rows(lowered_children)?;
+            }
             let mut lowered_bindings = Vec::with_capacity(bindings.len());
             for b in bindings {
                 lowered_bindings.push(lower_binding(b, Some(kind), &mut effects)?);
@@ -966,6 +969,7 @@ fn lower_kind(k: &ElementKind) -> IrElementKind {
     match k {
         ElementKind::Column => IrElementKind::Column,
         ElementKind::Row => IrElementKind::Row,
+        ElementKind::Table => IrElementKind::Table,
         ElementKind::Text => IrElementKind::Text,
         ElementKind::Button => IrElementKind::Button,
         ElementKind::TextField => IrElementKind::TextField,

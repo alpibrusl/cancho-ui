@@ -415,3 +415,12 @@ fix what Phase 1 itself finds broken.
 Two additive shapes, no version bump (as the other additive tiers): an element's `accessibility` has a `label_expr` (an
 expression node) **only** when its label is an expression, and a binding value can be `{"event": "Pick", "args": [expr...]}`
 (`on: Pick(a, b)`) beside the plain event name. A program that uses neither has the IR it had.
+
+---
+
+## Addendum: presentation (issue #42, `docs/presentation.md`)
+
+Four element kinds more, written only by lowering from `Table { Row { Text .. } }`: `Table`, `TableRow`, `Cell` and `HeaderCell`
+(a `Row` of a table, a `Text` in it, a `Text { role: columnheader }`; any other element of the row is wrapped in a `Cell`). A
+program with no `Table` has none of them. `tone`, `gap` and `max_width` are ordinary binding keys (`tone` a string or a state
+reference, the others integer constants). No version bump, as the other additive tiers.

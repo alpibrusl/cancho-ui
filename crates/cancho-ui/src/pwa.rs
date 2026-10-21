@@ -66,6 +66,23 @@ body {
     font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 .cui-col { display: flex; flex-direction: column; gap: 0.5rem; }
+.cui-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+/* gap: 0..4 on a Row or Column (docs/presentation.md section 2) */
+.cui-gap-0 { gap: 0; } .cui-gap-1 { gap: 0.25rem; } .cui-gap-2 { gap: 0.5rem; } .cui-gap-3 { gap: 1rem; } .cui-gap-4 { gap: 2rem; }
+/* a TextField with a label: the label is shown above the field */
+.cui-field { display: flex; flex-direction: column; gap: 0.25rem; }
+/* Table */
+.cui-table { border-collapse: collapse; width: 100%; }
+.cui-table th, .cui-table td { text-align: left; padding: 0.25rem 0.5rem; border-bottom: 1px solid color-mix(in srgb, currentColor 25%, transparent); }
+.cui-table th { font-weight: 600; }
+/* tone: a status text says what kind it is by a prefix as well as by colour, so colour is never the only signal */
+[data-tone] { font-weight: 600; }
+[data-tone="ok"] { color: #1a7f37; } [data-tone="ok"]::before { content: "\2713  "; }
+[data-tone="warn"] { color: #9a6700; } [data-tone="warn"]::before { content: "\26A0  "; }
+[data-tone="error"] { color: #cf222e; } [data-tone="error"]::before { content: "\2717  "; }
+@media (prefers-color-scheme: dark) {
+    [data-tone="ok"] { color: #3fb950; } [data-tone="warn"] { color: #d29922; } [data-tone="error"] { color: #ff7b72; }
+}
 button, input, textarea { min-height: 44px; min-width: 44px; font: inherit; }
 </style>
 </head>

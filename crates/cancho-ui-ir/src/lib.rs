@@ -16,6 +16,7 @@ pub mod controls;
 pub mod ir;
 pub mod lower;
 pub mod serialize;
+pub mod table;
 
 pub use ir::*;
 pub use lower::{LowerError, lower_file, merge_ir_files};

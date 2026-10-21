@@ -133,6 +133,8 @@ A component that sends a secret declares `requires Credential("api", "host"..)` 
 
 `Button { label: "Select " + n on: Pick(n, 1) }`: `label:` is a string literal or an expression, and `on: Pick(a, b)` calls the handler `on Pick(x, y)` with the arguments, evaluated when the view is drawn, so a button in a `For` names its row (`docs/row-actions.md`). A click has no arguments of its own: a bare `on: Pick` for a handler with parameters is `event-arity-mismatch`, an event the component does not declare is `event-unknown`, and arguments on anything but a `Button` are `event-args-unsupported`.
 
+Presentation (`docs/presentation.md`): a `TextField`'s `label:` is shown above the field; `Table { label: "Machines" Row { Text { role: columnheader "id" } } For { over: l as: m Row { Text { m } Button { .. } } } }` is a real table (a `Row` is a row, a `Text` a cell, a button is wrapped in one; anything else in a `Table` is `table-child-invalid`); `Text { role: status tone: "error" ".." }` or `tone: some_string_field` is `"ok"`, `"warn"` or `"error"` (a prefix and a colour; `tone-invalid` otherwise); `Row { gap: 0..4 }`, `Column { max_width: 10..200 }` (`layout-value-invalid` otherwise).
+
 `Button` and `TextField` take `disabled: true | false | <a Bool state field>` (the native attribute, so a double click on a
 `disabled: sending` button that sets `sending = true` before its `await` sends one write); any other key that is not `label`,
 `role`, `on`, `value`, `disabled`, `submit` or `placeholder` is `binding-unknown` (`docs/controls.md`). `TextField { ... submit: Apply }`

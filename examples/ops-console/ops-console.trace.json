@@ -187,7 +187,8 @@
         ]
       },
       "state": {
-        "outcome": "sending"
+        "outcome": "sending",
+        "tone": ""
       }
     },
     {
@@ -209,7 +210,8 @@
         "Ok": "{\"status\":409,\"body\":\"locked by maintenance\"}"
       },
       "state": {
-        "outcome": "409 locked by maintenance"
+        "outcome": "409 locked by maintenance",
+        "tone": "warn"
       }
     },
     {
@@ -242,7 +244,8 @@
         "Ok": "{\"status\":201,\"body\":\"applied\"}"
       },
       "state": {
-        "outcome": "201 applied"
+        "outcome": "201 applied",
+        "tone": "ok"
       }
     },
     {
@@ -266,7 +269,8 @@
         "Ok": "{\"status\":503,\"body\":\"busy, try again\"}"
       },
       "state": {
-        "outcome": "503 busy, try again"
+        "outcome": "503 busy, try again",
+        "tone": "error"
       }
     },
     {
@@ -290,7 +294,8 @@
         "Err": "network error"
       },
       "state": {
-        "outcome": "not sent: network error"
+        "outcome": "not sent: network error",
+        "tone": "error"
       }
     },
     {
@@ -323,7 +328,8 @@
         "Ok": "{\"status\":400,\"body\":\"unknown machine or setpoint\"}"
       },
       "state": {
-        "outcome": "400 unknown machine or setpoint"
+        "outcome": "400 unknown machine or setpoint",
+        "tone": "warn"
       }
     },
     {

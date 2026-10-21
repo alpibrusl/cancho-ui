@@ -327,6 +327,24 @@ pub(crate) fn emit_view_node(
                 ));
             }
 
+            // A table's rows go in its `<tbody>` (docs/presentation.md section 4); a header cell says it heads a column.
+            let child_parent = if matches!(kind, IrElementKind::Table) {
+                let body = format!("{var}_body");
+                out.push_str(&format!(
+                    "{0}const {1} = document.createElement('tbody');\n{0}{2}.appendChild({1});\n",
+                    indent, body, var
+                ));
+                body
+            } else {
+                var.clone()
+            };
+            if matches!(kind, IrElementKind::HeaderCell) {
+                out.push_str(&format!(
+                    "{0}{1}.setAttribute('scope', 'col');\n",
+                    indent, var
+                ));
+            }
+
             // A label that is an expression (docs/row-actions.md): evaluated once per render, here, so the accessible
             // name and a button's visible text are the same string.
             let label_var = format!("{var}_label");
@@ -373,6 +391,37 @@ pub(crate) fn emit_view_node(
                             indent,
                             var,
                             emit_expr_runtime(expr, params)
+                        ));
+                    }
+                    IrBindingValue::Const { expr, .. } if b.key == "gap" => {
+                        // A step of the scale in the default stylesheet (docs/presentation.md section 2).
+                        if let IrExpr::IntLit { value, .. } = **expr {
+                            out.push_str(&format!(
+                                "{0}{1}.classList.add('cui-gap-{2}');\n",
+                                indent, var, value
+                            ));
+                        }
+                    }
+                    IrBindingValue::Const { expr, .. } if b.key == "max_width" => {
+                        if let IrExpr::IntLit { value, .. } = **expr {
+                            out.push_str(&format!(
+                                "{0}{1}.style.maxWidth = '{2}ch';\n{0}{1}.style.marginInline = 'auto';\n",
+                                indent, var, value
+                            ));
+                        }
+                    }
+                    IrBindingValue::String(s) if b.key == "tone" => {
+                        out.push_str(&format!(
+                            "{0}{1}.setAttribute('data-tone', {2});\n",
+                            indent,
+                            var,
+                            js_string(s)
+                        ));
+                    }
+                    IrBindingValue::StateRef(name) if b.key == "tone" => {
+                        out.push_str(&format!(
+                            "{0}{1}.setAttribute('data-tone', String({2}{3}));\n",
+                            indent, var, STATE_PREFIX, name
                         ));
                     }
                     IrBindingValue::Const { .. } => {
@@ -499,7 +548,11 @@ pub(crate) fn emit_view_node(
 
             // Children.
             let child_indent = format!("{}    ", indent);
-            if matches!(kind, IrElementKind::Text) {
+            if kind.holds_text()
+                && children
+                    .iter()
+                    .all(|c| matches!(c, IrViewNode::Text { .. }))
+            {
                 for c in children {
                     if let IrViewNode::Text { parts, .. } = c {
                         for p in parts {
@@ -559,7 +612,7 @@ pub(crate) fn emit_view_node(
                         next_id,
                         &child_indent,
                         c,
-                        &var,
+                        &child_parent,
                         params,
                         components,
                         prop_consumers,
@@ -581,11 +634,28 @@ pub(crate) fn emit_view_node(
                 }
             }
 
-            // Append to parent.
-            out.push_str(&format!(
-                "{0}{2}.appendChild({1});\n",
-                indent, var, parent_var
-            ));
+            // Append to parent. A field with a label is drawn inside a `<label>` that shows it
+            // (docs/presentation.md section 1); the field keeps its `aria-label`.
+            let field_label = if matches!(kind, IrElementKind::TextField) {
+                accessibility
+                    .label
+                    .as_ref()
+                    .map(|l| js_string(l))
+                    .or_else(|| accessibility.label_expr.as_ref().map(|_| label_var.clone()))
+            } else {
+                None
+            };
+            if let Some(text) = field_label {
+                out.push_str(&format!(
+                    "{0}const {1}_field = document.createElement('label');\n{0}{1}_field.classList.add('cui-field');\n{0}{1}_field.appendChild(document.createTextNode({2}));\n{0}{1}_field.appendChild({1});\n{0}{3}.appendChild({1}_field);\n",
+                    indent, var, text, parent_var
+                ));
+            } else {
+                out.push_str(&format!(
+                    "{0}{2}.appendChild({1});\n",
+                    indent, var, parent_var
+                ));
+            }
 
             // Wire up event handlers.
             if let Some(event_name) = click_handler {
