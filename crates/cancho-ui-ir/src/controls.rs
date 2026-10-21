@@ -6,9 +6,17 @@
 use crate::ir::*;
 use crate::lower::LowerError;
 
-/// The keys a built-in element takes. `label`, `role`, `on`, `value`, `disabled` have meaning; `placeholder` is
-/// written as the attribute of that name.
-pub const ELEMENT_KEYS: &[&str] = &["label", "role", "on", "value", "disabled", "placeholder"];
+/// The keys a built-in element takes. `label`, `role`, `on`, `value`, `disabled` and `submit` have meaning;
+/// `placeholder` is written as the attribute of that name.
+pub const ELEMENT_KEYS: &[&str] = &[
+    "label",
+    "role",
+    "on",
+    "value",
+    "disabled",
+    "placeholder",
+    "submit",
+];
 
 pub fn check_controls(ir: &IrFile) -> Result<(), LowerError> {
     for c in &ir.components {
@@ -67,6 +75,45 @@ fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result
             ),
             span: b.span,
         });
+    }
+    if b.key == "submit" {
+        if !matches!(kind, IrElementKind::TextField) {
+            return Err(LowerError::ControlRefused {
+                code: "binding-unknown",
+                message: format!(
+                    "`submit:` is a binding of TextField (Enter in the field fires the event), not of {}",
+                    element_name(kind)
+                ),
+                span: b.span,
+            });
+        }
+        let IrBindingValue::EventRef(name) = &b.value else {
+            return Err(LowerError::ControlRefused {
+                code: "submit-event-invalid",
+                message: "`submit:` names an event of the component, e.g. `submit: Apply`"
+                    .to_string(),
+                span: b.span,
+            });
+        };
+        match c.events.iter().find(|e| &e.name == name) {
+            None => {
+                return Err(LowerError::ControlRefused {
+                    code: "submit-event-invalid",
+                    message: format!("`submit: {name}`: this component has no `on {name}` handler"),
+                    span: b.span,
+                });
+            }
+            Some(e) if !e.params.is_empty() => {
+                return Err(LowerError::ControlRefused {
+                    code: "submit-event-invalid",
+                    message: format!(
+                        "`submit: {name}`: `on {name}` takes parameters, and Enter has none to give; use an event without parameters"
+                    ),
+                    span: b.span,
+                });
+            }
+            Some(_) => {}
+        }
     }
     if b.key == "disabled" {
         let interactive = matches!(kind, IrElementKind::Button | IrElementKind::TextField);

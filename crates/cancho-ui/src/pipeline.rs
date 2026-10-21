@@ -1463,7 +1463,8 @@ fn pattern_literal_remediation() -> String {
 /// What to change for a refusal about the bindings of a built-in element (docs/controls.md).
 fn control_remediation(code: &str) -> String {
     match code {
-        "binding-unknown" => "Use one of the keys of a built-in element: label, role, on, value, disabled, placeholder. `disabled:` is for Button and TextField.".to_string(),
+        "binding-unknown" => "Use one of the keys of a built-in element: label, role, on, value, disabled, placeholder, submit. `disabled:` is for Button and TextField, `submit:` for TextField.".to_string(),
+        "submit-event-invalid" => "Name an event of this component that takes no parameters: `submit: Apply` with `on Apply { ... }`.".to_string(),
         "disabled-not-bool" => "Write `disabled: true`, `disabled: false` or `disabled: sending` where `sending` is a `state sending: Bool`.".to_string(),
         _ => "See docs/controls.md.".to_string(),
     }

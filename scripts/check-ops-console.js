@@ -201,7 +201,8 @@ function check(label, ok, detail) {
   let posts = log.posts.length;
   await p2.press('input[aria-label="Setpoint"]', 'Enter');
   await p2.waitForTimeout(300);
-  check('KNOWN GAP #2: Enter in the form does not send it (no keyboard binding)', log.posts.length === posts);
+  await p2.waitForTimeout(300);
+  check('Enter in the setpoint field sends the write ONCE (`submit: Apply`, issue #36, fixed)', log.posts.length === posts + 1, String(log.posts.length - posts));
   posts = log.posts.length;
   await p2.dblclick('button[aria-label="Apply"]');
   await p2.waitForTimeout(400);

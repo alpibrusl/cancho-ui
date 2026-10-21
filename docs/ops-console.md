@@ -66,7 +66,10 @@ silently). A double click on Apply sends **two** POSTs (measured: 2 in 400 ms); 
 "not while one is in flight" nor "not if the setpoint is not a number": the page sends `["", 0]` for a bad setpoint and
 lets the service refuse it with 400.
 
-### 2.4 Enter does not submit. Issue #36
+### 2.4 Enter does not submit. Issue #36. **Fixed 2026-10-21 (`docs/controls.md` section 3).**
+
+> *Correction:* `TextField { ... submit: Apply }` fires `Apply` on Enter. The setpoint field of the page has it, and Enter sends the
+> write **once** (the guard of the disabled `Apply` button keeps a second Enter out while the first is in flight). What follows is the finding as it was made.
 
 `TextField { on: Apply enter: Apply }` is `parse-unexpected-token`. An operator who types a setpoint and presses Enter does
 nothing (measured: no request). `AGENTS.md` section 7 names `accessibility-keyboard-missing` as a contract; it is not
@@ -152,7 +155,7 @@ was added**; the first trace did not cover it), broken lines kept (1, 6), the id
 search made case-sensitive (2, 2), Next not clamped (2, 4), Flip doing nothing (2, 6). And `is_known_call` made always true:
 the `call-unknown` tests fail (10).
 
-Three checks assert a gap **as it is today** ("KNOWN GAP": Unicode search, Enter, offline list; the double submit was fixed, #35), so
+Two checks assert a gap **as it is today** ("KNOWN GAP": Unicode search, offline list; the double submit and Enter were fixed, #35 and #36), so
 that fixing one fails the check and forces this document to be updated.
 
 ## 5. Not done

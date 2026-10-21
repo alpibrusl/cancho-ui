@@ -126,6 +126,7 @@ in `examples/refusal/`, and by the evidence report.
 | `pattern-literal-unsupported` | `Component` | `Error` | `Static` | A `match` arm whose pattern is `true` or `false`: a bare name is a binding that matches everything, so the arm would always win (there are no literal patterns). *(Built 2026-10-21, issue #26.)* |
 | `binding-unknown` | `Component` | `Error` | `Static` | A key that is not a binding of the built-in element it is on (`title:` on a `Button`, `disabled:` on a `Column`). It used to be accepted and dropped or written as a stray attribute. *(Built 2026-10-21, issue #35, `docs/controls.md`.)* |
 | `disabled-not-bool` | `Component` | `Error` | `Static` | A `disabled:` that is not `true`, `false` or the name of a `Bool` state field of the component. *(Built 2026-10-21, issue #35.)* |
+| `submit-event-invalid` | `Component` | `Error` | `Static` | A `submit:` on a `TextField` naming an event the component does not declare, or one that takes parameters (Enter gives none). *(Built 2026-10-21, issue #36, `docs/controls.md` section 3.)* |
 | `capability-missing` | `Capability` | `Error` | `Static` | A component using an effect without `requires Capability` |
 | `capability-unused` | `Capability` | `Error` | `Static` | A `requires` declaration with no reachable use |
 | `capability-insufficient` | `Capability` | `Error` | `Static` | A `requires` narrower than the effect's needs |

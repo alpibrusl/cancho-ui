@@ -287,57 +287,66 @@ impl<'a> Machine<'a> {
         self.run(task, fx)
     }
 
-    /// Is every control of the view that fires `event` disabled right now? An event no control fires (a schedule's)
-    /// is never disabled. Only `true`, `false` and a `Bool` state field can be `disabled:` (docs/controls.md).
+    /// Would the browser deliver `event` right now (docs/controls.md section 2)? The ways to fire it are the controls with
+    /// `on: event` (a click or an input: open when the control is enabled) and the fields with `submit: event` (Enter:
+    /// open when the field is enabled **and** every `on:` control of the event is enabled, because the emitted guard
+    /// `__submit_blocked` treats Enter as the same act as the button). An event no control fires (a schedule's) is
+    /// never refused. Only `true`, `false` and a `Bool` state field can be `disabled:`.
     fn event_disabled(&self, event: &str) -> bool {
-        fn walk(
-            m: &Machine<'_>,
-            node: &IrViewNode,
-            event: &str,
-            seen: &mut usize,
-            enabled: &mut usize,
-        ) {
+        #[derive(Default)]
+        struct Paths {
+            on: Vec<bool>,
+            submit: Vec<bool>,
+        }
+        fn walk(m: &Machine<'_>, node: &IrViewNode, event: &str, p: &mut Paths) {
             match node {
                 IrViewNode::Element {
                     bindings, children, ..
                 } => {
-                    let fires = bindings.iter().any(|b| {
-                        b.key == "on"
-                            && matches!(&b.value, IrBindingValue::EventRef(e) if e == event)
-                    });
-                    if fires {
-                        *seen += 1;
-                        let off = bindings.iter().any(|b| {
-                            b.key == "disabled"
-                                && match &b.value {
-                                    IrBindingValue::Const { expr, .. } => {
-                                        matches!(**expr, IrExpr::BoolLit { value: true, .. })
-                                    }
-                                    IrBindingValue::StateRef(name) => {
-                                        matches!(m.state.get(name), Some(Value::Bool(true)))
-                                    }
-                                    _ => false,
+                    let fires = |key: &str| {
+                        bindings.iter().any(|b| {
+                            b.key == key
+                                && matches!(&b.value, IrBindingValue::EventRef(e) if e == event)
+                        })
+                    };
+                    let off = bindings.iter().any(|b| {
+                        b.key == "disabled"
+                            && match &b.value {
+                                IrBindingValue::Const { expr, .. } => {
+                                    matches!(**expr, IrExpr::BoolLit { value: true, .. })
                                 }
-                        });
-                        if !off {
-                            *enabled += 1;
-                        }
+                                IrBindingValue::StateRef(name) => {
+                                    matches!(m.state.get(name), Some(Value::Bool(true)))
+                                }
+                                _ => false,
+                            }
+                    });
+                    if fires("on") {
+                        p.on.push(!off);
+                    }
+                    if fires("submit") {
+                        p.submit.push(!off);
                     }
                     for c in children {
-                        walk(m, c, event, seen, enabled);
+                        walk(m, c, event, p);
                     }
                 }
                 IrViewNode::For { children, .. } => {
                     for c in children {
-                        walk(m, c, event, seen, enabled);
+                        walk(m, c, event, p);
                     }
                 }
                 IrViewNode::Text { .. } => {}
             }
         }
-        let (mut seen, mut enabled) = (0, 0);
-        walk(self, &self.comp.view.body, event, &mut seen, &mut enabled);
-        seen > 0 && enabled == 0
+        let mut p = Paths::default();
+        walk(self, &self.comp.view.body, event, &mut p);
+        if p.on.is_empty() && p.submit.is_empty() {
+            return false;
+        }
+        let all_on_enabled = p.on.iter().all(|e| *e);
+        let open = p.on.iter().any(|e| *e) || (all_on_enabled && p.submit.iter().any(|e| *e));
+        !open
     }
 
     /// The scripted network answers request `id` (`answer` is an `Ok` or `Err`).

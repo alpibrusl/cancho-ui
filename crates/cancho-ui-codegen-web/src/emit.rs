@@ -517,6 +517,7 @@ fn emit_component(
         out.push_str("        }\n");
     }
 
+    out.push_str(&crate::controls::submit_blocked_table(c, "        "));
     out.push_str("        function __render() {\n");
     if keep_focus {
         out.push_str("            const __focus = __cui_focus_save(root);\n");

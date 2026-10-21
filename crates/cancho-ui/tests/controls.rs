@@ -148,3 +148,83 @@ fn an_event_no_control_fires_is_never_disabled() {
     let (code, stdout, stderr) = run(&["test", p(&file), p(&trace)]);
     assert_eq!(code, 0, "{stdout}{stderr}");
 }
+
+/// `WRITER` with a field whose Enter fires `Save`, the event of the button (docs/controls.md section 3).
+fn with_field(extra: &str) -> String {
+    WRITER
+        .replace(
+            "state sent: Int = 0;",
+            "state sent: Int = 0;\n    state note: String = \"\";\n    state locked: Bool = false;",
+        )
+        .replace("    view {", "    on Edit(v) { note = v; }\n    view {")
+        .replace(
+            "            Text { \"{sent}\" }",
+            &format!(
+                "            TextField {{ label: \"Note\" value: note on: Edit {extra} }}\n            Text {{ \"{{sent}}\" }}"
+            ),
+        )
+}
+
+#[test]
+fn submit_is_a_keydown_listener_guarded_by_the_disabled_buttons_of_the_event() {
+    let js = built(&with_field("submit: Save"), "submit");
+    assert!(
+        js.contains("addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing && !e.repeat)"),
+        "{js}"
+    );
+    assert!(
+        js.contains("Save: function () { return !!__state_sending; },"),
+        "{js}"
+    );
+    assert!(
+        js.contains("if (!(__submit_blocked.Save && __submit_blocked.Save())) { __on_Save(); }")
+    );
+    // a program with no `submit:` carries no table and no listener
+    let plain = built(WRITER, "nosubmit");
+    assert!(
+        !plain.contains("__submit_blocked") && !plain.contains("'keydown'"),
+        "{plain}"
+    );
+}
+
+#[test]
+fn submit_is_refused_where_it_means_nothing() {
+    let on_button = WRITER.replace("disabled: sending", "submit: Save");
+    assert_eq!(codes(&on_button, "submitbutton.cui"), ["binding-unknown"]);
+    let unknown = with_field("submit: Nothing");
+    assert_eq!(
+        codes(&unknown, "submitunknown.cui"),
+        ["submit-event-invalid"]
+    );
+    let params = with_field("submit: Edit");
+    assert_eq!(codes(&params, "submitparams.cui"), ["submit-event-invalid"]);
+}
+
+#[test]
+fn enter_is_closed_while_the_button_of_the_event_is_disabled() {
+    let src = with_field("submit: Save");
+    let file = scratch("enter.cui", &src);
+    let trace = scratch(
+        "enter.trace.json",
+        r#"{"schema":"cancho-ui-trace","version":"0.1.0","component":"Writer","steps":[
+            {"event":"Save","expect":{"outcome":"suspended","pending":[1]},"state":{"sending":true}},
+            {"event":"Save","expect":{"outcome":"disabled","pending":[1]}},
+            {"resolve":1,"with":{"Ok":"{\"status\":201,\"body\":\"\"}"},"state":{"sending":false,"sent":1}},
+            {"event":"Save","expect":{"outcome":"suspended","pending":[2]}}]}"#,
+    );
+    let (code, stdout, stderr) = run(&["test", p(&file), p(&trace)]);
+    assert_eq!(code, 0, "{stdout}{stderr}");
+}
+
+#[test]
+fn an_event_only_a_field_fires_is_closed_when_the_field_is_disabled() {
+    let src = "component F {\n    state n: Int = 0;\n    state locked: Bool = true;\n    state note: String = \"\";\n    on Go { n = n + 1; }\n    on Edit(v) { note = v; }\n    view { Column { TextField { label: \"Note\" value: note on: Edit submit: Go disabled: locked } Text { \"{n}\" } } }\n}\n";
+    let file = scratch("fieldonly.cui", src);
+    let trace = scratch(
+        "fieldonly.trace.json",
+        r#"{"schema":"cancho-ui-trace","version":"0.1.0","component":"F","steps":[
+            {"event":"Go","expect":{"outcome":"disabled"},"state":{"n":0}}]}"#,
+    );
+    let (code, stdout, stderr) = run(&["test", p(&file), p(&trace)]);
+    assert_eq!(code, 0, "{stdout}{stderr}");
+}
