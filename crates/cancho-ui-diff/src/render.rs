@@ -121,6 +121,10 @@ fn binding(b: &IrBinding) -> String {
     let v = match &b.value {
         IrBindingValue::String(s) => format!("{s:?}"),
         IrBindingValue::EventRef(e) => e.clone(),
+        IrBindingValue::EventCall { name, args } => {
+            let args: Vec<String> = args.iter().map(expr).collect();
+            format!("{name}({})", args.join(", "))
+        }
         IrBindingValue::Role(r) => role(r),
         IrBindingValue::StateRef(s) => s.clone(),
         IrBindingValue::Const { expr: e, .. } => expr(e),
@@ -147,6 +151,9 @@ pub fn view_descriptors(node: &IrViewNode, out: &mut Vec<String>) {
             }
             if let Some(l) = &accessibility.label {
                 d.push_str(&format!(" label={l:?}"));
+            }
+            if let Some(l) = &accessibility.label_expr {
+                d.push_str(&format!(" label={}", expr(l)));
             }
             let mut bs: Vec<String> = bindings.iter().map(binding).collect();
             bs.sort();

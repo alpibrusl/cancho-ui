@@ -327,8 +327,23 @@ pub(crate) fn emit_view_node(
                 ));
             }
 
+            // A label that is an expression (docs/row-actions.md): evaluated once per render, here, so the accessible
+            // name and a button's visible text are the same string.
+            let label_var = format!("{var}_label");
+            if let Some(e) = &accessibility.label_expr {
+                out.push_str(&format!(
+                    "{0}const {1} = String({2});\n{0}{3}.setAttribute('aria-label', {1});\n",
+                    indent,
+                    label_var,
+                    emit_expr_runtime(e, params),
+                    var
+                ));
+            }
+
             // Apply bindings.
             let mut click_handler: Option<String> = None;
+            // `on: Pick(m)`: the event and the names of the constants holding its arguments, evaluated at render time.
+            let mut click_call: Option<(String, Vec<String>)> = None;
             let mut input_handler: Option<String> = None;
             let mut submit_handler: Option<String> = None;
             let mut input_value: Option<String> = None;
@@ -423,6 +438,22 @@ pub(crate) fn emit_view_node(
                             ));
                         }
                     }
+                    IrBindingValue::EventCall { name, args } => {
+                        // Only a Button gets here (`event-args-unsupported` keeps it off everything else). Each
+                        // argument is a constant of this render, so a row's click names the row it was drawn for.
+                        let mut names = Vec::with_capacity(args.len());
+                        for (i, a) in args.iter().enumerate() {
+                            let arg = format!("{var}_arg{i}");
+                            out.push_str(&format!(
+                                "{0}const {1} = {2};\n",
+                                indent,
+                                arg,
+                                emit_expr_runtime(a, params)
+                            ));
+                            names.push(arg);
+                        }
+                        click_call = Some((name.clone(), names));
+                    }
                     IrBindingValue::StateRef(name) if b.key == "disabled" => {
                         // `disabled: sending`: read from the Bool state field on every render.
                         out.push_str(&format!(
@@ -502,7 +533,15 @@ pub(crate) fn emit_view_node(
                         None
                     }
                 });
-                if let Some(ref label) = visible_label {
+                if accessibility.label_expr.is_some()
+                    && matches!(kind, IrElementKind::Button)
+                    && children.is_empty()
+                {
+                    out.push_str(&format!(
+                        "{0}{1}.appendChild(document.createTextNode({2}));\n",
+                        indent, var, label_var
+                    ));
+                } else if let Some(ref label) = visible_label {
                     out.push_str(&format!(
                         "{0}{1}.appendChild(document.createTextNode({2}));\n",
                         indent,
@@ -553,6 +592,15 @@ pub(crate) fn emit_view_node(
                 out.push_str(&format!(
                     "{0}{1}.addEventListener('click', __on_{2});\n",
                     indent, var, event_name
+                ));
+            }
+            if let Some((event_name, arg_names)) = click_call {
+                out.push_str(&format!(
+                    "{0}{1}.addEventListener('click', function () {{ __on_{2}({3}); }});\n",
+                    indent,
+                    var,
+                    event_name,
+                    arg_names.join(", ")
                 ));
             }
             if let Some(event_name) = submit_handler {

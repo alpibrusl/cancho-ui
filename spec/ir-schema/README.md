@@ -407,3 +407,11 @@ The Phase 1 delta is small and explicit:
 Anything else is Phase 2+. The IR schema is the contract the
 backend meets; the schema is not modified by Phase 1 except to
 fix what Phase 1 itself finds broken.
+
+---
+
+## Addendum: row actions (issue #41, `docs/row-actions.md`)
+
+Two additive shapes, no version bump (as the other additive tiers): an element's `accessibility` has a `label_expr` (an
+expression node) **only** when its label is an expression, and a binding value can be `{"event": "Pick", "args": [expr...]}`
+(`on: Pick(a, b)`) beside the plain event name. A program that uses neither has the IR it had.

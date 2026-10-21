@@ -22,7 +22,7 @@ A machine list for a plant-floor operator, 23 machines in the stand-in service.
 It asks for exactly two capabilities, `Network` and `NetworkWrite`; either alone is `capability-missing`.
 
 Checked three ways: `cargo test` (`tests/ops_console.rs`: the program checks, its trace passes and a wrong expectation
-fails, neither capability is spare, the built page carries every helper it calls), a replay trace with 37 steps and 56
+fails, neither capability is spare, the built page carries every helper it calls), a replay trace with 38 steps and 57
 checks (`examples/ops-console/ops-console.trace.json`), and **the built page in Chromium** against a stand-in service
 (`scripts/check-ops-console.js`, `scripts/ops-console-server.js`: 52 checks, six screenshots).
 
@@ -105,6 +105,12 @@ is wrong for names with accents, which is most of Europe. It needs a decided pol
 an event name with no argument. So a row cannot be clicked to select the machine; the operator types the id. The click
 would be the natural interface.
 
+**Fixed** (`docs/row-actions.md`): `label:` takes an expression and `on: Pick(m)` passes arguments, evaluated at render time.
+Every row on the page now has a `Select M-xxx` button that fills the machine id (`scripts/check-ops-console.js`; the trace
+has a `Pick` step, 38 steps). Measured with 100 and 1000 rows: no event delegation needed. Found on the way: a bare `on:`
+on a button used to hand the DOM event to a handler with parameters, and an unknown event compiled and killed the page;
+both are refused now.
+
 ### 2.8 No numeric builtins. Issue #43
 
 No `min`, `max`, `floor`, `ceil`, `abs`: a page count needs `ceil`, so the page showed "page 4" and not "page 5 of 5".
@@ -115,7 +121,7 @@ No `min`, `max`, `floor`, `ceil`, `abs`: a page count needs `ceil`, so the page 
 `max`. The refresh that lands beyond the new last page still returns to page 1 (that line is unchanged: clamping to the
 last page would be a behaviour change this issue does not make). Four deliberate breaks of the page (Next not clamped,
 `floor` for `ceil`, Previous not clamped, the page count without `max(.., 1)`): the browser script fails on all four
-(2, 13, 1 and 1 checks); the 37-step trace fails on the first three (3, 4 and 1 failures) and **passes the fourth**,
+(2, 13, 1 and 1 checks); the 38-step trace fails on the first three (3, 4 and 1 failures) and **passes the fourth**,
 because no step ends on an empty list, so only the browser script covers an empty list's "page 1 of 1".
 
 ### 2.9 Layout and presentation. Issue #42
@@ -153,7 +159,7 @@ A state that holds a list of JSON lines made one step of the report a screenful.
 rendering has no limit on a value.
 
 **Fixed** (`docs/replay.md` section 7): the human report cuts a value on a step line to 120 characters and says its
-length; `--full` prints it whole; a failure and the JSON report are never cut. On this page's 37-step trace the report
+length; `--full` prints it whole; a failure and the JSON report are never cut. On this page's 38-step trace the report
 went from 15,771 to 8,417 bytes and the longest line from 3,666 to 984 characters.
 
 ## 3. What worked the first time
@@ -164,7 +170,7 @@ went from 15,771 to 8,417 bytes and the longest line from 3,666 to 984 character
 * CRLF line endings, a slow request superseded by a refresh (the service sees the connection close), a hidden page
   (no polls, one catch-up refresh), typing across a refresh that lands in the middle (text and focus survive), a
   409, a 503, a 400, the service down: all as designed.
-* The 37-step trace passes and, with each of seven deliberate breaks of the program (sentinel, page clamps, line filter,
+* The 38-step trace passes and, with each of seven deliberate breaks of the program (sentinel, page clamps, line filter,
   id and validity filters, case-insensitive search, direction), **fails**; the browser script fails on each too.
 
 ## 4. Checks, and how they were made to fail

@@ -394,6 +394,8 @@ impl IrElementKind {
 pub struct IrAccessibility {
     pub role: Option<IrRole>,
     pub label: Option<String>,
+    /// A label that is an expression (docs/row-actions.md); `label` is `None` then.
+    pub label_expr: Option<Box<IrExpr>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -415,6 +417,11 @@ pub struct IrBinding {
 pub enum IrBindingValue {
     String(String),
     EventRef(String),
+    /// `on: Pick(m)`: the event and the arguments it is given, evaluated at render time (docs/row-actions.md).
+    EventCall {
+        name: String,
+        args: Vec<IrExpr>,
+    },
     Role(IrRole),
     /// `value: <state-field>` — a one-way binding to a state field.
     /// Tier 5: used for `TextField` so the value reflects the

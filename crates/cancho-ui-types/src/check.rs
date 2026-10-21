@@ -468,7 +468,10 @@ fn check_instances(
                             span: *span,
                         });
                     }
-                    if accessibility.role.is_some() || accessibility.label.is_some() {
+                    if accessibility.role.is_some()
+                        || accessibility.label.is_some()
+                        || accessibility.label_expr.is_some()
+                    {
                         return Err(TypeError::InstanceTakesAccessibility {
                             name: name.clone(),
                             span: *span,
@@ -491,7 +494,9 @@ fn check_instances(
                             // `role:` binding value is the same
                             // category (the instance carries no
                             // role of its own).
-                            BindingValue::EventRef(_) | BindingValue::Role(_) => {
+                            BindingValue::EventRef(_)
+                            | BindingValue::EventCall { .. }
+                            | BindingValue::Role(_) => {
                                 return Err(TypeError::InstanceTakesBindings {
                                     name: name.clone(),
                                     span: b.span,

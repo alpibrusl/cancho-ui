@@ -518,9 +518,13 @@ impl Serialize for IrElementKind {
 impl Serialize for IrAccessibility {
     fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
-        let mut s = ser.serialize_struct("IrAccessibility", 2)?;
+        let mut s = ser.serialize_struct("IrAccessibility", 3)?;
         s.serialize_field("role", &self.role)?;
         s.serialize_field("label", &self.label)?;
+        // Only a label that is an expression has this key, so the IR of a program with literal labels is unchanged.
+        if let Some(e) = &self.label_expr {
+            s.serialize_field("label_expr", e)?;
+        }
         s.end()
     }
 }
@@ -553,6 +557,13 @@ impl Serialize for IrBindingValue {
         match self {
             IrBindingValue::String(s) => ser.serialize_str(s),
             IrBindingValue::EventRef(s) => ser.serialize_str(s),
+            IrBindingValue::EventCall { name, args } => {
+                use serde::ser::SerializeStruct;
+                let mut s = ser.serialize_struct("IrBindingValue::EventCall", 2)?;
+                s.serialize_field("event", name)?;
+                s.serialize_field("args", args)?;
+                s.end()
+            }
             IrBindingValue::Role(r) => r.serialize(ser),
             IrBindingValue::StateRef(s) => ser.serialize_str(s),
             IrBindingValue::Const { expr, span } => {
