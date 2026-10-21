@@ -174,8 +174,37 @@ fn compact(j: &Json) -> String {
     serde_json::to_string(j).unwrap_or_else(|_| "?".into())
 }
 
-/// The line-per-step form (docs/replay.md §7).
+/// A value printed on a step line is cut to this many characters unless the
+/// caller asks for the whole report (docs/replay.md §7, `--full`).
+pub const HUMAN_VALUE_BOUND: usize = 120;
+
+/// `compact`, bounded: past `bound` characters the value is cut and the
+/// full length is said, so a step with a large list stays one readable line.
+/// Counts characters, never bytes, so a multi-byte character is never split.
+fn shown(j: &Json, bound: Option<usize>) -> String {
+    let full = compact(j);
+    let Some(bound) = bound else { return full };
+    let len = full.chars().count();
+    if len <= bound {
+        return full;
+    }
+    let head: String = full.chars().take(bound).collect();
+    format!("{head}\u{2026}({len} chars)")
+}
+
+/// The line-per-step form (docs/replay.md §7). A value on a step line is
+/// bounded to [`HUMAN_VALUE_BOUND`] characters; a failure prints expected and
+/// actual in full.
 pub fn render_human(r: &TestReport) -> String {
+    render_human_bounded(r, Some(HUMAN_VALUE_BOUND))
+}
+
+/// The same report with every value in full (`cancho-ui test --full`).
+pub fn render_human_full(r: &TestReport) -> String {
+    render_human_bounded(r, None)
+}
+
+fn render_human_bounded(r: &TestReport, bound: Option<usize>) -> String {
     let mut out = String::new();
     out.push_str(&format!("cancho-ui test {} {}\n", r.file, r.trace));
     match &r.component {
@@ -193,7 +222,7 @@ pub fn render_human(r: &TestReport) -> String {
                     .detail
                     .get("params")
                     .and_then(Json::as_array)
-                    .map(|a| a.iter().map(compact).collect())
+                    .map(|a| a.iter().map(|p| shown(p, bound)).collect())
                     .unwrap_or_default();
                 format!(
                     "event {}({})",
@@ -214,11 +243,11 @@ pub fn render_human(r: &TestReport) -> String {
         let mut detail: Vec<String> = Vec::new();
         for w in &s.writes {
             if let Some(v) = s.state.get(&w.field) {
-                detail.push(format!("{}={}", w.field, compact(v)));
+                detail.push(format!("{}={}", w.field, shown(v, bound)));
             }
         }
         for i in &s.issued {
-            let args: Vec<String> = i.args.iter().map(compact).collect();
+            let args: Vec<String> = i.args.iter().map(|a| shown(a, bound)).collect();
             detail.push(match &i.credential {
                 Some(c) => format!(
                     "issued #{} {}({}) [credential {c}]",

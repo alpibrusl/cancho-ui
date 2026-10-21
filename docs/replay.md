@@ -9,7 +9,7 @@
 > what that does and does not buy.
 
 ```sh
-cancho-ui test <file.cui> <trace.json> [--output json]
+cancho-ui test <file.cui> <trace.json> [--output json] [--full]
 ```
 
 The question it answers: *given this exact sequence of events, responses and
@@ -318,6 +318,14 @@ PASS  6 steps, 21 checks
 (The `r=` and `results=` values are elided here; the command prints them.) Each
 line shows the fields the step wrote, the requests it started, and what each
 resumed `await` received.
+
+A value on a step line (a written field, an event parameter, a request argument) is cut to
+120 characters, counted as characters and never bytes, and says its full length:
+`rows="...…(2314 chars)`. `--full` prints every value whole. The cut is for the step lines
+only: a failure prints `expected` and `actual` in full, and `--output json` is never cut
+(issue #45). Measured on `examples/ops-console` (37 steps): the report is 15,771 bytes with
+`--full` and 8,417 bytes cut, and the longest line goes from 3,666 to 984 characters (a
+step that writes several fields still has several values, each bounded).
 
 `--output json` prints one object (the shape is part of the contract; keys are
 sorted):

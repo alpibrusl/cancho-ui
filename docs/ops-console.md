@@ -144,6 +144,10 @@ both directions) and the trace and the browser now agree, including a record wit
 A state that holds a list of JSON lines made one step of the report a screenful. The JSON report is fine; the human
 rendering has no limit on a value.
 
+**Fixed** (`docs/replay.md` section 7): the human report cuts a value on a step line to 120 characters and says its
+length; `--full` prints it whole; a failure and the JSON report are never cut. On this page's 37-step trace the report
+went from 15,771 to 8,417 bytes and the longest line from 3,666 to 984 characters.
+
 ## 3. What worked the first time
 
 * The whole page, all eight features, **checked on the first try** and the first browser run passed. The builtins compose.
