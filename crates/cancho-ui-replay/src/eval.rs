@@ -535,6 +535,24 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                 )),
             }
         }
+        ("min" | "max" | "abs" | "floor" | "ceil" | "round", n) if math_arity(&name) == Some(n) => {
+            let mut nums = Vec::with_capacity(n);
+            for a in args {
+                match eval(ctx, a)? {
+                    Value::Num(x) => nums.push(x),
+                    other => {
+                        return Err(fault(
+                            "replay-type-error",
+                            format!("`{name}` needs numbers, got {}", describe(&other)),
+                            span,
+                        ));
+                    }
+                }
+            }
+            Ok(Value::Num(
+                math_builtin(&name, &nums).expect("the arity was checked"),
+            ))
+        }
         ("lines" | "trim" | "upper" | "split" | "join" | "starts_with" | "ends_with", n)
             if text_builtin_arity(&name) == Some(n) =>
         {
@@ -621,8 +639,9 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
         (
             "clock.now" | "net.search" | "net.get" | "net.fetch" | "net.post" | "location.current"
             | "sleep" | "storage.get" | "storage.set" | "json.get" | "json.items" | "json.quote"
-            | "reverse" | "contains" | "lower" | "num" | "take" | "skip" | "lines" | "split"
-            | "join" | "trim" | "upper" | "starts_with" | "ends_with",
+            | "reverse" | "contains" | "lower" | "num" | "take" | "skip" | "min" | "max" | "abs"
+            | "floor" | "ceil" | "round" | "lines" | "split" | "join" | "trim" | "upper"
+            | "starts_with" | "ends_with",
             n,
         ) => Err(fault(
             "replay-type-error",
@@ -653,6 +672,60 @@ pub fn page_count(n: f64, len: usize) -> usize {
     } else {
         k as usize
     }
+}
+
+fn math_arity(name: &str) -> Option<usize> {
+    match name {
+        "min" | "max" => Some(2),
+        "abs" | "floor" | "ceil" | "round" => Some(1),
+        _ => None,
+    }
+}
+
+/// `min`, `max`, `abs`, `floor`, `ceil` and `round` (docs/lists.md section 8): the model of the emitted helpers, which are
+/// `Math.*` of the same numbers. `None` for an unknown name or the wrong number of arguments. NaN and the sign of zero
+/// are modelled as JavaScript has them (`Math.max(0, -0)` is `0`, `Math.min(0, -0)` is `-0`, either NaN gives NaN,
+/// `Math.round(-0.4)` is `-0`), which `f64::min` and `f64::max` do not promise; `tests/math_corpus.json` is checked
+/// against both, comparing bits.
+pub fn math_builtin(name: &str, a: &[f64]) -> Option<f64> {
+    if math_arity(name)? != a.len() {
+        return None;
+    }
+    Some(match name {
+        "min" | "max" => {
+            let (x, y) = (a[0], a[1]);
+            if x.is_nan() || y.is_nan() {
+                f64::NAN
+            } else if x == y {
+                // Equal, so only zeros differ: the sign decides, negative is the smaller.
+                let neg = x.is_sign_negative() || y.is_sign_negative();
+                let pos = x.is_sign_positive() || y.is_sign_positive();
+                if name == "min" && neg || name == "max" && !pos {
+                    -x.abs()
+                } else {
+                    x.abs()
+                }
+            } else if (x < y) == (name == "min") {
+                x
+            } else {
+                y
+            }
+        }
+        "abs" => a[0].abs(),
+        "floor" => a[0].floor(),
+        "ceil" => a[0].ceil(),
+        _ => {
+            // round: halves toward +Infinity; exact, since x - floor(x) is exact for a double below 2^52.
+            let x = a[0];
+            if !x.is_finite() || x == 0.0 {
+                x
+            } else {
+                let f = x.floor();
+                let r = if x - f >= 0.5 { f + 1.0 } else { f };
+                if r == 0.0 && x < 0.0 { -0.0 } else { r }
+            }
+        }
+    })
 }
 
 /// The most elements `lines` and `split` return (docs/lists.md section 7.1).

@@ -43,9 +43,9 @@ change because it is small and the rest are design decisions.
 There is no `if`, no `&&`, `||` or `!`, no literal patterns (`pattern-literal-unsupported`, #26), and `match` is only over
 `Result` and `Option`. Everything the page branches on is arithmetic on lists:
 
-* **Next without running off the end:** `page = page + len(take(skip(shown, (page + 1) * 5), 1))` adds 1 only if the next
-  page has an element.
-* **Previous without going below 0:** `page = page - len(take(["x"], page))`.
+* **Next without running off the end:** was `page = page + len(take(skip(shown, (page + 1) * 5), 1))`; since #43 it is
+  `page = min(page + 1, pages - 1)`.
+* **Previous without going below 0:** was `page = page - len(take(["x"], page))`; since #43, `page = max(page - 1, 0)`.
 * **Clamp after the list shrinks:** `page = page * len(take(skip(shown, page * 5), 1))` (0 if the page is empty).
 * **"Is this text a number?"**: `num(setpoint, 1) == num(setpoint, 2)` (the two defaults differ, so they only agree when the
   text parsed).
@@ -107,8 +107,16 @@ would be the natural interface.
 
 ### 2.8 No numeric builtins. Issue #43
 
-No `min`, `max`, `floor`, `ceil`, `abs`: a page count needs `ceil`, so the page shows "page 4" and not "page 5 of 5".
-(Since 2.1 a call to one is refused with a message that says so.)
+No `min`, `max`, `floor`, `ceil`, `abs`: a page count needs `ceil`, so the page showed "page 4" and not "page 5 of 5".
+(Since 2.1 a call to one was refused with a message that said so.)
+
+**Fixed** (`docs/lists.md` section 8): `min`, `max`, `abs`, `floor`, `ceil` and `round`. The page now says
+`23 of 23 machines, page 1 of 5`, from `pages = max(ceil(len(shown) / 5), 1)`; Next and Previous clamp with `min` and
+`max`. The refresh that lands beyond the new last page still returns to page 1 (that line is unchanged: clamping to the
+last page would be a behaviour change this issue does not make). Four deliberate breaks of the page (Next not clamped,
+`floor` for `ceil`, Previous not clamped, the page count without `max(.., 1)`): the browser script fails on all four
+(2, 13, 1 and 1 checks); the 37-step trace fails on the first three (3, 4 and 1 failures) and **passes the fourth**,
+because no step ends on an empty list, so only the browser script covers an empty list's "page 1 of 1".
 
 ### 2.9 Layout and presentation. Issue #42
 

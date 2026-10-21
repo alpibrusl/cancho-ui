@@ -42,10 +42,9 @@ fn program(stmt: &str) -> String {
 #[test]
 fn a_function_the_language_does_not_have_is_refused_with_its_tag_and_a_span() {
     for (i, stmt) in [
-        "n = max(n, 1);",
-        "n = min(n, 1);",
-        "n = floor(n / 2);",
-        "n = abs(n);",
+        "n = sqrt(n);",
+        "n = pow(n, 2);",
+        "n = trunc(n / 2);",
         "n = frobnicate(n);",
         "s = lowercase(s);",
         "s = contians(s, \"a\");",
@@ -74,7 +73,7 @@ fn a_function_the_language_does_not_have_is_refused_with_its_tag_and_a_span() {
 
 #[test]
 fn building_it_writes_nothing() {
-    let file = scratch("build.cui", &program("n = max(n, 1);"));
+    let file = scratch("build.cui", &program("n = sqrt(n);"));
     let out = std::env::temp_dir().join(format!(
         "cancho-ui-call-unknown-{}/build.js",
         std::process::id()
@@ -103,6 +102,12 @@ fn every_call_the_emitters_know_is_still_accepted() {
         "s = upper(s);",
         "s = lower(s);",
         "n = num(s, 0);",
+        "n = max(n, 1);",
+        "n = min(n, 1);",
+        "n = floor(n / 2);",
+        "n = ceil(n / 2);",
+        "n = round(n / 2);",
+        "n = abs(n);",
         "n = len(filter(l, x => contains(x, s)));",
         "n = len(filter(l, x => starts_with(x, s)));",
         "n = len(filter(l, x => ends_with(x, s)));",

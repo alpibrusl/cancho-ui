@@ -16,6 +16,7 @@ component OpsConsole {
     state q: String = "";
     state dir: Int = 1;
     state page: Int = 0;
+    state pages: Int = 1;
     state note: String = "not loaded";
     state last: String = "";
     state r: Result[String, String] = Ok("");
@@ -45,6 +46,7 @@ component OpsConsole {
         storage.set("machines", last);
         rows = filter(lines(last), x => len(json.get(x, "id", "")) > 0);
         shown = sort(filter(rows, x => contains(lower(json.get(x, "name", "")), lower(q))), x => dir * num(json.get(x, "temp", ""), dir * 1000000000));
+        pages = max(ceil(len(shown) / 5), 1);
         page = page * len(take(skip(shown, page * 5), 1));
         paged = take(skip(shown, page * 5), 5);
     }
@@ -53,6 +55,7 @@ component OpsConsole {
         q = v;
         page = 0;
         shown = sort(filter(rows, x => contains(lower(json.get(x, "name", "")), lower(q))), x => dir * num(json.get(x, "temp", ""), dir * 1000000000));
+        pages = max(ceil(len(shown) / 5), 1);
         paged = take(skip(shown, page * 5), 5);
     }
 
@@ -60,16 +63,17 @@ component OpsConsole {
         dir = 0 - dir;
         page = 0;
         shown = sort(filter(rows, x => contains(lower(json.get(x, "name", "")), lower(q))), x => dir * num(json.get(x, "temp", ""), dir * 1000000000));
+        pages = max(ceil(len(shown) / 5), 1);
         paged = take(skip(shown, page * 5), 5);
     }
 
     on Next {
-        page = page + len(take(skip(shown, (page + 1) * 5), 1));
+        page = min(page + 1, pages - 1);
         paged = take(skip(shown, page * 5), 5);
     }
 
     on Prev {
-        page = page - len(take(["x"], page));
+        page = max(page - 1, 0);
         paged = take(skip(shown, page * 5), 5);
     }
 
@@ -95,7 +99,7 @@ component OpsConsole {
             Button { label: "Refresh" on: Refresh }
             TextField { label: "Search by name" placeholder: "Search by name" value: q on: Query }
             Button { label: "Sort by temperature, other direction" on: Flip }
-            Text { "{len(shown)} of {len(rows)} machines, page {page}" }
+            Text { "{len(shown)} of {len(rows)} machines, page {page + 1} of {pages}" }
             Text { "id  name  state  temperature (C)" }
             For {
                 over: paged

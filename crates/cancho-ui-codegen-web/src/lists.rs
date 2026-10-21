@@ -62,6 +62,19 @@ function __cui_take(list, n) { return list.slice(0, __cui_page_count(n)); }
 function __cui_skip(list, n) { return list.slice(__cui_page_count(n)); }
 ";
 
+const MATH_JS: &str = "\
+// Builtins: min, max, abs, floor, ceil, round (docs/lists.md section 8). Math.* of numbers; anything that is not a number
+// counts as NaN, so a string is never coerced. min and max answer NaN when either is NaN; max(0, -0) is 0 and min(0, -0) is -0.
+// round is Math.round: halves go toward +Infinity (round(-2.5) is -2) and a result of zero keeps the sign of its argument.
+function __cui_num_arg(n) { return typeof n === \"number\" ? n : NaN; }
+function __cui_min(a, b) { return Math.min(__cui_num_arg(a), __cui_num_arg(b)); }
+function __cui_max(a, b) { return Math.max(__cui_num_arg(a), __cui_num_arg(b)); }
+function __cui_abs(n) { return Math.abs(__cui_num_arg(n)); }
+function __cui_floor(n) { return Math.floor(__cui_num_arg(n)); }
+function __cui_ceil(n) { return Math.ceil(__cui_num_arg(n)); }
+function __cui_round(n) { return Math.round(__cui_num_arg(n)); }
+";
+
 const TEXT_JS: &str = "\
 // Builtins: lines, split, join, trim, upper, starts_with, ends_with (docs/lists.md section 7). Pure and total. lines and
 // split return at most 10000 elements (the rest is dropped); an empty separator does not split; trim and upper are ASCII only.
@@ -105,6 +118,17 @@ pub fn helpers_used(emitted: &str) -> String {
         (&["__cui_num("][..], NUM_JS),
         (&["__cui_json_quote("][..], JSON_QUOTE_JS),
         (&["__cui_take(", "__cui_skip("][..], PAGING_JS),
+        (
+            &[
+                "__cui_min(",
+                "__cui_max(",
+                "__cui_abs(",
+                "__cui_floor(",
+                "__cui_ceil(",
+                "__cui_round(",
+            ][..],
+            MATH_JS,
+        ),
         (
             &[
                 "__cui_lines(",

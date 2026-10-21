@@ -1,4 +1,4 @@
-# Lists and text: `sort`, `reverse`, `contains`, `lower`, `num`, `take`, `skip`, and the text builtins (section 7)
+# Lists and text: `sort`, `reverse`, `contains`, `lower`, `num`, `take`, `skip`, the text builtins (section 7) and the number builtins (section 8)
 
 > **Status: built (written before the code; measured in section 4).** The third item of the ui order that helps
 > `cancho-industrial`: a console shows rows, and a person filters and orders them. `filter`, `map` and `len`
@@ -202,3 +202,38 @@ checked program has, the two are the same).
 `replace`, `substring`/`slice` of a text, `index_of`, `lower`'s partner `capitalize`, a locale, `lines` on a bound the program
 chooses, and reporting that a bound cut the answer. Chromium only.
 
+## 8. Numbers: `min`, `max`, `abs`, `floor`, `ceil`, `round`
+
+> **Status: built (issue #43, found building `examples/ops-console`).** A page count needs `ceil`; the console showed
+> "page 4" and not "page 5 of 5".
+
+```
+min(a, b), max(a, b)  -> the smaller, the larger
+abs(n)                -> the magnitude
+floor(n), ceil(n)     -> toward -Infinity, toward +Infinity
+round(n)              -> the nearest integer; a half goes toward +Infinity
+```
+
+Pure, no capability, an authority of nothing. The emitted helpers are `Math.min`, `Math.max`, `Math.abs`, `Math.floor`,
+`Math.ceil` and `Math.round` of their arguments, and replay's `math_builtin` is their model, so the two agree on what
+`f64::min`, `f64::max` and `f64::round` do not promise:
+
+* **NaN:** `min` and `max` answer NaN when either argument is NaN (Rust's `f64::min` would answer the other one).
+* **The sign of zero:** `max(0, -0)` is `0`, `min(0, -0)` is `-0`, `abs(-0)` is `0`, `ceil(-0.5)` and `round(-0.4)` are
+  `-0`.
+* **`round` takes halves toward +Infinity:** `round(2.5)` is `3`, `round(-2.5)` is `-2`, `round(-3.5)` is `-3` (Rust's
+  `f64::round` says `-3` and `-4`), and the largest double below one half rounds to `0` (the textbook `floor(x + 0.5)`
+  says `1`).
+* **Not a number is not coerced:** the emitted helper turns anything that is not a number into NaN (`min("1", 2)` is NaN,
+  not `1`); replay refuses it as `replay-type-error`, the way it refuses `take(list, "1")`.
+* **Wrong argument count:** `builtin-shape-mismatch`, with the form (`min(a, b)`, `abs(n)`).
+* **Not a way round `replay-non-finite`:** `ceil(m / 0)` still faults in replay, because `m / 0` does first
+  (`docs/conditionals.md` section 5).
+
+Checked: `tests/math_corpus.json` (64 cases: both argument orders, NaN on either side, both zeros, both infinities, halves
+either side of zero, the double below a half, the edge of the exact range at 2^52, 1e300) against the model by
+`cargo test` (comparing bits) and against the emitted JavaScript in Chromium by `scripts/check-lists.js` (comparing with
+`Object.is`); a trace that counts pages; the page of `scripts/check-lists.js`; the ops console. Eleven deliberate breaks
+of the model, the emitter and the lowering (round as `floor(x + 0.5)`, round as `f64::round`, `min` through `f64::min`,
+`max` keeping `-0`, `round` losing the sign of zero, `round` not emitted, `min` of arity one; in the emitted JavaScript
+`round` as `floor(n + 0.5)`, no coercion guard, `ceil` as `floor`, `max` as `min`) each fail at least one check.
