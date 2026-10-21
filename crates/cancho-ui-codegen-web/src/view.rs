@@ -266,7 +266,7 @@ pub(crate) fn emit_view_node(
                         .map(|(k, v)| format!("{0}: {1}", k, emit_expr_runtime(v, params)))
                         .collect();
                     out.push_str(&format!(
-                        "{0}    {1}.inst = mount_{2}({1}.el, {{{3}}});\n",
+                        "{0}    /*CUI_SETCREDS*/{1}.inst = mount_{2}({1}.el, {{{3}}});\n",
                         indent,
                         slot_var,
                         inst_name,
@@ -274,7 +274,7 @@ pub(crate) fn emit_view_node(
                     ));
                 } else {
                     out.push_str(&format!(
-                        "{0}    {1}.inst = mount_{2}({1}.el);\n",
+                        "{0}    /*CUI_SETCREDS*/{1}.inst = mount_{2}({1}.el);\n",
                         indent, slot_var, inst_name
                     ));
                 }

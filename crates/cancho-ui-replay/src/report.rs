@@ -82,6 +82,10 @@ pub struct IssuedJson {
     pub args: Vec<Json>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub due: Option<Json>,
+    /// The credential the request carries, by name (never its value), when its component declares one;
+    /// `name (not supplied)` when the trace does not list it (docs/adapters.md section 18).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub credential: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -215,12 +219,15 @@ pub fn render_human(r: &TestReport) -> String {
         }
         for i in &s.issued {
             let args: Vec<String> = i.args.iter().map(compact).collect();
-            detail.push(format!(
-                "issued #{} {}({})",
-                i.request,
-                i.effect,
-                args.join(", ")
-            ));
+            detail.push(match &i.credential {
+                Some(c) => format!(
+                    "issued #{} {}({}) [credential {c}]",
+                    i.request,
+                    i.effect,
+                    args.join(", ")
+                ),
+                None => format!("issued #{} {}({})", i.request, i.effect, args.join(", ")),
+            });
         }
         for f in &s.fired {
             detail.push(format!("#{} -> {}", f.request, f.delivered));

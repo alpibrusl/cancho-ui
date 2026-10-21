@@ -120,6 +120,15 @@ pub fn replay(ir: &IrFile, trace_text: &str, file: &str, trace_name: &str) -> Te
     run_trace(comp, &trace, file, trace_name)
 }
 
+/// The name of the `Credential` the component declares, if it does (docs/adapters.md section 18).
+fn credential_name(comp: &IrComponent) -> Option<&str> {
+    comp.requires
+        .iter()
+        .find(|r| r.name == "Credential")
+        .and_then(|r| r.bounds.first())
+        .map(String::as_str)
+}
+
 fn state_json(m: &Machine) -> BTreeMap<String, Json> {
     m.state
         .iter()
@@ -146,6 +155,31 @@ fn run_trace(comp: &IrComponent, trace: &Trace, file: &str, trace_name: &str) ->
         }
     };
     machine.storage = trace.storage.clone();
+    // docs/adapters.md section 18: a trace lists only credentials the component declares.
+    let declared = credential_name(comp);
+    for given in &trace.credentials {
+        if declared != Some(given.as_str()) {
+            report.failures.push(failure(
+                "trace-credential-unknown",
+                None,
+                "credentials".into(),
+                match declared {
+                    Some(d) => format!(
+                        "the trace lists the credential `{given}`, but component `{}` declares `{d}`",
+                        comp.name
+                    ),
+                    None => format!(
+                        "the trace lists the credential `{given}`, but component `{}` declares no `Credential`",
+                        comp.name
+                    ),
+                },
+                file,
+                None,
+            ));
+            return report;
+        }
+    }
+    machine.credentials = trace.credentials.clone();
     for (i, step) in trace.steps.iter().enumerate() {
         match run_step(&mut machine, comp, step, i, file, &mut report) {
             Ok(()) => report.steps_run += 1,
@@ -359,6 +393,17 @@ fn run_step(
                 effect: r.effect.name(),
                 args: r.args.iter().map(Value::to_json).collect(),
                 due: r.due.map(num_json),
+                credential: match (credential_name(comp), r.effect) {
+                    (
+                        Some(name),
+                        value::Effect::NetGet | value::Effect::NetFetch | value::Effect::NetPost,
+                    ) => Some(if m.credentials.iter().any(|c| c == name) {
+                        name.to_string()
+                    } else {
+                        format!("{name} (not supplied)")
+                    }),
+                    _ => None,
+                },
             })
             .collect(),
         pending: m.pending(),

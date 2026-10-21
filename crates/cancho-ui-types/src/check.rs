@@ -163,6 +163,14 @@ pub enum CheckError {
         span: Span,
     },
 
+    #[error("component `{component}`: {detail}")]
+    CredentialMisuse {
+        rule: &'static str,
+        component: String,
+        detail: String,
+        span: Span,
+    },
+
     #[error(
         "component `{component}` fetches `{url}`, whose host `{host}` its `Network` does not allow; add `requires Network(\"{host}\");`"
     )]
@@ -281,6 +289,17 @@ pub fn check_file_with_externals(
             component,
             capability,
             reason,
+            span,
+        }),
+        Err(cancho_ui_ir::lower::LowerError::CredentialMisuse {
+            rule,
+            component,
+            detail,
+            span,
+        }) => Err(CheckError::CredentialMisuse {
+            rule,
+            component,
+            detail,
             span,
         }),
         Err(cancho_ui_ir::lower::LowerError::BoundViolated {

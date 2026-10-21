@@ -57,7 +57,7 @@ fn the_post_adapter_is_emitted_only_for_a_program_that_writes() {
     assert_eq!(code, 0, "{stderr}");
     let js = std::fs::read_to_string(out).expect("the built program");
     assert!(
-        js.contains("__cui_net_post(\"/api/notes\", __state_note)"),
+        js.contains("__cui_net_post(\"/api/notes\", __state_note, __cui_cred)"),
         "{js}"
     );
     assert!(js.contains("method: \"POST\""));

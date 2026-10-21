@@ -384,7 +384,7 @@ fn emit_call_runtime(path: &[String], args: &[IrExpr], params: &[&str]) -> Strin
         let rendered_args: Vec<String> =
             args.iter().map(|a| emit_expr_runtime(a, params)).collect();
         return format!(
-            "__cui_net_{}({}, __cui_net_hosts)",
+            "__cui_net_{}({}, __cui_net_hosts, __cui_cred)",
             path[1],
             rendered_args.join(", ")
         );
@@ -392,7 +392,7 @@ fn emit_call_runtime(path: &[String], args: &[IrExpr], params: &[&str]) -> Strin
     if path.len() == 2 && path[0] == "net" && path[1] == "post" {
         let rendered_args: Vec<String> =
             args.iter().map(|a| emit_expr_runtime(a, params)).collect();
-        return format!("__cui_net_post({})", rendered_args.join(", "));
+        return format!("__cui_net_post({}, __cui_cred)", rendered_args.join(", "));
     }
     if path.len() == 2 && path[0] == "net" && path[1] == "search" {
         // Tier 9: `net.search(q)` resolves to

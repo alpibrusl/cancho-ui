@@ -622,9 +622,9 @@ Safari is not tested.
 
 ## 18. Credentials: how a component sends one and still declares it
 
-> **Status: DESIGN ONLY, a decision is requested (nothing in this section is built).** Asked for by `alpibrusl/cancho-ui#17`,
-> found by the plant-floor spike in `alpibrusl/cancho-industrial#9` (`docs/ui-spike.md` there). It touches what a page may do
-> with a secret, so it is written for a maintainer to choose from, not decided here.
+> **Status: BUILT (2026-10-21), option A, with the four decisions below.** Asked for by `alpibrusl/cancho-ui#17`, found by the
+> plant-floor spike in `alpibrusl/cancho-industrial#9` (`docs/ui-spike.md` there). 18.1 to 18.3 are kept as written when it was
+> design only; where the build differs, 18.4 and 18.5 say so.
 
 ### 18.1 What exists today (read from the code, and measured where marked)
 
@@ -664,18 +664,45 @@ Safari is not tested.
   the cookie pattern; the custody of the value is the page's. The gain is that the **use** of a credential becomes declared,
   reviewable authority, and that it cannot be sent to an undeclared host.
 
-### 18.4 What is needed from the maintainers
+### 18.4 Decisions (taken by the maintainer, 2026-10-21) and what was built
 
-1. A, B or C? (A is recommended; B puts a secret into program state and traces, which is the cost it cannot avoid.)
-2. If A: is `Authorization: Bearer` the only form, or must the scheme be declarable (`Credential("api", "basic")`)?
-3. If A: attaching the credential to **every** request of a component (the simplest rule) or only to those whose URL host is
-   named in the declaration (`Credential("api", "host")`)? The second is stricter and one more token.
-4. Is breaking the "mounted without the credential" case with an `Err` right, or should it be a build-time refusal for a
-   module built without `--no-auto-mount` (which cannot supply one)?
+1. **A.** `requires Credential("name", "host", ..)`.
+2. **`Authorization: Bearer` only.** A declarable scheme can be added later without changing any program that exists (a second
+   bound would be additive).
+3. **Host-scoped, stricter than 18.3 proposed.** The credential goes to this origin (GET and POST) and **only** to the hosts the
+   declaration names after the name; every named host must also be in the component's `Network` (`credential-host-not-allowed`
+   otherwise). A `Network` host the credential does not name never receives it. 18.3's "every host the call may reach" is
+   superseded.
+4. **Both.** A module built with auto-mount cannot supply a token, so it is refused at build time
+   (`credential-needs-mount-options`, naming `--no-auto-mount`; `--pwa` cannot carry one either). A module mounted without the
+   token (or with a name it does not declare, or only an inherited property) answers `Err("blocked: no credential <name>")` before
+   any request. A token that is not 1 to 4096 printable ASCII characters without a space is
+   `Err("blocked: credential <name> is not a plain token")`.
+
+How it works: `mount_<Last>(root, { credentials: { "api": token } })` copies the own string-valued entries into a private record
+for the duration of the mount; each component captures it (children inherit it through the instance mount) and builds its
+`{ name, hosts, token }`; the net adapters check it first and attach the header only when the target is this origin or in `hosts`.
+More than one `Credential` in a component is `credential-ambiguous`. A `Credential` with no reachable `net.get`, `net.fetch` or
+`net.post` is `capability-unused`. Replay: a trace may list `"credentials": ["api"]` (an unknown name is
+`trace-credential-unknown`); the report shows `[credential api]` or `[credential api (not supplied)]` on an issued request, and the
+value is in no trace, report or IR.
+
+**Checked.** `crates/cancho-ui/tests/credentials.rs` (acceptance, each refusal with its tag, the auto-mount refusal, emission,
+replay, diff). `scripts/check-credential.js` runs Chromium against three real servers (this origin, a named host, a `Network`
+host the credential does not name): the token arrives at this origin (GET and POST) and at the named host, and is **not** sent to
+the third; unsupplied, wrong-name, inherited-only and badly shaped tokens are refused before the server sees a request. Deliberate
+breaks, each caught: attach to every host, no host test on GET, a missing token not refused, a write that drops the token, no
+token-shape check, the wrapper copying inherited properties. One guard is not observable by design: the component-side own-property
+test sits behind the wrapper's, so removing only it changes nothing a page can see.
+
+**What it does not fix.** The token is readable by any script of the page's origin (an XSS reads it); custody of the value is the
+page's. The gain is that the **use** of a credential is declared, reviewable authority (`cancho-ui diff` shows `Credential("api")`
+added) and cannot reach an undeclared host.
 
 ### 18.5 Not done
 
-Everything: no parser, IR, adapter, replay or diagnostic change has been made for this section.
+A scheme other than Bearer; a credential for `net.search`; a credential attached to a path rather than a host; refreshing or
+expiring a token (the page passes a new one by remounting).
 
 ---
 
@@ -686,6 +713,7 @@ Everything: no parser, IR, adapter, replay or diagnostic change has been made fo
 | `Clock` | `clock.now()`, `sleep(ms)` | none | `Date.now`, `setTimeout` |
 | `Storage` | `storage.get(k, d)`, `storage.set(k, v)` | `Storage("ns")` keeps keys under `cui:ns:` | `localStorage`, with a page-lifetime fallback |
 | `Network` | `net.get(url)`, `net.fetch(url)` (keeps an error status); `net.search(q)` is the simulated demo | `Network("host", ..)` adds hosts | `fetch`, same-origin plus the allow-list |
+| `Credential` | none of its own: `Authorization: Bearer` on `net.get`, `net.fetch`, `net.post` | `Credential("name", "host"..)` | header added in the adapter, this origin and the named hosts only |
 | `NetworkWrite` | `net.post(url, body)` (the envelope of `net.fetch`) | none: this origin only | `fetch` POST, same-origin, not aborted |
 | `Location` | `location.current()` | `Location("coarse" \| "fine")` | Geolocation, rounded in the adapter |
 

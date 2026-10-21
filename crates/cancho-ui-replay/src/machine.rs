@@ -147,6 +147,8 @@ pub struct Machine<'a> {
     pub clock: f64,
     /// The `Storage` store (docs/adapters.md): key to value, seeded by the trace, written by `storage.set`.
     pub storage: BTreeMap<String, String>,
+    /// The names of the credentials the trace says the page supplied (docs/adapters.md section 18).
+    pub credentials: Vec<String>,
     pub requests: Vec<Request>,
     inflight: BTreeMap<&'static str, u32>,
     pub disposed: bool,
@@ -192,6 +194,7 @@ impl<'a> Machine<'a> {
             state,
             clock,
             storage: BTreeMap::new(),
+            credentials: Vec::new(),
             requests: Vec::new(),
             inflight: BTreeMap::new(),
             disposed: false,
