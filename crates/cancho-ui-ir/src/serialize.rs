@@ -11,7 +11,18 @@ pub fn schema_version() -> &'static str {
 }
 
 pub fn canonical_json(ir: &IrFile) -> String {
-    serde_json::to_string_pretty(ir).expect("IrFile serialization is infallible")
+    pretty_json(ir)
+}
+
+/// Pretty JSON for a value of one of our derived `Serialize` types. Serializing those cannot fail (every map key is a
+/// string); if it ever did, the text is a JSON object carrying the error instead of a panic (#62).
+pub fn pretty_json<T: Serialize>(value: &T) -> String {
+    serde_json::to_string_pretty(value).unwrap_or_else(|e| {
+        format!(
+            "{{\"rule\": \"internal-json\", \"message\": {}}}",
+            serde_json::Value::String(e.to_string())
+        )
+    })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]

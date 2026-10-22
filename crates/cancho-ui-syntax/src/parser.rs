@@ -51,6 +51,15 @@ pub enum ParseError {
     InvalidNumber { raw: String, line: u32, column: u32 },
 }
 
+fn unexpected(found: Token, span: Span, expected: &'static str) -> ParseError {
+    ParseError::Unexpected {
+        expected,
+        found,
+        line: span.start.line,
+        column: span.start.column,
+    }
+}
+
 /// Parse `tokens` (the output of `lex`) into a `File` AST.
 pub fn parse(tokens: Vec<SpannedToken>) -> Result<File, ParseError> {
     let mut parser = Parser { tokens, pos: 0 };
@@ -199,6 +208,47 @@ impl Parser {
                 line: here.span.start.line,
                 column: here.span.start.column,
             })
+        }
+    }
+
+    /// Consume the next token as an identifier, or refuse. The checked match and the extraction are one operation, so
+    /// there is no state in which a token was "checked" and then is not an identifier (#62).
+    fn bump_ident(&mut self, expected: &'static str) -> Result<(String, Span), ParseError> {
+        let here = self.peek().clone();
+        match here.token {
+            Token::Ident(name) => {
+                self.bump();
+                Ok((name, here.span))
+            }
+            other => Err(unexpected(other, here.span, expected)),
+        }
+    }
+
+    /// Consume the next token as a string literal, or refuse.
+    fn bump_string_lit(&mut self, expected: &'static str) -> Result<(String, Span), ParseError> {
+        let here = self.peek().clone();
+        match here.token {
+            Token::StringLit(value) => {
+                self.bump();
+                Ok((value, here.span))
+            }
+            other => Err(unexpected(other, here.span, expected)),
+        }
+    }
+
+    /// Consume a binding key: an identifier, or `on` (a keyword at member level, a key before `:` in a view).
+    fn bump_binding_key(&mut self) -> Result<(String, Span), ParseError> {
+        let here = self.peek().clone();
+        match here.token {
+            Token::Ident(name) => {
+                self.bump();
+                Ok((name, here.span))
+            }
+            Token::On => {
+                self.bump();
+                Ok(("on".to_string(), here.span))
+            }
+            other => Err(unexpected(other, here.span, "binding key")),
         }
     }
 
@@ -608,18 +658,14 @@ impl Parser {
                 Some(Token::Eq)
             );
         if is_assign {
-            let name_tok = self.bump();
-            let Token::Ident(name) = name_tok.token else {
-                // `is_assign` just matched `Token::Ident` at this position.
-                unreachable!("assignment target was checked to be an identifier");
-            };
+            let (name, name_span) = self.bump_ident("assignment target")?;
             self.expect(Token::Eq)?;
             let value = self.parse_expr()?;
             let end_tok = self.expect(Token::Semi)?;
             return Ok(Stmt::Assign {
                 target: name,
                 value,
-                span: Span::new(name_tok.span.start, end_tok.span.end),
+                span: Span::new(name_span.start, end_tok.span.end),
             });
         }
         let expr = self.parse_expr()?;
@@ -956,7 +1002,11 @@ impl Parser {
                     });
                 }
                 let mut it = items.into_iter();
-                let mut acc = it.next().expect("at least one part");
+                // `interpolation_parts` always returns at least one part; an empty text would be the empty string.
+                let mut acc = it.next().unwrap_or(Expr::StringLit {
+                    value: String::new(),
+                    span: tok.span,
+                });
                 for rhs in it {
                     acc = Expr::Binary {
                         op: BinOp::Add,
@@ -979,11 +1029,7 @@ impl Parser {
                 // `(args)` as a builtin call. Bare single-segment
                 // paths are identifiers; multi-segment paths must
                 // be calls (`clock.now`, not just `clock.now`).
-                let first_tok = self.bump();
-                let first_name = match &first_tok.token {
-                    Token::Ident(s) => s.clone(),
-                    _ => unreachable!(),
-                };
+                let (first_name, first_span) = self.bump_ident("identifier")?;
                 let mut path = vec![first_name];
                 while matches!(self.peek().token, Token::Dot) {
                     self.bump();
@@ -1002,7 +1048,7 @@ impl Parser {
                     path.push(seg_name);
                 }
                 if matches!(self.peek().token, Token::LParen) {
-                    let call_start = first_tok.span.start;
+                    let call_start = first_span.start;
                     self.bump();
                     let mut args = Vec::new();
                     if !matches!(self.peek().token, Token::RParen) {
@@ -1052,30 +1098,28 @@ impl Parser {
                     // AST variants so the type checker and IR can
                     // see them as constructors.
                     if path.len() == 1 && path[0] == "Ok" {
-                        if args.len() != 1 {
+                        let Ok([v]) = <[Expr; 1]>::try_from(args) else {
                             return Err(ParseError::Unexpected {
                                 expected: "exactly one argument to `Ok(...)`",
                                 found: Token::LParen,
                                 line: call_start.line,
                                 column: call_start.column,
                             });
-                        }
-                        let v = args.into_iter().next().unwrap();
+                        };
                         return Ok(Expr::Ok {
                             value: Box::new(v),
                             span: Span::new(call_start, call_end),
                         });
                     }
                     if path.len() == 1 && path[0] == "Err" {
-                        if args.len() != 1 {
+                        let Ok([v]) = <[Expr; 1]>::try_from(args) else {
                             return Err(ParseError::Unexpected {
                                 expected: "exactly one argument to `Err(...)`",
                                 found: Token::LParen,
                                 line: call_start.line,
                                 column: call_start.column,
                             });
-                        }
-                        let v = args.into_iter().next().unwrap();
+                        };
                         return Ok(Expr::Err {
                             reason: Box::new(v),
                             span: Span::new(call_start, call_end),
@@ -1098,15 +1142,14 @@ impl Parser {
                     // path with exactly one argument), exactly like
                     // `Ok(...)` above.
                     if path.len() == 1 && path[0] == "Some" {
-                        if args.len() != 1 {
+                        let Ok([v]) = <[Expr; 1]>::try_from(args) else {
                             return Err(ParseError::Unexpected {
                                 expected: "exactly one argument to `Some(...)`",
                                 found: Token::LParen,
                                 line: call_start.line,
                                 column: call_start.column,
                             });
-                        }
-                        let v = args.into_iter().next().unwrap();
+                        };
                         return Ok(Expr::Some {
                             value: Box::new(v),
                             span: Span::new(call_start, call_end),
@@ -1134,26 +1177,26 @@ impl Parser {
                         args,
                         span: Span::new(call_start, call_end),
                     })
-                } else if path.len() == 1 {
-                    let name = path.into_iter().next().unwrap();
-                    // A bare `None` is the zero-payload `Option`
-                    // constructor, not an identifier binding.
-                    if name == "None" {
-                        return Ok(Expr::None {
-                            span: first_tok.span,
-                        });
-                    }
-                    Ok(Expr::Ident {
-                        name,
-                        span: first_tok.span,
-                    })
                 } else {
-                    Err(ParseError::Unexpected {
-                        expected: "`(` (call) or `;` (statement boundary)",
-                        found: self.peek().token.clone(),
-                        line: self.peek().span.start.line,
-                        column: self.peek().span.start.column,
-                    })
+                    match <[String; 1]>::try_from(path) {
+                        Ok([name]) => {
+                            // A bare `None` is the zero-payload `Option`
+                            // constructor, not an identifier binding.
+                            if name == "None" {
+                                return Ok(Expr::None { span: first_span });
+                            }
+                            Ok(Expr::Ident {
+                                name,
+                                span: first_span,
+                            })
+                        }
+                        Err(_) => Err(ParseError::Unexpected {
+                            expected: "`(` (call) or `;` (statement boundary)",
+                            found: self.peek().token.clone(),
+                            line: self.peek().span.start.line,
+                            column: self.peek().span.start.column,
+                        }),
+                    }
                 }
             }
             Token::LParen => {
@@ -1338,15 +1381,11 @@ impl Parser {
             Some(Token::Plus)
         );
         if matches!(self.peek().token, Token::StringLit(_)) && !concatenation {
-            let tok = self.bump();
-            let value = match tok.token {
-                Token::StringLit(s) => s,
-                _ => unreachable!(),
-            };
-            let parts = interpolation_parts(&value, tok.span)?;
+            let (value, tok_span) = self.bump_string_lit("string literal")?;
+            let parts = interpolation_parts(&value, tok_span)?;
             Ok(ViewNode::Text {
                 value: TextValue::Interpolated(parts),
-                span: tok.span,
+                span: tok_span,
             })
         } else {
             // The body is a general expression. Render it as a Text
@@ -1365,17 +1404,13 @@ impl Parser {
     }
 
     fn parse_element_node(&mut self) -> Result<ViewNode, ParseError> {
-        let name_tok = self.bump();
-        let name = match name_tok.token {
-            Token::Ident(s) => s,
-            _ => unreachable!("parse_element_node called without ident"),
-        };
+        let (name, name_span) = self.bump_ident("element name")?;
         // `For { ... }` can appear anywhere a normal element can
         // (including as a child of another element). Route it to
         // the Tier 8 loop parser. The name token is already
         // consumed here.
         if name == "For" {
-            return self.parse_for_node(name_tok.span);
+            return self.parse_for_node(name_span);
         }
         let kind = match name.as_str() {
             "Column" => ElementKind::Column,
@@ -1434,13 +1469,9 @@ impl Parser {
                     let lone_literal = matches!(self.peek().token, Token::StringLit(_))
                         && !self.next_is_binary_operator();
                     if lone_literal {
-                        let label_tok = self.bump();
-                        let Token::StringLit(s) = label_tok.token else {
-                            unreachable!("checked above")
-                        };
-                        accessibility.label = Some(static_text(s, label_tok.span)?);
-                        accessibility.span =
-                            Span::new(accessibility.span.start, label_tok.span.end);
+                        let (s, label_span) = self.bump_string_lit("label string literal")?;
+                        accessibility.label = Some(static_text(s, label_span)?);
+                        accessibility.span = Span::new(accessibility.span.start, label_span.end);
                     } else {
                         match &self.peek().token {
                             Token::StringLit(_)
@@ -1556,15 +1587,10 @@ impl Parser {
                         if is_element {
                             children.push(self.parse_element_node()?);
                         } else {
-                            let key_tok = self.bump();
-                            let key = match key_tok.token {
-                                Token::Ident(s) => s,
-                                Token::On => "on".to_string(),
-                                _ => unreachable!(),
-                            };
+                            let (key, key_span) = self.bump_binding_key()?;
                             self.expect(Token::DotDot)?;
                             let value = self.parse_binding_value(&key, &kind)?;
-                            let span = Span::new(key_tok.span.start, self.peek().span.end);
+                            let span = Span::new(key_span.start, self.peek().span.end);
                             bindings.push(Binding { key, value, span });
                         }
                     }
@@ -1586,7 +1612,7 @@ impl Parser {
             accessibility,
             bindings,
             children,
-            span: Span::new(name_tok.span.start, close.span.end),
+            span: Span::new(name_span.start, close.span.end),
         })
     }
 
@@ -1831,5 +1857,62 @@ mod tests {
             }
             _ => panic!("expected Text element"),
         }
+    }
+
+    fn parser_over(src: &str) -> Parser {
+        Parser {
+            tokens: lex(src).expect("lex"),
+            pos: 0,
+        }
+    }
+
+    #[test]
+    fn the_token_helpers_refuse_the_wrong_token_instead_of_panicking() {
+        // #62: each used to be a checked match followed by an `unreachable!` extraction.
+        let mut p = parser_over("42");
+        assert!(matches!(
+            p.bump_ident("identifier"),
+            Err(ParseError::Unexpected {
+                expected: "identifier",
+                ..
+            })
+        ));
+        assert!(matches!(
+            p.bump_string_lit("string literal"),
+            Err(ParseError::Unexpected {
+                expected: "string literal",
+                ..
+            })
+        ));
+        assert!(matches!(
+            p.bump_binding_key(),
+            Err(ParseError::Unexpected {
+                expected: "binding key",
+                ..
+            })
+        ));
+        // nothing was consumed by a refusal
+        assert_eq!(p.pos, 0);
+
+        let mut p = parser_over("name \"s\" on");
+        assert_eq!(
+            p.bump_ident("identifier").map(|x| x.0),
+            Ok("name".to_string())
+        );
+        assert_eq!(
+            p.bump_string_lit("string").map(|x| x.0),
+            Ok("s".to_string())
+        );
+        assert_eq!(p.bump_binding_key().map(|x| x.0), Ok("on".to_string()));
+        // at the end of the tokens every helper refuses, none panics
+        assert!(p.bump_ident("identifier").is_err());
+        assert!(p.bump_string_lit("string literal").is_err());
+        assert!(p.bump_binding_key().is_err());
+    }
+
+    #[test]
+    fn a_dotted_path_that_is_not_a_call_is_refused() {
+        let src = "component C { state n: Int = 0; on Go { n = a.b; } view { Text { \"x\" } } }\n";
+        assert!(parse_source(src).is_err());
     }
 }

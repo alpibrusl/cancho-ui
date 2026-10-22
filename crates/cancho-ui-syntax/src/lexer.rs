@@ -238,7 +238,11 @@ impl Lexer {
     }
 
     fn next(&mut self) -> Result<Token, LexError> {
-        let c = self.peek().expect("called next() at eof");
+        // At the end of the source the next token is `Eof`; `lex` stops before asking, so this is the total form of
+        // "nothing left" and not a panic (#62).
+        let Some(c) = self.peek() else {
+            return Ok(Token::Eof);
+        };
         match c {
             '{' => {
                 self.bump();
@@ -554,5 +558,15 @@ mod tests {
     fn unknown_escape_refused() {
         let err = lex(r#""\x""#).unwrap_err();
         assert!(matches!(err, LexError::UnknownEscape { .. }));
+    }
+
+    #[test]
+    fn next_at_the_end_of_the_source_is_eof_not_a_panic() {
+        // #62: `next` used to `expect` a character.
+        let mut l = Lexer::new("");
+        assert_eq!(l.next(), Ok(Token::Eof));
+        let mut l = Lexer::new("  ");
+        let _ = l.skip_trivia();
+        assert_eq!(l.next(), Ok(Token::Eof));
     }
 }

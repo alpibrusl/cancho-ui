@@ -120,13 +120,13 @@ impl Value {
                 .collect::<Result<Vec<_>, _>>()
                 .map(Value::List),
             Json::Object(m) => {
-                if m.len() != 1 {
+                let mut entries = m.iter();
+                let (Some((k, v)), None) = (entries.next(), entries.next()) else {
                     return Err(
                         "an object must be a variant with exactly one key: Ok, Err, Some, None or Cancelled"
                             .into(),
                     );
-                }
-                let (k, v) = m.iter().next().expect("one key");
+                };
                 match k.as_str() {
                     "Ok" => Ok(Value::Ok(Box::new(Value::from_json(v)?))),
                     "Err" => Ok(Value::Err(Box::new(Value::from_json(v)?))),
@@ -192,5 +192,42 @@ pub fn subset(expected: &Json, actual: &Json) -> bool {
         }
         (Json::Number(e), Json::Number(a)) => e.as_f64() == a.as_f64(),
         (e, a) => e == a,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    //! `Value::from_json` (#62): an object must be a variant with exactly one key. The count and the extraction are
+    //! one operation now, so zero keys and two keys are answers (an `Err` text), and the variants still parse.
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn an_object_with_zero_or_two_keys_is_refused_with_the_same_text() {
+        let none = Value::from_json(&json!({})).expect_err("zero keys");
+        let two = Value::from_json(&json!({"Ok": 1, "Err": 2})).expect_err("two keys");
+        assert_eq!(none, two);
+        assert!(none.contains("exactly one key"), "{none}");
+    }
+
+    #[test]
+    fn a_one_key_object_is_a_variant() {
+        assert!(matches!(
+            Value::from_json(&json!({"Ok": 1})),
+            Ok(Value::Ok(_))
+        ));
+        assert!(matches!(
+            Value::from_json(&json!({"Err": "x"})),
+            Ok(Value::Err(_))
+        ));
+        assert!(matches!(
+            Value::from_json(&json!({"Some": 1})),
+            Ok(Value::Some(_))
+        ));
+        assert!(matches!(
+            Value::from_json(&json!({"None": null})),
+            Ok(Value::None)
+        ));
+        assert!(Value::from_json(&json!({"Other": 1})).is_err());
     }
 }

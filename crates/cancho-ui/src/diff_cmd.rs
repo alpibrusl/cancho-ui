@@ -53,14 +53,12 @@ impl DiffOpts {
                 }
             }
         }
-        if files.len() != 2 {
-            return Err(CliError::Usage(format!(
+        let [base, candidate] = <[PathBuf; 2]>::try_from(files).map_err(|files| {
+            CliError::Usage(format!(
                 "`diff` takes exactly two files, <base.cui> <candidate.cui>; got {}",
                 files.len()
-            )));
-        }
-        let candidate = files.pop().expect("two files");
-        let base = files.pop().expect("two files");
+            ))
+        })?;
         Ok(DiffOpts {
             base,
             candidate,
@@ -90,11 +88,7 @@ pub fn run_diff(args: &[String]) -> Result<ExitCode, CliError> {
             }
             OutputFormat::Json => {
                 let only: Vec<&pipeline::Diagnostic> = diags.iter().map(|(_, d)| d).collect();
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&only)
-                        .expect("diagnostic serialization is infallible")
-                );
+                println!("{}", cancho_ui_ir::pretty_json(&only));
             }
         }
         return Ok(ExitCode::from(1));
@@ -107,10 +101,7 @@ pub fn run_diff(args: &[String]) -> Result<ExitCode, CliError> {
     );
     match opts.output {
         OutputFormat::Human => print!("{}", cancho_ui_diff::render_human(&report)),
-        OutputFormat::Json => println!(
-            "{}",
-            serde_json::to_string_pretty(&report).expect("report serialization is infallible")
-        ),
+        OutputFormat::Json => println!("{}", cancho_ui_ir::pretty_json(&report)),
     }
     Ok(ExitCode::from(if report.changed {
         EXIT_DIFFERS

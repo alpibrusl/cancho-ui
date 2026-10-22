@@ -1508,23 +1508,18 @@ fn lower_to_diag(e: &LowerError, file: &Path) -> Diagnostic {
             Some(*span),
             None,
         ),
-        e @ (LowerError::ScheduleEventUnknown { .. }
-        | LowerError::ScheduleEventParams { .. }
-        | LowerError::SchedulePeriodInvalid { .. }
-        | LowerError::ScheduleDuplicate { .. }) => {
-            let (code, component, span) = e.schedule_refusal().expect("a schedule refusal");
-            (
-                code,
-                Severity::Error,
-                Tier::Static,
-                Subject::Component {
-                    name: component.to_string(),
-                },
-                e.to_string(),
-                Some(span),
-                Some(schedule_remediation(code)),
-            )
-        }
+        LowerError::ScheduleEventUnknown {
+            component, span, ..
+        } => schedule_diag(e, "schedule-event-unknown", component, *span),
+        LowerError::ScheduleEventParams {
+            component, span, ..
+        } => schedule_diag(e, "schedule-event-params", component, *span),
+        LowerError::SchedulePeriodInvalid {
+            component, span, ..
+        } => schedule_diag(e, "schedule-period-invalid", component, *span),
+        LowerError::ScheduleDuplicate {
+            component, span, ..
+        } => schedule_diag(e, "schedule-duplicate", component, *span),
         LowerError::PureLambdaRequired { span } => (
             "pure-lambda-required",
             Severity::Error,
@@ -1551,6 +1546,32 @@ fn lower_to_diag(e: &LowerError, file: &Path) -> Diagnostic {
 }
 
 /// What to do about a refused schedule (docs/schedules.md section 3).
+/// The diagnostic parts of the four schedule refusals (docs/schedules.md section 3). Each arm of `lower_to_diag` names its
+/// own variant and code, so there is no lookup that could come back empty (#62).
+type LowerDiag = (
+    &'static str,
+    Severity,
+    Tier,
+    Subject,
+    String,
+    Option<Span>,
+    Option<Remediation>,
+);
+
+fn schedule_diag(e: &LowerError, code: &'static str, component: &str, span: Span) -> LowerDiag {
+    (
+        code,
+        Severity::Error,
+        Tier::Static,
+        Subject::Component {
+            name: component.to_string(),
+        },
+        e.to_string(),
+        Some(span),
+        Some(schedule_remediation(code)),
+    )
+}
+
 fn schedule_remediation(code: &str) -> Remediation {
     let description = match code {
         "schedule-event-unknown" => {

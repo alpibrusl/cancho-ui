@@ -102,6 +102,25 @@ must be refused with that rule**, written down in
 that rule. A rule whose only fixture is "this should compile" is a
 rule that can silently break.
 
+### 6.1 No input reaches a panic (#62)
+
+Two checks stand behind the rule, and one thing is not checked:
+
+- **In the source.** `crates/cancho-ui/tests/panic_sites.rs` fails if a `crates/*/src` file contains `unreachable!`,
+  `panic!(`, `todo!`, `unimplemented!`, `.unwrap()` or `.expect("` outside its `#[cfg(test)]` module. The way out is not
+  an allow-list entry but a construction that cannot be wrong: a checked match and its extraction in one step
+  (`bump_ident`, `<[T; N]>::try_from`), a total `match`, or a tagged refusal. `ALLOWED` in that test is empty; an entry
+  needs the invariant in a sentence.
+- **By input.** `tests/no_panic.rs` runs every prefix and every one-character deletion of every example through the front
+  end, the diff and the replay.
+- **Not checked.** Indexing (`v[i]`), slicing, integer overflow and stack depth are not searched for; the mutation test
+  is what covers them, and it covers only the inputs it generates.
+
+Measured when #62 was closed: the seven `unreachable!` sites (six in `parser.rs`, one in `machine.rs`) and 31
+`.expect`/`.unwrap` sites outside tests were all replaced; the guard fails when one is put back (a `.unwrap()` in
+`eval.rs` was reported with its line), and swapping `due < at` for `due <= at` in the replacement for the `machine.rs` arm
+fails `a_tick_runs_before_a_sleep_due_at_the_same_instant`.
+
 ## 7. Trust boundaries are explicit
 
 Foreign JavaScript, third-party packages, native modules, and platform

@@ -397,15 +397,23 @@ impl<'a> Machine<'a> {
                     .min_by(|a, b| a.1.next.total_cmp(&b.1.next).then(a.0.cmp(&b.0)))
                     .map(|(i, t)| (t.next, i))
             };
-            match (sleep, tick) {
-                (None, None) => break,
-                (Some((due, id)), t) if t.is_none_or(|(at, _)| due < at) => {
-                    if due > self.clock {
-                        self.clock = due;
-                    }
-                    self.deliver(id, Value::Ok(Box::new(Value::Unit)), fx)?;
+            // A sleep goes first when no tick is due, or when it is due strictly before the next tick. Choosing it here, then
+            // matching on the tick alone, leaves no combination of (sleep, tick) without an arm.
+            let first_sleep = match (sleep, tick) {
+                (Some((due, id)), None) => Some((due, id)),
+                (Some((due, id)), Some((at, _))) if due < at => Some((due, id)),
+                _ => None,
+            };
+            if let Some((due, id)) = first_sleep {
+                if due > self.clock {
+                    self.clock = due;
                 }
-                (_, Some((at, i))) => {
+                self.deliver(id, Value::Ok(Box::new(Value::Unit)), fx)?;
+                continue;
+            }
+            match tick {
+                None => break,
+                Some((at, i)) => {
                     if at > self.clock {
                         self.clock = at;
                     }
@@ -432,7 +440,6 @@ impl<'a> Machine<'a> {
                         self.dispatch(handler, Vec::new(), fx)?;
                     }
                 }
-                (Some(_), None) => unreachable!("a sleep with no tick is the first arm"),
             }
         }
         self.clock = target;
@@ -493,13 +500,12 @@ impl<'a> Machine<'a> {
         let idx = id as usize - 1;
         let (mut task, superseded, disposed, group) = {
             let r = &mut self.requests[idx];
+            // A request that no longer holds its task has nothing left to deliver (it was settled already).
+            let Some(task) = r.task.take() else {
+                return Ok(Outcome::Ok);
+            };
             r.status = Status::Resolved;
-            (
-                r.task.take().expect("a pending request holds its task"),
-                r.superseded,
-                r.disposed,
-                r.effect.group(),
-            )
+            (task, r.superseded, r.disposed, r.effect.group())
         };
         if superseded {
             fx.fired.push(Fired {

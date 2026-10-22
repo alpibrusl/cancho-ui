@@ -139,8 +139,7 @@ fn run_check(args: &[String]) -> Result<ExitCode, CliError> {
         }
     }
     if opts.output == OutputFormat::Json && !all_diags.is_empty() {
-        let json = serde_json::to_string_pretty(&all_diags)
-            .expect("diagnostic serialization is infallible");
+        let json = cancho_ui_ir::pretty_json(&all_diags);
         println!("{}", json);
     }
     if failures > 0 {
@@ -160,7 +159,9 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
         };
         match pipeline::compile_to_js(file, opts.target.as_deref(), &emit) {
             Ok(out) if opts.pwa => {
-                let dir = opts.output.as_ref().expect("parse requires -o with --pwa");
+                let Some(dir) = opts.output.as_ref() else {
+                    return Err(CliError::Usage("`--pwa` needs `-o <dir>`".to_string()));
+                };
                 let name = opts.name.clone().unwrap_or_else(|| {
                     file.file_stem()
                         .and_then(|s| s.to_str())
@@ -194,8 +195,7 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
         }
     }
     if opts.output_format == OutputFormat::Json && !all_diags.is_empty() {
-        let json = serde_json::to_string_pretty(&all_diags)
-            .expect("diagnostic serialization is infallible");
+        let json = cancho_ui_ir::pretty_json(&all_diags);
         println!("{}", json);
     }
     if failures > 0 {
@@ -213,8 +213,7 @@ fn run_inspect(args: &[String]) -> Result<ExitCode, CliError> {
             let name = opts.arg.as_ref().ok_or_else(|| {
                 CliError::Usage("`inspect component` requires a component name".into())
             })?;
-            serde_json::to_string_pretty(&ir.components.iter().find(|c| &c.name == name))
-                .expect("serializing derived JSON is infallible")
+            cancho_ui_ir::pretty_json(&ir.components.iter().find(|c| &c.name == name))
         }
         "effects" => {
             let name = opts.arg.as_ref().ok_or_else(|| {
@@ -225,14 +224,13 @@ fn run_inspect(args: &[String]) -> Result<ExitCode, CliError> {
                 .iter()
                 .find(|c| &c.name == name)
                 .ok_or_else(|| CliError::Env(format!("component `{}` not found", name)))?;
-            serde_json::to_string_pretty(&serde_json::json!({
+            cancho_ui_ir::pretty_json(&serde_json::json!({
                 "component": comp.name,
                 "requires": comp.requires,
                 "reachable_effects": comp.reachable_effects,
             }))
-            .expect("serializing derived JSON is infallible")
         }
-        "ir" => serde_json::to_string_pretty(&ir).expect("serializing derived JSON is infallible"),
+        "ir" => cancho_ui_ir::pretty_json(&ir),
         other => {
             return Err(CliError::Usage(format!(
                 "unknown `inspect` subject `{}`",
@@ -293,21 +291,13 @@ fn run_report(args: &[String]) -> Result<ExitCode, CliError> {
     }
     if opts.output == OutputFormat::Json {
         if !all_diags.is_empty() {
-            let json = serde_json::to_string_pretty(&all_diags)
-                .expect("diagnostic serialization is infallible");
+            let json = cancho_ui_ir::pretty_json(&all_diags);
             println!("{}", json);
         } else {
-            println!(
-                "{}",
-                serde_json::to_string_pretty(&report)
-                    .expect("serializing derived JSON is infallible")
-            );
+            println!("{}", cancho_ui_ir::pretty_json(&report));
         }
     } else {
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&report).expect("serializing derived JSON is infallible")
-        );
+        println!("{}", cancho_ui_ir::pretty_json(&report));
     }
     if failures > 0 {
         Ok(ExitCode::from(1))
@@ -323,14 +313,13 @@ fn run_skill(args: &[String]) -> Result<ExitCode, CliError> {
     let opts = SelfDescribeOpts::parse("skill", args)?;
     let body = match opts.format {
         OutputFormat::Human => SKILL_MD.to_string(),
-        OutputFormat::Json => serde_json::to_string_pretty(&serde_json::json!({
+        OutputFormat::Json => cancho_ui_ir::pretty_json(&serde_json::json!({
             "schema": "cancho-ui-skill",
             "version": "0.1.0",
             "name": "cancho-ui",
             "format": "markdown",
             "content": SKILL_MD,
-        }))
-        .expect("serializing derived JSON is infallible"),
+        })),
     };
     match opts.output_path {
         Some(path) => {
@@ -363,7 +352,7 @@ fn run_introspect(args: &[String]) -> Result<ExitCode, CliError> {
         "refusal_catalog_ref": "spec/diagnostics/README.md §3",
         "ir_schema_ref": "spec/ir-schema/README.md",
     });
-    let json = serde_json::to_string_pretty(&tree).expect("serializing derived JSON is infallible");
+    let json = cancho_ui_ir::pretty_json(&tree);
     match opts.output_path {
         Some(path) => {
             let p = path.clone();

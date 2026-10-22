@@ -58,14 +58,12 @@ impl TestOpts {
                 }
             }
         }
-        if files.len() != 2 {
-            return Err(CliError::Usage(format!(
+        let [file, trace] = <[PathBuf; 2]>::try_from(files).map_err(|files| {
+            CliError::Usage(format!(
                 "`test` takes exactly a program and a trace, <file.cui> <trace.json>; got {} file(s)",
                 files.len()
-            )));
-        }
-        let trace = files.pop().expect("two files");
-        let file = files.pop().expect("two files");
+            ))
+        })?;
         Ok(TestOpts {
             file,
             trace,
@@ -82,11 +80,7 @@ pub fn run_test(args: &[String]) -> Result<ExitCode, CliError> {
         Err(PipelineError::Refused(d)) => {
             match opts.output {
                 OutputFormat::Human => eprintln!("{}", pipeline::format_diagnostic(&d, &opts.file)),
-                OutputFormat::Json => println!(
-                    "{}",
-                    serde_json::to_string_pretty(&[&*d])
-                        .expect("diagnostic serialization is infallible")
-                ),
+                OutputFormat::Json => println!("{}", cancho_ui_ir::pretty_json(&[&*d])),
             }
             return Ok(ExitCode::from(1));
         }
@@ -108,10 +102,7 @@ pub fn run_test(args: &[String]) -> Result<ExitCode, CliError> {
             print!("{}", cancho_ui_replay::render_human_full(&report))
         }
         OutputFormat::Human => print!("{}", cancho_ui_replay::render_human(&report)),
-        OutputFormat::Json => println!(
-            "{}",
-            serde_json::to_string_pretty(&report).expect("report serialization is infallible")
-        ),
+        OutputFormat::Json => println!("{}", cancho_ui_ir::pretty_json(&report)),
     }
     Ok(ExitCode::from(if report.passed() {
         0
