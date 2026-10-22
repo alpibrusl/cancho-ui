@@ -68,6 +68,7 @@ does not force premature changes to cancho Core.
 | **Adapters** | `Storage` (with `Storage("ns")`), `Network` (`net.get`, with `Network("host")`) and `Location`, built: the calls, what each guards, replay, what is not built | [`adapters.md`](adapters.md) |
 | **Gallery** | The landing page's gallery: seven live demos built from `examples/` and ten "coming soon" tiles that each link the issue tracking the gap. `docs/gallery.json` is the manifest; `node scripts/build-gallery.js` rebuilds the demos and the section; `node scripts/check-gallery.js` checks it (and `--self-test` breaks it on purpose) | [`gallery.json`](gallery.json) |
 | **Mobile** | The mobile decision (an installable web app, fewest dependencies), what `build --pwa` writes, what is and is not built, and how it is checked | [`mobile-backend.md`](mobile-backend.md) |
+| **Work orders** | A realistic page (sign-in with validation, list, detail, edit posting with `net.post`) built from what exists, and the six gaps it hit, each a filed issue | [`tickets.md`](tickets.md) |
 | **Semantic diff** | What `cancho-ui diff` compares, its JSON shape, exit codes, and what it does not claim | [`semantic-diff.md`](semantic-diff.md) |
 | **Schedules** | `start Event;` and `every N Event;`: when they run, skip-not-queue, disposal, replay and diff | [`schedules.md`](schedules.md) |
 | **Replay** | What `cancho-ui test` replays (a trace of events, a scripted network, a fake clock), its rules, and what it does not claim | [`replay.md`](replay.md) |

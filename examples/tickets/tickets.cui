@@ -1,0 +1,218 @@
+// examples/tickets/tickets.cui: a sign-in form, then a work-order list with a detail view and an edit form (docs/tickets.md).
+//
+// Built only with what exists today, and every place it had to work around something is a filed issue (docs/tickets.md section 3).
+// The session is a cookie the service sets (HttpOnly, never visible to the page): `net.post` and `net.get` are same-origin, so the
+// browser sends it. There is no token in the program.
+
+component Tickets {
+    requires Network;
+    requires NetworkWrite;
+
+    // screens: a view has no conditional, so a screen is a list that holds one element when it is shown (docs/tickets.md 3.1)
+    state show_signin: List[String] = ["x"];
+    state show_app: List[String] = [];
+    state show_detail: List[String] = [];
+
+    // sign-in
+    state user: String = "";
+    state pass: String = "";
+    state user_msg: String = "Enter your user name.";
+    state pass_msg: String = "Enter your password.";
+    // a status text with `tone:` shows its tone prefix even when it is empty (docs/tickets.md 3.5), so the tone is a state that is
+    // "" while there is no message
+    state user_tone: String = "error";
+    state pass_tone: String = "error";
+    state blocked: Bool = true;
+    state signin_msg: String = "";
+    state signed: Bool = false;
+    state login: Result[String, String] = Ok("");
+
+    // the list and the detail
+    state r: Result[String, String] = Ok("");
+    state orders: List[String] = [];
+    state note: String = "not loaded";
+    state selected: String = "";
+    state picked: List[String] = [];
+    state title: String = "";
+    state status_edit: String = "";
+    state note_edit: String = "";
+    state status_msg: String = "";
+    state status_tone: String = "";
+    state note_msg: String = "";
+    state note_tone: String = "";
+    state edit_blocked: Bool = true;
+    state save_msg: String = "";
+    state saved_tone: String = "";
+    state sent: Result[String, String] = Ok("");
+    state out: Result[String, String] = Ok("");
+
+    on User(v) {
+        user = v;
+        user_msg = if len(trim(v)) == 0 { "Enter your user name." } else if len(trim(v)) < 3 { "A user name has at least 3 characters." } else { "" };
+        user_tone = if len(user_msg) > 0 { "error" } else { "" };
+        blocked = len(user_msg) > 0 || len(pass_msg) > 0;
+    }
+
+    on Pass(v) {
+        pass = v;
+        pass_msg = if len(v) == 0 { "Enter your password." } else if len(v) < 8 { "A password has at least 8 characters." } else { "" };
+        pass_tone = if len(pass_msg) > 0 { "error" } else { "" };
+        blocked = len(user_msg) > 0 || len(pass_msg) > 0;
+    }
+
+    on SignIn {
+        blocked = true;
+        signin_msg = "";
+        login = await(net.post("api/login", "[" + json.quote(user) + "," + json.quote(pass) + "]"));
+        signin_msg = match login {
+            Ok(reply) => { if json.get(reply, "status", "") == "200" { "" } else { "Wrong user name or password." } }
+            Err(e) => { "The service could not be reached: " + e }
+            Cancelled => { "Sign-in was cancelled." }
+        };
+        signed = len(signin_msg) == 0;
+        pass = "";
+        pass_msg = if signed { "" } else { "Enter your password." };
+        pass_tone = if signed { "" } else { "error" };
+        blocked = !signed;
+        show_signin = if signed { [] } else { ["x"] };
+        show_app = if signed { ["x"] } else { [] };
+        r = await(net.get("api/orders"));
+        orders = match r {
+            Ok(text) => { filter(lines(text), x => len(json.get(x, "id", "")) > 0) }
+            Err(_) => { [] }
+            Cancelled => { [] }
+        };
+        note = match r {
+            Ok(_) => { "loaded" }
+            Err(e) => { "not loaded: " + e }
+            Cancelled => { "cancelled" }
+        };
+    }
+
+    on Pick(id) {
+        selected = id;
+        picked = filter(orders, x => json.get(x, "id", "") == id);
+        title = join(map(picked, x => json.get(x, "title", "")), "");
+        status_edit = join(map(picked, x => json.get(x, "status", "")), "");
+        note_edit = join(map(picked, x => json.get(x, "note", "")), "");
+        status_msg = "";
+        status_tone = "";
+        note_msg = "";
+        note_tone = "";
+        save_msg = "";
+        edit_blocked = len(picked) == 0;
+        show_detail = if len(picked) > 0 { ["x"] } else { [] };
+    }
+
+    on Status(v) {
+        status_edit = v;
+        status_msg = if v == "open" || v == "doing" || v == "done" { "" } else { "Use open, doing or done." };
+        status_tone = if len(status_msg) > 0 { "error" } else { "" };
+        edit_blocked = len(status_msg) > 0 || len(note_msg) > 0 || len(selected) == 0;
+    }
+
+    on NoteEdit(v) {
+        note_edit = v;
+        note_msg = if len(v) > 200 { "A note has at most 200 characters (" + len(v) + " now)." } else { "" };
+        note_tone = if len(note_msg) > 0 { "error" } else { "" };
+        edit_blocked = len(status_msg) > 0 || len(note_msg) > 0 || len(selected) == 0;
+    }
+
+    on Save {
+        edit_blocked = true;
+        save_msg = "saving";
+        saved_tone = "";
+        sent = await(net.post("api/order", "[" + json.quote(selected) + "," + json.quote(status_edit) + "," + json.quote(note_edit) + "]"));
+        edit_blocked = len(selected) == 0;
+        save_msg = match sent {
+            Ok(reply) => { if json.get(reply, "status", "") == "200" { "saved" } else { "not saved: " + json.get(reply, "body", "") } }
+            Err(e) => { "not saved: " + e }
+            Cancelled => { "cancelled" }
+        };
+        saved_tone = if save_msg == "saved" { "ok" } else if starts_with(save_msg, "not saved") { "error" } else { "" };
+        r = await(net.get("api/orders"));
+        orders = match r {
+            Ok(text) => { filter(lines(text), x => len(json.get(x, "id", "")) > 0) }
+            Err(_) => { orders }
+            Cancelled => { orders }
+        };
+    }
+
+    on SignOut {
+        out = await(net.post("api/logout", "[]"));
+        signed = false;
+        orders = [];
+        selected = "";
+        picked = [];
+        show_signin = ["x"];
+        show_app = [];
+        show_detail = [];
+        user_msg = "Enter your user name.";
+        pass_msg = "Enter your password.";
+        user_tone = "error";
+        pass_tone = "error";
+        user = "";
+        blocked = true;
+        signin_msg = "You are signed out.";
+    }
+
+    view {
+        Column {
+            max_width: 70
+            Text { role: heading "Work orders" }
+            For {
+                over: show_signin
+                as: s
+                Column {
+                    Text { role: heading "Sign in" }
+                    TextField { label: "User name" value: user on: User }
+                    Text { role: status tone: user_tone "{user_msg}" }
+                    TextField { label: "Password" value: pass on: Pass submit: SignIn }
+                    Text { role: status tone: pass_tone "{pass_msg}" }
+                    Button { label: "Sign in" on: SignIn disabled: blocked }
+                    Text { role: status "{signin_msg}" }
+                }
+            }
+            For {
+                over: show_app
+                as: s
+                Column {
+                    Text { role: status "orders: {note}" }
+                    Button { label: "Sign out" on: SignOut }
+                    Table {
+                        label: "Work orders"
+                        Row {
+                            Text { role: columnheader "id" }
+                            Text { role: columnheader "title" }
+                            Text { role: columnheader "status" }
+                            Text { role: columnheader "open" }
+                        }
+                        For {
+                            over: orders
+                            as: o
+                            Row {
+                                Text { json.get(o, "id", "?") }
+                                Text { json.get(o, "title", "?") }
+                                Text { json.get(o, "status", "?") }
+                                Button { label: "Open " + json.get(o, "id", "?") on: Pick(json.get(o, "id", "")) }
+                            }
+                        }
+                    }
+                    For {
+                        over: show_detail
+                        as: d
+                        Column {
+                            Text { role: heading "Order {selected}: {title}" }
+                            TextField { label: "Status (open, doing or done)" value: status_edit on: Status }
+                            Text { role: status tone: status_tone "{status_msg}" }
+                            TextField { label: "Note" value: note_edit on: NoteEdit submit: Save }
+                            Text { role: status tone: note_tone "{note_msg}" }
+                            Button { label: "Save" on: Save disabled: edit_blocked }
+                            Text { role: status tone: saved_tone "{save_msg}" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
