@@ -69,6 +69,9 @@ pub struct Trace {
     pub clock: f64,
     /// The `Storage` store at the start: key to value (docs/adapters.md).
     pub storage: std::collections::BTreeMap<String, String>,
+    /// The most UTF-16 units the persisted store may hold, keys (with the adapter's `cui:`) and values together; `None`
+    /// is no limit. A `storage.set` that would pass it fails as a full `localStorage` does (docs/adapters.md section 20).
+    pub storage_quota: Option<u64>,
     /// The names of the credentials the page supplied at mount (docs/adapters.md section 18); never their values.
     pub credentials: Vec<String>,
     pub steps: Vec<Step>,
@@ -100,6 +103,7 @@ pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {
             "component",
             "clock",
             "storage",
+            "storage_quota",
             "credentials",
             "steps",
             "note",
@@ -168,6 +172,19 @@ pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {
             ));
         }
     }
+    let storage_quota = match obj.get("storage_quota") {
+        None => None,
+        Some(j) => match j.as_u64() {
+            Some(n) => Some(n),
+            None => {
+                return Err(err(
+                    "trace-bad-value",
+                    "storage_quota",
+                    "expected a non-negative integer: the most UTF-16 units the store may hold",
+                ));
+            }
+        },
+    };
     let mut credentials: Vec<String> = Vec::new();
     match obj.get("credentials") {
         None => {}
@@ -232,6 +249,7 @@ pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {
     Ok(Trace {
         component,
         clock,
+        storage_quota,
         storage,
         credentials,
         steps,

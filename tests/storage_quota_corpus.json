@@ -1,0 +1,269 @@
+{
+ "why": "Storage with a full localStorage (docs/adapters.md section 20): the replay model (cargo test, tests/storage.rs) and the emitted adapter over a fake localStorage with the same rule (scripts/check-storage-quota.js). Units are UTF-16 code units of key (with the adapter's cui: prefix) plus value, over all keys.",
+ "cases": [
+  {
+   "why": "no quota: a write persists",
+   "quota": null,
+   "seed": {},
+   "ops": [
+    {
+     "set": [
+      "a",
+      "1"
+     ],
+     "ok": true
+    },
+    {
+     "get": [
+      "a"
+     ],
+     "is": "1"
+    }
+   ],
+   "stored": {
+    "a": "1"
+   }
+  },
+  {
+   "why": "exactly the quota fits (4 + 1 + 5 = 10 units)",
+   "quota": 10,
+   "seed": {},
+   "ops": [
+    {
+     "set": [
+      "a",
+      "12345"
+     ],
+     "ok": true
+    }
+   ],
+   "stored": {
+    "a": "12345"
+   }
+  },
+  {
+   "why": "one unit over the quota is refused and nothing is stored",
+   "quota": 10,
+   "seed": {},
+   "ops": [
+    {
+     "set": [
+      "a",
+      "123456"
+     ],
+     "ok": false
+    }
+   ],
+   "stored": {}
+  },
+  {
+   "why": "a refused write is readable in the same page (kept in memory)",
+   "quota": 10,
+   "seed": {},
+   "ops": [
+    {
+     "set": [
+      "a",
+      "123456"
+     ],
+     "ok": false
+    },
+    {
+     "get": [
+      "a"
+     ],
+     "is": "123456"
+    }
+   ],
+   "stored": {}
+  },
+  {
+   "why": "a refused write leaves the older persisted value in the store",
+   "quota": 12,
+   "seed": {
+    "a": "old"
+   },
+   "ops": [
+    {
+     "set": [
+      "a",
+      "a much longer value"
+     ],
+     "ok": false
+    }
+   ],
+   "stored": {
+    "a": "old"
+   }
+  },
+  {
+   "why": "but the page reads what it wrote last, not the older persisted value",
+   "quota": 12,
+   "seed": {
+    "a": "old"
+   },
+   "ops": [
+    {
+     "set": [
+      "a",
+      "a much longer value"
+     ],
+     "ok": false
+    },
+    {
+     "get": [
+      "a"
+     ],
+     "is": "a much longer value"
+    }
+   ],
+   "stored": {
+    "a": "old"
+   }
+  },
+  {
+   "why": "replacing a key counts the new size, not old plus new",
+   "quota": 13,
+   "seed": {
+    "a": "old"
+   },
+   "ops": [
+    {
+     "set": [
+      "a",
+      "newer"
+     ],
+     "ok": true
+    },
+    {
+     "get": [
+      "a"
+     ],
+     "is": "newer"
+    }
+   ],
+   "stored": {
+    "a": "newer"
+   }
+  },
+  {
+   "why": "a later write that fits persists again and clears the memory copy",
+   "quota": 12,
+   "seed": {},
+   "ops": [
+    {
+     "set": [
+      "a",
+      "123456789"
+     ],
+     "ok": false
+    },
+    {
+     "set": [
+      "a",
+      "1"
+     ],
+     "ok": true
+    },
+    {
+     "get": [
+      "a"
+     ],
+     "is": "1"
+    }
+   ],
+   "stored": {
+    "a": "1"
+   }
+  },
+  {
+   "why": "other keys count against the quota",
+   "quota": 15,
+   "seed": {
+    "b": "123"
+   },
+   "ops": [
+    {
+     "set": [
+      "a",
+      "1234"
+     ],
+     "ok": false
+    },
+    {
+     "set": [
+      "a",
+      "12"
+     ],
+     "ok": true
+    }
+   ],
+   "stored": {
+    "b": "123",
+    "a": "12"
+   }
+  },
+  {
+   "why": "units are UTF-16: an astral character counts two",
+   "quota": 8,
+   "seed": {},
+   "ops": [
+    {
+     "set": [
+      "a",
+      "😀"
+     ],
+     "ok": true
+    },
+    {
+     "set": [
+      "b",
+      "😀"
+     ],
+     "ok": false
+    }
+   ],
+   "stored": {
+    "a": "😀"
+   }
+  },
+  {
+   "why": "an empty value costs the key and the prefix only",
+   "quota": 5,
+   "seed": {},
+   "ops": [
+    {
+     "set": [
+      "a",
+      ""
+     ],
+     "ok": true
+    },
+    {
+     "set": [
+      "bc",
+      ""
+     ],
+     "ok": false
+    }
+   ],
+   "stored": {
+    "a": ""
+   }
+  },
+  {
+   "why": "a key never written reads as the default",
+   "quota": 10,
+   "seed": {},
+   "ops": [
+    {
+     "get": [
+      "zz"
+     ],
+     "is": "none"
+    }
+   ],
+   "stored": {}
+  }
+ ]
+}

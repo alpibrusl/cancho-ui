@@ -2,8 +2,10 @@
   "schema": "cancho-ui-trace",
   "version": "0.1.0",
   "component": "OpsConsole",
-  "note": "The installed page started with the service down (docs/adapters.md section 19): the first read fails, the list the previous session saved is shown and the status says the read failed. The next read that succeeds replaces the list and saves it.",
+  "clock": 1700000180000,
+  "note": "The installed page started with the service down (docs/adapters.md section 19): the first read fails, the list the previous session saved is shown and the status says the read failed and how old the list is (it was saved three minutes before, by the clock the trace starts at). The next read that succeeds replaces the list and saves it.",
   "storage": {
+    "ops-console:machines_at": "1700000000000",
     "ops-console:machines": "{\"id\":\"M-101\",\"name\":\"Press 1\",\"state\":\"running\",\"temp\":71.5}\n{\"id\":\"M-102\",\"name\":\"Press 2\",\"state\":\"idle\",\"temp\":64}\n"
   },
   "steps": [
@@ -13,7 +15,8 @@
         "Err": "network error"
       },
       "state": {
-        "note": "error: network error (showing the last saved list, if any)",
+        "note": "error: network error (showing the list saved 3 min ago)",
+        "saved_at": 1700000000000,
         "rows": [
           "{\"id\":\"M-101\",\"name\":\"Press 1\",\"state\":\"running\",\"temp\":71.5}",
           "{\"id\":\"M-102\",\"name\":\"Press 2\",\"state\":\"idle\",\"temp\":64}"

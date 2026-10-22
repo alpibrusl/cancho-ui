@@ -49,7 +49,9 @@ The adapter is emitted only for a program that has a reachable `Storage` use, ab
 * **It never throws.** A private window, blocked site data or a full quota make `localStorage` throw. The
   adapter then keeps the value in memory for the life of the page, `get` finds it there, and `set` answers
   `false`, so a program can tell the user "not saved". After a reload the value is gone, which is the honest
-  answer.
+  answer. *(Corrected, #66, section 20: when the store was merely full and already held an older value under the key, `get`
+  returned the older value, not the one the page had just written; measured in Chromium. `get` now reads the page's memory
+  first.)*
 * **Reads are live.** A view that calls `storage.get` shows what is stored now. The web backend rebuilds the
   whole view after every handler, so a `set` in a handler is on screen at once. Nothing re-renders when
   *another tab* writes: no `storage` event is wired.
@@ -65,7 +67,8 @@ Replay models the store as a map ([`replay.md`](replay.md)):
 * Every step report carries the store after the step (`storage`, left out when it is empty), and a step may
   `expect` it: `"expect": {"storage": {"note": "buy milk"}}` is a subset check, like the other expectations.
 
-Replay does not model `localStorage` failing; that is the browser script's (section 6).
+Replay does not model `localStorage` failing; that is the browser script's (section 6). *(Corrected, #66: a trace may set
+`storage_quota`, section 20, and replay then models a full store.)*
 
 ## 5. Found while building it
 
@@ -724,19 +727,68 @@ issue proposed stale-while-revalidate in the worker with the staleness reported 
 
 **What the console does** (`examples/ops-console`): a `last: String` state holds the last good answer; `Refresh` starts with
 `last = storage.get("machines", last)`, writes `last` back after every read, and builds `rows` from `last` whatever the answer was.
-An `Err` keeps `last`, and the status says `error: <why> (showing the last saved list, if any)`, so an old list is never presented
-as fresh. No new language feature, no conditional (`docs/conditionals.md` is not needed for it).
+An `Err` keeps `last`, and the status says `error: <why> (showing the last saved list, if any)` *(section 20 makes that text say
+how old the list is, or that nothing is saved)*, so an old list is never presented as fresh. No new language feature, no conditional (`docs/conditionals.md` is not needed for it).
 
 **Checked.** `examples/ops-console/ops-console.offline.trace.json` (replay: storage seeded, the first read fails, the saved list is
 shown, the next read replaces and saves it); the existing 37-step trace still passes with the one changed status text;
 `scripts/check-offline.js` and the former "KNOWN GAP #4" of `scripts/check-ops-console.js`. Against the previous program the new
 check fails three of its five checks (`0 of 0 machines`), so it measures the change.
 
-**Not done, and the limits.** A first-ever start with no network still shows nothing (there is nothing to show; the status says
-so). The saved list is the whole text of the last answer in `localStorage` (1,697 bytes for 23 machines, measured), which has a
-per-origin quota of a few MB: a program with a large answer must not use this pattern unmodified. Saved data is not aged: the page
-cannot say *how old*, only that the read failed (a `Clock` could add that; not built). Other pages need the same few lines; there is
+**Not done, and the limits.** *(Corrected, #66, section 20: the first-ever start now says "nothing is saved yet", the saved list
+has an age, and a full store is refused visibly.)* The saved list is the whole text of the last answer in `localStorage` (1,697
+bytes for 23 machines, measured), which has a per-origin quota of a few MB: a program with a large answer must still choose
+what to keep. Other pages need the same few lines; there is
 no builtin for it. iOS Safari is not tested.
+
+---
+
+## 20. A page offline for the first time, its saved list's age, and a full store (issue #66)
+
+Three follow-ups to section 19, measured and decided.
+
+**1. The very first start, no network, nothing saved.** Measured before: the status read `error: network error (showing the
+last saved list, if any)` and the page showed `0 of 0 machines`: it promised a saved list there was none of. Decision: no
+language change; an app says what it knows. With `if` (docs/conditionals.md) the console's status is `error: <why> (nothing is
+saved yet: try again when online)` when `last` is empty and `error: <why> (showing the list saved <age>)` otherwise
+(`examples/ops-console/ops-console.firststart.trace.json`; `scripts/check-offline.js` starts a fresh profile with the page served
+and the machine service down and reads that status).
+
+**2. The age of the saved list.** Decision: store the time with the list, from the `Clock`: the console `requires Clock;`,
+writes `machines_at` (milliseconds, as text) next to `machines` after a successful read, reads it back with
+`num(storage.get("machines_at", ""), 0)`, and shows `less than a minute ago`, `N min ago` or, when no time was saved (a list
+written before this change), `at an unknown time`. This widens the console's authority by `Clock` (the `diff` shows it). Both
+traces that depend on the age start the fake clock at a real-looking epoch (`"clock": 1700000000000`), because `0` means "no
+time saved". Not done: hours and days (the unit stays minutes), and the age is computed at the read that failed, not live.
+
+**3. A full `localStorage`.** Measured in Chromium (`scripts/check-storage-quota.js`, the store filled until a one-unit write
+throws): `storage.set` answered `false` (the adapter's `try`), nothing threw, the older value stayed in the store, and the page
+kept working. **One defect found and fixed:** `storage.get` then returned the **older persisted** value, not the one the page had
+just written (`got: the older note` after saving a newer one), because the adapter read `localStorage` before its page-lifetime
+memory. It now reads the memory first, so the page reads back what it last wrote; after a reload only the persisted value is left
+(the honest answer, and what `set`'s `false` told the program). A later `set` that fits persists and clears the memory copy.
+
+*Replay now models it.* A trace header `"storage_quota": N` is the most UTF-16 units the persisted store may hold, counting each key
+with the adapter's `cui:` prefix plus its value, over all keys (a write that replaces a key counts the new size, not old plus
+new); anything but a non-negative integer is `trace-bad-value`. A write that does not fit answers `false`, keeps the persisted
+value, and keeps the new one in the memory that `get` reads first. The step report's `storage` is the persisted store only.
+`examples/ops-console/ops-console.quota.trace.json`: the first read succeeds, cannot be saved, the status says
+`updated (not saved: this device's storage is full)`, and a later failed read keeps showing the list the page holds.
+
+**Checked.** `tests/storage_quota_corpus.json` (12 cases: exactly at the quota, one over, a refused write readable in the same page,
+the older value kept in the store, replacing a key, a later write that fits, other keys counting, an astral character counting two
+units, an empty value, a key never written): replayed through the real replay in `cargo test` (`tests/storage.rs`) and run against
+the emitted adapter over a fake `localStorage` with the same rule in `scripts/check-storage-quota.js`; the same script fills the
+real Chromium store, saves, and reads back, and reloads. The four traces of the console and the browser scripts `check-offline.js`
+and `check-ops-console.js`.
+
+**Deliberate breaks, each caught:** replay ignoring the quota, not clearing the memory copy on a write that fits, counting the
+replaced key twice, and reading the store before the memory (all in the corpus test); the old read order in the emitted adapter (4
+checks of the real-browser script, the failure above); the program without its first-start branch, without its not-saved note, and
+with the age in seconds (each fails a console trace).
+
+**Not done.** The real quota of Safari, Firefox or a phone is not measured (Chromium's was filled in a desktop profile); quota
+accounting by other engines may differ from "UTF-16 units of key plus value". An event for another tab's write is still not wired.
 
 ---
 

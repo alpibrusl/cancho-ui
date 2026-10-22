@@ -152,6 +152,9 @@ pub struct Machine<'a> {
     pub clock: f64,
     /// The `Storage` store (docs/adapters.md): key to value, seeded by the trace, written by `storage.set`.
     pub storage: BTreeMap<String, String>,
+    /// The quota of the persisted store and the values it refused (see `Ctx`), docs/adapters.md section 20.
+    pub storage_quota: Option<u64>,
+    pub storage_memory: BTreeMap<String, String>,
     /// The names of the credentials the trace says the page supplied (docs/adapters.md section 18).
     pub credentials: Vec<String>,
     pub requests: Vec<Request>,
@@ -168,6 +171,7 @@ impl<'a> Machine<'a> {
     pub fn new(comp: &'a IrComponent, clock: f64) -> Result<Machine<'a>, Fault> {
         let mut state: BTreeMap<String, Value> = BTreeMap::new();
         let mut no_storage: BTreeMap<String, String> = BTreeMap::new();
+        let mut no_memory: BTreeMap<String, String> = BTreeMap::new();
         for field in &comp.state {
             let mut journal = Journal::default();
             let value = {
@@ -176,6 +180,8 @@ impl<'a> Machine<'a> {
                     clock,
                     storage: &mut no_storage,
                     storage_ns: "",
+                    storage_quota: None,
+                    storage_memory: &mut no_memory,
                     journal: &mut journal,
                     locals: Vec::new(),
                     init: true,
@@ -199,6 +205,8 @@ impl<'a> Machine<'a> {
             state,
             clock,
             storage: BTreeMap::new(),
+            storage_quota: None,
+            storage_memory: BTreeMap::new(),
             credentials: Vec::new(),
             requests: Vec::new(),
             inflight: BTreeMap::new(),
@@ -569,6 +577,8 @@ impl<'a> Machine<'a> {
                     clock: self.clock,
                     storage: &mut self.storage,
                     storage_ns: storage_ns(comp),
+                    storage_quota: self.storage_quota,
+                    storage_memory: &mut self.storage_memory,
                     journal: &mut task.journal,
                     locals: task.params.clone(),
                     init: false,

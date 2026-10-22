@@ -1,0 +1,44 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "component": "OpsConsole",
+  "clock": 1700000000000,
+  "storage_quota": 60,
+  "note": "The device's storage is full (docs/adapters.md section 20): the first read succeeds but the list cannot be saved. The page still shows it and the status says it was not saved; nothing reaches the persisted store. A later failed read keeps showing the list the page holds.",
+  "steps": [
+    {
+      "resolve": 1,
+      "with": {
+        "Ok": "{\"id\":\"M-101\",\"name\":\"Press 1\",\"state\":\"running\",\"temp\":71.5}\n{\"id\":\"M-102\",\"name\":\"Press 2\",\"state\":\"idle\",\"temp\":64}\n"
+      },
+      "state": {
+        "note": "updated (not saved: this device's storage is full)",
+        "saved": false,
+        "rows": [
+          "{\"id\":\"M-101\",\"name\":\"Press 1\",\"state\":\"running\",\"temp\":71.5}",
+          "{\"id\":\"M-102\",\"name\":\"Press 2\",\"state\":\"idle\",\"temp\":64}"
+        ]
+      }
+    },
+    {
+      "advance": 5000,
+      "state": {
+        "note": "loading"
+      }
+    },
+    {
+      "resolve": 2,
+      "with": {
+        "Err": "network error"
+      },
+      "state": {
+        "saved": false,
+        "rows": [
+          "{\"id\":\"M-101\",\"name\":\"Press 1\",\"state\":\"running\",\"temp\":71.5}",
+          "{\"id\":\"M-102\",\"name\":\"Press 2\",\"state\":\"idle\",\"temp\":64}"
+        ],
+        "note": "error: network error (showing the list saved less than a minute ago)"
+      }
+    }
+  ]
+}

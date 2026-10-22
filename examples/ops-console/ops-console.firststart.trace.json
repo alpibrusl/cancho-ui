@@ -1,0 +1,46 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "component": "OpsConsole",
+  "clock": 1700000000000,
+  "note": "The installed page's very first start with no network and nothing saved (docs/adapters.md section 20): there is no list to show, and the status says so instead of promising a saved list. When the service comes back the list is shown and saved with its time.",
+  "steps": [
+    {
+      "resolve": 1,
+      "with": {
+        "Err": "network error"
+      },
+      "state": {
+        "note": "error: network error (nothing is saved yet: try again when online)",
+        "rows": [],
+        "saved_at": 0
+      }
+    },
+    {
+      "advance": 5000,
+      "state": {
+        "note": "loading"
+      }
+    },
+    {
+      "resolve": 2,
+      "with": {
+        "Ok": "{\"id\":\"M-101\",\"name\":\"Press 1\",\"state\":\"running\",\"temp\":71.5}\n{\"id\":\"M-102\",\"name\":\"Press 2\",\"state\":\"idle\",\"temp\":64}\n"
+      },
+      "state": {
+        "note": "updated",
+        "saved_at": 1700000005000,
+        "rows": [
+          "{\"id\":\"M-101\",\"name\":\"Press 1\",\"state\":\"running\",\"temp\":71.5}",
+          "{\"id\":\"M-102\",\"name\":\"Press 2\",\"state\":\"idle\",\"temp\":64}"
+        ]
+      },
+      "expect": {
+        "storage": {
+          "ops-console:machines": "{\"id\":\"M-101\",\"name\":\"Press 1\",\"state\":\"running\",\"temp\":71.5}\n{\"id\":\"M-102\",\"name\":\"Press 2\",\"state\":\"idle\",\"temp\":64}\n",
+          "ops-console:machines_at": "1700000005000"
+        }
+      }
+    }
+  ]
+}

@@ -346,7 +346,7 @@ function check(label, ok, detail) {
   let offline = '';
   for (let t = 0; t < 4000; t += 80) { offline = await p4.evaluate(() => Array.from(document.querySelectorAll('#root span')).map((e) => e.textContent).join(' | ')); if (/status: error/.test(offline)) { break; } await p4.waitForTimeout(80); }
   check('with the service stopped, the installed page still opens from the service worker', /Machines/.test(offline), offline.slice(0, 120));
-  check('and it shows the list saved by the earlier session, with a status that says the read failed (#44, fixed in the program: docs/adapters.md section 19)', /status: error: network error \(showing the last saved list/.test(offline) && /23 of 23 machines/.test(offline), offline.slice(0, 200));
+  check('and it shows the list saved by the earlier session, with a status that says the read failed (#44, fixed in the program: docs/adapters.md section 19)', /status: error: network error \(showing the list saved (less than a minute|\d+ min)/.test(offline) && /23 of 23 machines/.test(offline), offline.slice(0, 200));
   await p4.screenshot({ path: path.join(shots, '6-offline.png') });
   await ctx4.close();
 

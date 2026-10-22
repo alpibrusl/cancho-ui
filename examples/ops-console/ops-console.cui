@@ -9,6 +9,7 @@ component OpsConsole {
     requires Network;
     requires NetworkWrite;
     requires Storage("ops-console");
+    requires Clock;
 
     state rows: List[String] = [];
     state shown: List[String] = [];
@@ -19,6 +20,10 @@ component OpsConsole {
     state pages: Int = 1;
     state note: String = "not loaded";
     state last: String = "";
+    state saved_at: Int = 0;
+    state saved: Bool = true;
+    state now: Int = 0;
+    state age: String = "";
     state r: Result[String, String] = Ok("");
     state target: String = "";
     state setpoint: String = "";
@@ -34,18 +39,27 @@ component OpsConsole {
     on Refresh {
         note = "loading";
         last = storage.get("machines", last);
+        saved_at = num(storage.get("machines_at", ""), 0);
         r = await(net.get("api/machines"));
-        note = match r {
-            Ok(_) => { "updated" }
-            Err(e) => { "error: " + e + " (showing the last saved list, if any)" }
-            Cancelled => { "cancelled" }
-        };
+        now = clock.now();
         last = match r {
             Ok(text) => { text }
             Err(_) => { last }
             Cancelled => { last }
         };
-        storage.set("machines", last);
+        saved_at = match r {
+            Ok(_) => { now }
+            Err(_) => { saved_at }
+            Cancelled => { saved_at }
+        };
+        saved = storage.set("machines", last);
+        saved = storage.set("machines_at", "" + saved_at) && saved;
+        age = if saved_at == 0 { "at an unknown time" } else if now - saved_at < 60000 { "less than a minute ago" } else { floor((now - saved_at) / 60000) + " min ago" };
+        note = match r {
+            Ok(_) => { if saved { "updated" } else { "updated (not saved: this device's storage is full)" } }
+            Err(e) => { if len(last) > 0 { "error: " + e + " (showing the list saved " + age + ")" } else { "error: " + e + " (nothing is saved yet: try again when online)" } }
+            Cancelled => { "cancelled" }
+        };
         rows = filter(lines(last), x => len(json.get(x, "id", "")) > 0);
         shown = sort(filter(rows, x => contains(lower(json.get(x, "name", "")), lower(q))), x => dir * num(json.get(x, "temp", ""), dir * 1000000000));
         pages = max(ceil(len(shown) / 5), 1);

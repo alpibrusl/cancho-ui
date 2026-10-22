@@ -53,8 +53,21 @@ function check(label, ok, detail) {
   const status = t.find((x) => x.startsWith('status: ')) || '';
   const count = t.find((x) => /machines, page/.test(x)) || '';
   check('the installed page opens with the service down', t.length > 0, JSON.stringify(status));
-  check('the status says the read failed (it is not shown as fresh)', /^status: error: .*showing the last saved list/.test(status), JSON.stringify(status));
+  check('the status says the read failed (it is not shown as fresh)', /^status: error: .*showing the list saved (less than a minute ago|\d+ min ago)\)$/.test(status), JSON.stringify(status));
   check('the last saved list is shown', /^5 of 23 machines|^23 of 23 machines/.test(count) || /of 23 machines/.test(count), JSON.stringify(count));
+  // The very first start: a new browser profile (nothing saved), the page served, the machine service down.
+  const down = await createServer(path.join(dir, 'out'), { down: true });
+  const fresh = await (await browser.newContext({ serviceWorkers: 'allow' })).newPage();
+  const freshErrors = [];
+  fresh.on('pageerror', (e) => freshErrors.push(String(e)));
+  await fresh.goto(`http://localhost:${down.address().port}/`);
+  await fresh.waitForFunction(() => /status: error/.test(document.body.innerText), null, { timeout: 8000 });
+  const firstText = await fresh.evaluate(() => document.body.innerText);
+  check('the very first start says nothing is saved yet (it does not promise a saved list)', /status: error: .*\(nothing is saved yet: try again when online\)/.test(firstText) && !/showing the list saved/.test(firstText), JSON.stringify((firstText.match(/status: .*/) || [''])[0]));
+  check('and shows an empty list', /0 of 0 machines/.test(firstText), JSON.stringify((firstText.match(/\d+ of \d+ machines.*/) || [''])[0]));
+  check('no script errors on the first start', freshErrors.length === 0, freshErrors.join(' | '));
+  down.closeAllConnections();
+  await new Promise((done) => down.close(done));
   check('no script errors', errors.length === 0, errors.join(' | '));
   await browser.close();
   console.log(failures.length ? `\n${failures.length} check(s) failed` : '\nall checks passed');
