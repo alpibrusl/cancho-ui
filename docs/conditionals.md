@@ -74,10 +74,11 @@ It can wait because step 1 already deletes the four unreadable rows of section 1
   (no unit value to fall back on); the statement form may omit it.
 * **Strict operators, short-circuit evaluation.** `a && b` and `a || b` evaluate `b` only if `a` does not decide the answer,
   exactly as JavaScript does. Because both operands are pure, short-circuit is *observable* through division: **measured in the code,
-  the two evaluators already disagree on `a / 0`**. Replay refuses it (`finite()` in `eval.rs` faults with `replay-non-finite`);
-  the emitted JS (`a / b` through `BinOp::js_op`) yields `Infinity` or `NaN` with no guard. Short-circuit therefore decides
-  whether `b != 0 && a / b > 1` is a value or a replay fault, so the division disagreement is a prerequisite of this design
-  (fix it: make the emitted `/` refuse as replay does, or make replay answer as JS does), not a detail.
+  the two evaluators disagreed on `a / 0`**. Replay refused it (`finite()` in `eval.rs` faults with `replay-non-finite`);
+  the emitted JS (`a / b` through `BinOp::js_op`) yielded `Infinity` or `NaN` with no guard. Short-circuit therefore decides
+  whether `b != 0 && a / b > 1` is a value or a replay fault, so the division disagreement was a prerequisite of this design.
+  **Settled** (section 5, question 5; `docs/semantics.md`, "Arithmetic is finite"): the emitted `+ - * /` now refuse a result that is
+  not finite as replay does.
   The design keeps short-circuit because that guard is the use everybody will write.
 * **Precedence** (low to high): `||`, `&&`, comparisons, `+ -`, `* /`, unary `- !`. `!` binds tighter than a comparison, so
   `!a == b` is `(!a) == b`, which is a type error (`Bool == Int` is already refused where it is wrong).
@@ -157,4 +158,12 @@ Open questions:
 4. **Literal patterns (B) for `Int`/`String`:** a separate later decision once there is a program that needs them? (Proposed: yes.)
 5. **Division by zero:** replay faults and the emitted JS yields `Infinity`/`NaN` (3.1). Which is the language's answer? Either
    way it is a bug to fix before step 1, and it is true today with no `if` in sight.
+   **Decided, built (alpibrusl/cancho-ui, the PR that precedes the conditionals):** the page refuses, as replay does. A result
+   that is not finite is a fault in both: `replay-non-finite` in `cancho-ui test`, a thrown `Error` with that message in the page, which
+   stops the handler at that statement. Making replay answer `Infinity` was rejected (JSON cannot carry it; an `Int` field would hold
+   a value no `Int` has; a later `==` or `sort` would depend on it). Measured by `tests/arith_corpus.json` (22 cases) against the
+   Rust model (`cargo test`) and the emitted JavaScript (`scripts/check-arith.js`, Chromium); six deliberate breaks were each caught by
+   at least one of them (the check that throws removed, `+` unchecked, `/` unguarded in the emitter, `*` unguarded, the model allowing a
+   non-finite result, the sentinel declaration removed). One latent bug fell out: a program with no `await` did not declare
+   `__cui_cancelled`, which every handler's `catch` reads, so any error a handler threw surfaced as a `ReferenceError` instead of itself.
 6. **Derive:** open its design after step 1 is built, or before?

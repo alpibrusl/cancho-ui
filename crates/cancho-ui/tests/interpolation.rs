@@ -80,7 +80,10 @@ fn an_interpolation_in_a_handler_string_is_the_concatenation_a_text_would_show()
 #[test]
 fn the_emitted_code_concatenates_from_a_string_and_a_plain_string_is_unchanged() {
     let js = js_of("s = \"{a}{b}\";", "emit");
-    assert!(js.contains("((\"\" + __state_a) + __state_b)"), "{js}");
+    assert!(
+        js.contains("__cui_add(__cui_add(\"\", __state_a), __state_b)"),
+        "{js}"
+    );
     let plain = js_of("s = \"no braces\";", "plain");
     assert!(plain.contains("__state_s = \"no braces\""), "{plain}");
 }

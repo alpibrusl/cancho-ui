@@ -5,6 +5,18 @@ use cancho_ui_ir::ir::*;
 
 use crate::emit::{STATE_PREFIX, js_string};
 
+/// A binary operator as JavaScript. Arithmetic goes through `__cui_add` / `__cui_fin` so that a result that is not finite
+/// throws, as replay's `replay-non-finite` refuses it (docs/semantics.md, "Arithmetic"); a comparison is the host's own.
+fn binary_js(op: IrBinOp, l: &str, r: &str) -> String {
+    match op {
+        IrBinOp::Add => format!("__cui_add({l}, {r})"),
+        IrBinOp::Sub | IrBinOp::Mul | IrBinOp::Div => {
+            format!("__cui_fin({l} {} {r})", op.js_op())
+        }
+        _ => format!("({l} {} {r})", op.js_op()),
+    }
+}
+
 pub(crate) fn emit_expr_init(e: &IrExpr) -> String {
     match e {
         IrExpr::IntLit { value, .. } => value.to_string(),
@@ -23,13 +35,7 @@ pub(crate) fn emit_expr_init(e: &IrExpr) -> String {
             _ => "(0 - (".to_string() + &emit_expr_init(operand) + "))",
         },
         IrExpr::Binary { op, lhs, rhs, .. } => {
-            "(".to_string()
-                + &emit_expr_init(lhs)
-                + " "
-                + op.js_op()
-                + " "
-                + &emit_expr_init(rhs)
-                + ")"
+            binary_js(*op, &emit_expr_init(lhs), &emit_expr_init(rhs))
         }
         // State-field initial values can be `Ok(value)` or
         // `Err(reason)` constructors — Tier 6 lifted the
@@ -123,15 +129,11 @@ pub(crate) fn emit_expr_runtime(e: &IrExpr, params: &[&str]) -> String {
             operand,
             ..
         } => "(0 - (".to_string() + &emit_expr_runtime(operand, params) + "))",
-        IrExpr::Binary { op, lhs, rhs, .. } => {
-            "(".to_string()
-                + &emit_expr_runtime(lhs, params)
-                + " "
-                + op.js_op()
-                + " "
-                + &emit_expr_runtime(rhs, params)
-                + ")"
-        }
+        IrExpr::Binary { op, lhs, rhs, .. } => binary_js(
+            *op,
+            &emit_expr_runtime(lhs, params),
+            &emit_expr_runtime(rhs, params),
+        ),
         IrExpr::Ok { value, .. } => {
             "({__cui_tag:\"Ok\",value:".to_string() + &emit_expr_runtime(value, params) + "})"
         }

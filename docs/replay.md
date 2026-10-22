@@ -195,7 +195,9 @@ that is well-defined; everything else is a refusal, not a guess:
 - `/` is **real division**, as in JavaScript (`7 / 2` is `3.5`), whatever the
   static type says. Division by zero and any result that is not finite are
   `replay-non-finite`, because JSON cannot carry them and JavaScript's
-  `Infinity`/`NaN` are not part of the language.
+  `Infinity`/`NaN` are not part of the language. The emitted page refuses the
+  same results (it throws an `Error` starting `replay-non-finite`, and the handler
+  stops there): `docs/semantics.md`, "Arithmetic is finite".
 - `==`/`!=` (strict `===`/`!==`) on numbers, strings and bools. On lists and
   variants JavaScript compares *references*; replay does not model references and
   refuses (`replay-type-error`) rather than say `false`.

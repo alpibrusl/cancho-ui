@@ -166,6 +166,10 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
     if any_cancel {
         out.push_str(CANCEL_ADAPTER_JS);
         out.push('\n');
+    } else {
+        // Every handler's catch compares with the sentinel; with no await nothing throws it, but the name must exist,
+        // or any other error a handler throws (a non-finite result, `__cui_fin`) would surface as a ReferenceError.
+        out.push_str("const __cui_cancelled = Symbol(\"__cui_cancelled\");\n\n");
     }
     // A control the user is using must keep focus across the rebuild a state change causes.
     let keep_focus = ir

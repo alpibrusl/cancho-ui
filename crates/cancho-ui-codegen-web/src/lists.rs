@@ -21,6 +21,19 @@ function __cui_sort(list, key) {
 }
 ";
 
+const ARITH_JS: &str = "\
+// Arithmetic (docs/semantics.md, \"Arithmetic\"): + - * / never answer Infinity or NaN. A result that is not finite throws, the
+// page's form of replay's `replay-non-finite`; `+` of two numbers is checked, `+` with a string is the host's concatenation.
+function __cui_fin(n) {
+    if (typeof n === \"number\" && !isFinite(n)) { throw new Error(\"replay-non-finite: the result is not a finite number\"); }
+    return n;
+}
+function __cui_add(a, b) {
+    var r = a + b;
+    return typeof r === \"number\" ? __cui_fin(r) : r;
+}
+";
+
 const REVERSE_JS: &str = "\
 // Builtin: reverse(list) (docs/lists.md). A new list; the argument is not changed.
 function __cui_reverse(list) { return list.slice().reverse(); }
@@ -111,6 +124,7 @@ pub fn helpers_used(emitted: &str) -> String {
     let mut out = String::new();
     // A helper shared by two calls (take and skip) is listed once: a module may not declare a function twice.
     for (calls, js) in [
+        (&["__cui_fin(", "__cui_add("][..], ARITH_JS),
         (&["__cui_sort("][..], SORT_JS),
         (&["__cui_reverse("][..], REVERSE_JS),
         (&["__cui_contains("][..], CONTAINS_JS),

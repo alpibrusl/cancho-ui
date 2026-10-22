@@ -22,7 +22,7 @@ use trace::{Action, Step, Trace, TraceError, parse_trace};
 use value::{Value, num_json, subset};
 
 pub use eval::{
-    JSON_ITEMS_MAX, json_get, json_items, json_quote, math_builtin, num_of_text, page_count,
+    JSON_ITEMS_MAX, arith, json_get, json_items, json_quote, math_builtin, num_of_text, page_count,
     sort_key_order_json, text_builtin_json,
 };
 pub use report::{

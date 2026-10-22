@@ -220,7 +220,10 @@ fn the_emitted_page_evaluates_the_label_and_the_arguments_at_render_time() {
         "            For { over: names as: n Button { label: \"Pick \" + n on: Pick(n, 7) } }",
         "emit",
     );
-    assert!(js.contains("_label = String((\"Pick \" + n));"), "{js}");
+    assert!(
+        js.contains("_label = String(__cui_add(\"Pick \", n));"),
+        "{js}"
+    );
     assert!(js.contains(".setAttribute('aria-label', __n"), "{js}");
     assert!(js.contains("_arg0 = n;"), "{js}");
     assert!(js.contains("_arg1 = 7;"), "{js}");
