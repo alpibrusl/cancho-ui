@@ -657,6 +657,11 @@ fn check_instances(
                 }
                 locals.pop();
             }
+            ViewNode::If { children, .. } => {
+                for ch in children {
+                    walk(ch, shapes, parent, locals)?;
+                }
+            }
             ViewNode::Text { .. } => {}
         }
         Ok(())
@@ -741,7 +746,7 @@ fn component_uses(c: &Component, out: &mut Vec<String>) {
                     walk(ch, out);
                 }
             }
-            ViewNode::For { children, .. } => {
+            ViewNode::For { children, .. } | ViewNode::If { children, .. } => {
                 for ch in children {
                     walk(ch, out);
                 }
@@ -784,7 +789,7 @@ fn check_view_node_shape(node: &ViewNode) -> Result<(), TypeError> {
         ViewNode::Text { .. } => {}
         // Tier 8: `For` brings its own children into scope as a
         // loop binding; nothing to shape-check per-child yet.
-        ViewNode::For { children, .. } => {
+        ViewNode::For { children, .. } | ViewNode::If { children, .. } => {
             for c in children {
                 check_view_node_shape(c)?;
             }

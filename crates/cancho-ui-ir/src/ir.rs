@@ -427,6 +427,13 @@ pub enum IrViewNode {
         children: Vec<IrViewNode>,
         span: Span,
     },
+    /// `If { when: cond ... }` (docs/view-conditional.md): `children` are in the page while the pure `Bool` expression
+    /// `cond` is true, and absent (not hidden) while it is false.
+    If {
+        cond: IrExpr,
+        children: Vec<IrViewNode>,
+        span: Span,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]

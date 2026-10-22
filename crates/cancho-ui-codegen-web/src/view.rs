@@ -21,7 +21,7 @@ pub(crate) fn view_has_instance(node: &IrViewNode, component_names: &[String]) -
                 .iter()
                 .any(|c| view_has_instance(c, component_names))
         }
-        IrViewNode::For { children, .. } => children
+        IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => children
             .iter()
             .any(|c| view_has_instance(c, component_names)),
         IrViewNode::Text { .. } => false,
@@ -180,6 +180,62 @@ pub(crate) fn emit_view_node(
                     c,
                     parent_var,
                     &local_params,
+                    components,
+                    prop_consumers,
+                    has_slots,
+                    slot_prefix,
+                    None,
+                ));
+            }
+            out.push_str(&format!("{0}}}\n", indent));
+            out
+        }
+        IrViewNode::If {
+            cond,
+            children,
+            span,
+        } => {
+            // A component instance under an `If` must be disposed when the condition turns false, as one under a `For`
+            // is when the list shrinks: the `If` is emitted as a loop over a list of one element or none, which has
+            // that machinery (docs/view-conditional.md section 5).
+            if has_slots && children.iter().any(|c| view_has_instance(c, components)) {
+                let list = |items: Vec<IrExpr>| IrExpr::ListLit { items, span: *span };
+                let synthetic = IrViewNode::For {
+                    over: IrExpr::If {
+                        cond: Box::new(cond.clone()),
+                        then: Box::new(list(vec![IrExpr::IntLit {
+                            value: 0,
+                            span: *span,
+                        }])),
+                        else_: Box::new(list(Vec::new())),
+                        span: *span,
+                    },
+                    binding: "__if".to_string(),
+                    children: children.clone(),
+                    span: *span,
+                };
+                return emit_view_node(
+                    next_id,
+                    indent,
+                    &synthetic,
+                    parent_var,
+                    params,
+                    components,
+                    prop_consumers,
+                    has_slots,
+                    slot_prefix,
+                    slot_arr,
+                );
+            }
+            let mut out = format!("{0}if ({1}) {{\n", indent, emit_expr_runtime(cond, params));
+            let child_indent = format!("{}    ", indent);
+            for c in children {
+                out.push_str(&emit_view_node(
+                    next_id,
+                    &child_indent,
+                    c,
+                    parent_var,
+                    params,
                     components,
                     prop_consumers,
                     has_slots,

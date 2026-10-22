@@ -39,6 +39,8 @@ and nothing changes: no state, no request. *(This is the rule for `on:` controls
 is never refused, and an event with an enabled control among several is delivered. `expect: {"outcome": "disabled"}` asserts
 it; a trace that fires a disabled control and expects the handler to have run fails at that step.
 
+A control inside an `If { when: .. }` whose condition is false is not in the page (`docs/view-conditional.md`): if that is every control that fires the event, the outcome is **`hidden`**, a different fact from `disabled` (a control that is there and cannot be used), and the handler does not run. A hidden disabled button does not block Enter in a field either.
+
 What replay does not model: which of two controls bound to the same event the user pressed (it only knows whether any
 could have been), and the timing of the paint (the browser check in 4.1 covers that).
 

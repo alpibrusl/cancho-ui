@@ -1243,6 +1243,12 @@ impl Parser {
                     let kw_tok = self.bump();
                     return self.parse_for_node(kw_tok.span);
                 }
+                // `If { when: cond ... }` is reserved the same way.
+                let is_if = matches!(&self.peek().token, Token::Ident(s) if s == "If");
+                if is_if && followed_by_brace {
+                    let kw_tok = self.bump();
+                    return self.parse_if_node(kw_tok.span);
+                }
                 self.parse_element_node()
             }
             other => Err(ParseError::Unexpected {
@@ -1326,6 +1332,18 @@ impl Parser {
             line: kw_span.start.line,
             column: kw_span.start.column,
         })?;
+        let children = self.parse_view_children()?;
+        let close = self.bump(); // }
+        Ok(ViewNode::For {
+            over,
+            binding,
+            children,
+            span: Span::new(kw_span.start, close.span.end),
+        })
+    }
+
+    /// The children of a `For` or `If`: only elements (`Child { ... }`) and text bodies, up to the closing brace.
+    fn parse_view_children(&mut self) -> Result<Vec<ViewNode>, ParseError> {
         let mut children = Vec::new();
         // Children: only elements (`Child { ... }`) and string/text
         // bodies. No further bindings after `over:`/`as:`.
@@ -1359,10 +1377,33 @@ impl Parser {
                 }
             }
         }
+        Ok(children)
+    }
+
+    /// `If { when: cond ... }` (docs/view-conditional.md). The `If` token is already consumed; `kw_span` is its span.
+    /// `when:` is a general expression, checked to be a pure `Bool` after parsing; the children are ordinary view nodes.
+    fn parse_if_node(&mut self, kw_span: crate::span::Span) -> Result<ViewNode, ParseError> {
+        self.expect(Token::LBrace)?;
+        let is_when = matches!(&self.peek().token, Token::Ident(k) if k == "when")
+            && matches!(
+                self.tokens.get(self.pos + 1).map(|t| &t.token),
+                Some(Token::DotDot)
+            );
+        if !is_when {
+            return Err(ParseError::Unexpected {
+                expected: "`when: <condition>` first in an If block",
+                found: self.peek().token.clone(),
+                line: self.peek().span.start.line,
+                column: self.peek().span.start.column,
+            });
+        }
+        self.bump();
+        self.bump();
+        let cond = self.parse_expr()?;
+        let children = self.parse_view_children()?;
         let close = self.bump(); // }
-        Ok(ViewNode::For {
-            over,
-            binding,
+        Ok(ViewNode::If {
+            cond,
             children,
             span: Span::new(kw_span.start, close.span.end),
         })
@@ -1411,6 +1452,9 @@ impl Parser {
         // consumed here.
         if name == "For" {
             return self.parse_for_node(name_span);
+        }
+        if name == "If" {
+            return self.parse_if_node(name_span);
         }
         let kind = match name.as_str() {
             "Column" => ElementKind::Column,

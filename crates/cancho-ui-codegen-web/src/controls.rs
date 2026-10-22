@@ -9,8 +9,36 @@ use cancho_ui_ir::ir::*;
 
 use crate::emit::STATE_PREFIX;
 
-/// `disabled:` of every control of the view that fires `event` with `on:`, as JavaScript conditions.
-fn disabled_conditions(node: &IrViewNode, event: &str, out: &mut Vec<String>) {
+/// Does `e` read only state fields? A condition that does not (it reads a `For` binding or a lambda's) cannot be evaluated
+/// where `__submit_blocked` runs, and replay treats it as true for the same reason (`Machine::event_refused`).
+fn reads_only_state(e: &IrExpr, state: &[&str]) -> bool {
+    match e {
+        IrExpr::Ident { name, .. } => state.contains(&name.as_str()),
+        IrExpr::Filter { .. }
+        | IrExpr::Map { .. }
+        | IrExpr::SortBy { .. }
+        | IrExpr::Match { .. } => false,
+        other => other.children().iter().all(|c| reads_only_state(c, state)),
+    }
+}
+
+/// `disabled:` of every control of the view that fires `event` with `on:`, as JavaScript conditions. A control inside an
+/// `If` is in the page only while the `If`'s condition holds, so its condition is `(when && disabled)`: a hidden button
+/// does not block Enter (docs/view-conditional.md section 4).
+fn disabled_conditions(
+    node: &IrViewNode,
+    event: &str,
+    state: &[&str],
+    guards: &mut Vec<String>,
+    out: &mut Vec<String>,
+) {
+    let guarded = |cond: String, guards: &Vec<String>| {
+        if guards.is_empty() {
+            cond
+        } else {
+            format!("({} && {cond})", guards.join(" && "))
+        }
+    };
     match node {
         IrViewNode::Element {
             bindings, children, ..
@@ -28,23 +56,35 @@ fn disabled_conditions(node: &IrViewNode, event: &str, out: &mut Vec<String>) {
                     match &b.value {
                         IrBindingValue::Const { expr, .. } => {
                             if matches!(**expr, IrExpr::BoolLit { value: true, .. }) {
-                                out.push("true".to_string());
+                                out.push(guarded("true".to_string(), guards));
                             }
                         }
                         IrBindingValue::StateRef(name) => {
-                            out.push(format!("!!{STATE_PREFIX}{name}"));
+                            out.push(guarded(format!("!!{STATE_PREFIX}{name}"), guards));
                         }
                         _ => {}
                     }
                 }
             }
             for c in children {
-                disabled_conditions(c, event, out);
+                disabled_conditions(c, event, state, guards, out);
             }
         }
         IrViewNode::For { children, .. } => {
             for c in children {
-                disabled_conditions(c, event, out);
+                disabled_conditions(c, event, state, guards, out);
+            }
+        }
+        IrViewNode::If { cond, children, .. } => {
+            let kept = reads_only_state(cond, state);
+            if kept {
+                guards.push(format!("!!({})", crate::expr::emit_expr_runtime(cond, &[])));
+            }
+            for c in children {
+                disabled_conditions(c, event, state, guards, out);
+            }
+            if kept {
+                guards.pop();
             }
         }
         IrViewNode::Text { .. } => {}
@@ -68,7 +108,7 @@ fn submit_events(node: &IrViewNode, out: &mut Vec<String>) {
                 submit_events(c, out);
             }
         }
-        IrViewNode::For { children, .. } => {
+        IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
             for c in children {
                 submit_events(c, out);
             }
@@ -85,9 +125,10 @@ pub(crate) fn submit_blocked_table(c: &IrComponent, indent: &str) -> String {
         return String::new();
     }
     let mut out = format!("{indent}const __submit_blocked = {{\n");
+    let state: Vec<&str> = c.state.iter().map(|f| f.name.as_str()).collect();
     for e in &events {
         let mut conds = Vec::new();
-        disabled_conditions(&c.view.body, e, &mut conds);
+        disabled_conditions(&c.view.body, e, &state, &mut Vec::new(), &mut conds);
         if conds.is_empty() {
             continue;
         }

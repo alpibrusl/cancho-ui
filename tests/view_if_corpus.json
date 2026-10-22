@@ -1,0 +1,210 @@
+[
+  {
+    "why": "an If draws its children while the condition holds and removes them when it does not; a control inside it cannot be used while it is gone",
+    "source": [
+      "component A {",
+      "    state flag: Bool = true;",
+      "    state n: Int = 0;",
+      "    on Go { flag = !flag; }",
+      "    on Bump { n = n + 1; }",
+      "    view {",
+      "        Column {",
+      "            If { when: flag",
+      "                Text { \"shown {n}\" }",
+      "                Button { label: \"Bump\" on: Bump }",
+      "            }",
+      "            If { when: !flag Text { \"other\" } }",
+      "            Button { label: \"Go\" on: Go }",
+      "        }",
+      "    }",
+      "}"
+    ],
+    "initial": { "texts": ["shown 0", "Bump", "Go"], "buttons": ["Bump", "Go"] },
+    "steps": [
+      { "event": "Bump", "label": "Bump", "outcome": "completed", "state": { "n": 1 }, "texts": ["shown 1", "Bump", "Go"], "buttons": ["Bump", "Go"] },
+      { "event": "Go", "label": "Go", "outcome": "completed", "state": { "flag": false }, "texts": ["other", "Go"], "buttons": ["Go"] },
+      { "event": "Bump", "label": "Bump", "outcome": "hidden", "state": { "n": 1 }, "texts": ["other", "Go"], "buttons": ["Go"] },
+      { "event": "Go", "label": "Go", "outcome": "completed", "state": { "flag": true }, "texts": ["shown 1", "Bump", "Go"], "buttons": ["Bump", "Go"] },
+      { "event": "Bump", "label": "Bump", "outcome": "completed", "state": { "n": 2 }, "texts": ["shown 2", "Bump", "Go"], "buttons": ["Bump", "Go"] }
+    ]
+  },
+  {
+    "why": "a condition is any pure Bool expression: a comparison of state, here, and it is read again after every handler",
+    "source": [
+      "component A {",
+      "    state n: Int = 0;",
+      "    on Inc { n = n + 1; }",
+      "    on Reset { n = 0; }",
+      "    view {",
+      "        Column {",
+      "            Button { label: \"Inc\" on: Inc }",
+      "            If { when: n > 1 && n < 4",
+      "                Text { \"between\" }",
+      "                Button { label: \"Reset\" on: Reset }",
+      "            }",
+      "        }",
+      "    }",
+      "}"
+    ],
+    "initial": { "texts": ["Inc"], "buttons": ["Inc"] },
+    "steps": [
+      { "event": "Reset", "label": "Reset", "outcome": "hidden", "state": { "n": 0 }, "texts": ["Inc"], "buttons": ["Inc"] },
+      { "event": "Inc", "label": "Inc", "outcome": "completed", "state": { "n": 1 }, "texts": ["Inc"], "buttons": ["Inc"] },
+      { "event": "Inc", "label": "Inc", "outcome": "completed", "state": { "n": 2 }, "texts": ["Inc", "between", "Reset"], "buttons": ["Inc", "Reset"] },
+      { "event": "Inc", "label": "Inc", "outcome": "completed", "state": { "n": 3 }, "texts": ["Inc", "between", "Reset"], "buttons": ["Inc", "Reset"] },
+      { "event": "Inc", "label": "Inc", "outcome": "completed", "state": { "n": 4 }, "texts": ["Inc"], "buttons": ["Inc"] },
+      { "event": "Reset", "label": "Reset", "outcome": "hidden", "state": { "n": 4 }, "texts": ["Inc"], "buttons": ["Inc"] }
+    ]
+  },
+  {
+    "why": "Ifs nest: the inner children need both conditions",
+    "source": [
+      "component A {",
+      "    state outer: Bool = true;",
+      "    state inner: Bool = false;",
+      "    state hits: Int = 0;",
+      "    on Outer { outer = !outer; }",
+      "    on Inner { inner = !inner; }",
+      "    on Hit { hits = hits + 1; }",
+      "    view {",
+      "        Column {",
+      "            Button { label: \"Outer\" on: Outer }",
+      "            Button { label: \"Inner\" on: Inner }",
+      "            If { when: outer",
+      "                Text { \"outer\" }",
+      "                If { when: inner",
+      "                    Button { label: \"Hit\" on: Hit }",
+      "                    Text { \"hits {hits}\" }",
+      "                }",
+      "            }",
+      "        }",
+      "    }",
+      "}"
+    ],
+    "initial": { "texts": ["Outer", "Inner", "outer"], "buttons": ["Outer", "Inner"] },
+    "steps": [
+      { "event": "Hit", "label": "Hit", "outcome": "hidden", "state": { "hits": 0 }, "texts": ["Outer", "Inner", "outer"], "buttons": ["Outer", "Inner"] },
+      { "event": "Inner", "label": "Inner", "outcome": "completed", "state": { "inner": true }, "texts": ["Outer", "Inner", "outer", "Hit", "hits 0"], "buttons": ["Outer", "Inner", "Hit"] },
+      { "event": "Hit", "label": "Hit", "outcome": "completed", "state": { "hits": 1 }, "texts": ["Outer", "Inner", "outer", "Hit", "hits 1"], "buttons": ["Outer", "Inner", "Hit"] },
+      { "event": "Outer", "label": "Outer", "outcome": "completed", "state": { "outer": false }, "texts": ["Outer", "Inner"], "buttons": ["Outer", "Inner"] },
+      { "event": "Hit", "label": "Hit", "outcome": "hidden", "state": { "hits": 1 }, "texts": ["Outer", "Inner"], "buttons": ["Outer", "Inner"] }
+    ]
+  },
+  {
+    "why": "an If inside a For is drawn once per element, on a condition that reads state",
+    "source": [
+      "component A {",
+      "    state items: List[String] = [\"a\", \"b\"];",
+      "    state show: Bool = false;",
+      "    state last: String = \"none\";",
+      "    on Toggle { show = !show; }",
+      "    on Del(x) { last = x; }",
+      "    view {",
+      "        Column {",
+      "            Button { label: \"Toggle\" on: Toggle }",
+      "            For { over: items as: i",
+      "                Row {",
+      "                    Text { i }",
+      "                    If { when: show Button { label: \"Del \" + i on: Del(i) } }",
+      "                }",
+      "            }",
+      "            Text { \"last {last}\" }",
+      "        }",
+      "    }",
+      "}"
+    ],
+    "initial": { "texts": ["Toggle", "a", "b", "last none"], "buttons": ["Toggle"] },
+    "steps": [
+      { "event": "Del", "args": ["a"], "label": "Del a", "outcome": "hidden", "state": { "last": "none" }, "texts": ["Toggle", "a", "b", "last none"], "buttons": ["Toggle"] },
+      { "event": "Toggle", "label": "Toggle", "outcome": "completed", "state": { "show": true }, "texts": ["Toggle", "a", "Del a", "b", "Del b", "last none"], "buttons": ["Toggle", "Del a", "Del b"] },
+      { "event": "Del", "args": ["b"], "label": "Del b", "outcome": "completed", "state": { "last": "b" }, "texts": ["Toggle", "a", "Del a", "b", "Del b", "last b"], "buttons": ["Toggle", "Del a", "Del b"] }
+    ]
+  },
+  {
+    "why": "an If inside a Table makes rows (or cells) like a For does, and the table keeps its structure",
+    "source": [
+      "component A {",
+      "    state rows: List[String] = [\"r1\", \"r2\"];",
+      "    state show: Bool = true;",
+      "    on Toggle { show = !show; }",
+      "    view {",
+      "        Column {",
+      "            Button { label: \"Toggle\" on: Toggle }",
+      "            Table {",
+      "                label: \"T\"",
+      "                Row { Text { role: columnheader \"name\" } }",
+      "                If { when: show",
+      "                    For { over: rows as: r Row { Text { r } } }",
+      "                }",
+      "            }",
+      "        }",
+      "    }",
+      "}"
+    ],
+    "initial": { "texts": ["Toggle", "name", "r1", "r2"], "buttons": ["Toggle"], "rows": 3 },
+    "steps": [
+      { "event": "Toggle", "label": "Toggle", "outcome": "completed", "state": { "show": false }, "texts": ["Toggle", "name"], "buttons": ["Toggle"], "rows": 1 },
+      { "event": "Toggle", "label": "Toggle", "outcome": "completed", "state": { "show": true }, "texts": ["Toggle", "name", "r1", "r2"], "buttons": ["Toggle"], "rows": 3 }
+    ]
+  },
+  {
+    "why": "Enter in a field is blocked by a visible disabled button of the same event, and is not blocked by a hidden one",
+    "source": [
+      "component A {",
+      "    state v: String = \"\";",
+      "    state busy: Bool = true;",
+      "    state show: Bool = false;",
+      "    state saved: Int = 0;",
+      "    on V(x) { v = x; }",
+      "    on Save { saved = saved + 1; }",
+      "    on Show { show = !show; }",
+      "    view {",
+      "        Column {",
+      "            TextField { label: \"Name\" value: v on: V submit: Save }",
+      "            If { when: show Button { label: \"Save\" on: Save disabled: busy } }",
+      "            Button { label: \"Show\" on: Show }",
+      "            Text { \"saved {saved}\" }",
+      "        }",
+      "    }",
+      "}"
+    ],
+    "initial": { "texts": ["Name", "Show", "saved 0"], "buttons": ["Show"] },
+    "steps": [
+      { "event": "Save", "enter": "Name", "outcome": "completed", "state": { "saved": 1 }, "texts": ["Name", "Show", "saved 1"], "buttons": ["Show"] },
+      { "event": "Show", "label": "Show", "outcome": "completed", "state": { "show": true }, "texts": ["Name", "Save", "Show", "saved 1"], "buttons": ["Save", "Show"] },
+      { "event": "Save", "enter": "Name", "outcome": "disabled", "state": { "saved": 1 }, "texts": ["Name", "Save", "Show", "saved 1"], "buttons": ["Save", "Show"] },
+      { "event": "Show", "label": "Show", "outcome": "completed", "state": { "show": false }, "texts": ["Name", "Show", "saved 1"], "buttons": ["Show"] },
+      { "event": "Save", "enter": "Name", "outcome": "completed", "state": { "saved": 2 }, "texts": ["Name", "Show", "saved 2"], "buttons": ["Show"] }
+    ]
+  },
+  {
+    "why": "an event with two controls is delivered while either one is in the page",
+    "source": [
+      "component A {",
+      "    state a: Bool = true;",
+      "    state b: Bool = false;",
+      "    state n: Int = 0;",
+      "    on Hit { n = n + 1; }",
+      "    on A { a = !a; }",
+      "    on B { b = !b; }",
+      "    view {",
+      "        Column {",
+      "            Button { label: \"A\" on: A }",
+      "            Button { label: \"B\" on: B }",
+      "            If { when: a Button { label: \"Hit a\" on: Hit } }",
+      "            If { when: b Button { label: \"Hit b\" on: Hit } }",
+      "            Text { \"n {n}\" }",
+      "        }",
+      "    }",
+      "}"
+    ],
+    "initial": { "texts": ["A", "B", "Hit a", "n 0"], "buttons": ["A", "B", "Hit a"] },
+    "steps": [
+      { "event": "Hit", "label": "Hit a", "outcome": "completed", "state": { "n": 1 }, "texts": ["A", "B", "Hit a", "n 1"], "buttons": ["A", "B", "Hit a"] },
+      { "event": "A", "label": "A", "outcome": "completed", "state": { "a": false }, "texts": ["A", "B", "n 1"], "buttons": ["A", "B"] },
+      { "event": "Hit", "label": "Hit a", "outcome": "hidden", "state": { "n": 1 }, "texts": ["A", "B", "n 1"], "buttons": ["A", "B"] },
+      { "event": "B", "label": "B", "outcome": "completed", "state": { "b": true }, "texts": ["A", "B", "Hit b", "n 1"], "buttons": ["A", "B", "Hit b"] },
+      { "event": "Hit", "label": "Hit b", "outcome": "completed", "state": { "n": 2 }, "texts": ["A", "B", "Hit b", "n 2"], "buttons": ["A", "B", "Hit b"] }
+    ]
+  }
+]

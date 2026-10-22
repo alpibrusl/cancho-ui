@@ -516,6 +516,18 @@ impl Serialize for IrViewNode {
                 s.serialize_field("span", &IrSpan::from(*span))?;
                 s.end()
             }
+            IrViewNode::If {
+                cond,
+                children,
+                span,
+            } => {
+                use serde::ser::SerializeStruct;
+                let mut s = ser.serialize_struct("IrViewNode::If", 3)?;
+                s.serialize_field("cond", cond)?;
+                s.serialize_field("children", children)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
         }
     }
 }

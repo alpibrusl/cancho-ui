@@ -23,7 +23,8 @@ fn span_of(n: &IrViewNode) -> Span {
     match n {
         IrViewNode::Element { span, .. }
         | IrViewNode::Text { span, .. }
-        | IrViewNode::For { span, .. } => *span,
+        | IrViewNode::For { span, .. }
+        | IrViewNode::If { span, .. } => *span,
     }
 }
 
@@ -53,6 +54,15 @@ pub fn table_rows(nodes: Vec<IrViewNode>) -> Result<Vec<IrViewNode>, LowerError>
             } => Ok(IrViewNode::For {
                 over,
                 binding,
+                children: table_rows(children)?,
+                span,
+            }),
+            IrViewNode::If {
+                cond,
+                children,
+                span,
+            } => Ok(IrViewNode::If {
+                cond,
                 children: table_rows(children)?,
                 span,
             }),
@@ -98,6 +108,15 @@ fn table_cells(nodes: Vec<IrViewNode>) -> Vec<IrViewNode> {
             } => IrViewNode::For {
                 over,
                 binding,
+                children: table_cells(children),
+                span,
+            },
+            IrViewNode::If {
+                cond,
+                children,
+                span,
+            } => IrViewNode::If {
+                cond,
                 children: table_cells(children),
                 span,
             },

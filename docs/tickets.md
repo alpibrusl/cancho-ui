@@ -14,9 +14,10 @@ HttpOnly, SameSite=Strict cookie, so the program never holds a token.
 `net.get` and `net.post` answer an envelope `{"status": .., "body": ..}`
 and `json.get` always answers a String.
 
-Three screens, held as lists of zero or one element (`show_signin`,
-`show_app`, `show_detail`) and drawn with `For`, because a view has no
-conditional (#90).
+Three screens, each an `If { when: .. }` of the view (`docs/view-conditional.md`): the
+sign-in form while `signed` is false, the orders once it is true, and the detail while
+an order is picked. They were lists of zero or one element drawn with `For` until
+#90 was closed; the three lists and their six assignments are gone.
 
 ## 2. The flows
 
@@ -28,8 +29,8 @@ conditional (#90).
 - **Edit.** `Status` and `NoteEdit` validate; `Save` posts the change and
   shows the outcome. `SignOut` returns to the first screen.
 
-Trace: `examples/tickets/tickets.trace.json`, 26 steps, 78 checks, run by
-`cancho-ui test`. It includes step 6, where the orders request is still
+Trace: `examples/tickets/tickets.trace.json`, 29 steps, 73 checks, run by
+`cancho-ui test`. Its last three steps fire a control of a screen that is not in the page (`hidden`). It includes step 6, where the orders request is still
 issued after a 401 sign-in (#93).
 
 ## 3. Gaps found
@@ -38,7 +39,7 @@ Each has a measured reproduction in its issue.
 
 | Gap | Issue |
 |---|---|
-| A view has no conditional; screens are zero-or-one-element lists | #90 |
+| ~~A view has no conditional; screens are zero-or-one-element lists~~ | #90, closed by `If { when: .. }` |
 | TextField `autocomplete`, `maxlength`, `inputmode`, `name` are not bindings | #91 |
 | Focus falls to BODY after sign-in and sign-out; nothing announces the screen change | #92 |
 | Handlers cannot share a sequence or make a request conditionally (the orders request is written three times and runs after a failed sign-in) | #93 |

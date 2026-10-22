@@ -6,6 +6,9 @@
 > section 6 says what was built, what it measured and what differs from the estimate. Sections 1 to 4 are kept as the design
 > was written; where the build corrected a claim, the correction is in place and says so.
 
+> **See also:** `docs/view-conditional.md` — a conditional in the *view* (`If { when: cond .. }`), which this document's `if`
+> expression could not be (alpibrusl/cancho-ui#90).
+
 ## 1. What exists today
 
 * Expressions: literals, state names, calls of the pure builtins, `+ - * /`, `== != < <= > >=`, unary `-`, `Ok(..)`/`Err(..)`,

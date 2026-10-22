@@ -8,10 +8,8 @@ component Tickets {
     requires Network;
     requires NetworkWrite;
 
-    // screens: a view has no conditional, so a screen is a list that holds one element when it is shown (docs/tickets.md 3.1)
-    state show_signin: List[String] = ["x"];
-    state show_app: List[String] = [];
-    state show_detail: List[String] = [];
+    // the screens are `If { when: .. }` nodes of the view: the sign-in form while `signed` is false, the orders once it is true, and the
+    // detail while an order is picked (docs/view-conditional.md)
 
     // sign-in
     state user: String = "";
@@ -74,8 +72,6 @@ component Tickets {
         pass_msg = if signed { "" } else { "Enter your password." };
         pass_tone = if signed { "" } else { "error" };
         blocked = !signed;
-        show_signin = if signed { [] } else { ["x"] };
-        show_app = if signed { ["x"] } else { [] };
         r = await(net.get("api/orders"));
         orders = match r {
             Ok(text) => { filter(lines(text), x => len(json.get(x, "id", "")) > 0) }
@@ -101,7 +97,6 @@ component Tickets {
         note_tone = "";
         save_msg = "";
         edit_blocked = len(picked) == 0;
-        show_detail = if len(picked) > 0 { ["x"] } else { [] };
     }
 
     on Status(v) {
@@ -144,9 +139,6 @@ component Tickets {
         orders = [];
         selected = "";
         picked = [];
-        show_signin = ["x"];
-        show_app = [];
-        show_detail = [];
         user_msg = "Enter your user name.";
         pass_msg = "Enter your password.";
         user_tone = "error";
@@ -160,9 +152,8 @@ component Tickets {
         Column {
             max_width: 70
             Text { role: heading "Work orders" }
-            For {
-                over: show_signin
-                as: s
+            If {
+                when: !signed
                 Column {
                     Text { role: heading "Sign in" }
                     TextField { label: "User name" value: user on: User }
@@ -173,9 +164,8 @@ component Tickets {
                     Text { role: status "{signin_msg}" }
                 }
             }
-            For {
-                over: show_app
-                as: s
+            If {
+                when: signed
                 Column {
                     Text { role: status "orders: {note}" }
                     Button { label: "Sign out" on: SignOut }
@@ -198,9 +188,8 @@ component Tickets {
                             }
                         }
                     }
-                    For {
-                        over: show_detail
-                        as: d
+                    If {
+                        when: len(picked) > 0
                         Column {
                             Text { role: heading "Order {selected}: {title}" }
                             TextField { label: "Status (open, doing or done)" value: status_edit on: Status }
