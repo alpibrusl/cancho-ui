@@ -421,6 +421,7 @@ pub(crate) fn emit_view_node(
             let mut input_handler: Option<String> = None;
             let mut submit_handler: Option<String> = None;
             let mut input_value: Option<String> = None;
+            let mut input_type: Option<String> = None;
             let mut button_label: Option<String> = None;
             // Tier 13: on a component instance, `Const` bindings
             // are *properties* — constant initial values for the
@@ -501,6 +502,10 @@ pub(crate) fn emit_view_node(
                                     js_string(s)
                                 ));
                             }
+                        } else if b.key == "type" {
+                            // Written once, below, with the other attributes of a TextField (`input-type-invalid`
+                            // already kept anything but a known type out).
+                            input_type = Some(s.clone());
                         } else if b.key == "value" {
                             if matches!(kind, IrElementKind::TextField) {
                                 input_value = Some(s.clone());
@@ -682,8 +687,11 @@ pub(crate) fn emit_view_node(
             // TextField: set the value attribute, type, and initial value.
             if matches!(kind, IrElementKind::TextField) {
                 out.push_str(&format!(
-                    "{0}{1}.setAttribute('type', 'text');\n",
-                    indent, var
+                    // One of `INPUT_TYPES` (`input-type-invalid`), plain lowercase words: no escaping to do.
+                    "{0}{1}.setAttribute('type', '{2}');\n",
+                    indent,
+                    var,
+                    input_type.as_deref().unwrap_or("text")
                 ));
                 if let Some(ref v) = input_value {
                     out.push_str(&format!("{0}{1}.value = {2};\n", indent, var, v));

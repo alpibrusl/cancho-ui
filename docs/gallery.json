@@ -58,20 +58,10 @@
       }
     },
     {
-      "id": "signin",
-      "title": "Sign-in flow",
-      "issue": 83,
-      "missing": "A password input, a screen to move to after signing in, and a way to hold the token a login returns.",
-      "probe": {
-        "view": "TextField { label: \"Password\" value: s on: Go type: \"password\" }",
-        "rule": "binding-unknown"
-      }
-    },
-    {
       "id": "forms",
       "title": "Rich forms",
       "issue": 76,
-      "missing": "Validation messages work (a `Text` derived with `if`), but there is no password, email or number input, no checkbox, select or text area, and no invalid state for assistive technology.",
+      "missing": "Validation messages work (a `Text` derived with `if`) and a `TextField` can be a password, email, search, telephone or url field (`type:`), but there is no number input, checkbox, select or text area, and no invalid state for assistive technology.",
       "probe": {
         "view": "Checkbox { label: \"Agree\" }",
         "rule": "component-kind-unknown"

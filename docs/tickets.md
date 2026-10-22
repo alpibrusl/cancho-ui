@@ -46,12 +46,12 @@ Each has a measured reproduction in its issue.
 | ~~Handlers cannot share a sequence or make a request conditionally (the orders request is written twice and runs after a failed sign-in)~~ | #93, closed by the statement `if` and `block`/`run` (`docs/handler-sequences.md`) |
 | A status Text with a tone draws its mark when empty | #94 |
 | `json.get(reply, "status", "") == 200` (String against number) is accepted and always false | #95 |
-| The password field is `type=text` in the built page (`type: "password"` is `binding-unknown`) | #76, #83 |
+| ~~The password field is `type=text` in the built page (`type: "password"` is `binding-unknown`)~~ | #76 (first part), closed by `type:` (`docs/controls.md` section 5) |
 
-#83's "sign-in" tile therefore stays a "coming soon" tile: its gap is not
-closed. There is no tickets tile in the gallery: the static
-`docs/demo/` host has no login route, so a demo there would only show a
-refused sign-in.
+#83's "sign-in" tile was removed from the gallery when `type:` closed the gap
+it named (`check-gallery.js` R5: its probe passed). There is still no tickets
+tile: the static `docs/demo/` host has no login route, so a demo there would
+only show a refused sign-in.
 
 ## 4. How it is checked
 

@@ -1,0 +1,45 @@
+{
+  "checks": [
+    { "name": "cargo test input_types", "argv": ["cargo", "test", "--quiet", "-p", "cancho-ui", "--test", "input_types"] },
+    { "name": "check-input-types.js", "argv": ["node", "scripts/check-input-types.js"] },
+    { "name": "check-tickets.js", "argv": ["node", "scripts/check-tickets.js"] }
+  ],
+  "breaks": [
+    {
+      "name": "the page ignores the type and writes text",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "input_type.as_deref().unwrap_or(\"text\")",
+      "to": "\"text\""
+    },
+    {
+      "name": "the default type is no longer text",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "input_type.as_deref().unwrap_or(\"text\")",
+      "to": "input_type.as_deref().unwrap_or(\"search\")"
+    },
+    {
+      "name": "any string is accepted as a type",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "IrBindingValue::String(s) if INPUT_TYPES.contains(&s.as_str()) => Ok(()),",
+      "to": "IrBindingValue::String(_) => Ok(()),"
+    },
+    {
+      "name": "type is a binding of every element",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "    if !matches!(kind, IrElementKind::TextField) {\n        return Err(LowerError::ControlRefused {\n            code: \"binding-unknown\",\n            message: format!(\n                \"`type:` is a binding of TextField",
+      "to": "    if false && !matches!(kind, IrElementKind::TextField) {\n        return Err(LowerError::ControlRefused {\n            code: \"binding-unknown\",\n            message: format!(\n                \"`type:` is a binding of TextField"
+    },
+    {
+      "name": "number is offered",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "pub const INPUT_TYPES: &[&str] = &[\"text\", \"password\", \"email\", \"search\", \"tel\", \"url\"];",
+      "to": "pub const INPUT_TYPES: &[&str] = &[\"text\", \"password\", \"email\", \"search\", \"tel\", \"url\", \"number\"];"
+    },
+    {
+      "name": "type is not a known key",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "    \"max_width\",\n    \"type\",\n];",
+      "to": "    \"max_width\",\n];"
+    }
+  ]
+}

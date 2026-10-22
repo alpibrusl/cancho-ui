@@ -41,8 +41,7 @@ function note(label, detail) { console.log(`note ${label}: ${detail}`); }
   check('the sign-in form shows first, with a message for each empty field', /Enter your user name\./.test(await body()) && /Enter your password\./.test(await body()));
   const signIn = page.getByRole('button', { name: 'Sign in' });
   check('the Sign in button is disabled while a field is invalid', await signIn.isDisabled());
-  const pwType = await page.getByLabel('Password').getAttribute('type');
-  note('the password field is a plain text field', `type=${pwType} (docs/tickets.md 3.2)`);
+  check('the password field is a password field (docs/controls.md section 5)', (await page.getByLabel('Password').getAttribute('type')) === 'password' && (await page.getByLabel('User name').getAttribute('type')) === 'text');
   check('the fields are reachable by their labels', (await page.getByLabel('User name').count()) === 1 && (await page.getByLabel('Password').count()) === 1);
 
   // 2. validation messages as the user types
