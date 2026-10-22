@@ -1,0 +1,210 @@
+{
+ "why": "concat(a, b) (docs/lists.md section 9): shared by replay (cargo test, tests/lists.rs) and the emitted __cui_concat (scripts/check-lists.js)",
+ "ok": [
+  {
+   "why": "two lists, a then b",
+   "a": [
+    1,
+    2
+   ],
+   "b": [
+    3,
+    4
+   ],
+   "concat": [
+    1,
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "why": "left empty",
+   "a": [],
+   "b": [
+    3
+   ],
+   "concat": [
+    3
+   ]
+  },
+  {
+   "why": "right empty",
+   "a": [
+    1
+   ],
+   "b": [],
+   "concat": [
+    1
+   ]
+  },
+  {
+   "why": "both empty",
+   "a": [],
+   "b": [],
+   "concat": []
+  },
+  {
+   "why": "the same list twice",
+   "a": [
+    1,
+    2
+   ],
+   "b": [
+    1,
+    2
+   ],
+   "concat": [
+    1,
+    2,
+    1,
+    2
+   ]
+  },
+  {
+   "why": "a nested list stays one element",
+   "a": [
+    [
+     1,
+     2
+    ]
+   ],
+   "b": [
+    [
+     3
+    ]
+   ],
+   "concat": [
+    [
+     1,
+     2
+    ],
+    [
+     3
+    ]
+   ]
+  },
+  {
+   "why": "a list as the right element is not spread",
+   "a": [
+    1
+   ],
+   "b": [
+    [
+     2,
+     3
+    ]
+   ],
+   "concat": [
+    1,
+    [
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "why": "strings",
+   "a": [
+    "a",
+    "b"
+   ],
+   "b": [
+    "c"
+   ],
+   "concat": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "why": "mixed kinds keep their order",
+   "a": [
+    1,
+    "x"
+   ],
+   "b": [
+    true,
+    null
+   ],
+   "concat": [
+    1,
+    "x",
+    true,
+    null
+   ]
+  },
+  {
+   "why": "order is kept, not sorted",
+   "a": [
+    3,
+    1
+   ],
+   "b": [
+    2
+   ],
+   "concat": [
+    3,
+    1,
+    2
+   ]
+  }
+ ],
+ "refused": [
+  {
+   "why": "a string on the left",
+   "a": "ab",
+   "b": [
+    "c"
+   ],
+   "rule": "replay-type-error"
+  },
+  {
+   "why": "a string on the right",
+   "a": [
+    "a"
+   ],
+   "b": "bc",
+   "rule": "replay-type-error"
+  },
+  {
+   "why": "two strings",
+   "a": "a",
+   "b": "b",
+   "rule": "replay-type-error"
+  },
+  {
+   "why": "two numbers",
+   "a": 1,
+   "b": 2,
+   "rule": "replay-type-error"
+  },
+  {
+   "why": "a number and a list",
+   "a": 1,
+   "b": [
+    2
+   ],
+   "rule": "replay-type-error"
+  },
+  {
+   "why": "a bool and a list",
+   "a": true,
+   "b": [
+    1
+   ],
+   "rule": "replay-type-error"
+  },
+  {
+   "why": "a variant on the left",
+   "a": {
+    "Ok": 1
+   },
+   "b": [
+    2
+   ],
+   "rule": "replay-type-error"
+  }
+ ]
+}

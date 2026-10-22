@@ -1,6 +1,6 @@
 # Lists and text: `sort`, `reverse`, `contains`, `lower`, `num`, `take`, `skip`, the text builtins (section 7) and the number builtins (section 8)
 
-> **Status: built (written before the code; measured in section 4).** The third item of the ui order that helps
+> **Status: built (written before the code; measured in section 4; `concat` is section 9).** The third item of the ui order that helps
 > `cancho-industrial`: a console shows rows, and a person filters and orders them. `filter`, `map` and `len`
 > (Tier 11) already exist; what was missing is an order and a way to ask a text a question.
 
@@ -238,3 +238,43 @@ either side of zero, the double below a half, the edge of the exact range at 2^5
 of the model, the emitter and the lowering (round as `floor(x + 0.5)`, round as `f64::round`, `min` through `f64::min`,
 `max` keeping `-0`, `round` losing the sign of zero, `round` not emitted, `min` of arity one; in the emitted JavaScript
 `round` as `floor(n + 0.5)`, no coercion guard, `ceil` as `floor`, `max` as `min`) each fail at least one check.
+
+## 9. Joining lists: `concat`, and `+` is for numbers and text (#39)
+
+> **Status: built (written before the code; measured below).**
+
+**Measured first** (the merge of #70): `state l: List[String] = ["a"]; on Go { l = l + l; }` passed `check` (exit 0), the
+emitted JavaScript was `__state_l = (__state_l + __state_l);`, which is the **string** `"aa"` (arrays stringify), so the
+state stopped being a list. Replay refused the same program when it ran (`replay-type-error`: `+` with a list), so the
+two evaluators disagreed about a program the checker accepted, and the language had no way to join two lists at all.
+
+**Decision.**
+
+```
+concat(a, b)   -> a new list: the elements of a, then those of b
+```
+
+* Pure, no capability, two lists. Neither input changes; a list that is an element stays one element
+  (`concat([1], [[2, 3]])` is `[1, [2, 3]]`, not `[1, 2, 3]`). The same list twice doubles it. Order is kept, not sorted.
+* Anything but two lists is `replay-type-error` in replay, and the emitted helper throws an `Error` that starts with the
+  same rule name (a string passed to JavaScript's `concat` would join as text, the very defect of `+`). Since #59 a handler
+  that throws is undone, so the page and replay stop in the same state.
+* A wrong argument count is `builtin-shape-mismatch` naming `concat(a, b)`.
+* **`+` is refused at `check` when an operand is known to be a list, a `Result`, an `Option` or a `Request`, or when it adds a
+  `Bool` to a number or a `Bool`: `operand-type-mismatch`** (`spec/diagnostics/README.md`). A string with anything stays
+  text (`"ready: " + ready` is allowed, as replay allows it). As in `docs/conditionals.md` section 3.1, the pass refuses
+  only a type it knows; an event parameter or a `For` binding is `Unknown` and replay refuses it when it runs. When both
+  operands are lists the message says to write `concat(a, b)`.
+
+**Checked.** `tests/concat_corpus.json` (10 results, 7 refusals): through the real replay, one trace step per case
+(`crates/cancho-ui/tests/lists.rs`, the refusals as `fault` steps that leave the state as it was), and against the emitted
+`__cui_concat` in Chromium (`scripts/check-lists.js`, which also checks that the inputs are unchanged and the result is a new
+list, and a page that joins two slices of a list). Eight refused `+` programs and five accepted ones; the helper is emitted
+only when used; three wrong argument counts.
+
+**Deliberate breaks, each caught:** the emitted helper without its list check (7 checks fail), arguments swapped (7), joined in
+place (18); the replay arm with the two lists swapped (the corpus test fails); the checker letting a list through (the `+`
+test fails); the checker letting `Bool + number` through (the `+` test fails).
+
+**Not done.** `-`, `*` and `/` on a known non-number are not refused statically (replay faults when they run, as before); a
+`+` whose operand has a type the pass cannot see is still left to replay.

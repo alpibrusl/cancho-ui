@@ -12,6 +12,7 @@ const CORPUS: &str = include_str!("../../../tests/lists_corpus.json");
 const PAGING_CORPUS: &str = include_str!("../../../tests/paging_corpus.json");
 const TEXT_CORPUS: &str = include_str!("../../../tests/text_corpus.json");
 const NUM_CORPUS: &str = include_str!("../../../tests/num_corpus.json");
+const CONCAT_CORPUS: &str = include_str!("../../../tests/concat_corpus.json");
 
 fn run(args: &[&str]) -> (i32, String, String) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -397,4 +398,109 @@ fn a_trace_turns_a_text_answer_into_rows() {
     );
     let (code, stdout, stderr) = run(&["test", p(&file), p(&trace)]);
     assert_eq!(code, 0, "{stdout}{stderr}");
+}
+
+/// `concat(a, b)` (docs/lists.md section 9) through the real replay: one trace step per case of
+/// `tests/concat_corpus.json`, the same file `scripts/check-lists.js` runs against the emitted `__cui_concat`.
+#[test]
+fn concat_agrees_with_every_case_of_its_corpus() {
+    let corpus: Value = serde_json::from_str(CONCAT_CORPUS).expect("the corpus is JSON");
+    let ok = corpus["ok"].as_array().expect("ok cases");
+    let refused = corpus["refused"].as_array().expect("refused cases");
+    assert!(
+        ok.len() >= 10 && refused.len() >= 6,
+        "{} + {}",
+        ok.len(),
+        refused.len()
+    );
+    let src = "component Cat {\n    state out: List[String] = [];\n    on Go(a, b) { out = concat(a, b); }\n    view { Text { \"{len(out)}\" } }\n}\n";
+    let mut steps = Vec::new();
+    let mut last = serde_json::json!([]);
+    for e in ok {
+        steps.push(serde_json::json!({
+            "event": "Go", "params": [e["a"], e["b"]], "state": {"out": e["concat"]}
+        }));
+        last = e["concat"].clone();
+    }
+    for e in refused {
+        // A fault leaves the state as it was (docs/semantics.md Q3), so the list from the last good step is still there.
+        steps.push(serde_json::json!({
+            "event": "Go", "params": [e["a"], e["b"]], "fault": e["rule"], "state": {"out": last}
+        }));
+    }
+    let trace = serde_json::json!({
+        "schema": "cancho-ui-trace", "version": "0.1.0", "component": "Cat", "steps": steps
+    });
+    let file = scratch("concat.cui", src);
+    let trace = scratch("concat.trace.json", &trace.to_string());
+    let (code, stdout, stderr) = run(&["test", p(&file), p(&trace)]);
+    assert_eq!(code, 0, "{stdout}{stderr}");
+}
+
+#[test]
+fn plus_on_lists_is_refused_and_concat_is_the_way() {
+    let wrap = |stmt: &str| {
+        format!(
+            "component C {{\n    state l: List[String] = [\"a\"];\n    state m: List[String] = [\"b\"];\n    state n: Int = 0;\n    state b: Bool = true;\n    state s: String = \"\";\n    state r: Result[Int, String] = Ok(0);\n    on Go {{ {stmt} }}\n    view {{ Text {{ \"{{n}}\" }} }}\n}}\n"
+        )
+    };
+    for stmt in [
+        "l = l + m;",
+        "l = l + [\"x\"];",
+        "s = \"x\" + l;",
+        "s = l + \"x\";",
+        "n = n + b;",
+        "n = b + n;",
+        "n = b + b;",
+        "n = n + r;",
+    ] {
+        assert_eq!(
+            codes(&wrap(stmt), "plus.cui"),
+            ["operand-type-mismatch"],
+            "{stmt}"
+        );
+    }
+    for stmt in [
+        "l = concat(l, m);",
+        "s = \"x\" + b;",
+        "s = \"x\" + n;",
+        "s = n + \"x\";",
+        "n = n + 1;",
+    ] {
+        let file = scratch("plus-ok.cui", &wrap(stmt));
+        let (code, stdout, stderr) = run(&["check", p(&file)]);
+        assert_eq!(code, 0, "{stmt}: {stdout}{stderr}");
+    }
+}
+
+#[test]
+fn concat_with_the_wrong_number_of_arguments_names_its_form() {
+    for call in ["concat()", "concat(l)", "concat(l, l, l)"] {
+        let src = format!(
+            "component C {{\n    state l: List[String] = [\"a\"];\n    on Go {{ l = {call}; }}\n    view {{ Text {{ \"x\" }} }}\n}}\n"
+        );
+        let file = scratch("concat-arity.cui", &src);
+        let (code, stdout, _) = run(&["check", p(&file), "--output", "json"]);
+        assert_eq!(code, 1, "{call}: {stdout}");
+        assert!(
+            stdout.contains("builtin-shape-mismatch"),
+            "{call}: {stdout}"
+        );
+        assert!(stdout.contains("concat(a, b)"), "{call}: {stdout}");
+    }
+}
+
+#[test]
+fn the_concat_helper_is_emitted_only_when_used() {
+    let used = "component C {\n    state l: List[String] = [\"a\"];\n    on Go { l = concat(l, l); }\n    view { Text { \"x\" } }\n}\n";
+    let unused = "component C {\n    state l: List[String] = [\"a\"];\n    on Go { l = reverse(l); }\n    view { Text { \"x\" } }\n}\n";
+    for (src, has) in [(used, true), (unused, false)] {
+        let file = scratch("concat-emit.cui", src);
+        let out = std::env::temp_dir().join(format!("cancho-ui-lists-{}", std::process::id()));
+        let js = out.join("concat-emit.js");
+        let (code, stdout, stderr) = run(&["build", p(&file), "-o", p(&js)]);
+        assert_eq!(code, 0, "{stdout}{stderr}");
+        let text = std::fs::read_to_string(&js).expect("the built module");
+        assert_eq!(text.contains("function __cui_concat("), has);
+    }
 }

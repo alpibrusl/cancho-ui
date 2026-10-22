@@ -85,7 +85,7 @@ implemented.
 > *Correction:* `\{` and `\}` write a literal brace in a string, what is left in an interpolation after its expression is
 > `parse-unexpected-token` (it was dropped), and `json.quote(text)` is the JSON string literal of a text. The page itself
 > still sends the array its stand-in service expects (the id comes from the rows, so typed text never reaches the body); a service
-> that wants an object can now be spoken to safely (`crates/cancho-ui/tests/braces.rs`, `scripts/check-lists.js`). `l + l` on two lists (#39) is not fixed. What follows is the
+> that wants an object can now be spoken to safely (`crates/cancho-ui/tests/braces.rs`, `scripts/check-lists.js`). `l + l` on two lists (#39) is fixed too: `+` on a list is `operand-type-mismatch` and `concat(a, b)` joins two lists (`docs/lists.md` section 9). What follows is the
 > finding as it was made.
 
 * A string with a brace is **silently wrong**: `"{\"a\":1}"` compiles to `"" + "a"`; the interpolation `{\"a\":1}` is read

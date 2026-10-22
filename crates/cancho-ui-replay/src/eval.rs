@@ -542,6 +542,25 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                 )),
             }
         }
+        ("concat", 2) => {
+            let a = eval(ctx, &args[0])?;
+            let b = eval(ctx, &args[1])?;
+            match (a, b) {
+                (Value::List(mut x), Value::List(y)) => {
+                    x.extend(y);
+                    Ok(Value::List(x))
+                }
+                (a, b) => Err(fault(
+                    "replay-type-error",
+                    format!(
+                        "`concat` needs two lists, got {} and {}",
+                        describe(&a),
+                        describe(&b)
+                    ),
+                    span,
+                )),
+            }
+        }
         ("take", 2) | ("skip", 2) => {
             let list = eval(ctx, &args[0])?;
             let n = eval(ctx, &args[1])?;
@@ -674,8 +693,8 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
         (
             "clock.now" | "net.search" | "net.get" | "net.fetch" | "net.post" | "location.current"
             | "sleep" | "storage.get" | "storage.set" | "json.get" | "json.items" | "json.quote"
-            | "reverse" | "contains" | "lower" | "num" | "take" | "skip" | "min" | "max" | "abs"
-            | "floor" | "ceil" | "round" | "lines" | "split" | "join" | "trim" | "upper"
+            | "reverse" | "contains" | "lower" | "num" | "take" | "skip" | "concat" | "min" | "max"
+            | "abs" | "floor" | "ceil" | "round" | "lines" | "split" | "join" | "trim" | "upper"
             | "starts_with" | "ends_with",
             n,
         ) => Err(fault(

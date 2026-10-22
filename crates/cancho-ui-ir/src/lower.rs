@@ -156,7 +156,7 @@ pub enum LowerError {
     },
 
     #[error(
-        "`{name}` is misused here (expected {detail}); see the builtin call forms: `filter(list, x => cond)`, `map(list, x => body)`, `sort(list, x => key)`, `reverse(list)`, `contains(text, needle)`, `lower(text)`, `num(text, default)`, `take(list, n)`, `skip(list, n)`, `lines(text)`, `split(text, sep)`, `join(list, sep)`, `trim(text)`, `upper(text)`, `starts_with(text, prefix)`, `ends_with(text, suffix)`, `len(value)`, `storage.get(key, default)`, `storage.set(key, value)`, `net.get(url)`, `net.fetch(url)`, `net.post(url, body)`, `json.get(text, path, default)`, `json.items(text, path)`, `json.quote(text)`"
+        "`{name}` is misused here (expected {detail}); see the builtin call forms: `filter(list, x => cond)`, `map(list, x => body)`, `sort(list, x => key)`, `reverse(list)`, `contains(text, needle)`, `lower(text)`, `num(text, default)`, `take(list, n)`, `skip(list, n)`, `concat(a, b)`, `lines(text)`, `split(text, sep)`, `join(list, sep)`, `trim(text)`, `upper(text)`, `starts_with(text, prefix)`, `ends_with(text, suffix)`, `len(value)`, `storage.get(key, default)`, `storage.set(key, value)`, `net.get(url)`, `net.fetch(url)`, `net.post(url, body)`, `json.get(text, path, default)`, `json.items(text, path)`, `json.quote(text)`"
     )]
     BuiltinMisuse {
         name: String,
@@ -1510,6 +1510,7 @@ const PURE_BUILTINS: &[(&str, usize, &str)] = &[
     ("num", 2, "exactly two arguments: num(text, default)"),
     ("take", 2, "exactly two arguments: take(list, n)"),
     ("skip", 2, "exactly two arguments: skip(list, n)"),
+    ("concat", 2, "exactly two arguments: concat(a, b)"),
     ("min", 2, "exactly two arguments: min(a, b)"),
     ("max", 2, "exactly two arguments: max(a, b)"),
     ("abs", 1, "exactly one argument: abs(n)"),
