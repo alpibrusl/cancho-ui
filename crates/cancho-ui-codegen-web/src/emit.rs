@@ -572,18 +572,61 @@ fn emit_component(
         if counted {
             out.push_str(&format!("            __cui_busy.{}++;\n", e.name));
         }
+        // Segment atomicity (docs/semantics.md, "A handler that faults"): a handler that writes and then has a statement
+        // that can fault keeps a snapshot of the fields it writes, taken at its start and again after each statement
+        // that awaited (a commit point), and puts it back if a statement throws. `__snap` is null while an awaiting
+        // statement runs: the statements before it were committed when the handler suspended, and the statement writes
+        // only when it completes, so a fault inside it has nothing to undo (and the old snapshot, from before the
+        // suspension, must not be put back over what other events wrote meanwhile).
+        let written: Vec<&str> = {
+            let mut w: Vec<&str> = Vec::new();
+            for s in &e.body {
+                if let IrStmt::Assign { target, .. } = s
+                    && !w.contains(&target.as_str())
+                {
+                    w.push(target);
+                }
+            }
+            w
+        };
+        let atomic = e.body.len() >= 2 && !written.is_empty();
+        let snap_list = written
+            .iter()
+            .map(|t| format!("{STATE_PREFIX}{t}"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        if atomic {
+            out.push_str(&format!("            let __snap = [{snap_list}];\n"));
+        }
         out.push_str("            try {\n");
         for (i, s) in e.body.iter().enumerate() {
+            let awaits = atomic && body_uses_await(s);
+            if awaits {
+                out.push_str("                __snap = null;\n");
+            }
             out.push_str("                ");
             out.push_str(&emit_stmt(s, &param_set));
             out.push('\n');
+            if awaits {
+                out.push_str(&format!("                __snap = [{snap_list}];\n"));
+            }
             if Some(i + 1) == first_await {
                 out.push_str("                __render();\n");
             }
         }
         out.push_str("                __render();\n");
         out.push_str("            } catch (e) {\n");
-        out.push_str("                if (e !== __cui_cancelled) { throw e; }\n");
+        if atomic {
+            out.push_str("                if (e !== __cui_cancelled) {\n");
+            out.push_str(&format!(
+                "                    if (__snap) {{ [{snap_list}] = __snap; }}\n"
+            ));
+            out.push_str("                    __render();\n");
+            out.push_str("                    throw e;\n");
+            out.push_str("                }\n");
+        } else {
+            out.push_str("                if (e !== __cui_cancelled) { throw e; }\n");
+        }
         if counted {
             out.push_str("            } finally {\n");
             out.push_str(&format!("                __cui_busy.{}--;\n", e.name));

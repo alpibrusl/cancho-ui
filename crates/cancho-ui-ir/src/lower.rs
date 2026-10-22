@@ -1604,7 +1604,7 @@ fn lower_expr_pure(e: &Expr) -> Result<IrExpr, LowerError> {
 
 /// True when the (already lowered) expression can suspend: an
 /// `await(...)`, a `sleep(ms)` call, or anything carrying one.
-fn ir_expr_suspends(e: &IrExpr) -> bool {
+pub fn ir_expr_suspends(e: &IrExpr) -> bool {
     match e {
         IrExpr::Await { .. } => true,
         IrExpr::Call { path, args, .. } => {

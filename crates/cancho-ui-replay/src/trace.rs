@@ -58,6 +58,9 @@ pub struct Step {
     pub state: Vec<(String, Value)>,
     /// `expect` expectations: (key, expected JSON).
     pub expect: Vec<(String, Json)>,
+    /// `"fault": "replay-.."`: the step is expected to fault with this rule, and the trace goes on after it
+    /// (docs/replay.md, "A step that faults").
+    pub fault: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -214,7 +217,11 @@ pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {
             e
         })?);
     }
-    let assertions: usize = steps.iter().map(|s| s.state.len() + s.expect.len()).sum();
+    // A step that names the rule it faults with asserts something too.
+    let assertions: usize = steps
+        .iter()
+        .map(|s| s.state.len() + s.expect.len() + usize::from(s.fault.is_some()))
+        .sum();
     if assertions == 0 {
         return Err(err(
             "trace-no-assertions",
@@ -276,7 +283,7 @@ fn parse_step(j: &Json, i: usize) -> Result<Step, TraceError> {
         obj,
         &[
             "event", "params", "resolve", "with", "advance", "dispose", "hide", "show", "state",
-            "expect", "note",
+            "expect", "note", "fault",
         ],
         &at,
     )?;
@@ -390,6 +397,17 @@ fn parse_step(j: &Json, i: usize) -> Result<Step, TraceError> {
             Action::Dispose
         }
     };
+    let fault = match obj.get("fault") {
+        None => None,
+        Some(Json::String(rule)) if rule.starts_with("replay-") => Some(rule.clone()),
+        Some(_) => {
+            return Err(err(
+                "trace-bad-step",
+                format!("{at}.fault"),
+                "`fault` is the rule the step is expected to fault with, a string starting `replay-` (for example `\"replay-non-finite\"`)",
+            ));
+        }
+    };
     let mut state = Vec::new();
     if let Some(s) = obj.get("state") {
         let m = s.as_object().ok_or_else(|| {
@@ -421,5 +439,6 @@ fn parse_step(j: &Json, i: usize) -> Result<Step, TraceError> {
         action,
         state,
         expect,
+        fault,
     })
 }

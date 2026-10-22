@@ -107,7 +107,12 @@ semantics in §3.
 
 **Answer.** Within a single component, transitions run
 **sequentially** — one finishes before the next begins, in the
-order events fire. There is no transaction model in Phase 1.
+order events fire. There is no transaction model across events; **within a handler, the segments between its
+awaits are atomic**: a statement that faults undoes the writes of the statements before it in the same segment (next
+paragraphs; issue #59). *Correction (2026-10-22): this sentence used to end "there is no transaction model in Phase 1" and
+said nothing about a fault. Measured before the change, the page kept the writes made before a faulting statement and
+did not redraw, so the screen showed the old state while the state held the half-applied one, and the next event's
+render showed the half-applied one (the PHP release of 2026-10-21, CVE-2026-109618, is the same shape).*
 
 **Tier.** **runtime** (semantics) + **tested** (determinism).
 
@@ -121,6 +126,36 @@ events `A`, `B`, `C` on a fixed state must produce a
 **deterministic** sequence of state updates — same input,
 same output, every run. The test harness in Phase 2 makes this
 a checked property, not an aspirational one.
+
+**A handler that faults (issue #59).** A statement faults when it throws: a non-finite result (`replay-non-finite`), an
+operand of the wrong type (`replay-type-error` in replay; in the page whatever JavaScript does with it, which for a number
+operator is a `NaN` and so `replay-non-finite`), a name that is not there. The rule:
+
+* A handler runs in **segments**. The first starts with the handler; a statement that awaits ends the segment it is in
+  (what the handler wrote before it was painted when the handler suspended), and the next segment starts when that
+  statement completes: its own assignment is part of the committed state.
+* When a statement faults, the writes made **since the last commit point** are undone, **the page is redrawn from the
+  committed state**, and the handler stops. Earlier segments stay. So every state an event or the view can observe is
+  one a statement boundary of a segment produced, never one with a fault in the middle.
+* **Cancellation is not a fault**: a superseded await drops the rest of the handler (`Cancelled` path, Q5) and the writes
+  before the await stay. **A failed `net.*` call is not a fault**: it answers `Err(..)`, which the program matches.
+* **Effects are not undone**: a `storage.set` already performed and a request already issued stay.
+* **Why this rule and not "keep what was written"**: both evaluators can meet it at one small cost (a handler that writes
+  and has a later statement keeps a copy of the fields it writes: an array of at most a handful of values, taken at its
+  start and after each awaiting statement, and put back only on a fault; a one-statement handler carries nothing), it makes
+  the half-applied state unreachable instead of documented (measured on `examples/ops-console`: 40,544 to 42,476 bytes of emitted JavaScript, 4.8 %, for its seven handlers that write more than once), and it needs no new language. The alternative (keep the
+  writes, always redraw) leaves the next event to run on whatever the fault interrupted.
+* **What each evaluator does**: `cancho-ui test` undoes the segment, lists none of its writes in the step's report, and
+  a step may say `"fault": "replay-.."` (docs/replay.md section 2.4) to assert the fault and the state after the undo and to
+  go on; the page restores the fields in the `catch` of the handler and calls `__render()` before it rethrows. Not covered: a
+  fault in the *middle of an awaiting statement* (`x = f(await(..))` where `f` faults on the answer) writes nothing, so there is
+  nothing to undo; the page clears its snapshot while such a statement runs, so that a snapshot from before the suspension is
+  never put back over what other events wrote meanwhile, but no program that both evaluators fault on exercises it.
+* **Tier**: **tested**: `tests/fault_corpus.json` (12 cases: a fault in each position of a handler, the restore to the value
+  before the handler, a later event after the fault, a fault after an await, an event that ran during the suspension, a
+  superseded await, a failed `net.get`, the committed answer shown after a fault) is replayed by `cargo test`
+  (`crates/cancho-ui/tests/faults.rs`) and run in Chromium by `scripts/check-faults.js`, which checks the screen after each step and
+  again after a no-op event has redrawn from the real state. Eight deliberate breaks, each caught; a ninth survives and is explained (docs/replay.md section 11, 7).
 
 **What is not defined in Phase 1.**
 

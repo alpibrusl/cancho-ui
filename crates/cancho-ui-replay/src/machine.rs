@@ -6,6 +6,7 @@
 use std::collections::BTreeMap;
 
 use cancho_ui_ir::ir::{IrBindingValue, IrComponent, IrExpr, IrScheduleKind, IrStmt, IrViewNode};
+use cancho_ui_ir::ir_expr_suspends;
 use cancho_ui_syntax::span::Span;
 
 use crate::eval::{Ctx, Fault, Journal, Stop, eval, span_of};
@@ -19,6 +20,9 @@ pub enum Outcome {
     /// Every control that fires the event is `disabled` (docs/controls.md section 2): the browser would not have
     /// delivered it, so the handler does not run and nothing changes.
     Disabled,
+    /// The handler faulted and the step said it would (`"fault": "replay-.."`, docs/replay.md): its segment's writes
+    /// are undone (docs/semantics.md, "A handler that faults").
+    Faulted,
     Ok,
 }
 
@@ -29,6 +33,7 @@ impl Outcome {
             Outcome::Suspended => "suspended",
             Outcome::Dropped => "dropped",
             Outcome::Disabled => "disabled",
+            Outcome::Faulted => "faulted",
             Outcome::Ok => "ok",
         }
     }
@@ -287,7 +292,7 @@ impl<'a> Machine<'a> {
             stmt: 0,
             journal: Journal::default(),
         };
-        self.run(task, fx)
+        self.run(task, fx, false)
     }
 
     /// Would the browser deliver `event` right now (docs/controls.md section 2)? The ways to fire it are the controls with
@@ -517,7 +522,7 @@ impl<'a> Machine<'a> {
             (kind, answer)
         };
         task.journal.deliver(value);
-        let outcome = self.run(task, fx)?;
+        let outcome = self.run(task, fx, true)?;
         fx.fired.push(Fired {
             request: id,
             delivered,
@@ -526,10 +531,27 @@ impl<'a> Machine<'a> {
         Ok(outcome)
     }
 
-    fn run(&mut self, mut task: Task, fx: &mut StepEffects) -> Result<Outcome, Fault> {
+    /// Run a handler from `task.stmt` until it completes, suspends or faults.
+    ///
+    /// A handler is atomic between its commit points (docs/semantics.md, "A handler that faults"): the start of the
+    /// handler, and the end of each statement that awaited. A fault undoes the writes made since the last commit point
+    /// and the report forgets them. `resumed` is true when the run continues an awaiting statement: the statements
+    /// before it were committed when the handler suspended, and the statement itself writes only when it completes, so
+    /// a fault in it has nothing to undo.
+    fn run(
+        &mut self,
+        mut task: Task,
+        fx: &mut StepEffects,
+        resumed: bool,
+    ) -> Result<Outcome, Fault> {
         let comp = self.comp;
         let handler = &comp.events[task.handler];
         fx.handler_span = Some(handler.span);
+        let mut commit: Option<(BTreeMap<String, Value>, usize)> = if resumed {
+            None
+        } else {
+            Some((self.state.clone(), fx.writes.len()))
+        };
         loop {
             let Some(stmt) = handler.body.get(task.stmt) else {
                 return Ok(Outcome::Completed);
@@ -555,13 +577,17 @@ impl<'a> Machine<'a> {
                 Ok(v) => {
                     if let IrStmt::Assign { target, span, .. } = stmt {
                         if !self.state.contains_key(target) {
-                            return Err(Fault {
-                                rule: "replay-unknown-identifier",
-                                message: format!(
-                                    "assignment to `{target}`, which is not a state field"
-                                ),
-                                span: *span,
-                            });
+                            return Err(self.undo(
+                                commit,
+                                fx,
+                                Fault {
+                                    rule: "replay-unknown-identifier",
+                                    message: format!(
+                                        "assignment to `{target}`, which is not a state field"
+                                    ),
+                                    span: *span,
+                                },
+                            ));
                         }
                         self.state.insert(target.clone(), v);
                         fx.writes.push(Write {
@@ -571,14 +597,38 @@ impl<'a> Machine<'a> {
                     }
                     task.stmt += 1;
                     task.journal.clear();
+                    // A statement that awaited ends a segment: what it wrote is committed.
+                    let awaited = match stmt {
+                        IrStmt::Assign { value, .. } | IrStmt::Expr { expr: value, .. } => {
+                            ir_expr_suspends(value)
+                        }
+                    };
+                    if awaited {
+                        commit = Some((self.state.clone(), fx.writes.len()));
+                    }
                 }
                 Err(Stop::Suspend(req)) => {
                     self.issue(req, task, fx);
                     return Ok(Outcome::Suspended);
                 }
-                Err(Stop::Fault(f)) => return Err(f),
+                Err(Stop::Fault(f)) => return Err(self.undo(commit, fx, f)),
             }
         }
+    }
+
+    /// Undo the writes of the segment that faulted: restore the state of the last commit point and drop the writes
+    /// the step's report lists since. Effects already performed (`storage.set`, a request already issued) stay.
+    fn undo(
+        &mut self,
+        commit: Option<(BTreeMap<String, Value>, usize)>,
+        fx: &mut StepEffects,
+        fault: Fault,
+    ) -> Fault {
+        if let Some((state, writes)) = commit {
+            self.state = state;
+            fx.writes.truncate(writes);
+        }
+        fault
     }
 
     /// Start a request: supersede the group's pending one, then register it
