@@ -227,8 +227,9 @@ Pure, no capability, an authority of nothing. The emitted helpers are `Math.min`
 * **Not a number is not coerced:** the emitted helper turns anything that is not a number into NaN (`min("1", 2)` is NaN,
   not `1`); replay refuses it as `replay-type-error`, the way it refuses `take(list, "1")`.
 * **Wrong argument count:** `builtin-shape-mismatch`, with the form (`min(a, b)`, `abs(n)`).
-* **Not a way round `replay-non-finite`:** `ceil(m / 0)` still faults in replay, because `m / 0` does first
-  (`docs/conditionals.md` section 5).
+* **Not a way round `replay-non-finite`:** `ceil(m / 0)` faults in replay, because `m / 0` does first, and since the
+  arithmetic became finite in the page too (`docs/semantics.md`, "Arithmetic is finite") it throws there as well, instead
+  of `ceil(Infinity)`.
 
 Checked: `tests/math_corpus.json` (64 cases: both argument orders, NaN on either side, both zeros, both infinities, halves
 either side of zero, the double below a half, the edge of the exact range at 2^52, 1e300) against the model by

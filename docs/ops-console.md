@@ -156,7 +156,7 @@ checks stop the server.)
 
 The first draft sorted a missing temperature last with `num(text, 0 / 0)`: `NaN` sorts last in both directions in the
 browser (`docs/lists.md` section 1), but replay refuses `0 / 0` as `replay-non-finite`, so the page could not be
-replayed. The page uses a finite sentinel (`dir * 1000000000`, added after the direction is applied so it is the same in
+replayed (the page itself now refuses it too, `docs/semantics.md` "Arithmetic is finite", where it used to show `NaN`). The page uses a finite sentinel (`dir * 1000000000`, added after the direction is applied so it is the same in
 both directions) and the trace and the browser now agree, including a record with no temperature last in both directions.
 
 ### 2.12 The human replay report prints every list in full. Issue #45

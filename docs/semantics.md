@@ -518,6 +518,36 @@ discipline, same tier labels, same refusal to over-claim.
 
 ---
 
+## Arithmetic is finite
+
+**Answer.** `+ - * /` on numbers never answer `Infinity` or `NaN`; the language has no such value. A division by zero (`1 / 0`,
+`0 / 0`), an overflow (`1e200 * 1e200`) and any other result that is not a finite number is a **fault**, the same in both
+evaluators:
+
+* in `cancho-ui test` it fails the step with `replay-non-finite` (`docs/replay.md` section 7.1);
+* in the page, the emitted `+ - * /` go through `__cui_fin` / `__cui_add`, which throw an `Error` whose message begins
+  `replay-non-finite`. The handler stops at that statement: the statements before it have run and the ones after it have not, as for any
+  error a handler throws (a handler is an async function, so the page sees an unhandled rejection).
+
+**Source.** Until this was written the two disagreed: replay refused, the page showed `Infinity` or `NaN`
+(`docs/conditionals.md` section 3.1 found it by reading the code; the old emitter wrote `(100 / __state_m)`, which JavaScript
+answers `Infinity` for a zero `m`, and the page then showed `Infinity`). Making replay answer
+as JavaScript does was rejected: a trace cannot carry `Infinity` (JSON), a `Text` would print `Infinity`, an `Int` field would hold
+a value no `Int` has, and a later `==` or `sort` would depend on it. Making the page refuse costs one function call per operation
+and nothing else.
+
+**Tier.** **tested**: `tests/arith_corpus.json` (22 cases: both signs of zero, `0.1 + 0.2`, division by zero of both signs,
+`0 / 0`, overflow by `+`, `-`, `*` and `/`, underflow to zero) is checked against the Rust model (`cancho_ui_replay::arith`, which
+`binary` calls) by `cargo test`, comparing bits, and against the emitted JavaScript in Chromium by `scripts/check-arith.js`,
+comparing with `Object.is`; the same script clicks a button whose handler divides by zero.
+
+**What is not covered.** `+` with a string is the host's concatenation and is not checked. The builtins `min`, `max`, `abs`,
+`floor`, `ceil` and `round` model JavaScript's `Math.*` (`docs/lists.md` section 8), including NaN for a value that is not a
+number; they are not routed through `__cui_fin`, so `min("1", 2)` is NaN in the page and `replay-type-error` in replay (unchanged).
+A literal division by zero in source (`x / 0`) is not refused at `check`; it faults when it runs.
+
+---
+
 ## Guarantees table
 
 One row per question, with the tier and what is and is not

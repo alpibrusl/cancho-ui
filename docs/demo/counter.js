@@ -4,6 +4,8 @@
 //
 // Do not edit by hand. Re-run `cancho-ui build` to regenerate.
 
+const __cui_cancelled = Symbol("__cui_cancelled");
+
 // Focus survives a re-render: see docs/semantics.md, Question 9.
 function __cui_focus_save(root) {
     const el = document.activeElement;
@@ -32,13 +34,24 @@ function __cui_focus_restore(root, saved) {
     }
 }
 
+// Arithmetic (docs/semantics.md, "Arithmetic"): + - * / never answer Infinity or NaN. A result that is not finite throws, the
+// page's form of replay's `replay-non-finite`; `+` of two numbers is checked, `+` with a string is the host's concatenation.
+function __cui_fin(n) {
+    if (typeof n === "number" && !isFinite(n)) { throw new Error("replay-non-finite: the result is not a finite number"); }
+    return n;
+}
+function __cui_add(a, b) {
+    var r = a + b;
+    return typeof r === "number" ? __cui_fin(r) : r;
+}
+
 // Component: Counter (id 0)
 function mount_Counter(root) {
     (function () {
         let __state_count = 0;
         async function __on_Increment() {
             try {
-                __state_count = (__state_count + 1);
+                __state_count = __cui_add(__state_count, 1);
                 __render();
             } catch (e) {
                 if (e !== __cui_cancelled) { throw e; }

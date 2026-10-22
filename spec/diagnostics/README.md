@@ -170,7 +170,8 @@ tags: `test-state-mismatch`, `test-expect-mismatch`, `trace-no-assertions`,
 `trace-request-not-scriptable`, `trace-bad-response`,
 `trace-event-after-dispose`, `replay-unsupported`, `replay-tick-limit`, `replay-type-error`,
 `replay-unknown-identifier`, `replay-no-match-arm`, `replay-non-finite`,
-`replay-number-format`. Their meanings are in `docs/replay.md` §7.1. A program that
+`replay-number-format`. (`replay-non-finite` is also what the emitted page throws for the same result: `docs/semantics.md`,
+"Arithmetic is finite".) Their meanings are in `docs/replay.md` §7.1. A program that
 does not compile is still refused with the §3 rule that refuses it (exit `1`).
 
 ### 3.1 What is not in the catalog

@@ -156,7 +156,7 @@ component Counter {
     // Event handlers.
     assert!(js.contains("function __on_Increment()"));
     assert!(js.contains("function __on_Reset()"));
-    assert!(js.contains("__state_count = (__state_count + 1);"));
+    assert!(js.contains("__state_count = __cui_add(__state_count, 1);"));
     assert!(js.contains("__state_count = 0;"));
     // Re-render wiring.
     assert!(js.contains("__render();"));
@@ -180,7 +180,7 @@ component T {
 }
 ";
     let js = compile_str(src);
-    assert!(js.contains("__state_x = (__state_x + 2);"));
+    assert!(js.contains("__state_x = __cui_add(__state_x, 2);"));
 }
 
 #[test]

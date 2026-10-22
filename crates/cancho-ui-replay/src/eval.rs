@@ -1002,6 +1002,13 @@ fn eval_match(
     ))
 }
 
+fn finite_of(n: Option<f64>, span: Span) -> Result<Value, Stop> {
+    match n {
+        Some(n) => Ok(Value::Num(n)),
+        None => finite(f64::NAN, span),
+    }
+}
+
 fn finite(n: f64, span: Span) -> Result<Value, Stop> {
     if n.is_finite() {
         Ok(Value::Num(n))
@@ -1037,11 +1044,25 @@ fn concat_form(v: &Value, span: Span) -> Result<String, Stop> {
     }
 }
 
+/// `+ - * /` on two numbers, as the language has them: a result that is not finite (a division by zero, an overflow) is
+/// `None`, which `binary` reports as `replay-non-finite` and the emitted JavaScript throws (`__cui_fin`).
+/// `tests/arith_corpus.json` is checked against this and against that JavaScript, comparing bits.
+pub fn arith(op: &str, a: f64, b: f64) -> Option<f64> {
+    let n = match op {
+        "+" => a + b,
+        "-" => a - b,
+        "*" => a * b,
+        "/" => a / b,
+        _ => return None,
+    };
+    n.is_finite().then_some(n)
+}
+
 fn binary(op: IrBinOp, l: Value, r: Value, span: Span) -> Result<Value, Stop> {
     use IrBinOp::*;
     match op {
         Add => match (&l, &r) {
-            (Value::Num(a), Value::Num(b)) => finite(a + b, span),
+            (Value::Num(a), Value::Num(b)) => finite_of(arith("+", *a, *b), span),
             (Value::Str(_), _) | (_, Value::Str(_)) => {
                 Ok(Value::Str(concat_form(&l, span)? + &concat_form(&r, span)?))
             }
@@ -1049,9 +1070,9 @@ fn binary(op: IrBinOp, l: Value, r: Value, span: Span) -> Result<Value, Stop> {
         },
         Sub | Mul | Div => match (&l, &r) {
             (Value::Num(a), Value::Num(b)) => match op {
-                Sub => finite(a - b, span),
-                Mul => finite(a * b, span),
-                _ => finite(a / b, span),
+                Sub => finite_of(arith("-", *a, *b), span),
+                Mul => finite_of(arith("*", *a, *b), span),
+                _ => finite_of(arith("/", *a, *b), span),
             },
             _ => Err(operands(
                 match op {
