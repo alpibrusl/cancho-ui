@@ -13,6 +13,7 @@
 //! avoiding the cycle). `check_file` runs shape first, then calls
 //! `lower_file` for the capability pass.
 
+use cancho_ui_ir::lower::LowerError;
 use cancho_ui_syntax::{
     Span,
     ast::{
@@ -262,13 +263,11 @@ pub fn check_file_with_externals(
     check_shape_with(file, externals).map_err(CheckError::Shape)?;
     match cancho_ui_ir::lower_file(file) {
         Ok(_) => Ok(()),
-        Err(cancho_ui_ir::lower::LowerError::EmptySpan { .. }) => {
-            Err(CheckError::Shape(TypeError::MissingView {
-                name: "<file>".into(),
-                span: file.span,
-            }))
-        }
-        Err(cancho_ui_ir::lower::LowerError::CapabilityMissing {
+        Err(LowerError::EmptySpan { .. }) => Err(CheckError::Shape(TypeError::MissingView {
+            name: "<file>".into(),
+            span: file.span,
+        })),
+        Err(LowerError::CapabilityMissing {
             component,
             capability,
             call_path,
@@ -279,7 +278,7 @@ pub fn check_file_with_externals(
             call_path,
             span,
         }),
-        Err(cancho_ui_ir::lower::LowerError::CapabilityUnused {
+        Err(LowerError::CapabilityUnused {
             component,
             capability,
             span,
@@ -288,7 +287,7 @@ pub fn check_file_with_externals(
             capability,
             span,
         }),
-        Err(cancho_ui_ir::lower::LowerError::NarrowingIllegal {
+        Err(LowerError::NarrowingIllegal {
             component,
             capability,
             reason,
@@ -299,7 +298,7 @@ pub fn check_file_with_externals(
             reason,
             span,
         }),
-        Err(cancho_ui_ir::lower::LowerError::CredentialMisuse {
+        Err(LowerError::CredentialMisuse {
             rule,
             component,
             detail,
@@ -310,7 +309,7 @@ pub fn check_file_with_externals(
             detail,
             span,
         }),
-        Err(cancho_ui_ir::lower::LowerError::BoundViolated {
+        Err(LowerError::BoundViolated {
             component,
             host,
             url,
@@ -321,7 +320,7 @@ pub fn check_file_with_externals(
             url,
             span,
         }),
-        Err(cancho_ui_ir::lower::LowerError::MatchNonExhaustive {
+        Err(LowerError::MatchNonExhaustive {
             component,
             field,
             missing,
@@ -332,13 +331,11 @@ pub fn check_file_with_externals(
             missing,
             span,
         }),
-        Err(cancho_ui_ir::lower::LowerError::LambdaUnsupported { span }) => {
-            Err(CheckError::LambdaUnsupported { span })
-        }
-        Err(cancho_ui_ir::lower::LowerError::PatternLiteralUnsupported { name, span }) => {
+        Err(LowerError::LambdaUnsupported { span }) => Err(CheckError::LambdaUnsupported { span }),
+        Err(LowerError::PatternLiteralUnsupported { name, span }) => {
             Err(CheckError::PatternLiteralUnsupported { name, span })
         }
-        Err(cancho_ui_ir::lower::LowerError::ControlRefused {
+        Err(LowerError::ControlRefused {
             code,
             message,
             span,
@@ -347,7 +344,7 @@ pub fn check_file_with_externals(
             message,
             span,
         }),
-        Err(cancho_ui_ir::lower::LowerError::ConditionRefused {
+        Err(LowerError::ConditionRefused {
             code,
             message,
             span,
@@ -356,24 +353,62 @@ pub fn check_file_with_externals(
             message,
             span,
         }),
-        Err(cancho_ui_ir::lower::LowerError::UnknownCall { name, span }) => {
-            Err(CheckError::UnknownCall { name, span })
-        }
-        Err(cancho_ui_ir::lower::LowerError::BuiltinMisuse { name, detail, span }) => {
+        Err(LowerError::UnknownCall { name, span }) => Err(CheckError::UnknownCall { name, span }),
+        Err(LowerError::BuiltinMisuse { name, detail, span }) => {
             Err(CheckError::BuiltinMisuse { name, detail, span })
         }
-        Err(cancho_ui_ir::lower::LowerError::PureLambdaRequired { span }) => {
+        Err(LowerError::PureLambdaRequired { span }) => {
             Err(CheckError::PureLambdaRequired { span })
         }
-        Err(e) => match e.schedule_refusal() {
-            Some((code, component, span)) => Err(CheckError::Schedule {
-                code,
-                component: component.to_string(),
-                message: e.to_string(),
-                span,
-            }),
-            None => unreachable!("every other lowering refusal is matched above"),
-        },
+        // The four refusals of a schedule (docs/schedules.md). No wildcard anywhere in this match: a new `LowerError`
+        // variant without an arm is a compile error here, not a panic when a program reaches it.
+        Err(
+            ref e @ LowerError::ScheduleEventUnknown {
+                ref component,
+                ref span,
+                ..
+            },
+        ) => Err(schedule_error(
+            "schedule-event-unknown",
+            component,
+            *span,
+            e,
+        )),
+        Err(
+            ref e @ LowerError::ScheduleEventParams {
+                ref component,
+                ref span,
+                ..
+            },
+        ) => Err(schedule_error("schedule-event-params", component, *span, e)),
+        Err(
+            ref e @ LowerError::SchedulePeriodInvalid {
+                ref component,
+                ref span,
+                ..
+            },
+        ) => Err(schedule_error(
+            "schedule-period-invalid",
+            component,
+            *span,
+            e,
+        )),
+        Err(
+            ref e @ LowerError::ScheduleDuplicate {
+                ref component,
+                ref span,
+                ..
+            },
+        ) => Err(schedule_error("schedule-duplicate", component, *span, e)),
+    }
+}
+
+fn schedule_error(code: &'static str, component: &str, span: Span, e: &LowerError) -> CheckError {
+    CheckError::Schedule {
+        code,
+        component: component.to_string(),
+        message: e.to_string(),
+        span,
     }
 }
 
@@ -809,6 +844,17 @@ mod tests {
     fn parse_ok(src: &str) -> File {
         let toks = lex(src).expect("lex");
         parse(toks).expect("parse")
+    }
+
+    #[test]
+    fn a_component_with_no_span_is_a_shape_refusal_not_a_panic() {
+        // `LowerError::EmptySpan`: no source produces a syntax tree whose component has no span, so the test builds one.
+        let mut file = parse_ok("component C { state n: Int = 0; view { Text { \"{n}\" } } }\n");
+        file.components[0].span = cancho_ui_syntax::span::Span::DUMMY;
+        match check_file(&file) {
+            Err(CheckError::Shape(TypeError::MissingView { .. })) => {}
+            other => panic!("expected a MissingView shape refusal, got {other:?}"),
+        }
     }
 
     #[test]
