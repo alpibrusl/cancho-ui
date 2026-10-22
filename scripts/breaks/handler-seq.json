@@ -1,0 +1,94 @@
+{
+  "checks": [
+    { "name": "cargo test handler_seq", "argv": ["cargo", "test", "--quiet", "-p", "cancho-ui", "--test", "handler_seq"] },
+    { "name": "check-handler-seq.js", "argv": ["node", "scripts/check-handler-seq.js"] },
+    { "name": "check-tickets.js", "argv": ["node", "scripts/check-tickets.js"] },
+    { "name": "tickets trace", "argv": ["cargo", "run", "--quiet", "--", "test", "examples/tickets/tickets.cui", "examples/tickets/tickets.trace.json"] }
+  ],
+  "breaks": [
+    {
+      "name": "replay takes the then branch whatever the condition says",
+      "file": "crates/cancho-ui-replay/src/machine.rs",
+      "from": "let branch = usize::from(v != Value::Bool(true));",
+      "to": "let branch = usize::from(v == Value::Bool(true) && false);"
+    },
+    {
+      "name": "replay leaves a branch for the statement after the if only when it is not empty",
+      "file": "crates/cancho-ui-replay/src/machine.rs",
+      "from": "while at(body, pc).is_none() && pc.len() >= 3 {",
+      "to": "while false && at(body, pc).is_none() && pc.len() >= 3 {"
+    },
+    {
+      "name": "replay does not commit after an await in a branch",
+      "file": "crates/cancho-ui-replay/src/machine.rs",
+      "from": "                    if awaited {\n                        commit = Some",
+      "to": "                    if awaited && task.pc.len() == 1 {\n                        commit = Some"
+    },
+    {
+      "name": "the page emits the else branch as the then branch",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "                \"{indent}if ({}) {{\\n\",\n                emit_expr_runtime(cond, params)",
+      "to": "                \"{indent}if (!({})) {{\\n\",\n                emit_expr_runtime(cond, params)"
+    },
+    {
+      "name": "the page does not paint before a later await",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "            if suspends && paint {",
+      "to": "            if suspends && paint && false {"
+    },
+    {
+      "name": "the page does not clear the snapshot while a branch awaits",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "            let awaits = snap.is_some() && suspends;",
+      "to": "            let awaits = snap.is_some() && suspends && indent.len() <= 16;"
+    },
+    {
+      "name": "a run is not replaced (the block is skipped)",
+      "file": "crates/cancho-ui-ir/src/blocks.rs",
+      "from": "                out.extend(replace(body, by_name, budget, owner)?);",
+      "to": "                let _ = body;"
+    },
+    {
+      "name": "the cycle check is off",
+      "file": "crates/cancho-ui-ir/src/blocks.rs",
+      "from": "        if path.contains(&next.as_str()) {",
+      "to": "        if false && path.contains(&next.as_str()) {"
+    },
+    {
+      "name": "the expansion limit is off",
+      "file": "crates/cancho-ui-ir/src/blocks.rs",
+      "from": "    if *budget == 0 {",
+      "to": "    if false && *budget == 0 {"
+    },
+    {
+      "name": "a block sees the parameters of the handler that runs it",
+      "file": "crates/cancho-ui-ir/src/conditions.rs",
+      "from": "    let mut scope = Scope {\n        state,\n        locals: Vec::new(),\n    };\n    stmts(&mut scope, body)",
+      "to": "    let mut scope = Scope {\n        state,\n        locals: Vec::new(),\n    };\n    let _ = &mut scope;\n    return Ok(());"
+    },
+    {
+      "name": "the condition of an if statement may read the world",
+      "file": "crates/cancho-ui-ir/src/lower.rs",
+      "from": "            if !cond_effects.is_empty() || ir_expr_suspends(&ir_cond) {",
+      "to": "            if false && (!cond_effects.is_empty() || ir_expr_suspends(&ir_cond)) {"
+    },
+    {
+      "name": "the condition of an if statement is not type-checked",
+      "file": "crates/cancho-ui-ir/src/conditions.rs",
+      "from": "                want_bool(scope, cond, \"the condition of an `if` statement\")?;",
+      "to": "                kind(scope, cond)?;"
+    },
+    {
+      "name": "the nesting limit is off",
+      "file": "crates/cancho-ui-syntax/src/parser.rs",
+      "from": "        if self.depth >= MAX_STMT_DEPTH {\n            let at = self.peek().span.start;\n            return Err(ParseError::TooDeep {\n                max: MAX_STMT_DEPTH,\n                line: at.line,\n                column: at.column,\n            });\n        }\n        self.depth += 1;\n        let mut stmts",
+      "to": "        self.depth += 1;\n        let mut stmts"
+    },
+    {
+      "name": "the semantic diff does not see an if statement",
+      "file": "crates/cancho-ui-diff/src/render.rs",
+      "from": "                format!(\"if {} {{ {} }}\", expr(cond), body(then))",
+      "to": "                format!(\"if {{ {} }}\", body(then))"
+    }
+  ]
+}

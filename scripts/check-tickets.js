@@ -63,6 +63,7 @@ function note(label, detail) { console.log(`note ${label}: ${detail}`); }
   await signIn.click();
   await page.waitForFunction(() => /Wrong user name or password\./.test(document.body.innerText), null, { timeout: 5000 });
   check('a wrong password is said, the service saw one login, the form is still shown', server.log.logins.length === 1 && (await page.getByLabel('User name').count()) === 1 && (await page.getByLabel('Password').inputValue()) === '');
+  check('a refused sign-in asks for no orders (docs/handler-sequences.md)', server.log.orderRequests === 0, `${server.log.orderRequests} requests for the orders`);
   await page.getByLabel('Password').fill('hunter22!');
   await page.getByLabel('Password').press('Enter');
   await page.waitForFunction(() => /orders: loaded/.test(document.body.innerText), null, { timeout: 5000 });

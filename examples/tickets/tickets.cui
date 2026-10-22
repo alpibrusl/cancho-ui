@@ -44,6 +44,21 @@ component Tickets {
     state sent: Result[String, String] = Ok("");
     state out: Result[String, String] = Ok("");
 
+    // reads the orders and keeps the lines that have an id; the sign-in and a save both run it (docs/handler-sequences.md)
+    block LoadOrders {
+        r = await(net.get("api/orders"));
+        orders = match r {
+            Ok(text) => { filter(lines(text), x => len(json.get(x, "id", "")) > 0) }
+            Err(_) => { orders }
+            Cancelled => { orders }
+        };
+        note = match r {
+            Ok(_) => { "loaded" }
+            Err(e) => { "not loaded: " + e }
+            Cancelled => { "cancelled" }
+        };
+    }
+
     on User(v) {
         user = v;
         user_msg = if len(trim(v)) == 0 { "Enter your user name." } else if len(trim(v)) < 3 { "A user name has at least 3 characters." } else { "" };
@@ -72,17 +87,9 @@ component Tickets {
         pass_msg = if signed { "" } else { "Enter your password." };
         pass_tone = if signed { "" } else { "error" };
         blocked = !signed;
-        r = await(net.get("api/orders"));
-        orders = match r {
-            Ok(text) => { filter(lines(text), x => len(json.get(x, "id", "")) > 0) }
-            Err(_) => { [] }
-            Cancelled => { [] }
-        };
-        note = match r {
-            Ok(_) => { "loaded" }
-            Err(e) => { "not loaded: " + e }
-            Cancelled => { "cancelled" }
-        };
+        if signed {
+            run LoadOrders;
+        }
     }
 
     on Pick(id) {
@@ -125,12 +132,7 @@ component Tickets {
             Cancelled => { "cancelled" }
         };
         saved_tone = if save_msg == "saved" { "ok" } else if starts_with(save_msg, "not saved") { "error" } else { "" };
-        r = await(net.get("api/orders"));
-        orders = match r {
-            Ok(text) => { filter(lines(text), x => len(json.get(x, "id", "")) > 0) }
-            Err(_) => { orders }
-            Cancelled => { orders }
-        };
+        run LoadOrders;
     }
 
     on SignOut {

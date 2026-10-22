@@ -70,6 +70,7 @@ does not force premature changes to cancho Core.
 | **Mobile** | The mobile decision (an installable web app, fewest dependencies), what `build --pwa` writes, what is and is not built, and how it is checked | [`mobile-backend.md`](mobile-backend.md) |
 | **Work orders** | A realistic page (sign-in with validation, list, detail, edit posting with `net.post`) built from what exists, and the six gaps it hit, each a filed issue | [`tickets.md`](tickets.md) |
 | **View conditional** | `If { when: cond .. }`: a view node that is in the page only while a condition holds; the options, why replay answers `hidden`, the instance case, and what it cost | [`view-conditional.md`](view-conditional.md) |
+| **Handler sequences** | The statement `if` (its branches may hold effects) and `block`/`run`: the options, the revision of the conditionals decision, how replay and the page agree, and what it cost | [`handler-sequences.md`](handler-sequences.md) |
 | **Semantic diff** | What `cancho-ui diff` compares, its JSON shape, exit codes, and what it does not claim | [`semantic-diff.md`](semantic-diff.md) |
 | **Schedules** | `start Event;` and `every N Event;`: when they run, skip-not-queue, disposal, replay and diff | [`schedules.md`](schedules.md) |
 | **Replay** | What `cancho-ui test` replays (a trace of events, a scripted network, a fake clock), its rules, and what it does not claim | [`replay.md`](replay.md) |

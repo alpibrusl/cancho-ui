@@ -11,8 +11,8 @@
 
 use cancho_ui_syntax::ast::{
     BinOp, Binding, BindingValue, CapabilityRef, Component, ElementKind, EventHandler, Expr, File,
-    MatchArm, Pattern, Role, ScheduleKind, StateField, Stmt, StmtBlock, TextPart, TextValue, Type,
-    UnOp, ViewNode,
+    MatchArm, Pattern, Role, ScheduleKind, StateField, Stmt, TextPart, TextValue, Type, UnOp,
+    ViewNode,
 };
 use cancho_ui_syntax::span::{Position, Span};
 use std::collections::BTreeSet;
@@ -155,6 +155,15 @@ pub enum LowerError {
         span: Span,
     },
 
+    /// A refusal about `block` and `run` (docs/handler-sequences.md): `code` is the rule tag (`block-unknown`,
+    /// `block-duplicate`, `block-name-conflict`, `block-cycle`, `block-expansion-too-large`).
+    #[error("{message}")]
+    BlockRefused {
+        code: &'static str,
+        message: String,
+        span: Span,
+    },
+
     #[error(
         "`{name}` is misused here (expected {detail}); see the builtin call forms: `filter(list, x => cond)`, `map(list, x => body)`, `sort(list, x => key)`, `reverse(list)`, `contains(text, needle)`, `lower(text)`, `fold(text)`, `num(text, default)`, `take(list, n)`, `skip(list, n)`, `concat(a, b)`, `lines(text)`, `split(text, sep)`, `join(list, sep)`, `trim(text)`, `upper(text)`, `starts_with(text, prefix)`, `ends_with(text, suffix)`, `len(value)`, `storage.get(key, default)`, `storage.set(key, value)`, `net.get(url)`, `net.fetch(url)`, `net.post(url, body)`, `json.get(text, path, default)`, `json.items(text, path)`, `json.quote(text)`"
     )]
@@ -226,10 +235,17 @@ fn lower_component(c: &Component, next_id: &mut u32) -> Result<IrComponent, Lowe
     let schedules = lower_schedules(c)?;
     let mut events = Vec::with_capacity(c.events.len());
     let mut reachable_effects: Vec<IrReachableEffect> = Vec::new();
-    for e in &c.events {
-        let (ir_event, effects) = lower_event(e)?;
+    // `run Name;` is replaced by the block's statements here, before anything else sees the handler (docs/handler-sequences.md).
+    let expanded = crate::blocks::expand(c)?;
+    for (e, body) in c.events.iter().zip(&expanded.handlers) {
+        let (ir_event, effects) = lower_event(e, body)?;
         events.push(ir_event);
         reachable_effects.extend(effects);
+    }
+    // A block is checked on its own: a name in it is a state field, never a parameter of the handler that runs it.
+    for body in &expanded.blocks {
+        let (ir_body, _) = lower_stmts_with_effects(body)?;
+        crate::conditions::check_block(&state, &ir_body)?;
     }
     let (view_body, view_effects) = lower_view_node_with_effects(&c.view.body)?;
     reachable_effects.extend(view_effects);
@@ -354,8 +370,11 @@ fn lower_capability(c: &CapabilityRef) -> IrCapabilityRef {
     }
 }
 
-fn lower_event(e: &EventHandler) -> Result<(IrEventHandler, Vec<IrReachableEffect>), LowerError> {
-    let (body, effects) = lower_stmts_with_effects(&e.body)?;
+fn lower_event(
+    e: &EventHandler,
+    stmts: &[Stmt],
+) -> Result<(IrEventHandler, Vec<IrReachableEffect>), LowerError> {
+    let (body, effects) = lower_stmts_with_effects(stmts)?;
     Ok((
         IrEventHandler {
             name: e.name.clone(),
@@ -368,11 +387,11 @@ fn lower_event(e: &EventHandler) -> Result<(IrEventHandler, Vec<IrReachableEffec
 }
 
 fn lower_stmts_with_effects(
-    block: &StmtBlock,
+    stmts: &[Stmt],
 ) -> Result<(Vec<IrStmt>, Vec<IrReachableEffect>), LowerError> {
-    let mut out = Vec::with_capacity(block.stmts.len());
+    let mut out = Vec::with_capacity(stmts.len());
     let mut effects = Vec::new();
-    for s in &block.stmts {
+    for s in stmts {
         let (ir, mut e) = lower_stmt(s)?;
         out.push(ir);
         effects.append(&mut e);
@@ -407,6 +426,39 @@ fn lower_stmt(s: &Stmt) -> Result<(IrStmt, Vec<IrReachableEffect>), LowerError> 
                 effects,
             ))
         }
+        Stmt::If {
+            cond,
+            then,
+            else_,
+            span,
+        } => {
+            let (ir_cond, cond_effects) = lower_expr_with_effects(cond)?;
+            if !cond_effects.is_empty() || ir_expr_suspends(&ir_cond) {
+                return Err(LowerError::ConditionRefused {
+                    code: "if-effect-in-expression",
+                    message: "the condition of an `if` is pure: it may not call an effect (`net.*`, `storage.*`, `clock.*`, `location.*`), `sleep` or `await(..)`; read the answer into a state field first, then branch on the field".into(),
+                    span: cond.span(),
+                });
+            }
+            let (ir_then, mut effects) = lower_stmts_with_effects(then)?;
+            let (ir_else, mut e) = lower_stmts_with_effects(else_)?;
+            effects.append(&mut e);
+            Ok((
+                IrStmt::If {
+                    cond: ir_cond,
+                    then: ir_then,
+                    else_: ir_else,
+                    span: *span,
+                },
+                effects,
+            ))
+        }
+        // Every `run` was replaced before lowering (`blocks::expand`); one that is left names no block.
+        Stmt::Run { name, span } => Err(LowerError::BlockRefused {
+            code: "block-unknown",
+            message: format!("`run {name};` names a block this component does not declare"),
+            span: *span,
+        }),
     }
 }
 
@@ -723,7 +775,7 @@ fn lower_expr_with_effects(e: &Expr) -> Result<(IrExpr, Vec<IrReachableEffect>),
             let Some(else_) = else_ else {
                 return Err(LowerError::ConditionRefused {
                     code: "if-else-required",
-                    message: "an `if` is an expression and has a value on both sides: write `if cond { a } else { b }` (a statement form with no `else` is not built)".into(),
+                    message: "an `if` expression has a value on both sides: write `if cond { a } else { b }` (the statement form, `if cond { x = a; }` at the start of a statement, may omit `else`)".into(),
                     span: *span,
                 });
             };
@@ -739,7 +791,7 @@ fn lower_expr_with_effects(e: &Expr) -> Result<(IrExpr, Vec<IrReachableEffect>),
             {
                 return Err(LowerError::ConditionRefused {
                     code: "if-effect-in-expression",
-                    message: "an `if` is pure: its condition and branches may not call an effect (`net.*`, `storage.*`, `clock.*`, `location.*`), `sleep` or `await(..)`; the set of effects a handler issues would then depend on a value the replay trace has to supply".into(),
+                    message: "an `if` expression is pure: its condition and branches may not call an effect (`net.*`, `storage.*`, `clock.*`, `location.*`), `sleep` or `await(..)`; to issue a request only sometimes use the statement form at the start of a statement: `if cond { r = await(net.get(url)); }`".into(),
                     span: *span,
                 });
             }
@@ -1449,6 +1501,14 @@ fn stmt_matches<'a>(s: &'a IrStmt, out: &mut Vec<&'a IrExpr>) {
     match s {
         IrStmt::Assign { value, .. } => expr_matches(value, out),
         IrStmt::Expr { expr, .. } => expr_matches(expr, out),
+        IrStmt::If {
+            cond, then, else_, ..
+        } => {
+            expr_matches(cond, out);
+            for t in then.iter().chain(else_) {
+                stmt_matches(t, out);
+            }
+        }
     }
 }
 
@@ -1496,7 +1556,7 @@ fn view_matches<'a>(node: &'a IrViewNode, out: &mut Vec<&'a IrExpr>) {
 fn await_driven_fields(c: &IrComponent) -> BTreeSet<String> {
     let mut set: BTreeSet<String> = BTreeSet::new();
     for e in &c.events {
-        for s in &e.body {
+        for s in IrStmt::leaves(&e.body) {
             match s {
                 IrStmt::Assign { target, value, .. } if expr_contains_await(value) => {
                     set.insert(target.clone());

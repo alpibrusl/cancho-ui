@@ -107,19 +107,40 @@ pub fn check_conditions(ir: &IrFile) -> Result<(), LowerError> {
         };
         for e in &c.events {
             scope.locals = e.params.clone();
-            for s in &e.body {
-                match s {
-                    IrStmt::Assign { value, .. } => {
-                        kind(&mut scope, value)?;
-                    }
-                    IrStmt::Expr { expr, .. } => {
-                        kind(&mut scope, expr)?;
-                    }
-                }
-            }
+            stmts(&mut scope, &e.body)?;
         }
         scope.locals.clear();
         node(&mut scope, &c.view.body)?;
+    }
+    Ok(())
+}
+
+/// A block's statements, checked with no parameters in scope (docs/handler-sequences.md section 4).
+pub fn check_block(state: &[IrStateField], body: &[IrStmt]) -> Result<(), LowerError> {
+    let mut scope = Scope {
+        state,
+        locals: Vec::new(),
+    };
+    stmts(&mut scope, body)
+}
+
+fn stmts(scope: &mut Scope, body: &[IrStmt]) -> Result<(), LowerError> {
+    for s in body {
+        match s {
+            IrStmt::Assign { value, .. } => {
+                kind(scope, value)?;
+            }
+            IrStmt::Expr { expr, .. } => {
+                kind(scope, expr)?;
+            }
+            IrStmt::If {
+                cond, then, else_, ..
+            } => {
+                want_bool(scope, cond, "the condition of an `if` statement")?;
+                stmts(scope, then)?;
+                stmts(scope, else_)?;
+            }
+        }
     }
     Ok(())
 }

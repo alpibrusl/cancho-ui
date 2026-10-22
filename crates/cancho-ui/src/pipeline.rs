@@ -513,6 +513,29 @@ fn check_to_diag(e: &cancho_ui_types::CheckError, file: &Path) -> Diagnostic {
             related: Vec::new(),
             notes: Vec::new(),
         },
+        cancho_ui_types::CheckError::BlockRefused {
+            code,
+            message,
+            span,
+        } => Diagnostic {
+            code: (*code).into(),
+            severity: Severity::Error,
+            tier: Tier::Static,
+            subject: Subject::Component {
+                name: String::new(),
+            },
+            message: message.clone(),
+            span: Some(SpanOut::from_span(*span, file)),
+            expected: None,
+            actual: None,
+            remediation: Some(Remediation {
+                description: block_remediation(code),
+                suggestion: None,
+                confidence: Confidence::High,
+            }),
+            related: Vec::new(),
+            notes: Vec::new(),
+        },
         cancho_ui_types::CheckError::ConditionRefused {
             code,
             message,
@@ -1008,6 +1031,23 @@ fn parse_to_diag(e: ParseError, file: &Path) -> Diagnostic {
             format!("unexpected end of file; expected {}", expected),
             None,
         ),
+        ParseError::TooDeep { max, line, column } => (
+            "parse-nesting-too-deep",
+            Severity::Error,
+            Tier::Static,
+            Subject::Internal,
+            format!("statements are nested more than {max} deep; split the handler into blocks"),
+            Some(Span::new(
+                cancho_ui_syntax::Position {
+                    line: *line,
+                    column: *column,
+                },
+                cancho_ui_syntax::Position {
+                    line: *line,
+                    column: *column + 1,
+                },
+            )),
+        ),
         ParseError::InvalidNumber { raw, line, column } => (
             "parse-invalid-number",
             Severity::Error,
@@ -1473,6 +1513,23 @@ fn lower_to_diag(e: &LowerError, file: &Path) -> Diagnostic {
                 confidence: Confidence::High,
             }),
         ),
+        LowerError::BlockRefused {
+            code,
+            message,
+            span,
+        } => (
+            *code,
+            Severity::Error,
+            Tier::Static,
+            Subject::Component { name: String::new() },
+            message.clone(),
+            Some(*span),
+            Some(Remediation {
+                description: block_remediation(code),
+                suggestion: None,
+                confidence: Confidence::High,
+            }),
+        ),
         LowerError::PatternLiteralUnsupported { name, span } => (
             "pattern-literal-unsupported",
             Severity::Error,
@@ -1620,11 +1677,23 @@ fn pattern_literal_remediation() -> String {
 fn condition_remediation(code: &str) -> String {
     match code {
         "if-else-required" => "Write both sides: `if cond { a } else { b }`; `else if cond2 { c }` chains.".to_string(),
-        "if-effect-in-expression" => "Keep the condition and the branches pure: compute with state, literals and the pure builtins. To issue a request only sometimes, write two events and let the view pick the button.".to_string(),
+        "if-effect-in-expression" => "Keep the condition (and, in an `if` expression, the branches) pure: compute with state, literals and the pure builtins. To issue a request only sometimes, use the statement form: `if cond { r = await(net.get(url)); }` (docs/handler-sequences.md).".to_string(),
         "condition-not-bool" => "Use a Bool: a comparison (`n > 0`), a Bool state field, or `&&`, `||`, `!` of those. A number or a string is not a condition: write `n != 0` or `len(s) > 0`.".to_string(),
         "operand-type-mismatch" => "`+` takes two numbers, or a string and a number, bool or string. To join two lists write `concat(a, b)`; to build text from a list use `join(list, sep)`.".to_string(),
         "if-branch-type-mismatch" => "Both branches of an `if` must have the same type: two numbers, two strings, two lists. Convert one side or restructure.".to_string(),
         _ => "See docs/conditionals.md.".to_string(),
+    }
+}
+
+/// What to change for a refusal about `block` and `run` (docs/handler-sequences.md).
+fn block_remediation(code: &str) -> String {
+    match code {
+        "block-unknown" => "Declare the block in the component (`block Name { .. }`) or run one that is declared; a `run` names a block, not an event.".to_string(),
+        "block-duplicate" => "Give each block of a component its own name.".to_string(),
+        "block-name-conflict" => "A block, a state field and an event share one namespace in a component: rename the block.".to_string(),
+        "block-cycle" => "A block may run other blocks but not itself, directly or through them: break the cycle, or use a state field the handler checks with `if`.".to_string(),
+        "block-expansion-too-large" => "Every `run` is replaced by the block's statements, so blocks that run blocks several times multiply: run each block once where you can.".to_string(),
+        _ => "See docs/handler-sequences.md.".to_string(),
     }
 }
 

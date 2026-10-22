@@ -34,6 +34,8 @@ use crate::lexer::{SpannedToken, Token};
 use crate::span::Span;
 use thiserror::Error;
 
+mod view;
+
 #[derive(Debug, Clone, Error, PartialEq)]
 pub enum ParseError {
     #[error("unexpected token {found:?} at line {line} column {column}; expected {expected}")]
@@ -49,6 +51,24 @@ pub enum ParseError {
 
     #[error("invalid number literal {raw:?} at line {line} column {column}")]
     InvalidNumber { raw: String, line: u32, column: u32 },
+
+    #[error(
+        "statements are nested more than {max} deep at line {line} column {column}; split the handler into blocks"
+    )]
+    TooDeep { max: usize, line: u32, column: u32 },
+}
+
+/// How deep `if` statements may nest (a handler, a block and each branch each count one).
+pub const MAX_STMT_DEPTH: usize = 32;
+
+/// The span of a statement.
+pub fn stmt_span(s: &Stmt) -> Span {
+    match s {
+        Stmt::Assign { span, .. }
+        | Stmt::Expr { span, .. }
+        | Stmt::If { span, .. }
+        | Stmt::Run { span, .. } => *span,
+    }
 }
 
 fn unexpected(found: Token, span: Span, expected: &'static str) -> ParseError {
@@ -62,7 +82,11 @@ fn unexpected(found: Token, span: Span, expected: &'static str) -> ParseError {
 
 /// Parse `tokens` (the output of `lex`) into a `File` AST.
 pub fn parse(tokens: Vec<SpannedToken>) -> Result<File, ParseError> {
-    let mut parser = Parser { tokens, pos: 0 };
+    let mut parser = Parser {
+        tokens,
+        pos: 0,
+        depth: 0,
+    };
     let file = parser.parse_file()?;
     parser.expect(Token::Eof)?;
     Ok(file)
@@ -71,6 +95,8 @@ pub fn parse(tokens: Vec<SpannedToken>) -> Result<File, ParseError> {
 struct Parser {
     tokens: Vec<SpannedToken>,
     pos: usize,
+    /// How many statement blocks are open (`MAX_STMT_DEPTH`).
+    depth: usize,
 }
 
 /// A string that is static text (a label, an attribute, a property): a `{` in it would be shown as a brace and
@@ -150,6 +176,7 @@ fn interpolation_parts(value: &str, span: Span) -> Result<Vec<TextPart>, ParseEr
             let mut sub = Parser {
                 tokens: interp_tokens,
                 pos: 0,
+                depth: 0,
             };
             let expr = sub.parse_expr().map_err(|e| ParseError::InvalidNumber {
                 raw: format!("{:?}", e),
@@ -359,6 +386,7 @@ impl Parser {
         let mut requires = Vec::new();
         let mut schedules = Vec::new();
         let mut events = Vec::new();
+        let mut blocks = Vec::new();
         let mut view: Option<ViewBlock> = None;
         loop {
             match &self.peek().token {
@@ -366,6 +394,16 @@ impl Parser {
                 // `start` and `every` are keywords only here, at the start of a member (docs/schedules.md section 3).
                 Token::Ident(word) if word == "start" || word == "every" => {
                     schedules.push(self.parse_schedule_decl()?)
+                }
+                // `block` is a keyword only here, followed by a name and `{` (docs/handler-sequences.md section 4).
+                Token::Ident(word)
+                    if word == "block"
+                        && matches!(
+                            self.tokens.get(self.pos + 1).map(|t| &t.token),
+                            Some(Token::Ident(_))
+                        ) =>
+                {
+                    blocks.push(self.parse_block_decl()?)
                 }
                 Token::State => state.push(self.parse_state_decl()?),
                 Token::Requires => requires.push(self.parse_requires_decl()?),
@@ -383,7 +421,7 @@ impl Parser {
                 }
                 other => {
                     return Err(ParseError::Unexpected {
-                        expected: "component member (`state`, `requires`, `start`, `every`, `on`, `view`)",
+                        expected: "component member (`state`, `requires`, `start`, `every`, `on`, `block`, `view`)",
                         found: other.clone(),
                         line: self.peek().span.start.line,
                         column: self.peek().span.start.column,
@@ -404,6 +442,7 @@ impl Parser {
             requires,
             schedules,
             events,
+            blocks,
             view,
             span: Span::new(kw.span.start, close.span.end),
         })
@@ -638,10 +677,7 @@ impl Parser {
 
     fn parse_stmt_block(&mut self) -> Result<StmtBlock, ParseError> {
         let start = self.peek().span.start;
-        let mut stmts = Vec::new();
-        while !matches!(self.peek().token, Token::RBrace) {
-            stmts.push(self.parse_stmt()?);
-        }
+        let stmts = self.parse_stmts()?;
         let end = self.peek().span.end;
         Ok(StmtBlock {
             stmts,
@@ -649,8 +685,111 @@ impl Parser {
         })
     }
 
+    /// Statements up to (not including) the closing brace. Each open block counts one toward `MAX_STMT_DEPTH`, so a deeply
+    /// nested input is a parse error, not a stack overflow.
+    fn parse_stmts(&mut self) -> Result<Vec<Stmt>, ParseError> {
+        if self.depth >= MAX_STMT_DEPTH {
+            let at = self.peek().span.start;
+            return Err(ParseError::TooDeep {
+                max: MAX_STMT_DEPTH,
+                line: at.line,
+                column: at.column,
+            });
+        }
+        self.depth += 1;
+        let mut stmts = Vec::new();
+        let result = loop {
+            if matches!(self.peek().token, Token::RBrace) {
+                break Ok(());
+            }
+            match self.parse_stmt() {
+                Ok(s) => stmts.push(s),
+                Err(e) => break Err(e),
+            }
+        };
+        self.depth -= 1;
+        result.map(|()| stmts)
+    }
+
+    /// `block Name { stmts }`; the word `block` is the current token.
+    fn parse_block_decl(&mut self) -> Result<BlockDecl, ParseError> {
+        let kw = self.bump();
+        let (name, _) = self.bump_ident("block name")?;
+        self.expect(Token::LBrace)?;
+        let body = self.parse_stmt_block()?;
+        let close = self.expect(Token::RBrace)?;
+        Ok(BlockDecl {
+            name,
+            body,
+            span: Span::new(kw.span.start, close.span.end),
+        })
+    }
+
+    /// `if cond { stmts }` with an optional `else { stmts }` or `else if ..`; the `if` is the current token.
+    fn parse_if_stmt(&mut self) -> Result<Stmt, ParseError> {
+        let kw = self.expect(Token::If)?;
+        let cond = self.parse_expr()?;
+        self.expect(Token::LBrace)?;
+        let then = self.parse_stmts()?;
+        let then_close = self.expect(Token::RBrace)?;
+        let mut end = then_close.span.end;
+        let mut else_ = Vec::new();
+        if matches!(self.peek().token, Token::Else) {
+            self.bump();
+            if matches!(self.peek().token, Token::If) {
+                if self.depth >= MAX_STMT_DEPTH {
+                    let at = self.peek().span.start;
+                    return Err(ParseError::TooDeep {
+                        max: MAX_STMT_DEPTH,
+                        line: at.line,
+                        column: at.column,
+                    });
+                }
+                self.depth += 1;
+                let nested = self.parse_if_stmt();
+                self.depth -= 1;
+                let nested = nested?;
+                end = stmt_span(&nested).end;
+                else_.push(nested);
+            } else {
+                self.expect(Token::LBrace)?;
+                else_ = self.parse_stmts()?;
+                end = self.expect(Token::RBrace)?.span.end;
+            }
+        }
+        Ok(Stmt::If {
+            cond,
+            then,
+            else_,
+            span: Span::new(kw.span.start, end),
+        })
+    }
+
     fn parse_stmt(&mut self) -> Result<Stmt, ParseError> {
         let start = self.peek().span.start;
+        // A statement that starts with `if` is the statement form; `x = if c { 1 } else { 2 };` is the expression.
+        if matches!(self.peek().token, Token::If) {
+            return self.parse_if_stmt();
+        }
+        // `run Name;` (`run` is a word only here, followed by a name and `;`).
+        let is_run = matches!(&self.peek().token, Token::Ident(w) if w == "run")
+            && matches!(
+                self.tokens.get(self.pos + 1).map(|t| &t.token),
+                Some(Token::Ident(_))
+            )
+            && matches!(
+                self.tokens.get(self.pos + 2).map(|t| &t.token),
+                Some(Token::Semi)
+            );
+        if is_run {
+            self.bump();
+            let (name, _) = self.bump_ident("block name")?;
+            let end_tok = self.expect(Token::Semi)?;
+            return Ok(Stmt::Run {
+                name,
+                span: Span::new(start, end_tok.span.end),
+            });
+        }
         // An assignment is `identifier = expr;`.
         let is_assign = matches!(self.peek().token, Token::Ident(_))
             && matches!(
@@ -1213,593 +1352,6 @@ impl Parser {
             }),
         }
     }
-
-    // --- View block ---
-
-    fn parse_view_clause(&mut self) -> Result<ViewBlock, ParseError> {
-        let kw = self.expect(Token::View)?;
-        self.expect(Token::LBrace)?;
-        let body = self.parse_view_node()?;
-        let close = self.expect(Token::RBrace)?;
-        Ok(ViewBlock {
-            body,
-            span: Span::new(kw.span.start, close.span.end),
-        })
-    }
-
-    fn parse_view_node(&mut self) -> Result<ViewNode, ParseError> {
-        match &self.peek().token {
-            Token::StringLit(_) => self.parse_text_node(),
-            Token::Ident(_) => {
-                // `For { ... }` — Tier 8 row-repetition node. (The
-                // name `For` is therefore not usable as a component
-                // kind; it is reserved for this shape.)
-                let is_for = matches!(&self.peek().token, Token::Ident(s) if s == "For");
-                let followed_by_brace = matches!(
-                    self.tokens.get(self.pos + 1).map(|t| &t.token),
-                    Some(Token::LBrace)
-                );
-                if is_for && followed_by_brace {
-                    let kw_tok = self.bump();
-                    return self.parse_for_node(kw_tok.span);
-                }
-                // `If { when: cond ... }` is reserved the same way.
-                let is_if = matches!(&self.peek().token, Token::Ident(s) if s == "If");
-                if is_if && followed_by_brace {
-                    let kw_tok = self.bump();
-                    return self.parse_if_node(kw_tok.span);
-                }
-                self.parse_element_node()
-            }
-            other => Err(ParseError::Unexpected {
-                expected: "view node (string literal or element)",
-                found: other.clone(),
-                line: self.peek().span.start.line,
-                column: self.peek().span.start.column,
-            }),
-        }
-    }
-
-    /// `For { over: list as: item ... }` — Tier 8 row repetition.
-    /// `over:` names the state-field list; `as:` names the loop
-    /// binding visible inside the children. Children are ordinary
-    /// view nodes. The `For` token is already consumed by the
-    /// caller; `kw_span` is its span.
-    fn parse_for_node(&mut self, kw_span: crate::span::Span) -> Result<ViewNode, ParseError> {
-        self.expect(Token::LBrace)?;
-        let mut over: Option<Expr> = None;
-        let mut binding: Option<String> = None;
-        loop {
-            if let Token::Ident(name) = &self.peek().token {
-                let key = name.clone();
-                if key == "over" || key == "as" {
-                    let key_tok = self.bump();
-                    self.expect(Token::DotDot)?;
-                    // Tier 11: `over:` is a general (pure)
-                    // expression — a state list, or a derived one
-                    // via `filter`. `as:` stays a binding name.
-                    let val = if key == "over" {
-                        self.parse_expr()?
-                    } else {
-                        let val_tok = self.bump();
-                        match val_tok.token {
-                            Token::Ident(s) => Expr::Ident {
-                                name: s,
-                                span: val_tok.span,
-                            },
-                            other => {
-                                return Err(ParseError::Unexpected {
-                                    expected: "binding name after `as:`",
-                                    found: other,
-                                    line: val_tok.span.start.line,
-                                    column: val_tok.span.start.column,
-                                });
-                            }
-                        }
-                    };
-                    if key == "over" {
-                        over = Some(val);
-                    } else {
-                        let val_name = match val {
-                            Expr::Ident { name, .. } => name,
-                            other => {
-                                let s = other.span();
-                                return Err(ParseError::Unexpected {
-                                    expected: "binding name after `as:`",
-                                    found: Token::Eof,
-                                    line: s.start.line,
-                                    column: s.start.column,
-                                });
-                            }
-                        };
-                        binding = Some(val_name);
-                    }
-                    let _ = key_tok;
-                    continue;
-                }
-            }
-            break;
-        }
-        let over = over.ok_or(ParseError::Unexpected {
-            expected: "`over: <state field name>` in For block",
-            found: Token::Eof,
-            line: kw_span.start.line,
-            column: kw_span.start.column,
-        })?;
-        let binding = binding.ok_or(ParseError::Unexpected {
-            expected: "`as: <binding name>` in For block",
-            found: Token::Eof,
-            line: kw_span.start.line,
-            column: kw_span.start.column,
-        })?;
-        let children = self.parse_view_children()?;
-        let close = self.bump(); // }
-        Ok(ViewNode::For {
-            over,
-            binding,
-            children,
-            span: Span::new(kw_span.start, close.span.end),
-        })
-    }
-
-    /// The children of a `For` or `If`: only elements (`Child { ... }`) and text bodies, up to the closing brace.
-    fn parse_view_children(&mut self) -> Result<Vec<ViewNode>, ParseError> {
-        let mut children = Vec::new();
-        // Children: only elements (`Child { ... }`) and string/text
-        // bodies. No further bindings after `over:`/`as:`.
-        loop {
-            match &self.peek().token {
-                Token::RBrace => break,
-                Token::StringLit(_) => children.push(self.parse_text_node()?),
-                Token::Ident(_) => {
-                    // Lookahead `{` next -> child element.
-                    let is_element = matches!(
-                        self.tokens.get(self.pos + 1).map(|t| &t.token),
-                        Some(Token::LBrace)
-                    );
-                    if !is_element {
-                        return Err(ParseError::Unexpected {
-                            expected: "child element (`Name { ... }`) or text",
-                            found: self.peek().token.clone(),
-                            line: self.peek().span.start.line,
-                            column: self.peek().span.start.column,
-                        });
-                    }
-                    children.push(self.parse_element_node()?);
-                }
-                other => {
-                    return Err(ParseError::Unexpected {
-                        expected: "child element, text, or `}`",
-                        found: other.clone(),
-                        line: self.peek().span.start.line,
-                        column: self.peek().span.start.column,
-                    });
-                }
-            }
-        }
-        Ok(children)
-    }
-
-    /// `If { when: cond ... }` (docs/view-conditional.md). The `If` token is already consumed; `kw_span` is its span.
-    /// `when:` is a general expression, checked to be a pure `Bool` after parsing; the children are ordinary view nodes.
-    fn parse_if_node(&mut self, kw_span: crate::span::Span) -> Result<ViewNode, ParseError> {
-        self.expect(Token::LBrace)?;
-        let is_when = matches!(&self.peek().token, Token::Ident(k) if k == "when")
-            && matches!(
-                self.tokens.get(self.pos + 1).map(|t| &t.token),
-                Some(Token::DotDot)
-            );
-        if !is_when {
-            return Err(ParseError::Unexpected {
-                expected: "`when: <condition>` first in an If block",
-                found: self.peek().token.clone(),
-                line: self.peek().span.start.line,
-                column: self.peek().span.start.column,
-            });
-        }
-        self.bump();
-        self.bump();
-        let cond = self.parse_expr()?;
-        let children = self.parse_view_children()?;
-        let close = self.bump(); // }
-        Ok(ViewNode::If {
-            cond,
-            children,
-            span: Span::new(kw_span.start, close.span.end),
-        })
-    }
-
-    fn parse_text_node(&mut self) -> Result<ViewNode, ParseError> {
-        // Text body: either a string literal (with `{expr}`
-        // interpolations) or a general expression whose result
-        // becomes the text. Tier 6 supports both because
-        // `Text { match result { ... } }` needs the expression
-        // form to render a `Result` value conditionally.
-        // A string literal followed by `+` is the start of a concatenation, an expression like any other
-        // (`Text { "ready: " + ready }`); on its own it is the interpolated text.
-        let concatenation = matches!(
-            self.tokens.get(self.pos + 1).map(|t| &t.token),
-            Some(Token::Plus)
-        );
-        if matches!(self.peek().token, Token::StringLit(_)) && !concatenation {
-            let (value, tok_span) = self.bump_string_lit("string literal")?;
-            let parts = interpolation_parts(&value, tok_span)?;
-            Ok(ViewNode::Text {
-                value: TextValue::Interpolated(parts),
-                span: tok_span,
-            })
-        } else {
-            // The body is a general expression. Render it as a Text
-            // with a single Expr part.
-            let start = self.peek().span.start;
-            let expr = self.parse_expr()?;
-            let end = expr.span().end;
-            Ok(ViewNode::Text {
-                value: TextValue::Interpolated(vec![TextPart::Expr {
-                    expr,
-                    span: Span::new(start, end),
-                }]),
-                span: Span::new(start, end),
-            })
-        }
-    }
-
-    fn parse_element_node(&mut self) -> Result<ViewNode, ParseError> {
-        let (name, name_span) = self.bump_ident("element name")?;
-        // `For { ... }` can appear anywhere a normal element can
-        // (including as a child of another element). Route it to
-        // the Tier 8 loop parser. The name token is already
-        // consumed here.
-        if name == "For" {
-            return self.parse_for_node(name_span);
-        }
-        if name == "If" {
-            return self.parse_if_node(name_span);
-        }
-        let kind = match name.as_str() {
-            "Column" => ElementKind::Column,
-            "Row" => ElementKind::Row,
-            "Table" => ElementKind::Table,
-            "Text" => ElementKind::Text,
-            "Button" => ElementKind::Button,
-            "TextField" => ElementKind::TextField,
-            other => ElementKind::Named(other.to_string()),
-        };
-
-        if !matches!(self.peek().token, Token::LBrace) {
-            return Err(ParseError::Unexpected {
-                expected: "{",
-                found: self.peek().token.clone(),
-                line: self.peek().span.start.line,
-                column: self.peek().span.start.column,
-            });
-        }
-        let open = self.bump(); // {
-        let mut accessibility = Accessibility {
-            role: None,
-            label: None,
-            label_expr: None,
-            span: open.span,
-        };
-        let mut bindings: Vec<Binding> = Vec::new();
-        let mut children = Vec::new();
-
-        loop {
-            match &self.peek().token {
-                Token::Ident(name) if name == "role" => {
-                    self.bump();
-                    self.expect(Token::DotDot)?;
-                    let role_tok = self.bump();
-                    let role = match role_tok.token {
-                        Token::Ident(s) => parse_role(&s),
-                        other => {
-                            return Err(ParseError::Unexpected {
-                                expected: "role identifier",
-                                found: other,
-                                line: role_tok.span.start.line,
-                                column: role_tok.span.start.column,
-                            });
-                        }
-                    };
-                    accessibility.role = Some(role);
-                    accessibility.span = Span::new(accessibility.span.start, role_tok.span.end);
-                }
-                Token::Ident(name) if name == "label" => {
-                    let _kw = self.bump();
-                    let _ = _kw;
-                    self.expect(Token::DotDot)?;
-                    // A lone string literal is the static label (a `{` in it is refused); anything else is an
-                    // expression, evaluated at each render (docs/row-actions.md section 1).
-                    let lone_literal = matches!(self.peek().token, Token::StringLit(_))
-                        && !self.next_is_binary_operator();
-                    if lone_literal {
-                        let (s, label_span) = self.bump_string_lit("label string literal")?;
-                        accessibility.label = Some(static_text(s, label_span)?);
-                        accessibility.span = Span::new(accessibility.span.start, label_span.end);
-                    } else {
-                        match &self.peek().token {
-                            Token::StringLit(_)
-                            | Token::Ident(_)
-                            | Token::IntLit(_)
-                            | Token::FloatLit(_)
-                            | Token::LParen => {}
-                            other => {
-                                return Err(ParseError::Unexpected {
-                                    expected: "label string literal or expression",
-                                    found: other.clone(),
-                                    line: self.peek().span.start.line,
-                                    column: self.peek().span.start.column,
-                                });
-                            }
-                        }
-                        let expr = self.parse_expr()?;
-                        accessibility.span = Span::new(accessibility.span.start, expr.span().end);
-                        accessibility.label_expr = Some(expr);
-                    }
-                }
-                Token::Ident(name) if name == "tone" => {
-                    // `tone: "error"` or `tone: outcome_tone` (a String state field): a status text's tone
-                    // (docs/presentation.md section 3). It is a binding like the others; it may come first because
-                    // a `Text` has no other place to put one.
-                    let key_tok = self.bump();
-                    self.expect(Token::DotDot)?;
-                    let value = self.parse_binding_value("tone", &kind)?;
-                    let span = Span::new(key_tok.span.start, self.tokens[self.pos - 1].span.end);
-                    bindings.push(Binding {
-                        key: "tone".to_string(),
-                        value,
-                        span,
-                    });
-                }
-                Token::RBrace => break,
-                Token::StringLit(_) => break,
-                Token::Ident(_) => break,
-                Token::On => break,
-                Token::Match | Token::If => break,
-                other => {
-                    return Err(ParseError::Unexpected {
-                        expected: "accessibility key, binding, view node, or `}`",
-                        found: other.clone(),
-                        line: self.peek().span.start.line,
-                        column: self.peek().span.start.column,
-                    });
-                }
-            }
-        }
-
-        // Body. `Text` is special: its body is a single string literal
-        // (the text content, with `{expr}` interpolations). Other
-        // elements take bindings (label:, on:, ...) and children.
-        let kind_is_text = matches!(kind, ElementKind::Text);
-        if kind_is_text {
-            // After accessibility, expect a string literal
-            // (with `{expr}` interpolations) OR a general
-            // expression whose result becomes the text. Tier 6
-            // supports the expression form so `Text { match
-            // result { ... } }` works.
-            match &self.peek().token {
-                Token::StringLit(_)
-                | Token::Ident(_)
-                | Token::IntLit(_)
-                | Token::FloatLit(_)
-                | Token::LParen
-                | Token::Minus
-                | Token::Match
-                | Token::If => {
-                    children.push(self.parse_text_node()?);
-                }
-                Token::RBrace => {
-                    let span = self.peek().span;
-                    children.push(ViewNode::Text {
-                        value: TextValue::Interpolated(vec![TextPart::Literal(String::new())]),
-                        span,
-                    });
-                }
-                other => {
-                    return Err(ParseError::Unexpected {
-                        expected: "string literal (text content) or expression",
-                        found: other.clone(),
-                        line: self.peek().span.start.line,
-                        column: self.peek().span.start.column,
-                    });
-                }
-            }
-        } else {
-            // Bindings and children. To distinguish a binding
-            // (`label: "x"`) from a child element (`Text { ... }`),
-            // look ahead one token: bindings have `:` next, elements
-            // have `{` next.
-            while !matches!(self.peek().token, Token::RBrace) {
-                match &self.peek().token {
-                    Token::Ident(name) if name == "role" || name == "label" => {
-                        return Err(ParseError::Unexpected {
-                            expected: "binding or view node (accessibility keys must come first)",
-                            found: Token::Ident(name.to_string()),
-                            line: self.peek().span.start.line,
-                            column: self.peek().span.start.column,
-                        });
-                    }
-                    Token::Ident(_) | Token::On => {
-                        // Lookahead: `{` next -> child element,
-                        // `:` next -> binding. (`on:` is a binding
-                        // even though `on` is a keyword for event
-                        // handlers at the component-member level.)
-                        let is_element = matches!(
-                            self.tokens.get(self.pos + 1).map(|t| &t.token),
-                            Some(Token::LBrace)
-                        );
-                        if is_element {
-                            children.push(self.parse_element_node()?);
-                        } else {
-                            let (key, key_span) = self.bump_binding_key()?;
-                            self.expect(Token::DotDot)?;
-                            let value = self.parse_binding_value(&key, &kind)?;
-                            let span = Span::new(key_span.start, self.peek().span.end);
-                            bindings.push(Binding { key, value, span });
-                        }
-                    }
-                    Token::StringLit(_) => children.push(self.parse_text_node()?),
-                    _ => {
-                        return Err(ParseError::Unexpected {
-                            expected: "binding or view node",
-                            found: self.peek().token.clone(),
-                            line: self.peek().span.start.line,
-                            column: self.peek().span.start.column,
-                        });
-                    }
-                }
-            }
-        }
-        let close = self.bump(); // }
-        Ok(ViewNode::Element {
-            kind,
-            accessibility,
-            bindings,
-            children,
-            span: Span::new(name_span.start, close.span.end),
-        })
-    }
-
-    fn parse_binding_value(
-        &mut self,
-        key: &str,
-        kind: &ElementKind,
-    ) -> Result<BindingValue, ParseError> {
-        // Currently the only supported binding values are:
-        //   - string literal (e.g. `label: "Increment"`),
-        //   - `on: EventName` (event reference),
-        //   - `role: heading` etc.
-        // Phase 2 adds typed expressions.
-        match key {
-            "on" | "submit" => {
-                let name_tok = self.bump();
-                let name = match name_tok.token {
-                    Token::Ident(s) => s,
-                    other => {
-                        return Err(ParseError::Unexpected {
-                            expected: "event name",
-                            found: other,
-                            line: name_tok.span.start.line,
-                            column: name_tok.span.start.column,
-                        });
-                    }
-                };
-                // `on: Pick(m)`: the arguments are expressions of the view (docs/row-actions.md section 2).
-                if key == "on" && matches!(self.peek().token, Token::LParen) {
-                    self.bump();
-                    let mut args = Vec::new();
-                    if !matches!(self.peek().token, Token::RParen) {
-                        loop {
-                            args.push(self.parse_expr()?);
-                            if matches!(self.peek().token, Token::Comma) {
-                                self.bump();
-                            } else {
-                                break;
-                            }
-                        }
-                    }
-                    self.expect(Token::RParen)?;
-                    return Ok(BindingValue::EventCall { name, args });
-                }
-                Ok(BindingValue::EventRef(name))
-            }
-            "role" => {
-                let role_tok = self.bump();
-                let role = match role_tok.token {
-                    Token::Ident(s) => parse_role(&s),
-                    other => {
-                        return Err(ParseError::Unexpected {
-                            expected: "role identifier",
-                            found: other,
-                            line: role_tok.span.start.line,
-                            column: role_tok.span.start.column,
-                        });
-                    }
-                };
-                Ok(BindingValue::Role(role))
-            }
-            "tone" => {
-                // A literal (`"error"`) or the name of a String state field.
-                let tok = self.bump();
-                match tok.token {
-                    Token::StringLit(s) => Ok(BindingValue::String(static_text(s, tok.span)?)),
-                    Token::Ident(s) => Ok(BindingValue::StateRef(s)),
-                    other => Err(ParseError::Unexpected {
-                        expected: "`\"ok\"`, `\"warn\"`, `\"error\"` or the name of a String state field",
-                        found: other,
-                        line: tok.span.start.line,
-                        column: tok.span.start.column,
-                    }),
-                }
-            }
-            "value" => {
-                // `value: <ident>` — bind to a state field, or
-                // `value: <string>` for a literal initial value.
-                let val_tok = self.bump();
-                match val_tok.token {
-                    Token::Ident(s) => Ok(BindingValue::StateRef(s)),
-                    Token::StringLit(s) => Ok(BindingValue::String(static_text(s, val_tok.span)?)),
-                    other => Err(ParseError::Unexpected {
-                        expected: "state field name (identifier) or string literal",
-                        found: other,
-                        line: val_tok.span.start.line,
-                        column: val_tok.span.start.column,
-                    }),
-                }
-            }
-            _ => {
-                // Default: string literal, or a constant initial
-                // value for a component-instance property (Tier
-                // 13): an int/float/bool literal lifts to `Prop`.
-                // String literals stay `String` (plain labels
-                // everywhere else); the shape pass interprets a
-                // `String` value on an instance as a string
-                // property. Tier 14: on an instance, a bare
-                // identifier is a *dynamic property* — the value
-                // is read from the parent component's state (or an
-                // enclosing `For` binding) at each render.
-                let lit_tok = self.bump();
-                match lit_tok.token {
-                    Token::StringLit(s) => Ok(BindingValue::String(static_text(s, lit_tok.span)?)),
-                    Token::IntLit(v) => Ok(BindingValue::Prop(Expr::IntLit {
-                        value: v,
-                        span: lit_tok.span,
-                    })),
-                    Token::FloatLit(v) => Ok(BindingValue::Prop(Expr::FloatLit {
-                        value: v,
-                        span: lit_tok.span,
-                    })),
-                    Token::Ident(k) if k == "true" || k == "false" => {
-                        Ok(BindingValue::Prop(Expr::BoolLit {
-                            value: k == "true",
-                            span: lit_tok.span,
-                        }))
-                    }
-                    Token::Ident(s)
-                        if matches!(kind, ElementKind::Named(_)) || key == "disabled" =>
-                    {
-                        // `disabled: sending` names a Bool state field (docs/controls.md section 1).
-                        Ok(BindingValue::StateRef(s))
-                    }
-                    other => Err(ParseError::Unexpected {
-                        expected: "string literal (or a constant property value: int/float/bool literal)",
-                        found: other,
-                        line: lit_tok.span.start.line,
-                        column: lit_tok.span.start.column,
-                    }),
-                }
-            }
-        }
-    }
-}
-
-fn parse_role(s: &str) -> Role {
-    match s {
-        "text" => Role::Text,
-        "heading" => Role::Heading,
-        "button" => Role::Button,
-        other => Role::Other(other.to_string()),
-    }
 }
 
 fn token_kind_name(t: &Token) -> &'static str {
@@ -1905,6 +1457,7 @@ mod tests {
 
     fn parser_over(src: &str) -> Parser {
         Parser {
+            depth: 0,
             tokens: lex(src).expect("lex"),
             pos: 0,
         }

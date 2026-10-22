@@ -1,0 +1,740 @@
+[
+  {
+    "why": "a request inside an if is issued only when the condition holds; the statements after the if run either way",
+    "source": [
+      "component A {",
+      "    requires Network;",
+      "    state ok: Bool = true;",
+      "    state n: Int = 0;",
+      "    state r: Result[String, String] = Ok(\"\");",
+      "    state got: String = \"none\";",
+      "    on Go {",
+      "        n = n + 1;",
+      "        if ok {",
+      "            r = await(net.get(\"q/one\"));",
+      "            got = match r { Ok(t) => { t } Err(e) => { \"err \" + e } Cancelled => { \"cancelled\" } };",
+      "        } else {",
+      "            got = \"skipped\";",
+      "        }",
+      "        n = n + 10;",
+      "    }",
+      "    on Flip { ok = !ok; }",
+      "    view { Column { Button { label: \"Go\" on: Go } Button { label: \"Flip\" on: Flip } Text { \"n={n} got={got}\" } } }",
+      "}"
+    ],
+    "initial": [
+      "Go",
+      "Flip",
+      "n=0 got=none"
+    ],
+    "steps": [
+      {
+        "event": "Go",
+        "label": "Go",
+        "issued": [
+          "q/one"
+        ],
+        "state": {
+          "n": 1
+        },
+        "texts": [
+          "Go",
+          "Flip",
+          "n=1 got=none"
+        ]
+      },
+      {
+        "resolve": 1,
+        "answer": {
+          "status": 200,
+          "body": "hello"
+        },
+        "issued": [],
+        "state": {
+          "n": 11,
+          "got": "hello"
+        },
+        "texts": [
+          "Go",
+          "Flip",
+          "n=11 got=hello"
+        ]
+      },
+      {
+        "event": "Flip",
+        "label": "Flip",
+        "issued": [],
+        "state": {
+          "ok": false
+        },
+        "texts": [
+          "Go",
+          "Flip",
+          "n=11 got=hello"
+        ]
+      },
+      {
+        "event": "Go",
+        "label": "Go",
+        "issued": [],
+        "state": {
+          "n": 22,
+          "got": "skipped"
+        },
+        "texts": [
+          "Go",
+          "Flip",
+          "n=22 got=skipped"
+        ]
+      },
+      {
+        "event": "Flip",
+        "label": "Flip",
+        "issued": [],
+        "state": {
+          "ok": true
+        },
+        "texts": [
+          "Go",
+          "Flip",
+          "n=22 got=skipped"
+        ]
+      },
+      {
+        "event": "Go",
+        "label": "Go",
+        "issued": [
+          "q/one"
+        ],
+        "state": {
+          "n": 23
+        },
+        "texts": [
+          "Go",
+          "Flip",
+          "n=23 got=skipped"
+        ]
+      },
+      {
+        "resolve": 2,
+        "answer": {
+          "status": 500,
+          "body": ""
+        },
+        "issued": [],
+        "state": {
+          "n": 33,
+          "got": "err HTTP 500"
+        },
+        "texts": [
+          "Go",
+          "Flip",
+          "n=33 got=err HTTP 500"
+        ]
+      }
+    ]
+  },
+  {
+    "why": "a second request depends on the answer to the first: the orders are not asked for after a failed sign-in",
+    "source": [
+      "component A {",
+      "    requires Network;",
+      "    state who: String = \"\";",
+      "    state first: Result[String, String] = Ok(\"\");",
+      "    state second: Result[String, String] = Ok(\"\");",
+      "    state signed: Bool = false;",
+      "    state msg: String = \"\";",
+      "    state rows: String = \"-\";",
+      "    on SignIn {",
+      "        msg = \"\";",
+      "        first = await(net.get(\"q/login\"));",
+      "        signed = match first { Ok(t) => { t == \"yes\" } Err(_) => { false } Cancelled => { false } };",
+      "        msg = if signed { \"in\" } else { \"refused\" };",
+      "        if signed {",
+      "            second = await(net.get(\"q/orders\"));",
+      "            rows = match second { Ok(t) => { t } Err(e) => { \"err \" + e } Cancelled => { \"cancelled\" } };",
+      "        }",
+      "    }",
+      "    view { Column { Button { label: \"Sign in\" on: SignIn } Text { \"{msg} rows={rows}\" } } }",
+      "}"
+    ],
+    "initial": [
+      "Sign in",
+      "rows=-"
+    ],
+    "steps": [
+      {
+        "event": "SignIn",
+        "label": "Sign in",
+        "issued": [
+          "q/login"
+        ],
+        "state": {
+          "msg": ""
+        },
+        "texts": [
+          "Sign in",
+          "rows=-"
+        ]
+      },
+      {
+        "resolve": 1,
+        "answer": {
+          "status": 200,
+          "body": "no"
+        },
+        "issued": [],
+        "state": {
+          "signed": false,
+          "msg": "refused",
+          "rows": "-"
+        },
+        "texts": [
+          "Sign in",
+          "refused rows=-"
+        ]
+      },
+      {
+        "event": "SignIn",
+        "label": "Sign in",
+        "issued": [
+          "q/login"
+        ],
+        "state": {
+          "msg": ""
+        },
+        "texts": [
+          "Sign in",
+          "rows=-"
+        ]
+      },
+      {
+        "resolve": 2,
+        "answer": {
+          "status": 200,
+          "body": "yes"
+        },
+        "issued": [
+          "q/orders"
+        ],
+        "state": {
+          "signed": true,
+          "msg": "in",
+          "rows": "-"
+        },
+        "texts": [
+          "Sign in",
+          "in rows=-"
+        ]
+      },
+      {
+        "resolve": 3,
+        "answer": {
+          "status": 200,
+          "body": "T-1"
+        },
+        "issued": [],
+        "state": {
+          "rows": "T-1"
+        },
+        "texts": [
+          "Sign in",
+          "in rows=T-1"
+        ]
+      }
+    ]
+  },
+  {
+    "why": "a block is written once and run by two handlers, and runs another block",
+    "source": [
+      "component A {",
+      "    requires Network;",
+      "    state r: Result[String, String] = Ok(\"\");",
+      "    state rows: String = \"-\";",
+      "    state loads: Int = 0;",
+      "    state who: String = \"\";",
+      "    block Count { loads = loads + 1; }",
+      "    block Load {",
+      "        run Count;",
+      "        r = await(net.get(\"q/orders\"));",
+      "        rows = match r { Ok(t) => { t } Err(_) => { rows } Cancelled => { rows } };",
+      "    }",
+      "    on Start { who = \"start\"; run Load; }",
+      "    on Save { who = \"save\"; run Load; run Count; }",
+      "    view { Column { Button { label: \"Start\" on: Start } Button { label: \"Save\" on: Save } Text { \"{who} {loads} {rows}\" } } }",
+      "}"
+    ],
+    "initial": [
+      "Start",
+      "Save",
+      "0 -"
+    ],
+    "steps": [
+      {
+        "event": "Start",
+        "label": "Start",
+        "issued": [
+          "q/orders"
+        ],
+        "state": {
+          "who": "start",
+          "loads": 1
+        },
+        "texts": [
+          "Start",
+          "Save",
+          "start 1 -"
+        ]
+      },
+      {
+        "resolve": 1,
+        "answer": {
+          "status": 200,
+          "body": "A"
+        },
+        "issued": [],
+        "state": {
+          "rows": "A",
+          "loads": 1
+        },
+        "texts": [
+          "Start",
+          "Save",
+          "start 1 A"
+        ]
+      },
+      {
+        "event": "Save",
+        "label": "Save",
+        "issued": [
+          "q/orders"
+        ],
+        "state": {
+          "who": "save",
+          "loads": 2
+        },
+        "texts": [
+          "Start",
+          "Save",
+          "save 2 A"
+        ]
+      },
+      {
+        "resolve": 2,
+        "answer": {
+          "status": 404,
+          "body": ""
+        },
+        "issued": [],
+        "state": {
+          "rows": "A",
+          "loads": 3
+        },
+        "texts": [
+          "Start",
+          "Save",
+          "save 3 A"
+        ]
+      }
+    ]
+  },
+  {
+    "why": "ifs nest, with an await in the inner one and a later if that reads what the answer wrote",
+    "source": [
+      "component A {",
+      "    requires Network;",
+      "    state a: Bool = true;",
+      "    state b: Bool = true;",
+      "    state r: Result[String, String] = Ok(\"\");",
+      "    state t: String = \"\";",
+      "    state out: String = \"\";",
+      "    on Go {",
+      "        out = \"\";",
+      "        if a {",
+      "            out = out + \"a\";",
+      "            if b {",
+      "                r = await(net.get(\"q/inner\"));",
+      "                t = match r { Ok(x) => { x } Err(_) => { \"\" } Cancelled => { \"\" } };",
+      "                out = out + \"b\";",
+      "            } else {",
+      "                out = out + \"-\";",
+      "            }",
+      "            out = out + \"c\";",
+      "        } else if len(t) > 0 {",
+      "            out = out + \"t\";",
+      "        } else {",
+      "            out = out + \"z\";",
+      "        }",
+      "        if len(t) > 0 { out = out + \"!\"; }",
+      "    }",
+      "    on A { a = !a; }",
+      "    on B { b = !b; }",
+      "    view { Column { Button { label: \"Go\" on: Go } Button { label: \"A\" on: A } Button { label: \"B\" on: B } Text { \"out={out}\" } } }",
+      "}"
+    ],
+    "initial": [
+      "Go",
+      "A",
+      "B",
+      "out="
+    ],
+    "steps": [
+      {
+        "event": "Go",
+        "label": "Go",
+        "issued": [
+          "q/inner"
+        ],
+        "state": {
+          "out": "a"
+        },
+        "texts": [
+          "Go",
+          "A",
+          "B",
+          "out=a"
+        ]
+      },
+      {
+        "resolve": 1,
+        "answer": {
+          "status": 200,
+          "body": "x"
+        },
+        "issued": [],
+        "state": {
+          "out": "abc!",
+          "t": "x"
+        },
+        "texts": [
+          "Go",
+          "A",
+          "B",
+          "out=abc!"
+        ]
+      },
+      {
+        "event": "B",
+        "label": "B",
+        "issued": [],
+        "state": {
+          "b": false
+        },
+        "texts": [
+          "Go",
+          "A",
+          "B",
+          "out=abc!"
+        ]
+      },
+      {
+        "event": "Go",
+        "label": "Go",
+        "issued": [],
+        "state": {
+          "out": "a-c!"
+        },
+        "texts": [
+          "Go",
+          "A",
+          "B",
+          "out=a-c!"
+        ]
+      },
+      {
+        "event": "A",
+        "label": "A",
+        "issued": [],
+        "state": {
+          "a": false
+        },
+        "texts": [
+          "Go",
+          "A",
+          "B",
+          "out=a-c!"
+        ]
+      },
+      {
+        "event": "Go",
+        "label": "Go",
+        "issued": [],
+        "state": {
+          "out": "t!"
+        },
+        "texts": [
+          "Go",
+          "A",
+          "B",
+          "out=t!"
+        ]
+      }
+    ]
+  },
+  {
+    "why": "a superseded request abandons the rest of the handler, inside the if too",
+    "source": [
+      "component A {",
+      "    requires Network;",
+      "    state r: Result[String, String] = Ok(\"\");",
+      "    state log: String = \"\";",
+      "    on Go {",
+      "        log = log + \"s\";",
+      "        if true {",
+      "            r = await(net.get(\"q/slow\"));",
+      "            log = log + \"e\";",
+      "        }",
+      "        log = log + \".\";",
+      "    }",
+      "    view { Column { Button { label: \"Go\" on: Go } Text { \"log={log}\" } } }",
+      "}"
+    ],
+    "initial": [
+      "Go",
+      "log="
+    ],
+    "steps": [
+      {
+        "event": "Go",
+        "label": "Go",
+        "issued": [
+          "q/slow"
+        ],
+        "state": {
+          "log": "s"
+        },
+        "texts": [
+          "Go",
+          "log=s"
+        ]
+      },
+      {
+        "event": "Go",
+        "label": "Go",
+        "issued": [
+          "q/slow"
+        ],
+        "state": {
+          "log": "ss"
+        },
+        "texts": [
+          "Go",
+          "log=ss"
+        ]
+      },
+      {
+        "resolve": 1,
+        "answer": {
+          "status": 200,
+          "body": "late"
+        },
+        "issued": [],
+        "state": {
+          "log": "ss"
+        },
+        "texts": [
+          "Go",
+          "log=ss"
+        ],
+        "dropped": true
+      },
+      {
+        "resolve": 2,
+        "answer": {
+          "status": 200,
+          "body": "now"
+        },
+        "issued": [],
+        "state": {
+          "log": "sse."
+        },
+        "texts": [
+          "Go",
+          "log=sse."
+        ]
+      }
+    ]
+  },
+  {
+    "why": "a fault inside a branch undoes the writes since the last commit point, in both evaluators",
+    "source": [
+      "component A {",
+      "    state n: Int = 0;",
+      "    state z: Int = 0;",
+      "    state big: Int = 0;",
+      "    state on_: Bool = true;",
+      "    on Go {",
+      "        n = n + 1;",
+      "        if on_ {",
+      "            big = 7;",
+      "            big = big / z;",
+      "        }",
+      "        n = n + 100;",
+      "    }",
+      "    on Heal { z = 1; }",
+      "    view { Column { Button { label: \"Go\" on: Go } Button { label: \"Heal\" on: Heal } Text { \"n={n} big={big}\" } } }",
+      "}"
+    ],
+    "initial": [
+      "Go",
+      "Heal",
+      "n=0 big=0"
+    ],
+    "steps": [
+      {
+        "event": "Go",
+        "label": "Go",
+        "fault": "replay-non-finite",
+        "issued": [],
+        "state": {
+          "n": 0,
+          "big": 0
+        },
+        "texts": [
+          "Go",
+          "Heal",
+          "n=0 big=0"
+        ]
+      },
+      {
+        "event": "Heal",
+        "label": "Heal",
+        "issued": [],
+        "state": {
+          "z": 1
+        },
+        "texts": [
+          "Go",
+          "Heal",
+          "n=0 big=0"
+        ]
+      },
+      {
+        "event": "Go",
+        "label": "Go",
+        "issued": [],
+        "state": {
+          "n": 101,
+          "big": 7
+        },
+        "texts": [
+          "Go",
+          "Heal",
+          "n=101 big=7"
+        ]
+      }
+    ]
+  },
+  {
+    "why": "a fault after an await inside a branch undoes only the writes since that await: the segment before it was committed when the handler suspended",
+    "source": [
+      "component A {",
+      "    requires Network;",
+      "    state n: Int = 0;",
+      "    state m: Int = 0;",
+      "    state z: Int = 0;",
+      "    state big: Int = 0;",
+      "    state r: Result[String, String] = Ok(\"\");",
+      "    on Go {",
+      "        n = n + 1;",
+      "        if true {",
+      "            m = m + 1;",
+      "            r = await(net.get(\"q/c\"));",
+      "            m = m + 10;",
+      "            big = 1 / z;",
+      "        }",
+      "    }",
+      "    on Heal { z = 1; }",
+      "    view { Column { Button { label: \"Go\" on: Go } Button { label: \"Heal\" on: Heal } Text { \"n={n} m={m} big={big}\" } } }",
+      "}"
+    ],
+    "initial": [
+      "Go",
+      "Heal",
+      "n=0 m=0 big=0"
+    ],
+    "steps": [
+      {
+        "event": "Go",
+        "label": "Go",
+        "issued": [
+          "q/c"
+        ],
+        "state": {
+          "n": 1,
+          "m": 1
+        },
+        "texts": [
+          "Go",
+          "Heal",
+          "n=1 m=1 big=0"
+        ]
+      },
+      {
+        "resolve": 1,
+        "answer": {
+          "status": 200,
+          "body": "ok"
+        },
+        "fault": "replay-non-finite",
+        "issued": [],
+        "state": {
+          "n": 1,
+          "m": 1,
+          "big": 0
+        },
+        "texts": [
+          "Go",
+          "Heal",
+          "n=1 m=1 big=0"
+        ]
+      },
+      {
+        "event": "Heal",
+        "label": "Heal",
+        "issued": [],
+        "state": {
+          "z": 1
+        },
+        "texts": [
+          "Go",
+          "Heal",
+          "n=1 m=1 big=0"
+        ]
+      },
+      {
+        "event": "Go",
+        "label": "Go",
+        "issued": [
+          "q/c"
+        ],
+        "state": {
+          "n": 2,
+          "m": 2
+        },
+        "texts": [
+          "Go",
+          "Heal",
+          "n=2 m=2 big=0"
+        ]
+      },
+      {
+        "resolve": 2,
+        "answer": {
+          "status": 200,
+          "body": "ok"
+        },
+        "issued": [],
+        "state": {
+          "m": 12,
+          "big": 1
+        },
+        "texts": [
+          "Go",
+          "Heal",
+          "n=2 m=12 big=1"
+        ]
+      }
+    ]
+  }
+]

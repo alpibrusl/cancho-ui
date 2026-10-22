@@ -217,6 +217,14 @@ pub enum CheckError {
         span: Span,
     },
 
+    /// A refusal about `block` and `run` (docs/handler-sequences.md); `code` is the rule tag.
+    #[error("{message}")]
+    BlockRefused {
+        code: &'static str,
+        message: String,
+        span: Span,
+    },
+
     #[error("`{name}` is not a function of this language")]
     UnknownCall { name: String, span: Span },
 
@@ -349,6 +357,15 @@ pub fn check_file_with_externals(
             message,
             span,
         }) => Err(CheckError::ConditionRefused {
+            code,
+            message,
+            span,
+        }),
+        Err(LowerError::BlockRefused {
+            code,
+            message,
+            span,
+        }) => Err(CheckError::BlockRefused {
             code,
             message,
             span,

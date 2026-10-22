@@ -1,6 +1,6 @@
 # Conditionals: `if`, `&&`, `||`, `!`
 
-> **Status: BUILT, step 1 (the expression form, with `else if`). The statement form, derived state and literal patterns are not.**
+> **Status: BUILT, step 1 (the expression form, with `else if`) and, since 2026-10-22, the statement form (`docs/handler-sequences.md`, #93). Derived state and literal patterns are not.**
 > Asked for by `alpibrusl/cancho-ui#40` (found building `examples/ops-console`, `docs/ops-console.md` 2.2). The document was a
 > design first; the questions of section 5 were answered by following its own recommendations (section 5, "Decided"), and
 > section 6 says what was built, what it measured and what differs from the estimate. Sections 1 to 4 are kept as the design
@@ -63,7 +63,7 @@ generalisation, for `Int` and `String` state (a `Mode` string, a small enumerati
 **Step 1 (the decision requested):** `&&`, `||`, `!` on `Bool`, and `if cond { a } else { b }` as an **expression**, in any
 position an expression can stand (an assignment's right side, a binding, an argument, a `Text` label).
 
-**Step 2 (after step 1 is measured):** the **statement** form `if cond { assignments } else { assignments }` inside a handler.
+**Step 2 (after step 1 is measured; built 2026-10-22 as #93, `docs/handler-sequences.md`, and wider than proposed here: its branches may hold effects):** the **statement** form `if cond { assignments } else { assignments }` inside a handler.
 It is only syntax over step 1 for assignments (`x = if c { a } else { x }`), but it is what removes the duplicated condition.
 It can wait because step 1 already deletes the four unreadable rows of section 1.
 
@@ -74,6 +74,11 @@ It can wait because step 1 already deletes the four unreadable rows of section 1
   issues a request on one side would make the *set of issued effects* depend on a value the replay trace has to supply, which
   the trace format (`steps` with `issued`) does not describe today. (A handler that must issue an effect only on a condition
   can still be written as two events; a statement-level `if` around an effect is a separate decision, not proposed.)
+  **Corrected 2026-10-22 (alpibrusl/cancho-ui#93, `docs/handler-sequences.md`).** The reason given above is wrong for a condition
+  over state. What a trace supplies is the *answer* to a request that was issued; whether one is issued is decided by the handler
+  from the state, which replay computes exactly as the page does, and the step's `issued` is derived, not supplied. The expression
+  form stays pure (a value has no meaning when one side suspends and the other does not), but the *statement* form may hold
+  effects in its branches; "two events and let the view pick the button" does not cover a choice made after an answer.
 * **Typed.** The condition must be `Bool`. Both branches must have the same type. `else` is **required** in the expression form
   (no unit value to fall back on); the statement form may omit it.
 * **Strict operators, short-circuit evaluation.** `a && b` and `a || b` evaluate `b` only if `a` does not decide the answer,
@@ -137,6 +142,8 @@ format change. Each source file stays under the 2,000-line ceiling: `eval.rs` is
 
 * **`if` invites logic into the view.** A page full of nested `if` is what the language was shaped to avoid. Mitigation: `if`
   stays an expression of the same pure kind as `filter` and `sort`; no statement-level `if` around effects.
+  *(The second half was revised 2026-10-22, #93: a statement `if` may hold effects. The view still has only the expression form;
+  `If { when: .. }` of `docs/view-conditional.md` is a node, not logic.)*
 * **The `match await(..)` hazard is related, not fixed.** An `await` in a branch is already refused (`if-effect-in-expression`);
   the existing `match await(..)` that emits a bad IIFE is a separate bug and is not touched here.
 * **Short-circuit makes evaluation order part of the language.** It must be specified in `semantics.md`, together with the
@@ -157,6 +164,7 @@ Open questions:
 
 1. **A, with step 1 then step 2?** (Recommended.) Or C as a stopgap if A is deferred?
 2. **Is a statement-level `if` around an effect ever wanted?** (Proposed: no. It changes what a trace's `issued` lists depend on.)
+   **Revised 2026-10-22: yes** (#93; the evidence is `examples/tickets`, where the orders were requested after a failed sign-in, `docs/handler-sequences.md` section 1). The claim in the parenthesis does not hold: `issued` depends on the state, which replay computes.
 3. **`else if`:** sugar for a nested `if` in the `else` branch, or required to be written as `else { if .. }`? (Proposed: allow
    `else if`, it is only parsing.)
 4. **Literal patterns (B) for `Int`/`String`:** a separate later decision once there is a program that needs them? (Proposed: yes.)
@@ -176,6 +184,8 @@ Open questions:
 
 1. **A, in two steps.** Step 1 is built (section 6). The statement form (step 2) is not built.
 2. **No statement-level `if` around an effect.** An `if` is pure; `if-effect-in-expression` refuses an effect or an `await` in it.
+   **Revised 2026-10-22 (#93):** the expression `if` is pure, as written; the statement form (`if cond { .. }` at the start of a
+   statement, `docs/handler-sequences.md`) may hold effects and `await` in its branches. Its condition is still pure.
 3. **`else if` is allowed**, as sugar for an `if` in the `else` branch (a parsing rule only).
 4. **Literal patterns for `Int`/`String`:** a separate, later decision, once a program needs them. Not built.
 5. **Division by zero:** the page refuses, as replay does (`docs/semantics.md`, "Arithmetic is finite"); built and merged before this.
@@ -227,6 +237,6 @@ Open questions:
   `if` condition, a negation), the names a binding introduces are tested as in scope, and every example still checks.
   Seven deliberate breaks (the assignments, the text parts, the label, the event arguments, the `over:` not walked; a lambda parameter leaking out of its lambda; a `match` binding not in scope), each caught. The replay rule `replay-unknown-identifier` stays in the catalog as the
   second line of defence; no program that lowers can reach it now.
-* **Not built, still true:** the statement form of `if`; `derive`; literal patterns; `if` in a state initialiser is emitted but
+* **Not built, still true** (the statement form of `if` was built later: `docs/handler-sequences.md`): `derive`; literal patterns; `if` in a state initialiser is emitted but
   an initialiser that reads another field is the known `undefined` hazard (unchanged); an `if` whose branches have a type the
   pass calls `Unknown` is not compared.

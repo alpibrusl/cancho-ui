@@ -274,6 +274,8 @@ fn body_uses_await(s: &IrStmt) -> bool {
     match s {
         IrStmt::Assign { value, .. } => expr_uses_await(value),
         IrStmt::Expr { expr, .. } => expr_uses_await(expr),
+        // The condition is pure; a branch may await.
+        IrStmt::If { then, else_, .. } => then.iter().chain(else_).any(body_uses_await),
     }
 }
 
@@ -301,6 +303,7 @@ fn body_uses_sleep(s: &IrStmt) -> bool {
     match s {
         IrStmt::Assign { value, .. } => expr_uses_sleep(value),
         IrStmt::Expr { expr, .. } => expr_uses_sleep(expr),
+        IrStmt::If { then, else_, .. } => then.iter().chain(else_).any(body_uses_sleep),
     }
 }
 
@@ -574,7 +577,6 @@ fn emit_component(
         // never runs — the stale continuation is dropped, so a
         // slower old request cannot clobber the newer one's
         // state. Other exceptions rethrow.
-        let first_await = e.body.iter().position(body_uses_await);
         let counted = ticked.contains(&e.name.as_str());
         if counted {
             out.push_str(&format!("            __cui_busy.{}++;\n", e.name));
@@ -587,7 +589,7 @@ fn emit_component(
         // suspension, must not be put back over what other events wrote meanwhile).
         let written: Vec<&str> = {
             let mut w: Vec<&str> = Vec::new();
-            for s in &e.body {
+            for s in IrStmt::leaves(&e.body) {
                 if let IrStmt::Assign { target, .. } = s
                     && !w.contains(&target.as_str())
                 {
@@ -596,7 +598,7 @@ fn emit_component(
             }
             w
         };
-        let atomic = e.body.len() >= 2 && !written.is_empty();
+        let atomic = IrStmt::leaves(&e.body).len() >= 2 && !written.is_empty();
         let snap_list = written
             .iter()
             .map(|t| format!("{STATE_PREFIX}{t}"))
@@ -606,20 +608,11 @@ fn emit_component(
             out.push_str(&format!("            let __snap = [{snap_list}];\n"));
         }
         out.push_str("            try {\n");
+        let snap = atomic.then_some(snap_list.as_str());
         for (i, s) in e.body.iter().enumerate() {
-            let awaits = atomic && body_uses_await(s);
-            if awaits {
-                out.push_str("                __snap = null;\n");
-            }
-            out.push_str("                ");
-            out.push_str(&emit_stmt(s, &param_set));
-            out.push('\n');
-            if awaits {
-                out.push_str(&format!("                __snap = [{snap_list}];\n"));
-            }
-            if Some(i + 1) == first_await {
-                out.push_str("                __render();\n");
-            }
+            // Paint what the handler has written before each suspension, not only the first (docs/semantics.md, "A
+            // handler that faults"); an awaiting statement that starts the handler has written nothing yet.
+            emit_stmt(&mut out, s, &param_set, snap, "                ", i > 0);
         }
         out.push_str("                __render();\n");
         out.push_str("            } catch (e) {\n");
@@ -784,12 +777,64 @@ fn emit_component(
     out
 }
 
-fn emit_stmt(s: &IrStmt, params: &[&str]) -> String {
+/// One statement of a handler, at `indent`. `snap` is the list of fields the handler snapshots when it is atomic: a leaf that
+/// awaits clears the snapshot while it runs and takes it again after, at any depth (docs/handler-sequences.md section 5). An
+/// `if` is a JavaScript `if`; its condition is pure, so only a leaf in a branch can await.
+fn emit_stmt(
+    out: &mut String,
+    s: &IrStmt,
+    params: &[&str],
+    snap: Option<&str>,
+    indent: &str,
+    paint: bool,
+) {
     match s {
-        IrStmt::Assign { target, value, .. } => {
-            STATE_PREFIX.to_string() + target + " = " + &emit_expr_runtime(value, params) + ";"
+        IrStmt::If {
+            cond, then, else_, ..
+        } => {
+            out.push_str(&format!(
+                "{indent}if ({}) {{\n",
+                emit_expr_runtime(cond, params)
+            ));
+            let inner = format!("{indent}    ");
+            for t in then {
+                emit_stmt(out, t, params, snap, &inner, true);
+            }
+            if else_.is_empty() {
+                out.push_str(&format!("{indent}}}\n"));
+            } else {
+                out.push_str(&format!("{indent}}} else {{\n"));
+                for t in else_ {
+                    emit_stmt(out, t, params, snap, &inner, true);
+                }
+                out.push_str(&format!("{indent}}}\n"));
+            }
         }
-        IrStmt::Expr { expr, .. } => emit_expr_runtime(expr, params) + ";",
+        leaf => {
+            let suspends = body_uses_await(leaf);
+            if suspends && paint {
+                out.push_str(&format!("{indent}__render();\n"));
+            }
+            let awaits = snap.is_some() && suspends;
+            if awaits {
+                out.push_str(&format!("{indent}__snap = null;\n"));
+            }
+            let text = match leaf {
+                IrStmt::Assign { target, value, .. } => {
+                    STATE_PREFIX.to_string()
+                        + target
+                        + " = "
+                        + &emit_expr_runtime(value, params)
+                        + ";"
+                }
+                IrStmt::Expr { expr, .. } => emit_expr_runtime(expr, params) + ";",
+                IrStmt::If { .. } => String::new(),
+            };
+            out.push_str(&format!("{indent}{text}\n"));
+            if let (true, Some(list)) = (awaits, snap) {
+                out.push_str(&format!("{indent}__snap = [{list}];\n"));
+            }
+        }
     }
 }
 
