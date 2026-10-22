@@ -292,6 +292,14 @@ applies here. Errors are values, not control flow.
   in Cancho Core.)
 - An unhandled `Cancelled`: same refusal.
 
+**Where the rule looks (measured, #63).** The rule applies to a `match` in *every* expression position of a handler or of
+the view. Before #63 the walk that finds the `match`es was a hand-written list of forms and did not enter the arguments of
+`len`, `filter`, `map` or `sort`: `len(match r { Ok(_) => 1 })` with no `Err` arm passed `check` (exit 0, measured on
+the merge of #61). The walk now goes through `IrExpr::children`, one `match` over every variant with no wildcard, so a new
+expression form that is not given its children does not compile. `crates/cancho-ui/tests/match_positions.rs` has one
+program per position (ten) that must be refused, and a complete `match` in the same positions that must pass; a break that
+stops the walk entering `len`, `filter`, `map` and `sort` fails it.
+
 **Phase 1 enforces.** The result-type discipline, exhaustive
 match. **Phase 2+ refines.** Error-type vocabulary (per
 effect, per platform).
