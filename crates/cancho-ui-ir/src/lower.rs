@@ -217,7 +217,15 @@ pub fn lower_file(file: &File) -> Result<IrFile, LowerError> {
 /// — is the entry file's last component, exactly what the file's
 /// standalone build mounts today.
 pub fn merge_ir_files(files: &[IrFile]) -> IrFile {
-    let last = files.last().expect("at least one IR to merge");
+    let Some(last) = files.last() else {
+        // Nothing to merge is an empty module (the callers always pass at least the entry file).
+        return IrFile {
+            schema: SCHEMA.to_string(),
+            version: schema_version().to_string(),
+            module: None,
+            components: Vec::new(),
+        };
+    };
     IrFile {
         schema: last.schema.clone(),
         version: last.version.clone(),
