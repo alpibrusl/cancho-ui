@@ -513,6 +513,29 @@ fn check_to_diag(e: &cancho_ui_types::CheckError, file: &Path) -> Diagnostic {
             related: Vec::new(),
             notes: Vec::new(),
         },
+        cancho_ui_types::CheckError::ConditionRefused {
+            code,
+            message,
+            span,
+        } => Diagnostic {
+            code: (*code).into(),
+            severity: Severity::Error,
+            tier: Tier::Static,
+            subject: Subject::Component {
+                name: String::new(),
+            },
+            message: message.clone(),
+            span: Some(SpanOut::from_span(*span, file)),
+            expected: None,
+            actual: None,
+            remediation: Some(Remediation {
+                description: condition_remediation(code),
+                suggestion: None,
+                confidence: Confidence::High,
+            }),
+            related: Vec::new(),
+            notes: Vec::new(),
+        },
         cancho_ui_types::CheckError::PatternLiteralUnsupported { name, span } => Diagnostic {
             code: "pattern-literal-unsupported".into(),
             severity: Severity::Error,
@@ -1029,6 +1052,8 @@ fn token_name(t: &cancho_ui_syntax::Token) -> &'static str {
         Token::Let => "`let`",
         Token::Match => "`match`",
         Token::Await => "`await`",
+        Token::If => "`if`",
+        Token::Else => "`else`",
         Token::FatArrow => "`=>`",
         Token::LBrace => "`{`",
         Token::RBrace => "`}`",
@@ -1051,6 +1076,9 @@ fn token_name(t: &cancho_ui_syntax::Token) -> &'static str {
         Token::LtEq => "`<=`",
         Token::Gt => "`>`",
         Token::GtEq => "`>=`",
+        Token::AmpAmp => "`&&`",
+        Token::PipePipe => "`||`",
+        Token::Bang => "`!`",
         Token::Ident(_) => "identifier",
         Token::StringLit(_) => "string literal",
         Token::IntLit(_) => "integer literal",
@@ -1428,6 +1456,23 @@ fn lower_to_diag(e: &LowerError, file: &Path) -> Diagnostic {
                 confidence: Confidence::High,
             }),
         ),
+        LowerError::ConditionRefused {
+            code,
+            message,
+            span,
+        } => (
+            *code,
+            Severity::Error,
+            Tier::Static,
+            Subject::Component { name: String::new() },
+            message.clone(),
+            Some(*span),
+            Some(Remediation {
+                description: condition_remediation(code),
+                suggestion: None,
+                confidence: Confidence::High,
+            }),
+        ),
         LowerError::PatternLiteralUnsupported { name, span } => (
             "pattern-literal-unsupported",
             Severity::Error,
@@ -1547,7 +1592,18 @@ fn credential_remediation(rule: &str) -> Remediation {
 }
 
 fn pattern_literal_remediation() -> String {
-    "There are no literal patterns: a bare name in a `match` arm binds the value and matches everything, so `true => ..` would always win. Branch on the Bool another way (a state flag per case, or two derived values), or use `_` for the arm that means \"anything else\".".to_string()
+    "There are no literal patterns: a bare name in a `match` arm binds the value and matches everything, so `true => ..` would always win. Branch on a Bool with `if cond { a } else { b }` (docs/conditionals.md), or use `_` for the arm that means \"anything else\".".to_string()
+}
+
+/// What to change for a refusal about `if`, `&&`, `||` or `!` (docs/conditionals.md).
+fn condition_remediation(code: &str) -> String {
+    match code {
+        "if-else-required" => "Write both sides: `if cond { a } else { b }`; `else if cond2 { c }` chains.".to_string(),
+        "if-effect-in-expression" => "Keep the condition and the branches pure: compute with state, literals and the pure builtins. To issue a request only sometimes, write two events and let the view pick the button.".to_string(),
+        "condition-not-bool" => "Use a Bool: a comparison (`n > 0`), a Bool state field, or `&&`, `||`, `!` of those. A number or a string is not a condition: write `n != 0` or `len(s) > 0`.".to_string(),
+        "if-branch-type-mismatch" => "Both branches of an `if` must have the same type: two numbers, two strings, two lists. Convert one side or restructure.".to_string(),
+        _ => "See docs/conditionals.md.".to_string(),
+    }
 }
 
 /// What to change for a refusal about the bindings of a built-in element (docs/controls.md).

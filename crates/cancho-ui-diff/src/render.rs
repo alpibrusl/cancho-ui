@@ -31,6 +31,8 @@ fn bin_op(op: IrBinOp) -> &'static str {
         IrBinOp::Le => "<=",
         IrBinOp::Gt => ">",
         IrBinOp::Ge => ">=",
+        IrBinOp::And => "&&",
+        IrBinOp::Or => "||",
     }
 }
 
@@ -57,7 +59,18 @@ pub fn expr(e: &IrExpr) -> String {
         IrExpr::Binary { op, lhs, rhs, .. } => {
             format!("({} {} {})", expr(lhs), bin_op(*op), expr(rhs))
         }
-        IrExpr::Unary { operand, .. } => format!("-{}", expr(operand)),
+        IrExpr::Unary { op, operand, .. } => match op {
+            IrUnOp::Neg => format!("-{}", expr(operand)),
+            IrUnOp::Not => format!("!{}", expr(operand)),
+        },
+        IrExpr::If {
+            cond, then, else_, ..
+        } => format!(
+            "if {} {{ {} }} else {{ {} }}",
+            expr(cond),
+            expr(then),
+            expr(else_)
+        ),
         IrExpr::Match {
             scrutinee, arms, ..
         } => {

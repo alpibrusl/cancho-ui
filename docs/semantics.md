@@ -518,6 +518,19 @@ discipline, same tier labels, same refusal to over-claim.
 
 ---
 
+## Conditionals are pure and short-circuit
+
+**Answer.** `if cond { a } else { b }`, `&&`, `||` and `!` (docs/conditionals.md). Evaluation order is part of the language:
+`a && b` and `a || b` evaluate `b` only if `a` does not decide the answer, and an `if` evaluates only the branch it takes. The
+condition and the operands are `Bool`; an `if` and its branches are pure (no effect, no `await`). Both evaluators do the same
+(`tests/cond_corpus.json`, 54 cases, in replay and in Chromium). Because arithmetic is finite (next section), short-circuit is
+observable: `b != 0 && a / b > 1` is a value for `b = 0`, and `a / b > 1 && b != 0` is a `replay-non-finite`.
+
+**Tier.** **tested** (the corpus), with the types checked **statically** only as far as the source shows them
+(`docs/conditionals.md` section 6).
+
+---
+
 ## Arithmetic is finite
 
 **Answer.** `+ - * /` on numbers never answer `Infinity` or `NaN`; the language has no such value. A division by zero (`1 / 0`,

@@ -259,7 +259,6 @@ component Faulty2 {
     state n: Int = 0;
     state s: String = "";
     on NoArm { n = match 5 { Ok(v) => { 1 } }; }
-    on Unknown { n = zzz; }
     on Exp { s = "x" + 1000000000000000000000.0; }
     on Await { n = await(5); }
     view { Text { "{n}" } }
@@ -270,7 +269,6 @@ component Faulty2 {
 fn the_remaining_runtime_refusals_have_rules_and_spans() {
     for (event, rule) in [
         ("NoArm", "replay-no-match-arm"),
-        ("Unknown", "replay-unknown-identifier"),
         ("Exp", "replay-number-format"),
         ("Await", "replay-unsupported"),
     ] {

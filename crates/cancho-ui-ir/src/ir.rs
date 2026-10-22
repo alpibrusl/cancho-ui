@@ -164,6 +164,15 @@ pub enum IrExpr {
         operand: Box<IrExpr>,
         span: Span,
     },
+    /// `if cond { then } else { else_ }` (docs/conditionals.md). Pure: lowering refuses an effect or an `await` in the
+    /// condition or either branch (`if-effect-in-expression`), and `else` is required (`if-else-required`). Only the
+    /// chosen branch is evaluated.
+    If {
+        cond: Box<IrExpr>,
+        then: Box<IrExpr>,
+        else_: Box<IrExpr>,
+        span: Span,
+    },
     /// `match scrutinee { arms }`. Tier 6. Each arm's pattern is
     /// matched against the scrutinee at runtime; the first match
     /// wins and its body is evaluated. Patterns are kept as a
@@ -251,6 +260,34 @@ pub enum IrExpr {
     },
 }
 
+impl IrExpr {
+    pub fn span(&self) -> Span {
+        match self {
+            IrExpr::IntLit { span, .. }
+            | IrExpr::FloatLit { span, .. }
+            | IrExpr::StringLit { span, .. }
+            | IrExpr::BoolLit { span, .. }
+            | IrExpr::Ident { span, .. }
+            | IrExpr::Call { span, .. }
+            | IrExpr::Binary { span, .. }
+            | IrExpr::Unary { span, .. }
+            | IrExpr::If { span, .. }
+            | IrExpr::Match { span, .. }
+            | IrExpr::Ok { span, .. }
+            | IrExpr::Err { span, .. }
+            | IrExpr::Await { span, .. }
+            | IrExpr::Cancelled { span }
+            | IrExpr::Some { span, .. }
+            | IrExpr::None { span }
+            | IrExpr::ListLit { span, .. }
+            | IrExpr::Filter { span, .. }
+            | IrExpr::Map { span, .. }
+            | IrExpr::SortBy { span, .. }
+            | IrExpr::Len { span, .. } => *span,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct IrMatchArm {
     pub pattern: IrPattern,
@@ -290,6 +327,8 @@ pub enum IrBinOp {
     Le,
     Gt,
     Ge,
+    And,
+    Or,
 }
 
 impl IrBinOp {
@@ -305,6 +344,8 @@ impl IrBinOp {
             IrBinOp::Le => "<=",
             IrBinOp::Gt => ">",
             IrBinOp::Ge => ">=",
+            IrBinOp::And => "&&",
+            IrBinOp::Or => "||",
         }
     }
 }
@@ -312,6 +353,7 @@ impl IrBinOp {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IrUnOp {
     Neg,
+    Not,
 }
 
 /// A stable identifier derived from the declaration's content.

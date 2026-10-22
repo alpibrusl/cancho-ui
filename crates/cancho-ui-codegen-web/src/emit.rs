@@ -280,6 +280,9 @@ fn expr_uses_await(e: &IrExpr) -> bool {
         IrExpr::Await { .. } => true,
         IrExpr::Binary { lhs, rhs, .. } => expr_uses_await(lhs) || expr_uses_await(rhs),
         IrExpr::Unary { operand, .. } => expr_uses_await(operand),
+        IrExpr::If {
+            cond, then, else_, ..
+        } => expr_uses_await(cond) || expr_uses_await(then) || expr_uses_await(else_),
         IrExpr::Call { args, .. } => args.iter().any(expr_uses_await),
         IrExpr::Ok { value, .. } => expr_uses_await(value),
         IrExpr::Err { reason, .. } => expr_uses_await(reason),
@@ -306,6 +309,9 @@ fn expr_uses_sleep(e: &IrExpr) -> bool {
         }
         IrExpr::Binary { lhs, rhs, .. } => expr_uses_sleep(lhs) || expr_uses_sleep(rhs),
         IrExpr::Unary { operand, .. } => expr_uses_sleep(operand),
+        IrExpr::If {
+            cond, then, else_, ..
+        } => expr_uses_sleep(cond) || expr_uses_sleep(then) || expr_uses_sleep(else_),
         IrExpr::Ok { value, .. } => expr_uses_sleep(value),
         IrExpr::Err { reason, .. } => expr_uses_sleep(reason),
         IrExpr::Match {

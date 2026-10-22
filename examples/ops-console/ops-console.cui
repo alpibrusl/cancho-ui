@@ -49,7 +49,7 @@ component OpsConsole {
         rows = filter(lines(last), x => len(json.get(x, "id", "")) > 0);
         shown = sort(filter(rows, x => contains(lower(json.get(x, "name", "")), lower(q))), x => dir * num(json.get(x, "temp", ""), dir * 1000000000));
         pages = max(ceil(len(shown) / 5), 1);
-        page = page * len(take(skip(shown, page * 5), 1));
+        page = if page * 5 < len(shown) { page } else { 0 };
         paged = take(skip(shown, page * 5), 5);
     }
 
@@ -99,7 +99,7 @@ component OpsConsole {
             Err(_) => { "x" }
             Cancelled => { "x" }
         };
-        tone = join(filter(["ok"], t => starts_with(code, "2")), "") + join(filter(["warn"], t => starts_with(code, "4")), "") + join(filter(["error"], t => starts_with(code, "5")), "") + join(filter(["error"], t => starts_with(code, "x")), "");
+        tone = if starts_with(code, "2") { "ok" } else if starts_with(code, "4") { "warn" } else if starts_with(code, "5") || starts_with(code, "x") { "error" } else { "" };
     }
 
     view {

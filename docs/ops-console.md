@@ -38,7 +38,12 @@ every function the language has (`tests/call_unknown.rs`: ten refused spellings,
 `build`, every known call still accepted, every example still checks). Found while building; the only defect fixed in this
 change because it is small and the rest are design decisions.
 
-### 2.2 No conditional anywhere, and the workarounds are not readable. Issue #40
+### 2.2 No conditional anywhere, and the workarounds are not readable. Issue #40. **Fixed 2026-10-22 (`docs/conditionals.md`).**
+
+> *Correction:* `if cond { a } else { b }` (with `else if`), `&&`, `||` and `!` exist. The status tone is one `if` chain and the clamp
+> after the list shrinks is `page = if page * 5 < len(shown) { page } else { 0 }`; the traces pass unchanged
+> (`docs/conditionals.md` section 6). Still true: there are no literal patterns, no statement form of `if`, and the repeated
+> `shown = ..` lines wait for derived state. What follows is the finding as it was made.
 
 There is no `if`, no `&&`, `||` or `!`, no literal patterns (`pattern-literal-unsupported`, #26), and `match` is only over
 `Result` and `Option`. Everything the page branches on is arithmetic on lists:

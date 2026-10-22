@@ -12,6 +12,7 @@
 //! row, and the canonical serialization described in
 //! `../../../spec/ir-schema/README.md`.
 
+pub mod conditions;
 pub mod controls;
 pub mod ir;
 pub mod lower;
