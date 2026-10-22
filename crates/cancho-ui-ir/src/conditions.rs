@@ -59,7 +59,7 @@ fn kind_of_call(path: &[String]) -> Kind {
         "lower" | "upper" | "trim" | "join" | "json.quote" | "json.get" | "storage.get" => {
             Kind::Str
         }
-        "lines" | "split" | "take" | "skip" | "reverse" | "json.items" => Kind::List,
+        "lines" | "split" | "take" | "skip" | "reverse" | "concat" | "json.items" => Kind::List,
         _ => Kind::Unknown,
     }
 }
@@ -216,11 +216,37 @@ fn kind(scope: &mut Scope, e: &IrExpr) -> Result<Kind, LowerError> {
                 let l = kind(scope, lhs)?;
                 let r = kind(scope, rhs)?;
                 match op {
-                    IrBinOp::Add => match (l, r) {
-                        (Kind::Num, Kind::Num) => Kind::Num,
-                        (Kind::Str, _) | (_, Kind::Str) => Kind::Str,
-                        _ => Kind::Unknown,
-                    },
+                    IrBinOp::Add => {
+                        // `+` is for two numbers, or a string and a number, bool or string. A list, a Result, an
+                        // Option or a Request is never an operand (JavaScript would turn a list into text), and a
+                        // number plus a bool is not arithmetic here (docs/lists.md section 9, #39).
+                        let bad = |k: Kind| matches!(k, Kind::List | Kind::Other);
+                        let bool_with_number = matches!(
+                            (l, r),
+                            (Kind::Bool, Kind::Num | Kind::Bool) | (Kind::Num, Kind::Bool)
+                        );
+                        if bad(l) || bad(r) || bool_with_number {
+                            return Err(LowerError::ConditionRefused {
+                                code: "operand-type-mismatch",
+                                message: format!(
+                                    "`+` joins two numbers or a string with a value, and this is {} plus {}{}",
+                                    l.name(),
+                                    r.name(),
+                                    if l == Kind::List && r == Kind::List {
+                                        "; to join two lists write `concat(a, b)`"
+                                    } else {
+                                        ""
+                                    }
+                                ),
+                                span: e.span(),
+                            });
+                        }
+                        match (l, r) {
+                            (Kind::Num, Kind::Num) => Kind::Num,
+                            (Kind::Str, _) | (_, Kind::Str) => Kind::Str,
+                            _ => Kind::Unknown,
+                        }
+                    }
                     IrBinOp::Sub | IrBinOp::Mul | IrBinOp::Div => Kind::Num,
                     _ => Kind::Bool,
                 }

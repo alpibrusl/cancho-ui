@@ -40,6 +40,7 @@ component Rows {
     }
     on Flip { shown = reverse(shown); }
     on Next { shown = take(skip(shown, 1), 2); }
+    on Join { shown = concat(take(names, 1), skip(names, 2)); }
     on Load {
         r = await(net.get("readings.txt"));
         recs = match r { Ok(t) => { map(lines(t), l => trim(upper(l))) } Err(e) => { [] } Cancelled => { [] } };
@@ -54,6 +55,7 @@ component Rows {
             Button { label: "Flip" on: Flip }
             Button { label: "Order" on: Order }
             Button { label: "Next" on: Next }
+            Button { label: "Join" on: Join }
             Button { label: "Load" on: Load }
             Button { label: "Pages" on: Pages }
             Text { "pages {pages}" }
@@ -87,7 +89,7 @@ component Rows {
   const from = js.indexOf('function __cui_sort');
   const to = js.indexOf('function mount_', from);
   if (from < 0 || to < 0) { throw new Error('the helpers are not in the built program'); }
-  const lib = new Function(js.slice(from, to) + '\nreturn { sort: __cui_sort, lower: __cui_lower, contains: __cui_contains, reverse: __cui_reverse, num: __cui_num, take: __cui_take, skip: __cui_skip, lines: __cui_lines, split: __cui_split, join: __cui_join, trim: __cui_trim, upper: __cui_upper, starts_with: __cui_starts_with, ends_with: __cui_ends_with, quote: __cui_json_quote, min: __cui_min, max: __cui_max, abs: __cui_abs, floor: __cui_floor, ceil: __cui_ceil, round: __cui_round };')();
+  const lib = new Function(js.slice(from, to) + '\nreturn { sort: __cui_sort, lower: __cui_lower, contains: __cui_contains, reverse: __cui_reverse, num: __cui_num, take: __cui_take, skip: __cui_skip, concat: __cui_concat, lines: __cui_lines, split: __cui_split, join: __cui_join, trim: __cui_trim, upper: __cui_upper, starts_with: __cui_starts_with, ends_with: __cui_ends_with, quote: __cui_json_quote, min: __cui_min, max: __cui_max, abs: __cui_abs, floor: __cui_floor, ceil: __cui_ceil, round: __cui_round };')();
   const corpus = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'lists_corpus.json'), 'utf8'));
   for (const e of corpus) {
     const keys = e.keys.map((k) => (k !== null && typeof k === 'object' && !Array.isArray(k) ? NaN : k));
@@ -118,6 +120,21 @@ component Rows {
     check(`unchanged: ${e.why}`, JSON.stringify(e.list) === input);
   }
   check('take/skip: a count that is not a number is 0', lib.take([1, 2], 'x').length === 0 && lib.take([1, 2, 3], '2').length === 0 && lib.skip([1, 2], undefined).length === 2);
+
+  const concat = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'concat_corpus.json'), 'utf8'));
+  for (const e of concat.ok) {
+    const a = JSON.stringify(e.a);
+    const b = JSON.stringify(e.b);
+    const got = lib.concat(e.a, e.b);
+    check(`concat: ${e.why}`, JSON.stringify(got) === JSON.stringify(e.concat), `got ${JSON.stringify(got)}`);
+    check(`concat unchanged inputs: ${e.why}`, JSON.stringify(e.a) === a && JSON.stringify(e.b) === b);
+    check(`concat is a new list: ${e.why}`, got !== e.a && got !== e.b);
+  }
+  for (const e of concat.refused) {
+    let message = null;
+    try { lib.concat(e.a, e.b); } catch (err) { message = String(err && err.message); }
+    check(`concat refuses: ${e.why}`, message !== null && message.startsWith(e.rule), `got ${message}`);
+  }
 
   const math = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'math_corpus.json'), 'utf8'));
   const special_num = { NaN: NaN, Infinity: Infinity, '-Infinity': -Infinity };
@@ -172,6 +189,8 @@ component Rows {
   check('rows sorted by a number held in text', JSON.stringify(await rows()) === JSON.stringify(['x', '10', '9', '2.5', '-1']), JSON.stringify(await rows()));
   await page.click('text=Next');
   check('paged: skip one, take two', JSON.stringify(await rows()) === JSON.stringify(['10', '9']), JSON.stringify(await rows()));
+  await page.click('text=Join');
+  check('concat on the page: the first name, then all but the first two', JSON.stringify(await rows()) === JSON.stringify(['pear', 'fig', 'apple', 'Fig']), JSON.stringify(await rows()));
   await page.click('text=Pages');
   check('min, max, abs, floor, ceil and round on the page', (await page.locator('#root').innerText()).includes('pages 8'), (await page.locator('#root').innerText()).split('\n').find((l) => l.startsWith('pages')));
   await page.click('text=Load');

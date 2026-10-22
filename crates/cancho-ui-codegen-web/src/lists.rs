@@ -75,6 +75,16 @@ function __cui_take(list, n) { return list.slice(0, __cui_page_count(n)); }
 function __cui_skip(list, n) { return list.slice(__cui_page_count(n)); }
 ";
 
+const CONCAT_JS: &str = "\
+// Builtin: concat(a, b) (docs/lists.md section 9). A new list: the elements of a, then those of b; neither input changes
+// and a nested list stays one element. Both must be lists: a string would otherwise be joined as text by `concat`, which
+// is the defect of `+` on lists (#39), so anything else throws, as replay faults with replay-type-error.
+function __cui_concat(a, b) {
+    if (!Array.isArray(a) || !Array.isArray(b)) { throw new Error(\"replay-type-error: `concat` needs two lists\"); }
+    return a.concat(b);
+}
+";
+
 const MATH_JS: &str = "\
 // Builtins: min, max, abs, floor, ceil, round (docs/lists.md section 8). Math.* of numbers; anything that is not a number
 // counts as NaN, so a string is never coerced. min and max answer NaN when either is NaN; max(0, -0) is 0 and min(0, -0) is -0.
@@ -132,6 +142,7 @@ pub fn helpers_used(emitted: &str) -> String {
         (&["__cui_num("][..], NUM_JS),
         (&["__cui_json_quote("][..], JSON_QUOTE_JS),
         (&["__cui_take(", "__cui_skip("][..], PAGING_JS),
+        (&["__cui_concat("][..], CONCAT_JS),
         (
             &[
                 "__cui_min(",
