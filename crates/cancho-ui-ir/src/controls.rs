@@ -20,6 +20,10 @@ pub const ELEMENT_KEYS: &[&str] = &[
     "gap",
     "max_width",
     "type",
+    "autocomplete",
+    "inputmode",
+    "maxlength",
+    "name",
 ];
 
 /// The `type:` of a `TextField` (docs/controls.md section 5): the HTML input types that hold one line of text and give the
@@ -186,6 +190,127 @@ fn check_tone(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<()
     }
 }
 
+/// The `autocomplete:` of a `TextField` (docs/controls.md section 6): `on`, `off`, or one field name of the HTML autofill list that
+/// is not a contact-section or address form of its own (a single token; `shipping given-name` is not one).
+pub const AUTOCOMPLETE: &[&str] = &[
+    "on",
+    "off",
+    "name",
+    "honorific-prefix",
+    "given-name",
+    "additional-name",
+    "family-name",
+    "honorific-suffix",
+    "nickname",
+    "username",
+    "new-password",
+    "current-password",
+    "one-time-code",
+    "organization-title",
+    "organization",
+    "street-address",
+    "address-line1",
+    "address-line2",
+    "address-line3",
+    "address-level4",
+    "address-level3",
+    "address-level2",
+    "address-level1",
+    "country",
+    "country-name",
+    "postal-code",
+    "cc-name",
+    "cc-given-name",
+    "cc-additional-name",
+    "cc-family-name",
+    "cc-number",
+    "cc-exp",
+    "cc-exp-month",
+    "cc-exp-year",
+    "cc-csc",
+    "cc-type",
+    "transaction-currency",
+    "transaction-amount",
+    "language",
+    "bday",
+    "bday-day",
+    "bday-month",
+    "bday-year",
+    "sex",
+    "url",
+    "photo",
+    "tel",
+    "tel-country-code",
+    "tel-national",
+    "tel-area-code",
+    "tel-local",
+    "tel-extension",
+    "email",
+    "impp",
+];
+
+/// The `inputmode:` keywords of a `TextField`: which keyboard a phone shows.
+pub const INPUT_MODES: &[&str] = &[
+    "none", "text", "decimal", "numeric", "tel", "search", "email", "url",
+];
+
+/// The `maxlength:` range, in UTF-16 code units (what the browser counts).
+pub const MAXLENGTH_RANGE: (i64, i64) = (1, 100_000);
+
+/// The longest `name:` of a field, and the characters it may hold.
+pub const NAME_MAX: usize = 64;
+
+/// `autocomplete:`, `inputmode:`, `maxlength:` and `name:` are bindings of a `TextField` with a checked value.
+fn check_text_attribute(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
+    if !matches!(kind, IrElementKind::TextField) {
+        return Err(LowerError::ControlRefused {
+            code: "binding-unknown",
+            message: format!(
+                "`{}:` is a binding of TextField, not of {}",
+                b.key,
+                element_name(kind)
+            ),
+            span: b.span,
+        });
+    }
+    let bad = |message: String| LowerError::ControlRefused {
+        code: "input-attribute-invalid",
+        message,
+        span: b.span,
+    };
+    match (b.key.as_str(), &b.value) {
+        ("autocomplete", IrBindingValue::String(s)) if AUTOCOMPLETE.contains(&s.as_str()) => Ok(()),
+        ("autocomplete", _) => Err(bad(
+            "`autocomplete:` takes `on`, `off` or one field name of the HTML autofill list as a string literal, e.g. `\"username\"`, `\"current-password\"`, `\"new-password\"`, `\"one-time-code\"`, `\"email\"`, `\"tel\"`, `\"given-name\"`".to_string(),
+        )),
+        ("inputmode", IrBindingValue::String(s)) if INPUT_MODES.contains(&s.as_str()) => Ok(()),
+        ("inputmode", _) => Err(bad(format!(
+            "`inputmode:` takes one of {} as a string literal",
+            INPUT_MODES.join(", ")
+        ))),
+        ("maxlength", IrBindingValue::Const { expr, .. })
+            if matches!(**expr, IrExpr::IntLit { value, .. } if (MAXLENGTH_RANGE.0..=MAXLENGTH_RANGE.1).contains(&value)) =>
+        {
+            Ok(())
+        }
+        ("maxlength", _) => Err(bad(format!(
+            "`maxlength:` takes an integer literal from {} to {} (UTF-16 code units, as the browser counts)",
+            MAXLENGTH_RANGE.0, MAXLENGTH_RANGE.1
+        ))),
+        ("name", IrBindingValue::String(s)) if valid_name(s) => Ok(()),
+        _ => Err(bad(format!(
+            "`name:` takes a string literal of at most {NAME_MAX} letters, digits, `-`, `_` or `.`, starting with a letter"
+        ))),
+    }
+}
+
+fn valid_name(s: &str) -> bool {
+    let mut chars = s.chars();
+    s.len() <= NAME_MAX
+        && chars.next().is_some_and(|c| c.is_ascii_alphabetic())
+        && chars.all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
+}
+
 /// `type:` is a binding of a `TextField` and takes one of `INPUT_TYPES` as a string literal.
 fn check_input_type(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
     if !matches!(kind, IrElementKind::TextField) {
@@ -273,6 +398,12 @@ fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result
     }
     if b.key == "type" {
         check_input_type(kind, b)?;
+    }
+    if matches!(
+        b.key.as_str(),
+        "autocomplete" | "inputmode" | "maxlength" | "name"
+    ) {
+        check_text_attribute(kind, b)?;
     }
     if b.key == "submit" {
         if !matches!(kind, IrElementKind::TextField) {

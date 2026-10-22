@@ -36,8 +36,6 @@ component Tickets {
     state note_edit: String = "";
     state status_msg: String = "";
     state status_tone: String = "";
-    state note_msg: String = "";
-    state note_tone: String = "";
     state edit_blocked: Bool = true;
     state save_msg: String = "";
     state saved_tone: String = "";
@@ -100,8 +98,6 @@ component Tickets {
         note_edit = join(map(picked, x => json.get(x, "note", "")), "");
         status_msg = "";
         status_tone = "";
-        note_msg = "";
-        note_tone = "";
         save_msg = "";
         edit_blocked = len(picked) == 0;
     }
@@ -110,14 +106,12 @@ component Tickets {
         status_edit = v;
         status_msg = if v == "open" || v == "doing" || v == "done" { "" } else { "Use open, doing or done." };
         status_tone = if len(status_msg) > 0 { "error" } else { "" };
-        edit_blocked = len(status_msg) > 0 || len(note_msg) > 0 || len(selected) == 0;
+        edit_blocked = len(status_msg) > 0 || len(selected) == 0;
     }
 
     on NoteEdit(v) {
         note_edit = v;
-        note_msg = if len(v) > 200 { "A note has at most 200 characters (" + len(v) + " now)." } else { "" };
-        note_tone = if len(note_msg) > 0 { "error" } else { "" };
-        edit_blocked = len(status_msg) > 0 || len(note_msg) > 0 || len(selected) == 0;
+        edit_blocked = len(status_msg) > 0 || len(selected) == 0;
     }
 
     on Save {
@@ -158,9 +152,9 @@ component Tickets {
                 when: !signed
                 Column {
                     Text { role: heading "Sign in" }
-                    TextField { label: "User name" value: user on: User }
+                    TextField { label: "User name" value: user on: User autocomplete: "username" name: "username" }
                     Text { role: status tone: user_tone "{user_msg}" }
-                    TextField { label: "Password" value: pass on: Pass submit: SignIn type: "password" }
+                    TextField { label: "Password" value: pass on: Pass submit: SignIn type: "password" autocomplete: "current-password" name: "password" }
                     Text { role: status tone: pass_tone "{pass_msg}" }
                     Button { label: "Sign in" on: SignIn disabled: blocked }
                     Text { role: status "{signin_msg}" }
@@ -196,8 +190,7 @@ component Tickets {
                             Text { role: heading "Order {selected}: {title}" }
                             TextField { label: "Status (open, doing or done)" value: status_edit on: Status }
                             Text { role: status tone: status_tone "{status_msg}" }
-                            TextField { label: "Note" value: note_edit on: NoteEdit submit: Save }
-                            Text { role: status tone: note_tone "{note_msg}" }
+                            TextField { label: "Note (at most 200 characters)" value: note_edit on: NoteEdit submit: Save maxlength: 200 }
                             Button { label: "Save" on: Save disabled: edit_blocked }
                             Text { role: status tone: saved_tone "{save_msg}" }
                         }

@@ -1,0 +1,43 @@
+{
+  "accepted": [
+    { "binding": "autocomplete: \"username\"", "attr": "autocomplete", "value": "username" },
+    { "binding": "autocomplete: \"current-password\"", "attr": "autocomplete", "value": "current-password" },
+    { "binding": "autocomplete: \"new-password\"", "attr": "autocomplete", "value": "new-password" },
+    { "binding": "autocomplete: \"one-time-code\"", "attr": "autocomplete", "value": "one-time-code" },
+    { "binding": "autocomplete: \"off\"", "attr": "autocomplete", "value": "off" },
+    { "binding": "inputmode: \"numeric\"", "attr": "inputmode", "value": "numeric" },
+    { "binding": "inputmode: \"email\"", "attr": "inputmode", "value": "email" },
+    { "binding": "inputmode: \"none\"", "attr": "inputmode", "value": "none" },
+    { "binding": "maxlength: 1", "attr": "maxlength", "value": "1" },
+    { "binding": "maxlength: 200", "attr": "maxlength", "value": "200" },
+    { "binding": "maxlength: 100000", "attr": "maxlength", "value": "100000" },
+    { "binding": "name: \"username\"", "attr": "name", "value": "username" },
+    { "binding": "name: \"user.name_2-x\"", "attr": "name", "value": "user.name_2-x" }
+  ],
+  "refused": [
+    { "binding": "autocomplete: \"usernme\"", "rule": "input-attribute-invalid" },
+    { "binding": "autocomplete: \"shipping given-name\"", "rule": "input-attribute-invalid" },
+    { "binding": "autocomplete: \"USERNAME\"", "rule": "input-attribute-invalid" },
+    { "binding": "autocomplete: \"\"", "rule": "input-attribute-invalid" },
+    { "binding": "autocomplete: u", "rule": "parse-unexpected-token" },
+    { "binding": "inputmode: \"number\"", "rule": "input-attribute-invalid" },
+    { "binding": "inputmode: \"\"", "rule": "input-attribute-invalid" },
+    { "binding": "inputmode: 3", "rule": "input-attribute-invalid" },
+    { "binding": "maxlength: 0", "rule": "input-attribute-invalid" },
+    { "binding": "maxlength: 100001", "rule": "input-attribute-invalid" },
+    { "binding": "maxlength: \"20\"", "rule": "input-attribute-invalid" },
+    { "binding": "maxlength: u", "rule": "parse-unexpected-token" },
+    { "binding": "name: \"1st\"", "rule": "input-attribute-invalid" },
+    { "binding": "name: \"a b\"", "rule": "input-attribute-invalid" },
+    { "binding": "name: \"\"", "rule": "input-attribute-invalid" },
+    { "binding": "name: \"a\\\"b\"", "rule": "input-attribute-invalid" }
+  ],
+  "typing": [
+    { "why": "typing stops at the limit", "maxlength": 5, "how": "type", "typed": "abcdefgh", "received": "abcde" },
+    { "why": "a value set as a whole is cut at the limit", "maxlength": 5, "how": "fill", "typed": "xyzxyzxyz", "received": "xyzxy" },
+    { "why": "pasted text is cut at the limit", "maxlength": 3, "how": "paste", "typed": "zzzzz", "received": "zzz" },
+    { "why": "a short value is not touched", "maxlength": 10, "how": "fill", "typed": "short", "received": "short" },
+    { "why": "the limit counts UTF-16 code units: an emoji is two", "maxlength": 3, "how": "type", "typed": "😀😀", "received": "😀" },
+    { "why": "a value of exactly the limit is kept", "maxlength": 4, "how": "fill", "typed": "abcd", "received": "abcd" }
+  ]
+}

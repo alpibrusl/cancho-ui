@@ -194,21 +194,9 @@
     {
       "event": "NoteEdit",
       "params": [
-        "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-      ],
-      "state": {
-        "note_msg": "A note has at most 200 characters (201 now).",
-        "note_tone": "error",
-        "edit_blocked": true
-      }
-    },
-    {
-      "event": "NoteEdit",
-      "params": [
         "probe replaced"
       ],
       "state": {
-        "note_msg": "",
         "edit_blocked": false
       }
     },
