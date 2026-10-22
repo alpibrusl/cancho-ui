@@ -104,6 +104,10 @@ Measured with `Pumpe Ünit` and `pumpe ünit`: searching `ünit` finds only the 
 the upper-case one. This is the deliberate stance of `docs/lists.md` section 1 (a page and its replay must agree), and it
 is wrong for names with accents, which is most of Europe. It needs a decided policy, not a workaround.
 
+> *Correction (#37):* the policy is decided and built: `fold(text)` is Unicode simple case folding from one table, and
+> `contains(fold(name), fold(q))` finds `Pumpe Ünit` for `ünit` and for `ÜNIT` (`docs/lists.md` section 10). `lower` and `upper`
+> stay ASCII only.
+
 ### 2.7 No per-row action, no dynamic label. Issue #41
 
 `Button { label: m on: Pick(m) }` is `parse-unexpected-token`: a button's label must be a **string literal**, and `on:` takes
