@@ -217,6 +217,20 @@ impl Serialize for IrStmt {
                 s.serialize_field("span", &IrSpan::from(*span))?;
                 s.end()
             }
+            IrStmt::If {
+                cond,
+                then,
+                else_,
+                span,
+            } => {
+                use serde::ser::SerializeStruct;
+                let mut s = ser.serialize_struct("IrStmt::If", 4)?;
+                s.serialize_field("cond", cond)?;
+                s.serialize_field("then", then)?;
+                s.serialize_field("else", else_)?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
         }
     }
 }

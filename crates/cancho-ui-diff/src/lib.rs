@@ -209,10 +209,12 @@ fn facets(c: &IrComponent) -> Facets {
         if f.params.is_empty() {
             f.params = e.params.clone();
         }
-        for s in &e.body {
+        for s in IrStmt::leaves(&e.body) {
             if let IrStmt::Assign { target, .. } = s {
                 f.writes.insert(target.clone());
             }
+        }
+        for s in &e.body {
             f.body.push(render::stmt(s));
         }
     }

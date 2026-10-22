@@ -107,6 +107,21 @@ pub fn stmt(s: &IrStmt) -> String {
     match s {
         IrStmt::Assign { target, value, .. } => format!("{target} = {};", expr(value)),
         IrStmt::Expr { expr: e, .. } => format!("{};", expr(e)),
+        IrStmt::If {
+            cond, then, else_, ..
+        } => {
+            let body = |stmts: &[IrStmt]| stmts.iter().map(stmt).collect::<Vec<_>>().join(" ");
+            if else_.is_empty() {
+                format!("if {} {{ {} }}", expr(cond), body(then))
+            } else {
+                format!(
+                    "if {} {{ {} }} else {{ {} }}",
+                    expr(cond),
+                    body(then),
+                    body(else_)
+                )
+            }
+        }
     }
 }
 

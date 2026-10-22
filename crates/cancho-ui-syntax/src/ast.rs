@@ -51,6 +51,8 @@ pub struct Component {
     /// `start Event;` and `every <ms> Event;` (docs/schedules.md), in the order written.
     pub schedules: Vec<Schedule>,
     pub events: Vec<EventHandler>,
+    /// `block Name { .. }` (docs/handler-sequences.md): a named sequence of statements that handlers `run`.
+    pub blocks: Vec<BlockDecl>,
     pub view: ViewBlock,
     pub span: Span,
 }
@@ -83,6 +85,15 @@ pub struct CapabilityRef {
     pub name: String,
     /// `requires Network("a.example", "b.example:8443")`: the string-literal bounds, in order (docs/adapters.md 10).
     pub bounds: Vec<String>,
+    pub span: Span,
+}
+
+/// `block Name { stmts }`: statements written once and run by name from handlers, other blocks and branches. It has no
+/// parameters and is replaced by its statements where it is run (docs/handler-sequences.md section 5).
+#[derive(Debug, Clone, PartialEq)]
+pub struct BlockDecl {
+    pub name: String,
+    pub body: StmtBlock,
     pub span: Span,
 }
 
@@ -296,6 +307,17 @@ pub enum Stmt {
     },
     /// `expr;` — expression statement (e.g. `net.search(query);`).
     Expr { expr: Expr, span: Span },
+    /// `if cond { stmts } else { stmts }` (docs/handler-sequences.md): the statement form. `else_` is empty without an
+    /// `else`, and holds the one nested `if` for an `else if`. The branches may hold effects and `await`; the condition is
+    /// pure.
+    If {
+        cond: Expr,
+        then: Vec<Stmt>,
+        else_: Vec<Stmt>,
+        span: Span,
+    },
+    /// `run Name;`: the statements of the block `Name`.
+    Run { name: String, span: Span },
 }
 
 #[derive(Debug, Clone, PartialEq)]

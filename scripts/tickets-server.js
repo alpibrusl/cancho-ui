@@ -25,7 +25,7 @@ function orders() {
 function createServer(dir, behaviour) {
   const data = orders();
   const sessions = new Set();
-  const log = { logins: [], saves: [], gets: 0 };
+  const log = { logins: [], saves: [], gets: 0, orderRequests: 0 };
   const held = [];
   const cookieOf = (req) => (req.headers.cookie || '').split(';').map((c) => c.trim()).find((c) => c.startsWith('sid='));
   const signedIn = (req) => { const c = cookieOf(req); return !!c && sessions.has(c.slice(4)); };
@@ -58,6 +58,7 @@ function createServer(dir, behaviour) {
           answer(200, 'bye', { 'set-cookie': 'sid=; Max-Age=0; Path=/' });
           return;
         }
+        if (url === '/api/orders') { log.orderRequests++; }
         if (!signedIn(req)) { answer(401, 'sign in first'); return; }
         if (url === '/api/orders' && req.method === 'GET') {
           log.gets++;

@@ -140,6 +140,11 @@ operator is a `NaN` and so `replay-non-finite`), a name that is not there. The r
 * **Cancellation is not a fault**: a superseded await drops the rest of the handler (`Cancelled` path, Q5) and the writes
   before the await stay. **A failed `net.*` call is not a fault**: it answers `Err(..)`, which the program matches.
 * **Effects are not undone**: a `storage.set` already performed and a request already issued stay.
+* **The page paints before every suspension** (corrected 2026-10-22, #93). The segment bullet above has always said that what
+  the handler wrote is painted when it suspends; the page did so before the *first* awaiting statement only, so the state set
+  before a second `await` (a sign-in message before the request for the orders) reached the screen when the handler ended.
+  Measured by `tests/stmt_if_corpus.json` (case 2, `scripts/check-handler-seq.js`); the page now draws before each awaiting
+  statement, at any depth, except one that starts the handler (nothing has been written yet).
 * **Why this rule and not "keep what was written"**: both evaluators can meet it at one small cost (a handler that writes
   and has a later statement keeps a copy of the fields it writes: an array of at most a handful of values, taken at its
   start and after each awaiting statement, and put back only on a fault; a one-statement handler carries nothing), it makes

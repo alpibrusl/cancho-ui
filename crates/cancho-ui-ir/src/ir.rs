@@ -120,6 +120,33 @@ pub enum IrStmt {
         expr: IrExpr,
         span: Span,
     },
+    /// `if cond { then } else { else_ }` as a statement (docs/handler-sequences.md). The condition is pure (lowering
+    /// refuses an effect or an `await` in it: `if-effect-in-expression`); the branches hold statements, effects and
+    /// `await` included. `else_` is empty without an `else` and holds the one nested `If` for an `else if`. A `run` of a
+    /// block is already replaced by the block's statements.
+    If {
+        cond: IrExpr,
+        then: Vec<IrStmt>,
+        else_: Vec<IrStmt>,
+        span: Span,
+    },
+}
+
+impl IrStmt {
+    /// Every assignment and expression statement under `stmts`, in source order, going into the branches of an `If`.
+    pub fn leaves(stmts: &[IrStmt]) -> Vec<&IrStmt> {
+        let mut out = Vec::new();
+        for s in stmts {
+            match s {
+                IrStmt::If { then, else_, .. } => {
+                    out.extend(IrStmt::leaves(then));
+                    out.extend(IrStmt::leaves(else_));
+                }
+                leaf => out.push(leaf),
+            }
+        }
+        out
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

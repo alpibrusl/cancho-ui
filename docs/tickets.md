@@ -29,9 +29,10 @@ an order is picked. They were lists of zero or one element drawn with `For` unti
 - **Edit.** `Status` and `NoteEdit` validate; `Save` posts the change and
   shows the outcome. `SignOut` returns to the first screen.
 
-Trace: `examples/tickets/tickets.trace.json`, 29 steps, 73 checks, run by
-`cancho-ui test`. Its last three steps fire a control of a screen that is not in the page (`hidden`). It includes step 6, where the orders request is still
-issued after a 401 sign-in (#93).
+Trace: `examples/tickets/tickets.trace.json`, 28 steps, 72 checks, run by
+`cancho-ui test`. Its last three steps fire a control of a screen that is not in the page (`hidden`). Step 6, the 401 of a
+wrong password, issues nothing more: `SignIn` runs the block that reads the orders only `if signed`, and `Save` runs the same
+block (`block LoadOrders`, written once).
 
 ## 3. Gaps found
 
@@ -42,7 +43,7 @@ Each has a measured reproduction in its issue.
 | ~~A view has no conditional; screens are zero-or-one-element lists~~ | #90, closed by `If { when: .. }` |
 | TextField `autocomplete`, `maxlength`, `inputmode`, `name` are not bindings | #91 |
 | Focus falls to BODY after sign-in and sign-out; nothing announces the screen change | #92 |
-| Handlers cannot share a sequence or make a request conditionally (the orders request is written three times and runs after a failed sign-in) | #93 |
+| ~~Handlers cannot share a sequence or make a request conditionally (the orders request is written twice and runs after a failed sign-in)~~ | #93, closed by the statement `if` and `block`/`run` (`docs/handler-sequences.md`) |
 | A status Text with a tone draws its mark when empty | #94 |
 | `json.get(reply, "status", "") == 200` (String against number) is accepted and always false | #95 |
 | The password field is `type=text` in the built page (`type: "password"` is `binding-unknown`) | #76, #83 |

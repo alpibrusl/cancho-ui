@@ -69,12 +69,42 @@ pub enum Status {
     Resolved,
 }
 
+/// The statement `pc` points at, or `None` when it points past the end of its block.
+fn at<'a>(body: &'a [IrStmt], pc: &[usize]) -> Option<&'a IrStmt> {
+    let mut block = body;
+    let mut k = 0;
+    loop {
+        let s = block.get(*pc.get(k)?)?;
+        if k + 1 == pc.len() {
+            return Some(s);
+        }
+        let IrStmt::If { then, else_, .. } = s else {
+            return None;
+        };
+        block = if *pc.get(k + 1)? == 0 { then } else { else_ };
+        k += 2;
+    }
+}
+
+/// Move `pc` out of every block it has run off the end of, onto the statement after the `if` that held it, until it points at
+/// a statement or past the end of the body.
+fn settle(body: &[IrStmt], pc: &mut Vec<usize>) {
+    while at(body, pc).is_none() && pc.len() >= 3 {
+        pc.truncate(pc.len() - 2);
+        if let Some(last) = pc.last_mut() {
+            *last += 1;
+        }
+    }
+}
+
 /// A handler waiting on a request.
 #[derive(Debug, Clone)]
 struct Task {
     handler: usize,
     params: Vec<(String, Value)>,
-    stmt: usize,
+    /// Where the handler is, as a path through its nested statements (`at`, `settle`): `[i]` is the `i`th statement of the
+    /// body; `[i, b, j]` is the `j`th statement of the `then` (`b` = 0) or `else` (`b` = 1) branch of the `if` that is the `i`th.
+    pc: Vec<usize>,
     journal: Journal,
 }
 
@@ -301,7 +331,7 @@ impl<'a> Machine<'a> {
         let task = Task {
             handler,
             params: names.iter().cloned().zip(params).collect(),
-            stmt: 0,
+            pc: vec![0],
             journal: Journal::default(),
         };
         self.run(task, fx, false)
@@ -604,7 +634,7 @@ impl<'a> Machine<'a> {
         Ok(outcome)
     }
 
-    /// Run a handler from `task.stmt` until it completes, suspends or faults.
+    /// Run a handler from `task.pc` until it completes, suspends or faults.
     ///
     /// A handler is atomic between its commit points (docs/semantics.md, "A handler that faults"): the start of the
     /// handler, and the end of each statement that awaited. A fault undoes the writes made since the last commit point
@@ -626,7 +656,8 @@ impl<'a> Machine<'a> {
             Some((self.state.clone(), fx.writes.len()))
         };
         loop {
-            let Some(stmt) = handler.body.get(task.stmt) else {
+            settle(&handler.body, &mut task.pc);
+            let Some(stmt) = at(&handler.body, &task.pc) else {
                 return Ok(Outcome::Completed);
             };
             task.journal.rewind();
@@ -646,10 +677,29 @@ impl<'a> Machine<'a> {
                     IrStmt::Assign { value, .. } | IrStmt::Expr { expr: value, .. } => {
                         eval(&mut ctx, value)
                     }
+                    IrStmt::If { cond, span, .. } => eval(&mut ctx, cond).and_then(|v| match v {
+                        Value::Bool(_) => Ok(v),
+                        other => Err(Stop::Fault(Fault {
+                            rule: "replay-type-error",
+                            message: format!(
+                                "the condition of an `if` statement needs a bool, got {}",
+                                crate::eval::describe(&other)
+                            ),
+                            span: *span,
+                        })),
+                    }),
                 }
             };
             match result {
                 Ok(v) => {
+                    if let IrStmt::If { .. } = stmt {
+                        // The branch is chosen here, once: a handler that resumes inside it does not read the condition again.
+                        let branch = usize::from(v != Value::Bool(true));
+                        task.pc.push(branch);
+                        task.pc.push(0);
+                        task.journal.clear();
+                        continue;
+                    }
                     if let IrStmt::Assign { target, span, .. } = stmt {
                         if !self.state.contains_key(target) {
                             return Err(self.undo(
@@ -670,13 +720,16 @@ impl<'a> Machine<'a> {
                             span: *span,
                         });
                     }
-                    task.stmt += 1;
+                    if let Some(last) = task.pc.last_mut() {
+                        *last += 1;
+                    }
                     task.journal.clear();
                     // A statement that awaited ends a segment: what it wrote is committed.
                     let awaited = match stmt {
                         IrStmt::Assign { value, .. } | IrStmt::Expr { expr: value, .. } => {
                             ir_expr_suspends(value)
                         }
+                        IrStmt::If { .. } => false,
                     };
                     if awaited {
                         commit = Some((self.state.clone(), fx.writes.len()));
