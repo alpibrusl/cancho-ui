@@ -143,6 +143,7 @@ in `examples/refusal/`, and by the evidence report.
 | `block-name-conflict` | `Component` | `Error` | `Static` | A `block` named like a state field or an event of the component. *(Built 2026-10-22, issue #93.)* |
 | `block-cycle` | `Component` | `Error` | `Static` | A `block` that runs itself, directly or through other blocks: its expansion would never end. *(Built 2026-10-22, issue #93.)* |
 | `block-expansion-too-large` | `Component` | `Error` | `Static` | A handler or block that has more than 10,000 statements once its `run`s are replaced (blocks that run blocks several times multiply). *(Built 2026-10-22, issue #93.)* |
+| `input-type-invalid` | `Component` | `Error` | `Static` | A `type:` on a `TextField` that is not one of `text`, `password`, `email`, `search`, `tel`, `url` written as a string literal (a state field, `number`, `checkbox`, `PASSWORD`). `type:` on anything but a `TextField` is `binding-unknown`. *(Built 2026-10-22, issue #76, `docs/controls.md` section 5.)* |
 | `parse-nesting-too-deep` | `Component` | `Error` | `Static` | `if` statements nested more than 32 deep: a parse error, not a stack overflow. Only statements are limited so far; see alpibrusl/cancho-ui#99 for expressions and views. *(Built 2026-10-22, issue #93.)* |
 | `table-child-invalid` | `Component` | `Error` | `Static` | A `Table` child that is not a `Row` or a `For` that makes `Row`s. *(Built 2026-10-21, issue #42, section 4.)* |
 | `capability-missing` | `Capability` | `Error` | `Static` | A component using an effect without `requires Capability` |

@@ -160,7 +160,7 @@ component Tickets {
                     Text { role: heading "Sign in" }
                     TextField { label: "User name" value: user on: User }
                     Text { role: status tone: user_tone "{user_msg}" }
-                    TextField { label: "Password" value: pass on: Pass submit: SignIn }
+                    TextField { label: "Password" value: pass on: Pass submit: SignIn type: "password" }
                     Text { role: status tone: pass_tone "{pass_msg}" }
                     Button { label: "Sign in" on: SignIn disabled: blocked }
                     Text { role: status "{signin_msg}" }

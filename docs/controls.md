@@ -100,9 +100,54 @@ submitting (3), the auto-repeat guard removed (2; **the first version of the che
 disabled button already stops the repeats; the extra event with nothing disabling it kills it, and so does the `Tab`/letter check
 for "any key").
 
-## 5. Not done
+## 5. `type:`, the kind of text a field holds (issue #76, first part)
+
+> **Status: BUILT** for `type:`. The other parts of #76 (a checkbox, a choice, a text area, an invalid state) are not built; see
+> section 6.
+
+**Measured before** (`cancho-ui check` on a one-element program): `TextField { .. type: "password" }` was
+`error[binding-unknown]: type: is not a binding of TextField`, so the password of a sign-in form (`examples/tickets`) was typed
+in the clear, with `type=text` in the built page (`docs/tickets.md` section 3).
+
+**The form.** `TextField { label: "Password" value: pass on: Pass type: "password" }`. `type:` is a binding of a `TextField`
+only (`binding-unknown` on anything else) and takes one of `text` (the default), `password`, `email`, `search`, `tel`, `url`, as
+a string literal; anything else, including a state field, is `input-type-invalid`. The emitted page sets that `type` attribute
+and nothing more: the value the handler receives is the string the browser reports, as for `text`.
+
+**Why not `number`, a date, a checkbox.** Those give the handler something other than what is on the screen, or are another
+control. Measured in Chromium (`scripts/check-input-types.js`, the compiler's own text field with only its type attribute
+changed after the build): typing `1e5` key by key into a number field ends holding `5`. A number field answers `""` while what is
+typed is not yet a number, and the page draws the field again from the state at every key (`docs/semantics.md`, the view is a
+function of the state), so the half-typed text is wiped. The six types offered are all one line of text.
+
+**What each type does to the value, and what replay does.** Replay does not draw the field, and a trace gives the event its
+parameter directly, so the trace of a field gives the value *the browser would report*. Measured
+(`tests/input_types_corpus.json`, typed into a field of each type in Chromium and replayed by `cargo test` with the `received`
+value): `text`, `password`, `search` and `tel` keep what is typed, spaces included; `email` and `url` drop the whitespace around it
+(`"  ada@example.org  "` arrives as `"ada@example.org"`), and keep text that is not an address. A trace for an `email` field that
+gives `"  ada@example.org  "` is a trace of a page that does not exist.
+
+**What the browser does with it** (measured, same script): the attribute is on the element; the field is masked
+(`-webkit-text-security: disc`); typed key by key through the re-render every key causes, a password field keeps its type, the
+focus and every character. The password is in the program's state like any other string: `type: "password"` hides it on the
+screen and tells a browser and a password manager what the field is, and does not change how the program may use it (the
+`cancho-ui test` report prints state values, so a trace should not hold a real password).
+
+**Rule tag.** `input-type-invalid` (`spec/diagnostics/README.md`). **Deliberate breaks** (`scripts/breaks/input-types.json`): see
+the file; each is caught.
+
+**`examples/tickets`** sets `type: "password"` on its password field; `scripts/check-tickets.js` asserts the attribute (the note
+that recorded the gap is a check now). The gallery's "Sign-in flow" tile (#83) named three things: a password input (this), a
+screen to move to after signing in (`docs/view-conditional.md`), and a place for what a login returns (a cookie the service sets,
+as in `examples/tickets`, or a state field). Its probe now passes, so `check-gallery.js` R5 failed and the tile was removed;
+there is no tickets demo in the gallery, because the static host has no login route and the demo could only show a refused
+sign-in.
+
+## 6. Not done
 
 `disabled:` on an expression (`disabled: len(q) == 0`: the language has no `&&`, `||` or `!` and no Bool expression binding,
 issue #40), `aria-busy` for an in-flight request, a disabled state for the children of a component instance, the refusal
 `accessibility-keyboard-missing` for a form with no keyboard path, and `submit:` on anything but a `TextField` (a `Button` already
-fires on Enter and Space natively).
+fires on Enter and Space natively). From #76: `Checkbox` (a `Bool`), `Select` (over a list), `TextArea`, `invalid:` (`aria-invalid`) and
+tying a message to its field (`aria-describedby`); `number`, date and the other input types (section 5). From #91: `autocomplete`,
+`maxlength`, `inputmode`, `name` (the next change).

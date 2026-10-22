@@ -19,7 +19,12 @@ pub const ELEMENT_KEYS: &[&str] = &[
     "tone",
     "gap",
     "max_width",
+    "type",
 ];
+
+/// The `type:` of a `TextField` (docs/controls.md section 5): the HTML input types that hold one line of text and give the
+/// handler a string. `number` is left out on purpose (measured: `1e5` typed key by key ends as `5`).
+pub const INPUT_TYPES: &[&str] = &["text", "password", "email", "search", "tel", "url"];
 
 /// The tones of a status text (docs/presentation.md section 3).
 pub const TONES: &[&str] = &["ok", "warn", "error"];
@@ -181,6 +186,31 @@ fn check_tone(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<()
     }
 }
 
+/// `type:` is a binding of a `TextField` and takes one of `INPUT_TYPES` as a string literal.
+fn check_input_type(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
+    if !matches!(kind, IrElementKind::TextField) {
+        return Err(LowerError::ControlRefused {
+            code: "binding-unknown",
+            message: format!(
+                "`type:` is a binding of TextField (`type: \"password\"`), not of {}",
+                element_name(kind)
+            ),
+            span: b.span,
+        });
+    }
+    match &b.value {
+        IrBindingValue::String(s) if INPUT_TYPES.contains(&s.as_str()) => Ok(()),
+        _ => Err(LowerError::ControlRefused {
+            code: "input-type-invalid",
+            message: format!(
+                "`type:` takes one of {} as a string literal; `number` is not one (a number field answers an empty string until what is typed is a number, and the page draws the field again at every key, so `1e5` typed key by key ends as `5`), and a checkbox, a choice or a date is a different control",
+                INPUT_TYPES.join(", ")
+            ),
+            span: b.span,
+        }),
+    }
+}
+
 /// `gap:` and `max_width:` are bindings of a `Column` or a `Row`, and take an integer literal in a fixed range.
 fn check_layout(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
     if !matches!(kind, IrElementKind::Column | IrElementKind::Row) {
@@ -240,6 +270,9 @@ fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result
     }
     if b.key == "gap" || b.key == "max_width" {
         check_layout(kind, b)?;
+    }
+    if b.key == "type" {
+        check_input_type(kind, b)?;
     }
     if b.key == "submit" {
         if !matches!(kind, IrElementKind::TextField) {

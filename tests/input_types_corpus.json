@@ -1,0 +1,9 @@
+[
+  { "why": "text keeps what is typed, spaces included", "type": "text", "typed": "  ada lovelace  ", "received": "  ada lovelace  " },
+  { "why": "a password is not trimmed or changed", "type": "password", "typed": "  hunter 22!  ", "received": "  hunter 22!  " },
+  { "why": "an email address loses the whitespace around it", "type": "email", "typed": "  ada@example.org  ", "received": "ada@example.org" },
+  { "why": "an email field keeps text that is not an address", "type": "email", "typed": "not an address", "received": "not an address" },
+  { "why": "search keeps what is typed", "type": "search", "typed": "  two words ", "received": "  two words " },
+  { "why": "a telephone number keeps its spaces", "type": "tel", "typed": " +34 600 000 000 ", "received": " +34 600 000 000 " },
+  { "why": "a url loses the whitespace around it", "type": "url", "typed": "  https://example.org/a b  ", "received": "https://example.org/a b" }
+]
