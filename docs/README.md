@@ -66,6 +66,7 @@ does not force premature changes to cancho Core.
 | **Platform model** | Web-first decision record, mobile-backend candidates | [`platform-model.md`](platform-model.md) |
 | **Typed UI IR** | Component, state, event, effect, capability, lifecycle representation | [`../spec/ir-schema/README.md`](../spec/ir-schema/README.md) |
 | **Adapters** | `Storage` (with `Storage("ns")`), `Network` (`net.get`, with `Network("host")`) and `Location`, built: the calls, what each guards, replay, what is not built | [`adapters.md`](adapters.md) |
+| **Gallery** | The landing page's gallery: seven live demos built from `examples/` and ten "coming soon" tiles that each link the issue tracking the gap. `docs/gallery.json` is the manifest; `node scripts/build-gallery.js` rebuilds the demos and the section; `node scripts/check-gallery.js` checks it (and `--self-test` breaks it on purpose) | [`gallery.json`](gallery.json) |
 | **Mobile** | The mobile decision (an installable web app, fewest dependencies), what `build --pwa` writes, what is and is not built, and how it is checked | [`mobile-backend.md`](mobile-backend.md) |
 | **Semantic diff** | What `cancho-ui diff` compares, its JSON shape, exit codes, and what it does not claim | [`semantic-diff.md`](semantic-diff.md) |
 | **Schedules** | `start Event;` and `every N Event;`: when they run, skip-not-queue, disposal, replay and diff | [`schedules.md`](schedules.md) |
