@@ -198,6 +198,10 @@ that is well-defined; everything else is a refusal, not a guess:
   `Infinity`/`NaN` are not part of the language. The emitted page refuses the
   same results (it throws an `Error` starting `replay-non-finite`, and the handler
   stops there): `docs/semantics.md`, "Arithmetic is finite".
+- `&&`, `||`, `!` and `if cond { a } else { b }` (docs/conditionals.md): operands and conditions must be bools
+  (`replay-type-error` otherwise: no JavaScript truthiness). `&&`/`||` evaluate the right side only when the left does not decide,
+  and an `if` evaluates only the branch it takes, as JavaScript's `&&`, `||` and `?:` do, so `b != 0 && a / b > 1` is a value for
+  `b = 0`, not a `replay-non-finite`.
 - `==`/`!=` (strict `===`/`!==`) on numbers, strings and bools. On lists and
   variants JavaScript compares *references*; replay does not model references and
   refuses (`replay-type-error`) rather than say `false`.

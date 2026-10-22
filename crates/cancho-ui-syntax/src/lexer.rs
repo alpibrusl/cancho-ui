@@ -23,6 +23,8 @@ pub enum Token {
     Let,
     Match,
     Await,
+    If,
+    Else,
 
     // Punctuation
     LBrace,   // {
@@ -49,6 +51,9 @@ pub enum Token {
     LtEq,     // <=
     Gt,       // >
     GtEq,     // >=
+    AmpAmp,   // &&
+    PipePipe, // ||
+    Bang,     // !
 
     // Literals and identifiers
     Ident(String),
@@ -75,6 +80,8 @@ impl Token {
                 | Token::Let
                 | Token::Match
                 | Token::Await
+                | Token::If
+                | Token::Else
         )
     }
 }
@@ -312,8 +319,30 @@ impl Lexer {
                     self.bump();
                     Ok(Token::BangEq)
                 } else {
+                    Ok(Token::Bang)
+                }
+            }
+            '&' => {
+                self.bump();
+                if self.peek() == Some('&') {
+                    self.bump();
+                    Ok(Token::AmpAmp)
+                } else {
                     Err(LexError::UnexpectedChar {
-                        ch: '!',
+                        ch: '&',
+                        line: self.line,
+                        column: self.column,
+                    })
+                }
+            }
+            '|' => {
+                self.bump();
+                if self.peek() == Some('|') {
+                    self.bump();
+                    Ok(Token::PipePipe)
+                } else {
+                    Err(LexError::UnexpectedChar {
+                        ch: '|',
                         line: self.line,
                         column: self.column,
                     })
@@ -461,6 +490,8 @@ impl Lexer {
             "let" => Token::Let,
             "match" => Token::Match,
             "await" => Token::Await,
+            "if" => Token::If,
+            "else" => Token::Else,
             // Note: `Text`, `Column`, `Row`, `Button` are
             // intentionally NOT keywords. They are element kinds
             // in the parser, and an agent or human is free to

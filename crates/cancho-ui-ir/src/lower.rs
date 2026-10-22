@@ -137,6 +137,15 @@ pub enum LowerError {
     )]
     UnknownCall { name: String, span: Span },
 
+    /// A refusal about `if`, `&&`, `||` or `!` (docs/conditionals.md): `code` is the rule tag (`if-else-required`,
+    /// `if-effect-in-expression`, `condition-not-bool`, `if-branch-type-mismatch`).
+    #[error("{message}")]
+    ConditionRefused {
+        code: &'static str,
+        message: String,
+        span: Span,
+    },
+
     /// A refusal about the bindings of a built-in element (docs/controls.md): `code` is the rule tag
     /// (`binding-unknown`, `disabled-not-bool`).
     #[error("{message}")]
@@ -196,6 +205,7 @@ pub fn lower_file(file: &File) -> Result<IrFile, LowerError> {
         components,
     };
     crate::controls::check_controls(&ir)?;
+    crate::conditions::check_conditions(&ir)?;
     check_capabilities(&ir)?;
     check_match_exhaustiveness(&ir)?;
     Ok(ir)
@@ -718,6 +728,45 @@ fn lower_expr_with_effects(e: &Expr) -> Result<(IrExpr, Vec<IrReachableEffect>),
                 e,
             ))
         }
+        Expr::If {
+            cond,
+            then,
+            else_,
+            span,
+        } => {
+            let Some(else_) = else_ else {
+                return Err(LowerError::ConditionRefused {
+                    code: "if-else-required",
+                    message: "an `if` is an expression and has a value on both sides: write `if cond { a } else { b }` (a statement form with no `else` is not built)".into(),
+                    span: *span,
+                });
+            };
+            let (ir_cond, mut effects) = lower_expr_with_effects(cond)?;
+            let (ir_then, mut e) = lower_expr_with_effects(then)?;
+            effects.append(&mut e);
+            let (ir_else, mut e) = lower_expr_with_effects(else_)?;
+            effects.append(&mut e);
+            if !effects.is_empty()
+                || ir_expr_suspends(&ir_cond)
+                || ir_expr_suspends(&ir_then)
+                || ir_expr_suspends(&ir_else)
+            {
+                return Err(LowerError::ConditionRefused {
+                    code: "if-effect-in-expression",
+                    message: "an `if` is pure: its condition and branches may not call an effect (`net.*`, `storage.*`, `clock.*`, `location.*`), `sleep` or `await(..)`; the set of effects a handler issues would then depend on a value the replay trace has to supply".into(),
+                    span: *span,
+                });
+            }
+            Ok((
+                IrExpr::If {
+                    cond: Box::new(ir_cond),
+                    then: Box::new(ir_then),
+                    else_: Box::new(ir_else),
+                    span: *span,
+                },
+                effects,
+            ))
+        }
         Expr::Match {
             scrutinee,
             arms,
@@ -1092,12 +1141,15 @@ fn lower_binop(op: BinOp) -> IrBinOp {
         BinOp::Le => IrBinOp::Le,
         BinOp::Gt => IrBinOp::Gt,
         BinOp::Ge => IrBinOp::Ge,
+        BinOp::And => IrBinOp::And,
+        BinOp::Or => IrBinOp::Or,
     }
 }
 
 fn lower_unop(op: UnOp) -> IrUnOp {
     match op {
         UnOp::Neg => IrUnOp::Neg,
+        UnOp::Not => IrUnOp::Not,
     }
 }
 
@@ -1407,6 +1459,13 @@ fn expr_matches<'a>(e: &'a IrExpr, out: &mut Vec<&'a IrExpr>) {
             expr_matches(rhs, out);
         }
         IrExpr::Unary { operand, .. } => expr_matches(operand, out),
+        IrExpr::If {
+            cond, then, else_, ..
+        } => {
+            expr_matches(cond, out);
+            expr_matches(then, out);
+            expr_matches(else_, out);
+        }
         IrExpr::Call { args, .. } => {
             for a in args {
                 expr_matches(a, out);
@@ -1545,6 +1604,9 @@ fn ir_expr_suspends(e: &IrExpr) -> bool {
         }
         IrExpr::Binary { lhs, rhs, .. } => ir_expr_suspends(lhs) || ir_expr_suspends(rhs),
         IrExpr::Unary { operand, .. } => ir_expr_suspends(operand),
+        IrExpr::If {
+            cond, then, else_, ..
+        } => ir_expr_suspends(cond) || ir_expr_suspends(then) || ir_expr_suspends(else_),
         IrExpr::Ok { value, .. } | IrExpr::Some { value, .. } => ir_expr_suspends(value),
         IrExpr::Err { reason, .. } => ir_expr_suspends(reason),
         IrExpr::ListLit { items, .. } => items.iter().any(ir_expr_suspends),
@@ -1564,6 +1626,9 @@ fn expr_contains_await(e: &IrExpr) -> bool {
         IrExpr::Await { .. } => true,
         IrExpr::Binary { lhs, rhs, .. } => expr_contains_await(lhs) || expr_contains_await(rhs),
         IrExpr::Unary { operand, .. } => expr_contains_await(operand),
+        IrExpr::If {
+            cond, then, else_, ..
+        } => expr_contains_await(cond) || expr_contains_await(then) || expr_contains_await(else_),
         IrExpr::Call { args, .. } => args.iter().any(expr_contains_await),
         IrExpr::Ok { value, .. } => expr_contains_await(value),
         IrExpr::Err { reason, .. } => expr_contains_await(reason),

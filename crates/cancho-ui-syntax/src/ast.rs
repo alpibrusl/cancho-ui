@@ -333,6 +333,15 @@ pub enum Expr {
         operand: Box<Expr>,
         span: Span,
     },
+    /// `if cond { a } else { b }` (docs/conditionals.md). `else_` is `None` when the source has no `else`: the parser
+    /// accepts it so that lowering can refuse it with its own rule (`if-else-required`) instead of a parse error.
+    /// `else if` is an `If` in `else_`.
+    If {
+        cond: Box<Expr>,
+        then: Box<Expr>,
+        else_: Option<Box<Expr>>,
+        span: Span,
+    },
     /// `match scrutinee { arms }`. Tier 6. Each arm has a pattern
     /// and a body; the body is a single expression for now. The
     /// arms' patterns must be exhaustive over the scrutinee's
@@ -454,6 +463,7 @@ impl Expr {
             | Expr::Call { span, .. }
             | Expr::Binary { span, .. }
             | Expr::Unary { span, .. }
+            | Expr::If { span, .. }
             | Expr::Match { span, .. }
             | Expr::Ok { span, .. }
             | Expr::Err { span, .. }
@@ -479,6 +489,8 @@ pub enum BinOp {
     Le,
     Gt,
     Ge,
+    And,
+    Or,
 }
 
 impl BinOp {
@@ -494,6 +506,8 @@ impl BinOp {
             BinOp::Le => "<=",
             BinOp::Gt => ">",
             BinOp::Ge => ">=",
+            BinOp::And => "&&",
+            BinOp::Or => "||",
         }
     }
 }
@@ -501,4 +515,5 @@ impl BinOp {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnOp {
     Neg,
+    Not,
 }

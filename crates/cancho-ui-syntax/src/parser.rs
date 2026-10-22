@@ -651,6 +651,8 @@ impl Parser {
                     | Token::LtEq
                     | Token::Gt
                     | Token::GtEq
+                    | Token::AmpAmp
+                    | Token::PipePipe
             )
         )
     }
@@ -659,6 +661,8 @@ impl Parser {
         let mut left = self.parse_unary()?;
         loop {
             let (op, prec) = match &self.peek().token {
+                Token::PipePipe => (BinOp::Or, 2),
+                Token::AmpAmp => (BinOp::And, 3),
                 Token::EqEq => (BinOp::Eq, 4),
                 Token::BangEq => (BinOp::Ne, 4),
                 Token::Lt => (BinOp::Lt, 4),
@@ -694,6 +698,9 @@ impl Parser {
         if matches!(self.peek().token, Token::Await) {
             return self.parse_await();
         }
+        if matches!(self.peek().token, Token::If) {
+            return self.parse_if();
+        }
         // `[a, b, c]` — a `List[T]` literal. Tier 8.
         if matches!(self.peek().token, Token::LBracket) {
             return self.parse_list_lit();
@@ -712,7 +719,51 @@ impl Parser {
                 span,
             });
         }
+        if matches!(self.peek().token, Token::Bang) {
+            self.bump();
+            let operand = self.parse_unary()?;
+            let span = Span::new(start, operand.span().end);
+            return Ok(Expr::Unary {
+                op: UnOp::Not,
+                operand: Box::new(operand),
+                span,
+            });
+        }
         self.parse_primary()
+    }
+
+    /// `if cond { a } else { b }` and `if cond { a } else if cond2 { b } else { c }` (docs/conditionals.md). A branch is
+    /// one expression in braces, as a `match` arm is. A missing `else` parses (as `None`) so that lowering refuses it
+    /// with `if-else-required` rather than as a parse error.
+    fn parse_if(&mut self) -> Result<Expr, ParseError> {
+        let kw = self.expect(Token::If)?;
+        let cond = self.parse_expr()?;
+        self.expect(Token::LBrace)?;
+        let then = self.parse_expr()?;
+        let then_close = self.expect(Token::RBrace)?;
+        let mut end = then_close.span.end;
+        let else_ = if matches!(self.peek().token, Token::Else) {
+            self.bump();
+            if matches!(self.peek().token, Token::If) {
+                let nested = self.parse_if()?;
+                end = nested.span().end;
+                Some(Box::new(nested))
+            } else {
+                self.expect(Token::LBrace)?;
+                let body = self.parse_expr()?;
+                let close = self.expect(Token::RBrace)?;
+                end = close.span.end;
+                Some(Box::new(body))
+            }
+        } else {
+            None
+        };
+        Ok(Expr::If {
+            cond: Box::new(cond),
+            then: Box::new(then),
+            else_,
+            span: Span::new(kw.span.start, end),
+        })
     }
 
     fn parse_await(&mut self) -> Result<Expr, ParseError> {
@@ -1429,7 +1480,7 @@ impl Parser {
                 Token::StringLit(_) => break,
                 Token::Ident(_) => break,
                 Token::On => break,
-                Token::Match => break,
+                Token::Match | Token::If => break,
                 other => {
                     return Err(ParseError::Unexpected {
                         expected: "accessibility key, binding, view node, or `}`",
@@ -1458,7 +1509,8 @@ impl Parser {
                 | Token::FloatLit(_)
                 | Token::LParen
                 | Token::Minus
-                | Token::Match => {
+                | Token::Match
+                | Token::If => {
                     children.push(self.parse_text_node()?);
                 }
                 Token::RBrace => {
@@ -1690,6 +1742,8 @@ fn token_kind_name(t: &Token) -> &'static str {
         Token::Let => "`let`",
         Token::Match => "`match`",
         Token::Await => "`await`",
+        Token::If => "`if`",
+        Token::Else => "`else`",
         Token::LBrace => "`{`",
         Token::RBrace => "`}`",
         Token::LParen => "`(`",
@@ -1712,6 +1766,9 @@ fn token_kind_name(t: &Token) -> &'static str {
         Token::LtEq => "`<=`",
         Token::Gt => "`>`",
         Token::GtEq => "`>=`",
+        Token::AmpAmp => "`&&`",
+        Token::PipePipe => "`||`",
+        Token::Bang => "`!`",
         Token::Ident(_) => "identifier",
         Token::StringLit(_) => "string literal",
         Token::IntLit(_) => "integer literal",

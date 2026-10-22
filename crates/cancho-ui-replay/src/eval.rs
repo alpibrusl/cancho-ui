@@ -181,6 +181,7 @@ pub fn span_of(e: &IrExpr) -> Span {
         | IrExpr::Call { span, .. }
         | IrExpr::Binary { span, .. }
         | IrExpr::Unary { span, .. }
+        | IrExpr::If { span, .. }
         | IrExpr::Match { span, .. }
         | IrExpr::Ok { span, .. }
         | IrExpr::Err { span, .. }
@@ -217,10 +218,39 @@ pub fn eval(ctx: &mut Ctx, e: &IrExpr) -> Result<Value, Stop> {
                 span,
             )),
         },
+        IrExpr::Unary {
+            op: IrUnOp::Not,
+            operand,
+            ..
+        } => Ok(Value::Bool(!boolean(&eval(ctx, operand)?, "`!`", span)?)),
+        // `&&` and `||` evaluate the right side only when the left does not decide the answer, as JavaScript does
+        // (docs/conditionals.md section 3.1); both operands must be a `Bool`, which JavaScript's own `&&` does not ask.
+        IrExpr::Binary {
+            op: op @ (IrBinOp::And | IrBinOp::Or),
+            lhs,
+            rhs,
+            ..
+        } => {
+            let name = if *op == IrBinOp::And { "`&&`" } else { "`||`" };
+            let l = boolean(&eval(ctx, lhs)?, name, span)?;
+            if l == (*op == IrBinOp::Or) {
+                return Ok(Value::Bool(l));
+            }
+            Ok(Value::Bool(boolean(&eval(ctx, rhs)?, name, span)?))
+        }
         IrExpr::Binary { op, lhs, rhs, .. } => {
             let l = eval(ctx, lhs)?;
             let r = eval(ctx, rhs)?;
             binary(*op, l, r, span)
+        }
+        IrExpr::If {
+            cond, then, else_, ..
+        } => {
+            if boolean(&eval(ctx, cond)?, "an `if` condition", span)? {
+                eval(ctx, then)
+            } else {
+                eval(ctx, else_)
+            }
         }
         IrExpr::Ok { value, .. } => Ok(Value::Ok(Box::new(eval(ctx, value)?))),
         IrExpr::Err { reason, .. } => Ok(Value::Err(Box::new(eval(ctx, reason)?))),
@@ -949,6 +979,18 @@ fn list_of(v: Value, what: &str, span: Span) -> Result<Vec<Value>, Stop> {
     }
 }
 
+/// A `Bool` and nothing else: `!`, `&&`, `||` and an `if` condition do not use JavaScript's truthiness.
+fn boolean(v: &Value, what: &str, span: Span) -> Result<bool, Stop> {
+    match v {
+        Value::Bool(b) => Ok(*b),
+        other => Err(fault(
+            "replay-type-error",
+            format!("{what} needs a bool, got {}", describe(other)),
+            span,
+        )),
+    }
+}
+
 fn truthy(v: &Value, span: Span) -> Result<bool, Stop> {
     match v {
         Value::Bool(b) => Ok(*b),
@@ -1105,6 +1147,12 @@ fn binary(op: IrBinOp, l: Value, r: Value, span: Span) -> Result<Value, Stop> {
             };
             Ok(Value::Bool(same == (op == Eq)))
         }
+        And | Or => match (&l, &r) {
+            (Value::Bool(a), Value::Bool(b)) => {
+                Ok(Value::Bool(if op == And { *a && *b } else { *a || *b }))
+            }
+            _ => Err(operands(if op == And { "&&" } else { "||" }, &l, &r, span)),
+        },
         Lt | Le | Gt | Ge => {
             let ord = match (&l, &r) {
                 (Value::Num(a), Value::Num(b)) => a.partial_cmp(b),

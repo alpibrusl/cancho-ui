@@ -266,6 +266,19 @@ impl Serialize for IrExpr {
                 s.serialize_field("span", &IrSpan::from(*span))?;
                 s.end()
             }
+            IrExpr::If {
+                cond,
+                then,
+                else_,
+                span,
+            } => {
+                let mut s = ser.serialize_struct("IrExpr::If", 4)?;
+                s.serialize_field("cond", cond.as_ref())?;
+                s.serialize_field("then", then.as_ref())?;
+                s.serialize_field("else", else_.as_ref())?;
+                s.serialize_field("span", &IrSpan::from(*span))?;
+                s.end()
+            }
             IrExpr::Match {
                 scrutinee,
                 arms,
@@ -426,6 +439,8 @@ impl Serialize for IrBinOp {
             IrBinOp::Le => "Le",
             IrBinOp::Gt => "Gt",
             IrBinOp::Ge => "Ge",
+            IrBinOp::And => "And",
+            IrBinOp::Or => "Or",
         };
         ser.serialize_str(s)
     }
@@ -435,6 +450,7 @@ impl Serialize for IrUnOp {
     fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
         ser.serialize_str(match self {
             IrUnOp::Neg => "Neg",
+            IrUnOp::Not => "Not",
         })
     }
 }

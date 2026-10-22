@@ -34,6 +34,19 @@ pub(crate) fn emit_expr_init(e: &IrExpr) -> String {
             IrExpr::FloatLit { value, .. } => format!("{}", -value),
             _ => "(0 - (".to_string() + &emit_expr_init(operand) + "))",
         },
+        IrExpr::Unary {
+            op: IrUnOp::Not,
+            operand,
+            ..
+        } => "(!".to_string() + &emit_expr_init(operand) + ")",
+        IrExpr::If {
+            cond, then, else_, ..
+        } => format!(
+            "({} ? {} : {})",
+            emit_expr_init(cond),
+            emit_expr_init(then),
+            emit_expr_init(else_)
+        ),
         IrExpr::Binary { op, lhs, rhs, .. } => {
             binary_js(*op, &emit_expr_init(lhs), &emit_expr_init(rhs))
         }
@@ -129,6 +142,19 @@ pub(crate) fn emit_expr_runtime(e: &IrExpr, params: &[&str]) -> String {
             operand,
             ..
         } => "(0 - (".to_string() + &emit_expr_runtime(operand, params) + "))",
+        IrExpr::Unary {
+            op: IrUnOp::Not,
+            operand,
+            ..
+        } => "(!".to_string() + &emit_expr_runtime(operand, params) + ")",
+        IrExpr::If {
+            cond, then, else_, ..
+        } => format!(
+            "({} ? {} : {})",
+            emit_expr_runtime(cond, params),
+            emit_expr_runtime(then, params),
+            emit_expr_runtime(else_, params)
+        ),
         IrExpr::Binary { op, lhs, rhs, .. } => binary_js(
             *op,
             &emit_expr_runtime(lhs, params),

@@ -1,9 +1,10 @@
-# Conditionals: `if`, `&&`, `||`, `!` (a design, not built)
+# Conditionals: `if`, `&&`, `||`, `!`
 
-> **Status: DESIGN ONLY, a decision is requested. No parser, IR, emitter or replay change accompanies this document.**
-> Asked for by `alpibrusl/cancho-ui#40` (found building `examples/ops-console`, `docs/ops-console.md` 2.2). It is written for
-> a maintainer to choose from. Everything in section 1 was read from the code or counted in the example; everything in
-> sections 3 and 4 is a claim about a design and says what would measure it.
+> **Status: BUILT, step 1 (the expression form, with `else if`). The statement form, derived state and literal patterns are not.**
+> Asked for by `alpibrusl/cancho-ui#40` (found building `examples/ops-console`, `docs/ops-console.md` 2.2). The document was a
+> design first; the questions of section 5 were answered by following its own recommendations (section 5, "Decided"), and
+> section 6 says what was built, what it measured and what differs from the estimate. Sections 1 to 4 are kept as the design
+> was written; where the build corrected a claim, the correction is in place and says so.
 
 ## 1. What exists today
 
@@ -141,7 +142,7 @@ format change. Each source file stays under the 2,000-line ceiling: `eval.rs` is
   sees `undefined` for a declared `Bool`, except the known "state initializer that calls a function is `undefined`" hazard, which
   must be fixed or refused before `!x` can be trusted on such a field).
 
-## 5. What this does not do, and the questions for the maintainer
+## 5. What this does not do, and the questions (decided: see the end of this section)
 
 It does not give a local `let`, derived state, or a handler calling another. The repeated `shown = ..` / `paged = ..` lines
 (section 1, last row) are cured by **derived state** (`derive shown = ..`, recomputed when its inputs change), not by
@@ -167,3 +168,62 @@ Open questions:
    non-finite result, the sentinel declaration removed). One latent bug fell out: a program with no `await` did not declare
    `__cui_cancelled`, which every handler's `catch` reads, so any error a handler threw surfaced as a `ReferenceError` instead of itself.
 6. **Derive:** open its design after step 1 is built, or before?
+
+**Decided (2026-10-22), by following the recommendation written against each question** (the maintainer asked for exactly that):
+
+1. **A, in two steps.** Step 1 is built (section 6). The statement form (step 2) is not built.
+2. **No statement-level `if` around an effect.** An `if` is pure; `if-effect-in-expression` refuses an effect or an `await` in it.
+3. **`else if` is allowed**, as sugar for an `if` in the `else` branch (a parsing rule only).
+4. **Literal patterns for `Int`/`String`:** a separate, later decision, once a program needs them. Not built.
+5. **Division by zero:** the page refuses, as replay does (`docs/semantics.md`, "Arithmetic is finite"); built and merged before this.
+6. **Derive:** designed after step 1. Not started.
+
+## 6. What was built (step 1), measured
+
+* **Syntax.** `&&`, `||`, `!`, `if cond { a } else { b }` and `else if`, as an expression anywhere an expression stands: a
+  handler's right-hand side, an argument, a `Text` label, an interpolation, a `Button` label, an event argument. Precedence from
+  low to high: `||`, `&&`, comparisons, `+ -`, `* /`, unary `- !` (a unary operator binds tighter than a comparison:
+  `!a == b` is `(!a) == b`). `if` and `else` are keywords. `!=` is still one token. A lone `&` or `|` is still
+  `lex-unexpected-char`.
+* **Evaluation.** `&&` and `||` evaluate the right side only when the left does not decide the answer; an `if` evaluates only
+  the branch it takes. Both evaluators do it (replay in `eval.rs`; the page with the host's `&&`, `||` and `?:`). Operands and
+  conditions must be `Bool`: replay refuses anything else (`replay-type-error`, no JavaScript truthiness); the page's
+  `&&` would answer an operand, which is why the types are checked statically as far as they can be (below).
+* **Rules**, all `Static`, reported by `check`, `build` and `test` (`spec/diagnostics/README.md`):
+  `if-else-required`, `if-effect-in-expression`, `condition-not-bool`, `if-branch-type-mismatch`.
+  `pattern-literal-unsupported` keeps its tag; its remediation now names `if cond { a } else { b }`.
+* **Typing is partial, said plainly.** The language has no general expression typing (replay refuses an ill-typed operator
+  when it runs). `crates/cancho-ui-ir/src/conditions.rs` types an expression only as far as the source shows it (a literal, a
+  state field's declared type, a comparison, a builtin whose answer is fixed) and calls the rest `Unknown` (an event parameter,
+  a `For` or lambda binding, a `match` arm). It refuses only when a type is known and wrong, so it never refuses a right
+  program; what it cannot see, replay refuses when the program runs, and the page would answer an operand.
+* **Measured.** `tests/cond_corpus.json`, 54 cases (truth tables, precedence, `!` against `==`, short-circuit in both
+  operators and both orders, a division by zero in the condition, in a taken branch, in a branch not taken, in an `else if`
+  that is and is not reached, nesting, `if` as an operand, in a concatenation, compared, of Bools), is replayed in-process by
+  `cargo test` (`crates/cancho-ui/tests/conditionals.rs`) and run in the page in Chromium by `scripts/check-conditionals.js`;
+  both agree on all 54 (a division by zero is `replay-non-finite` in replay and a thrown `replay-non-finite` error in the
+  page). Ten rule tests (a misuse per tag, the effect cases, the view position, the names the pass cannot see, `&`/`|`, `!=`,
+  the emitted parentheses, the remediation of `pattern-literal-unsupported`, the semantic diff). Eleven deliberate breaks,
+  each caught: `&&`/`||` not short-circuiting in replay, an `if` evaluating both branches, `&&` and `||` at one precedence,
+  the emitter never writing the `else`, `condition-not-bool` off, `if-branch-type-mismatch` off, the effect check off, the lexer
+  splitting `!=`, `else if` not parsed, `!` using JavaScript truthiness in replay (survived the first draft of the tests; a
+  test per operator was added), and in the page the branches swapped (21 of 54 Chromium checks fail).
+* **The ops console, rewritten with it**, its traces unchanged and passing (38 steps, 63 checks; the offline trace; `scripts/check-ops-console.js`):
+  the status tone was four `join(filter(["ok"], t => starts_with(code, "2")), "") + ..` terms and is now
+  `tone = if starts_with(code, "2") { "ok" } else if starts_with(code, "4") { "warn" } else if starts_with(code, "5") || starts_with(code, "x") { "error" } else { "" }`;
+  the clamp after the list shrinks was `page = page * len(take(skip(shown, page * 5), 1))` and is now
+  `page = if page * 5 < len(shown) { page } else { 0 }`. (`Next` and `Prev` were already `min`/`max` since #43.)
+* **Corrections to the estimate of 3.5.** The checker was not where the rules went: lowering has the scopes and the IR, so a pass
+  after lowering (`conditions.rs`, as `controls.rs` is) holds them. `IrExpr::If`, `IrBinOp::{And, Or}` and `IrUnOp::Not` are
+  additive, the IR version did not change. A view can hold an `if` as a `Text` body (`Text { if c { "a" } else { "b" } }`).
+  `eval.rs` is 1,204 lines (estimated 1,064 before), `expr.rs` 446, `lower.rs` 1,712, `parser.rs` 1,835 (the nearest to the 2,000-line ceiling), the new `conditions.rs` 331.
+* **Also fixed on the way: `name-unknown` (alpibrusl/cancho-ui#55).** The pass keeps the scope (state fields, event
+  parameters, `For` bindings, lambda parameters, `match` bindings), so a name that is none of them is now refused at `check`
+  instead of being written as a `ReferenceError` that blanks the page. Thirteen positions are tested (an assignment, an operand, a
+  builtin argument, a text interpolation, a label, an event argument, the `over:` of a `For`, a lambda body, a `match` arm, an
+  `if` condition, a negation), the names a binding introduces are tested as in scope, and every example still checks.
+  Seven deliberate breaks (the assignments, the text parts, the label, the event arguments, the `over:` not walked; a lambda parameter leaking out of its lambda; a `match` binding not in scope), each caught. The replay rule `replay-unknown-identifier` stays in the catalog as the
+  second line of defence; no program that lowers can reach it now.
+* **Not built, still true:** the statement form of `if`; `derive`; literal patterns; `if` in a state initialiser is emitted but
+  an initialiser that reads another field is the known `undefined` hazard (unchanged); an `if` whose branches have a type the
+  pass calls `Unknown` is not compared.
