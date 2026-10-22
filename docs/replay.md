@@ -125,7 +125,7 @@ Anything else (an object with other keys, a two-key object) is
 
   | Key | Value after the step |
   |---|---|
-  | `outcome` | `"completed"` (the handler ran to its end), `"suspended"` (it is waiting on a request), `"dropped"` (a superseded request resolved and the rest of its handler was abandoned), `"disabled"` (every control that fires the event is `disabled:`, so the handler did not run: `docs/controls.md` section 2), or `"ok"` (`advance`, `dispose`) |
+  | `outcome` | `"faulted"` (the step said `"fault"` and it did: section 2.4), `"completed"` (the handler ran to its end), `"suspended"` (it is waiting on a request), `"dropped"` (a superseded request resolved and the rest of its handler was abandoned), `"disabled"` (every control that fires the event is `disabled:`, so the handler did not run: `docs/controls.md` section 2), or `"ok"` (`advance`, `dispose`) |
   | `issued` | the requests this step started: `[{"request": N, "effect": "net.search", "args": [...]}]` (a `sleep` also has `"due": ms`) |
   | `pending` | ids of requests started and not yet resolved, ascending (superseded and disposed ones included: they have not *resolved*) |
   | `fired` | the awaits resumed by this step: `[{"request": N, "delivered": "Ok"\|"Err"\|"Cancelled"\|"dropped", "outcome": ...}]` |
@@ -136,8 +136,17 @@ Anything else (an object with other keys, a two-key object) is
   `"fired": [{"request": 1, "delivered": "dropped"}]` does not have to repeat
   `outcome`.
 
-A trace in which **no step carries a `state` or an `expect`** can never fail,
+A trace in which **no step carries a `state`, an `expect` or a `fault`** can never fail,
 so it proves nothing and is refused as `trace-no-assertions`.
+
+### 2.4 A step that faults (`"fault"`)
+
+A step is normally expected to run. `"fault": "replay-non-finite"` (any `replay-*` rule) says that the step **faults with
+that rule**, and the replay goes on after it: the handler's segment has been undone (`semantics.md` Q3, "A handler that
+faults"), the step's `state` expectations are checked against the state **after the undo**, and its report has outcome
+`"faulted"` and lists none of the undone writes. A fault the step did not announce stops the replay as before; an announced
+fault that does not happen is `test-fault-missing` (the replay goes on, the step completed); one with another rule is
+`test-fault-mismatch` (the replay stops). The page's counterpart is `scripts/check-faults.js`.
 
 ---
 
@@ -401,7 +410,9 @@ Every refusal has a stable tag. Tier **tested** throughout.
 |---|---|---|
 | `test-state-mismatch` | a `state` expectation did not hold | no |
 | `test-expect-mismatch` | an `expect` expectation did not hold | no |
-| `trace-no-assertions` | no step carries `state` or `expect` | n/a |
+| `test-fault-missing` | a step with `"fault"` completed | no |
+| `test-fault-mismatch` | a step with `"fault"` faulted with another rule | yes |
+| `trace-no-assertions` | no step carries `state`, `expect` or `fault` | n/a |
 | `trace-malformed` | not JSON, or the wrong shape (a string where a list belongs, missing `steps`) | yes |
 | `trace-schema-unsupported` | `schema` or `version` is not one this build reads | yes |
 | `trace-unknown-key` | a key that is not part of the format, at the header, a step or `expect` | yes |
@@ -523,6 +534,17 @@ a regression test the CI gate runs.
    emitter and are listed as surviving mutants in §13, with the reason.
 6. **The step report grew `writes`, `clock` and `detail`.** §7 was written first
    without them; they are needed to print the human form and to locate a failure.
+7. **A fault used to leave the writes before it (issue #59, 2026-10-22).** Replay inserted each assignment as it ran and the
+   fault stopped the whole replay, so the half-applied state was never observable in replay, while the page kept it and did
+   not redraw. Measured in Chromium before the change (a handler `a = 1; b = 100 / m; c = 5` with `m = 0`): the screen kept
+   `a=0`, the state held `a=1`, and the next event's render showed `a=1`. The rule is now segment atomicity
+   (`semantics.md` Q3, "A handler that faults"); replay undoes the segment in `Machine::run` and a step may say
+   `"fault"` (§2.4) so that the state after the undo can be asserted. Deliberate breaks, each caught: in replay, the undo
+   restoring nothing; the report keeping the undone writes; no new commit point after an awaiting statement; no snapshot at the
+   start of the handler; in the page, nothing put back (7 of 12 Chromium cases fail); no new snapshot after an await (2); no redraw after the
+   undo (1); a two-statement handler given no snapshot (1). A ninth, the snapshot not cleared while an awaiting statement runs,
+   survives: it matters only for a fault inside an awaiting statement, which no program both evaluators fault on can produce
+   (it is covered by the emitted-shape test `an_awaiting_statement_clears_the_snapshot_and_takes_a_new_one_after_it`).
 
 ---
 

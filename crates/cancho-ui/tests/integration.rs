@@ -429,7 +429,10 @@ component Ticker {
     // The `__cui_cancelled` sentinel is thrown when a superseded
     // request resolves, and the handler's try/catch swallows it.
     assert!(js.contains("const __cui_cancelled = Symbol"));
-    assert!(js.contains("if (e !== __cui_cancelled) { throw e; }"));
+    // This handler writes more than once, so the catch also puts back what the segment wrote and redraws before it
+    // rethrows (docs/semantics.md, "A handler that faults"); the sentinel itself is still swallowed.
+    assert!(js.contains("if (e !== __cui_cancelled) {"));
+    assert!(js.contains("if (__snap) { [__state_status, __state_r] = __snap; }"));
     // `Cancelled` is a unit-variant pattern: tag test, no payload.
     assert!(js.contains("__cui_tag === \"Cancelled\""));
 }

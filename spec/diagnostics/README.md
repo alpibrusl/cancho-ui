@@ -167,7 +167,7 @@ in `examples/refusal/`, and by the evidence report.
 
 `cancho-ui test` reports failures in its own JSON shape
 ([`docs/replay.md`](../../docs/replay.md) §7), tier `tested`, with these stable
-tags: `test-state-mismatch`, `test-expect-mismatch`, `trace-no-assertions`,
+tags: `test-state-mismatch`, `test-expect-mismatch`, `test-fault-missing`, `test-fault-mismatch`, `trace-no-assertions`,
 `trace-malformed`, `trace-credential-unknown`, `trace-schema-unsupported`, `trace-unknown-key`,
 `trace-bad-step`, `trace-bad-value`, `trace-unknown-component`,
 `trace-unknown-event`, `trace-params-arity`, `trace-unknown-state-field`,

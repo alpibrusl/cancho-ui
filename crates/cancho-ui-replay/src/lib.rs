@@ -366,9 +366,39 @@ fn run_step(
             ("show", Json::Null, m.show(&mut fx))
         }
     };
-    let outcome = match outcome {
-        Ok(o) => o,
-        Err(f) => {
+    let outcome = match (outcome, &step.fault) {
+        (Ok(o), None) => o,
+        // The step said it would fault and did not: the test fails here, and the replay goes on (the step completed).
+        (Ok(o), Some(rule)) => {
+            report.failures.push(failure(
+                "test-fault-missing",
+                Some(i),
+                format!("{at}.fault"),
+                format!("step {i} was expected to fault with `{rule}` and completed"),
+                file,
+                fx.handler_span,
+            ));
+            o
+        }
+        // The expected fault: the machine has undone the segment's writes, and the replay goes on from there.
+        (Err(f), Some(rule)) if f.rule == rule => machine::Outcome::Faulted,
+        (Err(f), Some(rule)) => {
+            let mut fl = failure(
+                "test-fault-mismatch",
+                Some(i),
+                format!("{at}.fault"),
+                format!(
+                    "step {i} was expected to fault with `{rule}` and faulted with `{}`: {}",
+                    f.rule, f.message
+                ),
+                file,
+                Some(f.span),
+            );
+            fl.expected = Some(Json::String(rule.clone()));
+            fl.actual = Some(Json::String(f.rule.to_string()));
+            return Err(Box::new(fl));
+        }
+        (Err(f), None) => {
             return Err(Box::new(failure(
                 f.rule,
                 Some(i),
