@@ -481,6 +481,15 @@ pub(crate) fn emit_view_node(
                             indent, var, STATE_PREFIX, name
                         ));
                     }
+                    IrBindingValue::Const { expr, .. } if b.key == "maxlength" => {
+                        // An integer in range (`input-attribute-invalid`): the browser stops typing and pasting at it.
+                        if let IrExpr::IntLit { value, .. } = **expr {
+                            out.push_str(&format!(
+                                "{0}{1}.setAttribute('maxlength', '{2}');\n",
+                                indent, var, value
+                            ));
+                        }
+                    }
                     IrBindingValue::Const { .. } => {
                         // A `Const` binding on a primitive (a
                         // non-string label etc.) is not expressible

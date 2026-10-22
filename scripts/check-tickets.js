@@ -79,7 +79,7 @@ function note(label, detail) { console.log(`note ${label}: ${detail}`); }
   check('an invalid status says so and Save is disabled', /Use open, doing or done\./.test(await body()) && await save.isDisabled());
   await page.getByLabel('Status (open, doing or done)').fill('done');
   await page.getByLabel('Note').fill('x'.repeat(201));
-  check('a note over 200 characters says how long it is and Save is disabled', /at most 200 characters \(201 now\)/.test(await body()) && await save.isDisabled());
+  check('a note cannot be longer than 200 characters: the field stops there (docs/controls.md section 6)', (await page.getByLabel('Note').inputValue()).length === 200 && await save.isEnabled());
   await page.getByLabel('Note').fill('probe replaced');
   check('a valid form enables Save', await save.isEnabled());
   await save.click();

@@ -144,6 +144,7 @@ in `examples/refusal/`, and by the evidence report.
 | `block-cycle` | `Component` | `Error` | `Static` | A `block` that runs itself, directly or through other blocks: its expansion would never end. *(Built 2026-10-22, issue #93.)* |
 | `block-expansion-too-large` | `Component` | `Error` | `Static` | A handler or block that has more than 10,000 statements once its `run`s are replaced (blocks that run blocks several times multiply). *(Built 2026-10-22, issue #93.)* |
 | `input-type-invalid` | `Component` | `Error` | `Static` | A `type:` on a `TextField` that is not one of `text`, `password`, `email`, `search`, `tel`, `url` written as a string literal (a state field, `number`, `checkbox`, `PASSWORD`). `type:` on anything but a `TextField` is `binding-unknown`. *(Built 2026-10-22, issue #76, `docs/controls.md` section 5.)* |
+| `input-attribute-invalid` | `Component` | `Error` | `Static` | An `autocomplete:` that is not `on`, `off` or one field name of the HTML autofill list; an `inputmode:` that is not one of none, text, decimal, numeric, tel, search, email, url; a `maxlength:` that is not an integer literal from 1 to 100000; a `name:` that is not 1 to 64 letters, digits, `-`, `_`, `.` starting with a letter. On anything but a `TextField` each is `binding-unknown`. *(Built 2026-10-22, issue #91, `docs/controls.md` section 6.)* |
 | `parse-nesting-too-deep` | `Component` | `Error` | `Static` | `if` statements nested more than 32 deep: a parse error, not a stack overflow. Only statements are limited so far; see alpibrusl/cancho-ui#99 for expressions and views. *(Built 2026-10-22, issue #93.)* |
 | `table-child-invalid` | `Component` | `Error` | `Static` | A `Table` child that is not a `Row` or a `For` that makes `Row`s. *(Built 2026-10-21, issue #42, section 4.)* |
 | `capability-missing` | `Capability` | `Error` | `Static` | A component using an effect without `requires Capability` |
@@ -178,7 +179,7 @@ in `examples/refusal/`, and by the evidence report.
 tags: `test-state-mismatch`, `test-expect-mismatch`, `test-fault-missing`, `test-fault-mismatch`, `trace-no-assertions`,
 `trace-malformed`, `trace-credential-unknown`, `trace-schema-unsupported`, `trace-unknown-key`,
 `trace-bad-step`, `trace-bad-value`, `trace-unknown-component`,
-`trace-unknown-event`, `trace-params-arity`, `trace-unknown-state-field`,
+`trace-unknown-event`, `trace-params-arity`, `trace-value-too-long`, `trace-unknown-state-field`,
 `trace-unknown-request`, `trace-request-not-pending`,
 `trace-request-not-scriptable`, `trace-bad-response`,
 `trace-event-after-dispose`, `replay-unsupported`, `replay-tick-limit`, `replay-type-error`,

@@ -337,6 +337,92 @@ impl<'a> Machine<'a> {
         self.run(task, fx, false)
     }
 
+    /// Is the control under an `If { when: cond }` in the page right now? The condition is read from the state; one that cannot
+    /// be evaluated here (it reads a `For` binding, or faults) counts as true (docs/view-conditional.md section 4).
+    pub(crate) fn condition_holds(&self, cond: &IrExpr) -> bool {
+        let mut journal = Journal::default();
+        let mut no_storage = BTreeMap::new();
+        let mut no_memory = BTreeMap::new();
+        let mut ctx = Ctx {
+            state: &self.state,
+            clock: self.clock,
+            storage: &mut no_storage,
+            storage_ns: "",
+            storage_quota: None,
+            storage_memory: &mut no_memory,
+            journal: &mut journal,
+            locals: Vec::new(),
+            init: false,
+        };
+        !matches!(eval(&mut ctx, cond), Ok(Value::Bool(false)))
+    }
+
+    /// The most characters (UTF-16 code units) any way of firing `event` with a typed value allows, when every control in the
+    /// page that fires it is a `TextField` with a `maxlength:`; `None` when some control without a limit (or a button) could give
+    /// it a value of any length, or no control fires it (docs/controls.md section 6).
+    pub fn input_limit(&self, event: &str) -> Option<usize> {
+        #[derive(Default)]
+        struct Fields {
+            limits: Vec<Option<usize>>,
+            other: bool,
+        }
+        fn walk(m: &Machine<'_>, node: &IrViewNode, event: &str, f: &mut Fields) {
+            match node {
+                IrViewNode::Element {
+                    kind,
+                    bindings,
+                    children,
+                    ..
+                } => {
+                    let fires = bindings.iter().any(|b| {
+                        b.key == "on"
+                            && match &b.value {
+                                IrBindingValue::EventRef(e) => e == event,
+                                IrBindingValue::EventCall { name, .. } => name == event,
+                                _ => false,
+                            }
+                    });
+                    if fires {
+                        if matches!(kind, cancho_ui_ir::ir::IrElementKind::TextField) {
+                            let limit = bindings.iter().find_map(|b| match (&*b.key, &b.value) {
+                                ("maxlength", IrBindingValue::Const { expr, .. }) => match **expr {
+                                    IrExpr::IntLit { value, .. } => usize::try_from(value).ok(),
+                                    _ => None,
+                                },
+                                _ => None,
+                            });
+                            f.limits.push(limit);
+                        } else {
+                            f.other = true;
+                        }
+                    }
+                    for c in children {
+                        walk(m, c, event, f);
+                    }
+                }
+                IrViewNode::For { children, .. } => {
+                    for c in children {
+                        walk(m, c, event, f);
+                    }
+                }
+                IrViewNode::If { cond, children, .. } => {
+                    if m.condition_holds(cond) {
+                        for c in children {
+                            walk(m, c, event, f);
+                        }
+                    }
+                }
+                IrViewNode::Text { .. } => {}
+            }
+        }
+        let mut f = Fields::default();
+        walk(self, &self.comp.view.body, event, &mut f);
+        if f.other || f.limits.is_empty() || f.limits.iter().any(Option::is_none) {
+            return None;
+        }
+        f.limits.into_iter().flatten().max()
+    }
+
     /// Would the browser deliver `event` right now (docs/controls.md section 2)? The ways to fire it are the controls with
     /// `on: event` (a click or an input: open when the control is enabled) and the fields with `submit: event` (Enter:
     /// open when the field is enabled **and** every `on:` control of the event is enabled, because the emitted guard
@@ -376,23 +462,6 @@ impl<'a> Machine<'a> {
                 }
                 IrViewNode::Text { .. } => 0,
             }
-        }
-        fn visible(m: &Machine<'_>, cond: &IrExpr) -> bool {
-            let mut journal = Journal::default();
-            let mut no_storage = BTreeMap::new();
-            let mut no_memory = BTreeMap::new();
-            let mut ctx = Ctx {
-                state: &m.state,
-                clock: m.clock,
-                storage: &mut no_storage,
-                storage_ns: "",
-                storage_quota: None,
-                storage_memory: &mut no_memory,
-                journal: &mut journal,
-                locals: Vec::new(),
-                init: false,
-            };
-            !matches!(eval(&mut ctx, cond), Ok(Value::Bool(false)))
         }
         fn walk(m: &Machine<'_>, node: &IrViewNode, event: &str, p: &mut Paths) {
             match node {
@@ -438,7 +507,7 @@ impl<'a> Machine<'a> {
                     }
                 }
                 IrViewNode::If { cond, children, .. } => {
-                    if visible(m, cond) {
+                    if m.condition_holds(cond) {
                         for c in children {
                             walk(m, c, event, p);
                         }

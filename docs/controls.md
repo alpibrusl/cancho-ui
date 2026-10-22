@@ -103,7 +103,7 @@ for "any key").
 ## 5. `type:`, the kind of text a field holds (issue #76, first part)
 
 > **Status: BUILT** for `type:`. The other parts of #76 (a checkbox, a choice, a text area, an invalid state) are not built; see
-> section 6.
+> section 7.
 
 **Measured before** (`cancho-ui check` on a one-element program): `TextField { .. type: "password" }` was
 `error[binding-unknown]: type: is not a binding of TextField`, so the password of a sign-in form (`examples/tickets`) was typed
@@ -143,11 +143,54 @@ as in `examples/tickets`, or a state field). Its probe now passes, so `check-gal
 there is no tickets demo in the gallery, because the static host has no login route and the demo could only show a refused
 sign-in.
 
-## 6. Not done
+## 6. `autocomplete:`, `inputmode:`, `maxlength:` and `name:` (issue #91)
+
+> **Status: BUILT.**
+
+**Measured before.** `TextField { label: "User" value: s on: Go autocomplete: "username" }` was
+`error[binding-unknown]: autocomplete: is not a binding of TextField`, and so were `inputmode:`, `maxlength:` and `name:`.
+Without `autocomplete="username"` and `current-password` a browser or a password manager cannot reliably fill a sign-in form;
+without `inputmode` a phone shows the wrong keyboard; and the 200-character limit of the note in `examples/tickets` was a message
+after the fact and a disabled Save, not a limit.
+
+**The bindings**, all on a `TextField` only (`binding-unknown` on anything else) and all with a checked value
+(`input-attribute-invalid`, one tag with a message per binding):
+
+| Binding | Value | Written as |
+|---|---|---|
+| `autocomplete:` | a string literal: `on`, `off`, or one field name of the HTML autofill list (`username`, `current-password`, `new-password`, `one-time-code`, `email`, `tel`, `given-name`, ...: 53 in all, `AUTOCOMPLETE` in `crates/cancho-ui-ir/src/controls.rs`). A section or a hint (`shipping given-name`) is not offered. | the attribute |
+| `inputmode:` | one of `none`, `text`, `decimal`, `numeric`, `tel`, `search`, `email`, `url` | the attribute |
+| `maxlength:` | an integer literal from 1 to 100,000 | the attribute |
+| `name:` | a string literal of 1 to 64 letters, digits, `-`, `_`, `.`, starting with a letter | the attribute |
+
+**What the browser does with `maxlength`** (measured, `scripts/check-input-attrs.js`, `tests/input_attrs_corpus.json`): typing,
+setting a whole value (Playwright `fill`) and pasting all stop at the limit, so the handler never receives a longer value; the limit
+counts UTF-16 code units (with `maxlength: 3`, two emoji of two units each leave one emoji, and a following letter still fits);
+and a value the *program* sets (`v = "..."`, drawn back into the field) is not cut: the limit is on a person's typing, not on the
+state.
+
+**What replay does.** A trace gives an event its parameter directly, so a step that gives a field's handler a string longer than
+the field allows describes a page that does not exist. Replay stops with `trace-value-too-long` (`docs/replay.md`), counting UTF-16
+code units. It stops only when every control in the page that fires the event is a `TextField` with a `maxlength:` (the longest
+limit counts), when no button can give the event a value of any length, and a control inside a false `If` is not in the page. The
+other three attributes have nothing to assert beyond being valid. Replay does not cut a value: the browser would, but a trace that
+needs cutting was written wrong, and a cut value would hide that.
+
+**Rule tags.** `input-attribute-invalid`, `trace-value-too-long` (`spec/diagnostics/README.md`).
+**Deliberate breaks** (`scripts/breaks/input-attrs.json`): twelve, each caught. The first run missed one (replay applying a limit although a button could hand the event a long value); a test was added.
+
+**`examples/tickets`** sets `autocomplete` and `name` on both fields of the sign-in form, and `maxlength: 200` on the note. The
+note's validation message and its state are gone (the field stops at 200), and so is the trace step that typed 201 characters,
+which replay would now refuse. `check-tickets.js` fills 201 characters and finds 200.
+
+**Not built:** `minlength`, `pattern`, `required` (validation the program already does with `if`), `spellcheck`, `autocapitalize`,
+`enterkeyhint`, and `autocomplete` with a section or several tokens.
+
+## 7. Not done
 
 `disabled:` on an expression (`disabled: len(q) == 0`: the language has no `&&`, `||` or `!` and no Bool expression binding,
 issue #40), `aria-busy` for an in-flight request, a disabled state for the children of a component instance, the refusal
 `accessibility-keyboard-missing` for a form with no keyboard path, and `submit:` on anything but a `TextField` (a `Button` already
 fires on Enter and Space natively). From #76: `Checkbox` (a `Bool`), `Select` (over a list), `TextArea`, `invalid:` (`aria-invalid`) and
 tying a message to its field (`aria-describedby`); `number`, date and the other input types (section 5). From #91: `autocomplete`,
-`maxlength`, `inputmode`, `name` (the next change).
+`maxlength`, `inputmode`, `name` (section 6, done).

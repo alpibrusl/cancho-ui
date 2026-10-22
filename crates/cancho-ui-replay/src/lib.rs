@@ -293,6 +293,20 @@ fn run_step(
                     ),
                 ));
             }
+            // A field with a `maxlength:` never reports a longer value: the browser stops the typing and the pasting. A trace
+            // that gives one describes a page that does not exist (docs/controls.md section 6).
+            if let (Some(Value::Str(typed)), Some(limit)) = (params.first(), m.input_limit(name))
+                && typed.encode_utf16().count() > limit
+            {
+                return Err(stop(
+                    "trace-value-too-long",
+                    "params",
+                    format!(
+                        "`{name}` is fired by a field that allows {limit} characters (UTF-16 code units) and the step gives {}",
+                        typed.encode_utf16().count()
+                    ),
+                ));
+            }
             let detail = serde_json::json!({
                 "name": name,
                 "params": params.iter().map(Value::to_json).collect::<Vec<_>>(),
