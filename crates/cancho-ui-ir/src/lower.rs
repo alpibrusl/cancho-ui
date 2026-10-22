@@ -1452,43 +1452,11 @@ fn stmt_matches<'a>(s: &'a IrStmt, out: &mut Vec<&'a IrExpr>) {
 }
 
 fn expr_matches<'a>(e: &'a IrExpr, out: &mut Vec<&'a IrExpr>) {
-    match e {
-        IrExpr::Match {
-            scrutinee, arms, ..
-        } => {
-            out.push(e);
-            expr_matches(scrutinee, out);
-            for a in arms {
-                expr_matches(&a.body, out);
-            }
-        }
-        IrExpr::Binary { lhs, rhs, .. } => {
-            expr_matches(lhs, out);
-            expr_matches(rhs, out);
-        }
-        IrExpr::Unary { operand, .. } => expr_matches(operand, out),
-        IrExpr::If {
-            cond, then, else_, ..
-        } => {
-            expr_matches(cond, out);
-            expr_matches(then, out);
-            expr_matches(else_, out);
-        }
-        IrExpr::Call { args, .. } => {
-            for a in args {
-                expr_matches(a, out);
-            }
-        }
-        IrExpr::Ok { value, .. } => expr_matches(value, out),
-        IrExpr::Err { reason, .. } => expr_matches(reason, out),
-        IrExpr::Some { value, .. } => expr_matches(value, out),
-        IrExpr::Await { request, .. } => expr_matches(request, out),
-        IrExpr::ListLit { items, .. } => {
-            for i in items {
-                expr_matches(i, out);
-            }
-        }
-        _ => {}
+    if matches!(e, IrExpr::Match { .. }) {
+        out.push(e);
+    }
+    for child in e.children() {
+        expr_matches(child, out);
     }
 }
 

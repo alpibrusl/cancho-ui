@@ -288,6 +288,44 @@ impl IrExpr {
     }
 }
 
+impl IrExpr {
+    /// The direct sub-expressions, in source order. One exhaustive `match` with no wildcard: a new `IrExpr` variant
+    /// is a compile error here, so a walk built on `children` cannot silently skip it (the `match-non-exhaustive` walk
+    /// once missed `len`, `filter`, `map` and `sort`, #63).
+    pub fn children(&self) -> Vec<&IrExpr> {
+        match self {
+            IrExpr::IntLit { .. }
+            | IrExpr::FloatLit { .. }
+            | IrExpr::StringLit { .. }
+            | IrExpr::BoolLit { .. }
+            | IrExpr::Ident { .. }
+            | IrExpr::Cancelled { .. }
+            | IrExpr::None { .. } => Vec::new(),
+            IrExpr::Call { args, .. } => args.iter().collect(),
+            IrExpr::Binary { lhs, rhs, .. } => vec![lhs, rhs],
+            IrExpr::Unary { operand, .. } => vec![operand],
+            IrExpr::If {
+                cond, then, else_, ..
+            } => vec![cond, then, else_],
+            IrExpr::Match {
+                scrutinee, arms, ..
+            } => {
+                let mut out: Vec<&IrExpr> = vec![scrutinee];
+                out.extend(arms.iter().map(|a| &a.body));
+                out
+            }
+            IrExpr::Ok { value, .. } | IrExpr::Some { value, .. } => vec![value],
+            IrExpr::Err { reason, .. } => vec![reason],
+            IrExpr::Await { request, .. } => vec![request],
+            IrExpr::ListLit { items, .. } => items.iter().collect(),
+            IrExpr::Filter { list, cond, .. } => vec![list, cond],
+            IrExpr::Map { list, body, .. } => vec![list, body],
+            IrExpr::SortBy { list, key, .. } => vec![list, key],
+            IrExpr::Len { list, .. } => vec![list],
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct IrMatchArm {
     pub pattern: IrPattern,
