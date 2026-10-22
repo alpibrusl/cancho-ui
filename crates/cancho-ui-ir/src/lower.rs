@@ -170,28 +170,6 @@ pub enum LowerError {
     PureLambdaRequired { span: Span },
 }
 
-impl LowerError {
-    /// For the four refusals of a schedule (docs/schedules.md section 3): the stable diagnostic code, the
-    /// component, and the span.
-    pub fn schedule_refusal(&self) -> Option<(&'static str, &str, Span)> {
-        match self {
-            LowerError::ScheduleEventUnknown {
-                component, span, ..
-            } => Some(("schedule-event-unknown", component, *span)),
-            LowerError::ScheduleEventParams {
-                component, span, ..
-            } => Some(("schedule-event-params", component, *span)),
-            LowerError::SchedulePeriodInvalid {
-                component, span, ..
-            } => Some(("schedule-period-invalid", component, *span)),
-            LowerError::ScheduleDuplicate {
-                component, span, ..
-            } => Some(("schedule-duplicate", component, *span)),
-            _ => None,
-        }
-    }
-}
-
 pub fn lower_file(file: &File) -> Result<IrFile, LowerError> {
     let mut next_id = 0u32;
     let mut components = Vec::with_capacity(file.components.len());

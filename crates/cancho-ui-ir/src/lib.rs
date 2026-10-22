@@ -21,4 +21,4 @@ pub mod table;
 
 pub use ir::*;
 pub use lower::{LowerError, ir_expr_suspends, lower_file, merge_ir_files};
-pub use serialize::{canonical_json, schema_version};
+pub use serialize::{canonical_json, pretty_json, schema_version};

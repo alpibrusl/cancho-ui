@@ -579,9 +579,14 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                     }
                 }
             }
-            Ok(Value::Num(
-                math_builtin(&name, &nums).expect("the arity was checked"),
-            ))
+            match math_builtin(&name, &nums) {
+                Some(x) => Ok(Value::Num(x)),
+                None => Err(fault(
+                    "replay-type-error",
+                    format!("`{name}` called with {} argument(s)", nums.len()),
+                    span,
+                )),
+            }
         }
         ("lines" | "trim" | "upper" | "split" | "join" | "starts_with" | "ends_with", n)
             if text_builtin_arity(&name) == Some(n) =>

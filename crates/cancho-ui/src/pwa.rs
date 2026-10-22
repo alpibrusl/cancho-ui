@@ -117,7 +117,7 @@ fn manifest(name: &str) -> String {
             { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
         ]
     });
-    let mut text = serde_json::to_string_pretty(&value).expect("a manifest serializes");
+    let mut text = cancho_ui_ir::pretty_json(&value);
     text.push('\n');
     text
 }
