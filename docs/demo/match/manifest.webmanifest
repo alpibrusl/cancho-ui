@@ -1,0 +1,23 @@
+{
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "icons": [
+    {
+      "purpose": "any",
+      "sizes": "192x192",
+      "src": "icon-192.png",
+      "type": "image/png"
+    },
+    {
+      "purpose": "any",
+      "sizes": "512x512",
+      "src": "icon-512.png",
+      "type": "image/png"
+    }
+  ],
+  "name": "Result with match",
+  "scope": "./",
+  "short_name": "Result with match",
+  "start_url": "./",
+  "theme_color": "#1f6feb"
+}

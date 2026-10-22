@@ -1,0 +1,155 @@
+{
+  "repo": "https://github.com/alpibrusl/cancho-ui",
+  "supported": [
+    {
+      "id": "counter",
+      "title": "Counter",
+      "source": "examples/counter/counter.cui",
+      "says": "State and two events: the smallest interactive page."
+    },
+    {
+      "id": "clock",
+      "title": "Stopwatch",
+      "source": "examples/clock/clock.cui",
+      "says": "A capability in use: elapsed time from `clock.now()`, declared with `requires Clock;`."
+    },
+    {
+      "id": "search",
+      "title": "Search with cancellation",
+      "source": "examples/search/search.cui",
+      "says": "A search whose request is superseded by the next keystroke; `Ok`, `Err` and `Cancelled` each have a view (the service is simulated)."
+    },
+    {
+      "id": "notes",
+      "title": "Notes that survive a reload",
+      "source": "examples/notes/notes.cui",
+      "says": "`Storage`: a note saved in the browser's `localStorage` and read back after a reload."
+    },
+    {
+      "id": "cards",
+      "title": "Composed components",
+      "source": "examples/cards/cards.cui",
+      "says": "Several instances of one component, each with its own state, kept across the parent's re-render."
+    },
+    {
+      "id": "match",
+      "title": "Result with match",
+      "source": "examples/match/match.cui",
+      "says": "A `Result` that is `Ok` or `Err`, and a `match` that must cover both."
+    },
+    {
+      "id": "ops-console",
+      "title": "Machine console",
+      "source": "examples/ops-console/ops-console.cui",
+      "tall": true,
+      "says": "A table with search, sort, paging and a button per row, over 23 sample machines in a static file; the saved list shows offline. Sending a setpoint needs a service, so here it reports an error.",
+      "wide": true
+    }
+  ],
+  "soon": [
+    {
+      "id": "routing",
+      "title": "Multi-page routing",
+      "issue": 75,
+      "missing": "Moving between screens and putting state in the URL: `NavLink` is refused as an unknown component and nothing reads the URL.",
+      "probe": {
+        "view": "NavLink { label: \"Next page\" }",
+        "rule": "component-kind-unknown"
+      }
+    },
+    {
+      "id": "signin",
+      "title": "Sign-in flow",
+      "issue": 83,
+      "missing": "A password input, a screen to move to after signing in, and a way to hold the token a login returns.",
+      "probe": {
+        "view": "TextField { label: \"Password\" value: s on: Go type: \"password\" }",
+        "rule": "binding-unknown"
+      }
+    },
+    {
+      "id": "forms",
+      "title": "Rich forms",
+      "issue": 76,
+      "missing": "Validation messages work (a `Text` derived with `if`), but there is no password, email or number input, no checkbox, select or text area, and no invalid state for assistive technology.",
+      "probe": {
+        "view": "Checkbox { label: \"Agree\" }",
+        "rule": "component-kind-unknown"
+      }
+    },
+    {
+      "id": "charts",
+      "title": "Charts",
+      "issue": 77,
+      "missing": "Any drawing primitive: `Canvas` and `Image` are refused as unknown components.",
+      "probe": {
+        "view": "Canvas { label: \"Chart\" }",
+        "rule": "component-kind-unknown"
+      }
+    },
+    {
+      "id": "realtime",
+      "title": "Real-time updates",
+      "issue": 78,
+      "missing": "Push: a page can poll with `every`, but nothing speaks WebSocket or Server-Sent Events.",
+      "probe": {
+        "absent": [
+          "WebSocket",
+          "EventSource"
+        ]
+      }
+    },
+    {
+      "id": "upload",
+      "title": "File upload",
+      "issue": 79,
+      "missing": "A file picker and a way to send the chosen file; `net.post` sends text.",
+      "probe": {
+        "view": "FileField { label: \"Upload\" }",
+        "rule": "component-kind-unknown"
+      }
+    },
+    {
+      "id": "dnd",
+      "title": "Drag and drop",
+      "issue": 80,
+      "missing": "Drag events and a keyboard alternative; the only events are a button press and text input.",
+      "probe": {
+        "view": "Button { label: \"Drag\" ondrop: Go }",
+        "rule": "parse-unexpected-token"
+      }
+    },
+    {
+      "id": "maps",
+      "title": "Maps",
+      "issue": 81,
+      "missing": "A map or image primitive and a typed position; `location.current()` answers rounded text.",
+      "probe": {
+        "view": "Image { label: \"Map\" }",
+        "rule": "component-kind-unknown"
+      }
+    },
+    {
+      "id": "i18n",
+      "title": "Internationalization",
+      "issue": 82,
+      "missing": "Message catalogs, locale-aware number and date formatting, and text direction; `fold` is the only text feature beyond ASCII.",
+      "probe": {
+        "absent": [
+          "Intl.",
+          "toLocale"
+        ]
+      }
+    },
+    {
+      "id": "native",
+      "title": "Native shell and push on mobile",
+      "issue": 68,
+      "missing": "Push notifications and background work. Whether an installed web page can do them is not measured (device tests are #65), so whether a native shell is needed is an open decision.",
+      "probe": {
+        "doc": "docs/mobile-backend.md",
+        "contains": "Native shells (levels 1 and 2), a React Native comparison, push"
+      }
+    }
+  ]
+}
