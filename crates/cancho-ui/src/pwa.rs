@@ -114,7 +114,9 @@ fn manifest(name: &str) -> String {
         "theme_color": "#1f6feb",
         "icons": [
             { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-            { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+            { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+            { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+            { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
         ]
     });
     let mut text = cancho_ui_ir::pretty_json(&value);
@@ -247,9 +249,16 @@ fn zlib_stored(raw: &[u8]) -> Vec<u8> {
     out
 }
 
+/// The centred square of the icon, `lo..hi` on both axes. The background fills the whole image (so a launcher that masks it
+/// to a circle or a squircle shows no transparent corner) and this mark sits inside the maskable **safe zone**, the circle of
+/// radius 40% of the image about its centre (https://www.w3.org/TR/appmanifest/#icon-masks): its farthest corner is at 28.3%.
+fn mark_bounds(size: u32) -> (u32, u32) {
+    (size * 3 / 10, size * 7 / 10)
+}
+
 /// A `size` by `size` palette PNG, one bit a pixel: a flat colour with a centred square.
 fn icon_png(size: u32) -> Vec<u8> {
-    let (lo, hi) = (size * 3 / 10, size * 7 / 10);
+    let (lo, hi) = mark_bounds(size);
     let row_bytes = size.div_ceil(8) as usize;
     let mut raw = Vec::with_capacity((row_bytes + 1) * size as usize);
     for y in 0..size {
@@ -312,5 +321,44 @@ mod tests {
         let sw = |f: &PwaFiles| String::from_utf8(f.last().unwrap().1.clone()).unwrap();
         assert_ne!(sw(&a), sw(&b));
         assert_eq!(sw(&a), sw(&generate("one", "x")));
+    }
+
+    #[test]
+    fn the_maskable_icon_keeps_its_mark_inside_the_safe_zone() {
+        // #67: the manifest has a maskable entry for each icon, and the mark of that icon lies inside the circle of radius
+        // 40% of the image, whatever the size, so a circular mask cuts nothing of it.
+        let files = generate("//", "x");
+        let manifest: serde_json::Value = serde_json::from_slice(&files[2].1).unwrap();
+        let icons = manifest["icons"].as_array().unwrap();
+        for size in [192u32, 512] {
+            let maskable = icons
+                .iter()
+                .find(|i| {
+                    i["purpose"] == "maskable" && i["sizes"] == format!("{size}x{size}").as_str()
+                })
+                .unwrap_or_else(|| panic!("no maskable icon of {size}"));
+            let src = maskable["src"].as_str().unwrap();
+            assert!(
+                files.iter().any(|(name, _)| *name == src),
+                "{src} is not written"
+            );
+            let (lo, hi) = mark_bounds(size);
+            let centre = f64::from(size) / 2.0;
+            let farthest = [(lo, lo), (hi, lo), (lo, hi), (hi, hi)]
+                .iter()
+                .map(|&(x, y)| {
+                    ((f64::from(x) - centre).powi(2) + (f64::from(y) - centre).powi(2)).sqrt()
+                })
+                .fold(0.0, f64::max);
+            assert!(
+                farthest <= 0.4 * f64::from(size),
+                "{size}: the mark reaches {farthest} from the centre, the safe zone is {}",
+                0.4 * f64::from(size)
+            );
+        }
+        // the "any" icons are still there, and every icon file is in the precache list of the worker
+        assert!(icons.iter().any(|i| i["purpose"] == "any"));
+        let sw = String::from_utf8(files.last().unwrap().1.clone()).unwrap();
+        assert!(sw.contains("./icon-192.png") && sw.contains("./icon-512.png"));
     }
 }

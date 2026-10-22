@@ -75,6 +75,39 @@ async function one(example, interact) {
     /manifest\.webmanifest$/.test(manifest.url) && typeof parsed.name === 'string' && parsed.name.length > 0 && (manifest.errors || []).length === 0,
     `${manifest.url} ${JSON.stringify(parsed.name)} ${JSON.stringify(manifest.errors || [])}`);
 
+  // #67: a maskable icon for each size, full-bleed, with its mark inside the safe zone (a circle of radius 40% of the image).
+  const maskable = (parsed.icons || []).filter((i) => (i.purpose || '') === 'maskable').map((i) => i.sizes);
+  check('the manifest declares a maskable icon of 192 and of 512, as Chromium parsed it', maskable.includes('192x192') && maskable.includes('512x512'), JSON.stringify(parsed.icons));
+  const mask = await page.evaluate(async () => {
+    const img = new Image();
+    img.src = './icon-512.png';
+    await img.decode();
+    const c = document.createElement('canvas');
+    c.width = img.width; c.height = img.height;
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height).data;
+    const bg = [d[0], d[1], d[2]];
+    let outside = 0, marked = 0, corners = 0;
+    const centre = c.width / 2;
+    for (let y = 0; y < c.height; y++) {
+      for (let x = 0; x < c.width; x++) {
+        const i = (y * c.width + x) * 4;
+        const isBg = d[i] === bg[0] && d[i + 1] === bg[1] && d[i + 2] === bg[2] && d[i + 3] === 255;
+        if (!isBg) {
+          marked++;
+          if (Math.hypot(x + 0.5 - centre, y + 0.5 - centre) > 0.4 * c.width) { outside++; }
+        }
+      }
+    }
+    for (const [x, y] of [[0, 0], [c.width - 1, 0], [0, c.height - 1], [c.width - 1, c.height - 1]]) {
+      const i = (y * c.width + x) * 4;
+      if (d[i + 3] === 255 && d[i] === bg[0] && d[i + 1] === bg[1] && d[i + 2] === bg[2]) { corners++; }
+    }
+    return { marked, outside, corners };
+  });
+  check('the icon is full-bleed (opaque corners) and its mark lies inside the safe zone: nothing a circular mask would cut', mask.marked > 0 && mask.outside === 0 && mask.corners === 4, JSON.stringify(mask));
+
   const cacheNames = await page.evaluate(() => caches.keys());
   check('exactly one cancho-ui cache exists', cacheNames.length === 1 && cacheNames[0].startsWith('cancho-ui-'), cacheNames.join(','));
 

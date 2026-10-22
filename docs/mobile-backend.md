@@ -111,6 +111,30 @@ program is usable on a phone, and an author replaces it freely:
   closed, so one page never runs against two versions. (The browser still checks
   `sw.js` on navigation; it sees the new bytes because the hash is inside it.)
 
+### 5.1 What an update looks like, measured (issue #67)
+
+Issue #67 asked that the cache name change with the content so a stale cache is never served for a new build. **It already does**
+(the bullet above, and `pwa.rs` test `the_worker_version_follows_every_byte_it_caches`); what the issue did not have was a measurement of
+what a user *sees*. `scripts/check-update.js` (Chromium, outside the gate) serves two builds of one program from the same URL, one after
+the other:
+
+| Step | What happens |
+|---|---|
+| Version one installed, reload | version one shown; one cache, `cancho-ui-<16 hex>` |
+| The site is replaced by version two; the browser checks for an update | the new worker installs and **waits** (`registration.waiting`); **two** caches exist (the old one is not deleted until the new worker activates) |
+| The same tab reloads | **still version one**; the new worker is still waiting |
+| A second tab is opened while the first is open | **version one** too |
+| Every old tab is closed, then a fresh tab is opened | **version two**; the old cache is gone (`activate` deleted it) |
+
+So the cost of "a page never runs against two versions" is that an installed app stays on the old build **until every window of it
+is closed**, however long that takes; a reload does not help. This is the policy chosen in section 5 (no `skipWaiting`) and it is kept.
+Reasons, with what each alternative would cost: `skipWaiting()` plus a reload on `controllerchange` would put the new build in the
+open tab at once, at the price of losing the state of a page the user is using (a half-typed form) with no way for the program to
+save it; a visible "new version, reload" message needs the program to be told an update is waiting, and there is no lifecycle event
+in the language (section 6). Neither is built. If it matters for a product, the smallest honest step is that event (issue #67
+item 4), not a change to the worker. Deliberate breaks of the check: `skipWaiting()` in the worker (fails "waiting" and "a second tab
+shows version one"), a constant cache name (fails five checks, the user would be served the old build for ever).
+
 ## 6. Not done, on purpose
 
 - **Real adapters.** *(`Storage` over `localStorage` and a same-origin `net.get` are built: [`adapters.md`](adapters.md). The rest of
@@ -123,8 +147,26 @@ program is usable on a phone, and an author replaces it freely:
   timers; `pagehide` pauses and `pageshow` with `persisted` resumes. This bullet used to say `pagehide` maps to disposal;
   it does not, because a page restored from the back-forward cache cannot be restored from disposal.)* Beyond schedules, a
   component does not know the page was hidden, and there is no `on Pause` or `on Resume` event.
-- **Icons.** The generated icons are placeholders. A `--icon` option, and a
-  maskable variant, are not built.
+- **Icons.** The generated icons are placeholders and there is no `--icon` option. *(Corrected, #67: the manifest now also declares
+  each icon as `"purpose": "maskable"`, a separate entry from `"any"` as the specification recommends. The same file serves both: it is
+  full-bleed (the background fills the image, so a circular or rounded mask shows no transparent corner) and its square mark has its
+  farthest corner at 28.3% of the image from the centre, inside the maskable safe zone, a circle of radius 40%. Checked by
+  `pwa.rs` test `the_maskable_icon_keeps_its_mark_inside_the_safe_zone` and in Chromium by `scripts/check-pwa.js`: the parsed manifest
+  has both maskable sizes, no installability errors, and in the decoded 512 px icon no mark pixel lies outside the safe zone and
+  all four corners are opaque. A break that makes the mark 80% wide fails both. What a real launcher draws, on Android or
+  elsewhere, is not measured: #65.)*
+- **Install prompt (#67 item 3, a decision note).** In Playwright's headless Chromium, with the page installable and the worker
+  active, `beforeinstallprompt` did **not** fire (zero events after install and a reload). So nothing here can show what a page would
+  do with it, and the question of an install button is left open: it would need a capability (the event is a user-gesture grant,
+  as in `docs/adapters.md` for other grants) and a place in the language for the button's event, and it should be designed once
+  the real-device run (#65) shows the event on Android Chrome. Browsers also offer install from their own menu, which needs nothing.
+- **Lifecycle beyond schedules (#67 item 4, a decision note).** Schedules pause when the page is hidden. Nothing else is told:
+  there is no `on Resume` and no `on Pause`, so a program cannot refresh its list the moment the app is brought back, nor save a
+  draft when it is hidden. A page restored from the back-forward cache keeps its state; one that was discarded starts again, and only
+  what the program kept in `Storage` survives (docs/adapters.md section 20). The smallest step would be one event, `on Show`, run
+  when the page becomes visible after having been hidden, through the same path as `every`'s resume, with a replay step
+  (`{"show": true}` beside the existing hide/show steps of `docs/schedules.md` section 11). That is a language change; it is
+  proposed here, not built, and the update question above is the reason to want it.
 - **Native shells (levels 1 and 2), a React Native comparison, push
   notifications, background work, app-store distribution.** Not attempted. Browsers
   restrict push and background work for installed web apps, more on iOS; this
@@ -133,6 +175,9 @@ program is usable on a phone, and an author replaces it freely:
   Chromium (Playwright device emulation) only.
 
 ## 7. How it is checked
+
+*(Added, #67: `scripts/check-update.js` measures the update sequence of section 5.1 in Chromium, and `scripts/check-pwa.js` checks the
+maskable icon. Both are outside the gate.)*
 
 Two layers, kept apart:
 

@@ -106,7 +106,7 @@ fn the_page_and_the_manifest_say_what_a_phone_needs() {
     assert_eq!(manifest["start_url"], "./");
     assert_eq!(manifest["scope"], "./");
     assert_eq!(manifest["display"], "standalone");
-    let sizes: Vec<(&str, &str)> = manifest["icons"]
+    let sizes: Vec<(&str, &str, &str)> = manifest["icons"]
         .as_array()
         .expect("icons")
         .iter()
@@ -114,12 +114,19 @@ fn the_page_and_the_manifest_say_what_a_phone_needs() {
             (
                 i["src"].as_str().expect("src"),
                 i["sizes"].as_str().expect("sizes"),
+                i["purpose"].as_str().expect("purpose"),
             )
         })
         .collect();
+    // #67: each size is declared for "any" and, separately, as "maskable" (a combined "any maskable" is discouraged).
     assert_eq!(
         sizes,
-        [("icon-192.png", "192x192"), ("icon-512.png", "512x512")]
+        [
+            ("icon-192.png", "192x192", "any"),
+            ("icon-512.png", "512x512", "any"),
+            ("icon-192.png", "192x192", "maskable"),
+            ("icon-512.png", "512x512", "maskable"),
+        ]
     );
 }
 
