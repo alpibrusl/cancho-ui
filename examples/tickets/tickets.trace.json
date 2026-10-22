@@ -1,0 +1,360 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "component": "Tickets",
+  "note": "Sign in and edit a work order (docs/tickets.md section 2): the form refuses an empty or short field with a message and a disabled button; a wrong password is said (the handler still asks for the orders, which the service refuses: docs/tickets.md 3.3); the right one shows the list; an order is opened, edited (an invalid status and a long note are refused with a message and a disabled Save), saved with net.post, the list is read again; a save that fails is said; sign-out returns to the form.",
+  "steps": [
+    {
+      "event": "SignIn",
+      "expect": {
+        "outcome": "disabled"
+      }
+    },
+    {
+      "event": "User",
+      "params": [
+        "ad"
+      ],
+      "state": {
+        "user": "ad",
+        "user_msg": "A user name has at least 3 characters.",
+        "user_tone": "error",
+        "blocked": true
+      }
+    },
+    {
+      "event": "User",
+      "params": [
+        "ada"
+      ],
+      "state": {
+        "user_msg": "",
+        "user_tone": "",
+        "blocked": true
+      }
+    },
+    {
+      "event": "Pass",
+      "params": [
+        "short"
+      ],
+      "state": {
+        "pass_msg": "A password has at least 8 characters.",
+        "pass_tone": "error",
+        "blocked": true
+      }
+    },
+    {
+      "event": "Pass",
+      "params": [
+        "wrongpass1"
+      ],
+      "state": {
+        "pass_msg": "",
+        "pass_tone": "",
+        "blocked": false
+      }
+    },
+    {
+      "event": "SignIn",
+      "expect": {
+        "outcome": "suspended",
+        "issued": [
+          {
+            "request": 1,
+            "effect": "net.post",
+            "args": [
+              "api/login",
+              "[\"ada\",\"wrongpass1\"]"
+            ]
+          }
+        ]
+      },
+      "state": {
+        "blocked": true
+      }
+    },
+    {
+      "resolve": 1,
+      "with": {
+        "Ok": "{\"status\": 401, \"body\": \"wrong user name or password\"}"
+      },
+      "expect": {
+        "issued": [
+          {
+            "request": 2,
+            "effect": "net.get",
+            "args": [
+              "api/orders"
+            ]
+          }
+        ]
+      },
+      "state": {
+        "signin_msg": "Wrong user name or password.",
+        "signed": false,
+        "show_signin": [
+          "x"
+        ],
+        "show_app": [],
+        "blocked": true
+      }
+    },
+    {
+      "resolve": 2,
+      "with": {
+        "Err": "HTTP 401"
+      },
+      "state": {
+        "orders": [],
+        "note": "not loaded: HTTP 401"
+      }
+    },
+    {
+      "event": "Pass",
+      "params": [
+        "hunter22!"
+      ],
+      "state": {
+        "pass_msg": "",
+        "blocked": false
+      }
+    },
+    {
+      "event": "SignIn",
+      "expect": {
+        "issued": [
+          {
+            "request": 3,
+            "effect": "net.post",
+            "args": [
+              "api/login",
+              "[\"ada\",\"hunter22!\"]"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "resolve": 3,
+      "with": {
+        "Ok": "{\"status\": 200, \"body\": \"welcome\"}"
+      },
+      "expect": {
+        "issued": [
+          {
+            "request": 4,
+            "effect": "net.get",
+            "args": [
+              "api/orders"
+            ]
+          }
+        ]
+      },
+      "state": {
+        "signin_msg": "",
+        "signed": true,
+        "show_signin": [],
+        "show_app": [
+          "x"
+        ],
+        "pass": ""
+      }
+    },
+    {
+      "resolve": 4,
+      "with": {
+        "Ok": "{\"id\":\"T-1\",\"title\":\"Replace the filter on Press 2\",\"status\":\"open\",\"note\":\"\"}\n{\"id\":\"T-2\",\"title\":\"Calibrate the furnace probe\",\"status\":\"doing\",\"note\":\"probe ordered\"}\n"
+      },
+      "state": {
+        "orders": [
+          "{\"id\":\"T-1\",\"title\":\"Replace the filter on Press 2\",\"status\":\"open\",\"note\":\"\"}",
+          "{\"id\":\"T-2\",\"title\":\"Calibrate the furnace probe\",\"status\":\"doing\",\"note\":\"probe ordered\"}"
+        ],
+        "note": "loaded"
+      }
+    },
+    {
+      "event": "Pick",
+      "params": [
+        "T-2"
+      ],
+      "state": {
+        "selected": "T-2",
+        "title": "Calibrate the furnace probe",
+        "status_edit": "doing",
+        "note_edit": "probe ordered",
+        "show_detail": [
+          "x"
+        ],
+        "edit_blocked": false
+      }
+    },
+    {
+      "event": "Status",
+      "params": [
+        "finished"
+      ],
+      "state": {
+        "status_msg": "Use open, doing or done.",
+        "status_tone": "error",
+        "edit_blocked": true
+      }
+    },
+    {
+      "event": "Save",
+      "expect": {
+        "outcome": "disabled"
+      }
+    },
+    {
+      "event": "Status",
+      "params": [
+        "done"
+      ],
+      "state": {
+        "status_msg": "",
+        "status_tone": "",
+        "edit_blocked": false
+      }
+    },
+    {
+      "event": "NoteEdit",
+      "params": [
+        "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      ],
+      "state": {
+        "note_msg": "A note has at most 200 characters (201 now).",
+        "note_tone": "error",
+        "edit_blocked": true
+      }
+    },
+    {
+      "event": "NoteEdit",
+      "params": [
+        "probe replaced"
+      ],
+      "state": {
+        "note_msg": "",
+        "edit_blocked": false
+      }
+    },
+    {
+      "event": "Save",
+      "expect": {
+        "outcome": "suspended",
+        "issued": [
+          {
+            "request": 5,
+            "effect": "net.post",
+            "args": [
+              "api/order",
+              "[\"T-2\",\"done\",\"probe replaced\"]"
+            ]
+          }
+        ]
+      },
+      "state": {
+        "edit_blocked": true,
+        "save_msg": "saving"
+      }
+    },
+    {
+      "resolve": 5,
+      "with": {
+        "Ok": "{\"status\": 200, \"body\": \"saved\"}"
+      },
+      "expect": {
+        "issued": [
+          {
+            "request": 6,
+            "effect": "net.get",
+            "args": [
+              "api/orders"
+            ]
+          }
+        ]
+      },
+      "state": {
+        "save_msg": "saved",
+        "saved_tone": "ok"
+      }
+    },
+    {
+      "resolve": 6,
+      "with": {
+        "Ok": "{\"id\":\"T-1\",\"title\":\"Replace the filter on Press 2\",\"status\":\"open\",\"note\":\"\"}\n{\"id\":\"T-2\",\"title\":\"Calibrate the furnace probe\",\"status\":\"done\",\"note\":\"probe replaced\"}\n"
+      },
+      "state": {
+        "orders": [
+          "{\"id\":\"T-1\",\"title\":\"Replace the filter on Press 2\",\"status\":\"open\",\"note\":\"\"}",
+          "{\"id\":\"T-2\",\"title\":\"Calibrate the furnace probe\",\"status\":\"done\",\"note\":\"probe replaced\"}"
+        ],
+        "edit_blocked": false
+      }
+    },
+    {
+      "event": "Save",
+      "expect": {
+        "outcome": "suspended"
+      }
+    },
+    {
+      "resolve": 7,
+      "with": {
+        "Err": "network error"
+      },
+      "state": {
+        "save_msg": "not saved: network error",
+        "saved_tone": "error"
+      }
+    },
+    {
+      "resolve": 8,
+      "with": {
+        "Err": "network error"
+      },
+      "state": {
+        "orders": [
+          "{\"id\":\"T-1\",\"title\":\"Replace the filter on Press 2\",\"status\":\"open\",\"note\":\"\"}",
+          "{\"id\":\"T-2\",\"title\":\"Calibrate the furnace probe\",\"status\":\"done\",\"note\":\"probe replaced\"}"
+        ]
+      }
+    },
+    {
+      "event": "SignOut",
+      "expect": {
+        "outcome": "suspended",
+        "issued": [
+          {
+            "request": 9,
+            "effect": "net.post",
+            "args": [
+              "api/logout",
+              "[]"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "resolve": 9,
+      "with": {
+        "Ok": "{\"status\": 200, \"body\": \"bye\"}"
+      },
+      "state": {
+        "signed": false,
+        "orders": [],
+        "selected": "",
+        "show_signin": [
+          "x"
+        ],
+        "show_app": [],
+        "show_detail": [],
+        "signin_msg": "You are signed out.",
+        "blocked": true,
+        "user": ""
+      }
+    }
+  ]
+}
