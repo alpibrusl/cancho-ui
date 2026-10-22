@@ -159,6 +159,8 @@ impl ViewBlock {
             // `For` is never empty by definition — it repeats its
             // children at least once per list item.
             ViewNode::For { .. } => false,
+            // An `If` can draw nothing when its condition is false, but the view is not empty by construction.
+            ViewNode::If { .. } => false,
         }
     }
 }
@@ -184,6 +186,13 @@ pub enum ViewNode {
     For {
         over: Expr,
         binding: String,
+        children: Vec<ViewNode>,
+        span: Span,
+    },
+    /// `If { when: cond ... }` (docs/view-conditional.md): the children are drawn while the pure `Bool` expression `cond`
+    /// is true, and are not in the page at all while it is false.
+    If {
+        cond: Expr,
         children: Vec<ViewNode>,
         span: Span,
     },

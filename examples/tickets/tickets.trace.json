@@ -93,10 +93,6 @@
       "state": {
         "signin_msg": "Wrong user name or password.",
         "signed": false,
-        "show_signin": [
-          "x"
-        ],
-        "show_app": [],
         "blocked": true
       }
     },
@@ -154,10 +150,6 @@
       "state": {
         "signin_msg": "",
         "signed": true,
-        "show_signin": [],
-        "show_app": [
-          "x"
-        ],
         "pass": ""
       }
     },
@@ -184,9 +176,6 @@
         "title": "Calibrate the furnace probe",
         "status_edit": "doing",
         "note_edit": "probe ordered",
-        "show_detail": [
-          "x"
-        ],
         "edit_blocked": false
       }
     },
@@ -346,14 +335,31 @@
         "signed": false,
         "orders": [],
         "selected": "",
-        "show_signin": [
-          "x"
-        ],
-        "show_app": [],
-        "show_detail": [],
         "signin_msg": "You are signed out.",
         "blocked": true,
         "user": ""
+      }
+    },
+    {
+      "note": "signed out: the orders screen is gone, so its controls cannot be used (docs/view-conditional.md section 4)",
+      "event": "Pick",
+      "params": [
+        "T-1"
+      ],
+      "expect": {
+        "outcome": "hidden"
+      }
+    },
+    {
+      "event": "Save",
+      "expect": {
+        "outcome": "hidden"
+      }
+    },
+    {
+      "event": "SignOut",
+      "expect": {
+        "outcome": "hidden"
       }
     }
   ]

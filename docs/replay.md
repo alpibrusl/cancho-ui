@@ -125,7 +125,7 @@ Anything else (an object with other keys, a two-key object) is
 
   | Key | Value after the step |
   |---|---|
-  | `outcome` | `"faulted"` (the step said `"fault"` and it did: section 2.4), `"completed"` (the handler ran to its end), `"suspended"` (it is waiting on a request), `"dropped"` (a superseded request resolved and the rest of its handler was abandoned), `"disabled"` (every control that fires the event is `disabled:`, so the handler did not run: `docs/controls.md` section 2), or `"ok"` (`advance`, `dispose`) |
+  | `outcome` | `"faulted"` (the step said `"fault"` and it did: section 2.4), `"completed"` (the handler ran to its end), `"suspended"` (it is waiting on a request), `"dropped"` (a superseded request resolved and the rest of its handler was abandoned), `"disabled"` (every control that fires the event is `disabled:`, so the handler did not run: `docs/controls.md` section 2), `"hidden"` (every control that fires the event is inside an `If` whose condition is false, so it is not in the page and the handler did not run: `docs/view-conditional.md` section 4), or `"ok"` (`advance`, `dispose`) |
   | `issued` | the requests this step started: `[{"request": N, "effect": "net.search", "args": [...]}]` (a `sleep` also has `"due": ms`) |
   | `pending` | ids of requests started and not yet resolved, ascending (superseded and disposed ones included: they have not *resolved*) |
   | `fired` | the awaits resumed by this step: `[{"request": N, "delivered": "Ok"\|"Err"\|"Cancelled"\|"dropped", "outcome": ...}]` |

@@ -1,0 +1,70 @@
+{
+  "checks": [
+    { "name": "cargo test view_if", "argv": ["cargo", "test", "--quiet", "-p", "cancho-ui", "--test", "view_if"] },
+    { "name": "check-view-if.js", "argv": ["node", "scripts/check-view-if.js"] },
+    { "name": "check-tickets.js", "argv": ["node", "scripts/check-tickets.js"] },
+    { "name": "cargo test tickets trace", "argv": ["cargo", "run", "--quiet", "--", "test", "examples/tickets/tickets.cui", "examples/tickets/tickets.trace.json"] }
+  ],
+  "breaks": [
+    {
+      "name": "the page keeps the branch when the condition is false",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "format!(\"{0}if ({1}) {{\\n\", indent, emit_expr_runtime(cond, params));",
+      "to": "format!(\"{0}if (true || {1}) {{\\n\", indent, emit_expr_runtime(cond, params));"
+    },
+    {
+      "name": "replay never finds a control hidden",
+      "file": "crates/cancho-ui-replay/src/machine.rs",
+      "from": "!matches!(eval(&mut ctx, cond), Ok(Value::Bool(false)))",
+      "to": "true"
+    },
+    {
+      "name": "replay calls a hidden control disabled",
+      "file": "crates/cancho-ui-replay/src/machine.rs",
+      "from": "(p.hidden > 0).then_some(Outcome::Hidden)",
+      "to": "(p.hidden > 0).then_some(Outcome::Disabled)"
+    },
+    {
+      "name": "replay does not count the controls under a false If",
+      "file": "crates/cancho-ui-replay/src/machine.rs",
+      "from": "p.hidden += children.iter().map(|c| fires_any(c, event)).sum::<usize>();",
+      "to": "p.hidden += 0 * children.iter().map(|c| fires_any(c, event)).sum::<usize>();"
+    },
+    {
+      "name": "a hidden disabled button blocks Enter",
+      "file": "crates/cancho-ui-codegen-web/src/controls.rs",
+      "from": "        if guards.is_empty() {\n            cond",
+      "to": "        if true {\n            cond"
+    },
+    {
+      "name": "an instance under an If is not disposed (plain if)",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "            // that machinery (docs/view-conditional.md section 5).\n            if has_slots &&",
+      "to": "            // that machinery (docs/view-conditional.md section 5).\n            if false && has_slots &&"
+    },
+    {
+      "name": "an If in a Table is left as it is (not made rows)",
+      "file": "crates/cancho-ui-ir/src/table.rs",
+      "from": "            } => Ok(IrViewNode::If {\n                cond,\n                children: table_rows(children)?,",
+      "to": "            } => Ok(IrViewNode::If {\n                cond,\n                children,"
+    },
+    {
+      "name": "the type of a when: is not checked",
+      "file": "crates/cancho-ui-ir/src/conditions.rs",
+      "from": "want_bool(scope, cond, \"the `when:` of an `If`\")?;",
+      "to": "kind(scope, cond)?;"
+    },
+    {
+      "name": "a when: may read the world",
+      "file": "crates/cancho-ui-ir/src/lower.rs",
+      "from": "let ir_cond = lower_expr_pure(cond)?;",
+      "to": "let ir_cond = lower_expr(cond)?;"
+    },
+    {
+      "name": "the semantic diff does not see an If",
+      "file": "crates/cancho-ui-diff/src/render.rs",
+      "from": "out.push(format!(\"If when={}\", expr(cond)));",
+      "to": "let _ = expr(cond);"
+    }
+  ]
+}

@@ -997,6 +997,29 @@ fn lower_view_node_with_effects(
                 effects,
             ))
         }
+        ViewNode::If {
+            cond,
+            children,
+            span,
+        } => {
+            // The condition is evaluated at each render, so it is as pure as a `For`'s `over`.
+            let ir_cond = lower_expr_pure(cond)?;
+            let mut lowered_children = Vec::with_capacity(children.len());
+            let mut effects = Vec::new();
+            for ch in children {
+                let (n, mut e) = lower_view_node_with_effects(ch)?;
+                lowered_children.push(n);
+                effects.append(&mut e);
+            }
+            Ok((
+                IrViewNode::If {
+                    cond: ir_cond,
+                    children: lowered_children,
+                    span: *span,
+                },
+                effects,
+            ))
+        }
     }
 }
 
@@ -1454,6 +1477,12 @@ fn view_matches<'a>(node: &'a IrViewNode, out: &mut Vec<&'a IrExpr>) {
         }
         IrViewNode::For { over, children, .. } => {
             expr_matches(over, out);
+            for ch in children {
+                view_matches(ch, out);
+            }
+        }
+        IrViewNode::If { cond, children, .. } => {
+            expr_matches(cond, out);
             for ch in children {
                 view_matches(ch, out);
             }

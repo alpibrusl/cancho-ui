@@ -20,6 +20,9 @@ pub enum Outcome {
     /// Every control that fires the event is `disabled` (docs/controls.md section 2): the browser would not have
     /// delivered it, so the handler does not run and nothing changes.
     Disabled,
+    /// No control that fires the event is in the page: each is inside an `If` whose condition is false
+    /// (docs/view-conditional.md section 4). The browser could not have delivered it; nothing changes.
+    Hidden,
     /// The handler faulted and the step said it would (`"fault": "replay-.."`, docs/replay.md): its segment's writes
     /// are undone (docs/semantics.md, "A handler that faults").
     Faulted,
@@ -33,6 +36,7 @@ impl Outcome {
             Outcome::Suspended => "suspended",
             Outcome::Dropped => "dropped",
             Outcome::Disabled => "disabled",
+            Outcome::Hidden => "hidden",
             Outcome::Faulted => "faulted",
             Outcome::Ok => "ok",
         }
@@ -290,8 +294,8 @@ impl<'a> Machine<'a> {
         params: Vec<Value>,
         fx: &mut StepEffects,
     ) -> Result<Outcome, Fault> {
-        if self.event_disabled(&self.comp.events[handler].name) {
-            return Ok(Outcome::Disabled);
+        if let Some(refused) = self.event_refused(&self.comp.events[handler].name) {
+            return Ok(refused);
         }
         let names = &self.comp.events[handler].params;
         let task = Task {
@@ -307,12 +311,58 @@ impl<'a> Machine<'a> {
     /// `on: event` (a click or an input: open when the control is enabled) and the fields with `submit: event` (Enter:
     /// open when the field is enabled **and** every `on:` control of the event is enabled, because the emitted guard
     /// `__submit_blocked` treats Enter as the same act as the button). An event no control fires (a schedule's) is
-    /// never refused. Only `true`, `false` and a `Bool` state field can be `disabled:`.
-    fn event_disabled(&self, event: &str) -> bool {
+    /// never refused. Only `true`, `false` and a `Bool` state field can be `disabled:`. A control inside an `If` whose
+    /// condition is false is not in the page: if that is every control of the event, it is `Hidden`
+    /// (docs/view-conditional.md section 4). The condition is read from the state as it is now; a condition that cannot
+    /// be evaluated here (it reads a `For` binding, which this walk does not iterate, or faults) counts as true.
+    fn event_refused(&self, event: &str) -> Option<Outcome> {
         #[derive(Default)]
         struct Paths {
             on: Vec<bool>,
             submit: Vec<bool>,
+            hidden: usize,
+        }
+        /// Does this node, or anything under it, fire `event`?
+        fn fires_any(node: &IrViewNode, event: &str) -> usize {
+            match node {
+                IrViewNode::Element {
+                    bindings, children, ..
+                } => {
+                    let own = bindings
+                        .iter()
+                        .filter(|b| {
+                            (b.key == "on" || b.key == "submit")
+                                && match &b.value {
+                                    IrBindingValue::EventRef(e) => e == event,
+                                    IrBindingValue::EventCall { name, .. } => name == event,
+                                    _ => false,
+                                }
+                        })
+                        .count();
+                    own + children.iter().map(|c| fires_any(c, event)).sum::<usize>()
+                }
+                IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
+                    children.iter().map(|c| fires_any(c, event)).sum()
+                }
+                IrViewNode::Text { .. } => 0,
+            }
+        }
+        fn visible(m: &Machine<'_>, cond: &IrExpr) -> bool {
+            let mut journal = Journal::default();
+            let mut no_storage = BTreeMap::new();
+            let mut no_memory = BTreeMap::new();
+            let mut ctx = Ctx {
+                state: &m.state,
+                clock: m.clock,
+                storage: &mut no_storage,
+                storage_ns: "",
+                storage_quota: None,
+                storage_memory: &mut no_memory,
+                journal: &mut journal,
+                locals: Vec::new(),
+                init: false,
+            };
+            !matches!(eval(&mut ctx, cond), Ok(Value::Bool(false)))
         }
         fn walk(m: &Machine<'_>, node: &IrViewNode, event: &str, p: &mut Paths) {
             match node {
@@ -357,17 +407,26 @@ impl<'a> Machine<'a> {
                         walk(m, c, event, p);
                     }
                 }
+                IrViewNode::If { cond, children, .. } => {
+                    if visible(m, cond) {
+                        for c in children {
+                            walk(m, c, event, p);
+                        }
+                    } else {
+                        p.hidden += children.iter().map(|c| fires_any(c, event)).sum::<usize>();
+                    }
+                }
                 IrViewNode::Text { .. } => {}
             }
         }
         let mut p = Paths::default();
         walk(self, &self.comp.view.body, event, &mut p);
         if p.on.is_empty() && p.submit.is_empty() {
-            return false;
+            return (p.hidden > 0).then_some(Outcome::Hidden);
         }
         let all_on_enabled = p.on.iter().all(|e| *e);
         let open = p.on.iter().any(|e| *e) || (all_on_enabled && p.submit.iter().any(|e| *e));
-        !open
+        (!open).then_some(Outcome::Disabled)
     }
 
     /// The scripted network answers request `id` (`answer` is an `Ok` or `Err`).

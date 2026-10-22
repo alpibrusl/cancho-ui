@@ -172,6 +172,12 @@ fn node(scope: &mut Scope, n: &IrViewNode) -> Result<(), LowerError> {
             }
             scope.locals.pop();
         }
+        IrViewNode::If { cond, children, .. } => {
+            want_bool(scope, cond, "the `when:` of an `If`")?;
+            for ch in children {
+                node(scope, ch)?;
+            }
+        }
     }
     Ok(())
 }

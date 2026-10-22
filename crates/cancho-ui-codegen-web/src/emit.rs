@@ -261,7 +261,9 @@ fn view_has_focusable(node: &IrViewNode) -> bool {
             matches!(kind, IrElementKind::Button | IrElementKind::TextField)
                 || children.iter().any(view_has_focusable)
         }
-        IrViewNode::For { children, .. } => children.iter().any(view_has_focusable),
+        IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
+            children.iter().any(view_has_focusable)
+        }
         IrViewNode::Text { .. } => false,
     }
 }
@@ -333,6 +335,11 @@ fn view_node_uses_await_or_sleep(node: &IrViewNode) -> bool {
                 || expr_uses_sleep(over)
                 || children.iter().any(view_node_uses_await_or_sleep)
         }
+        IrViewNode::If { cond, children, .. } => {
+            expr_uses_await(cond)
+                || expr_uses_sleep(cond)
+                || children.iter().any(view_node_uses_await_or_sleep)
+        }
     }
 }
 
@@ -359,7 +366,7 @@ fn collect_prop_consumers(node: &IrViewNode, out: &mut Vec<String>) {
                 collect_prop_consumers(c, out);
             }
         }
-        IrViewNode::For { children, .. } => {
+        IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
             for c in children {
                 collect_prop_consumers(c, out);
             }

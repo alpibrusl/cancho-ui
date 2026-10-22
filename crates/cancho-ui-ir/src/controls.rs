@@ -51,7 +51,7 @@ fn check_node(c: &IrComponent, node: &IrViewNode) -> Result<(), LowerError> {
                 check_node(c, ch)?;
             }
         }
-        IrViewNode::For { children, .. } => {
+        IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
             for ch in children {
                 check_node(c, ch)?;
             }

@@ -195,5 +195,11 @@ pub fn view_descriptors(node: &IrViewNode, out: &mut Vec<String>) {
                 view_descriptors(c, out);
             }
         }
+        IrViewNode::If { cond, children, .. } => {
+            out.push(format!("If when={}", expr(cond)));
+            for c in children {
+                view_descriptors(c, out);
+            }
+        }
     }
 }
