@@ -542,6 +542,14 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                 )),
             }
         }
+        ("fold", 1) => match eval(ctx, &args[0])? {
+            Value::Str(t) => Ok(Value::Str(cancho_ui_ir::casefold::fold_text(&t))),
+            other => Err(fault(
+                "replay-type-error",
+                format!("`fold` needs a String, got {}", describe(&other)),
+                span,
+            )),
+        },
         ("concat", 2) => {
             let a = eval(ctx, &args[0])?;
             let b = eval(ctx, &args[1])?;
@@ -693,9 +701,9 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
         (
             "clock.now" | "net.search" | "net.get" | "net.fetch" | "net.post" | "location.current"
             | "sleep" | "storage.get" | "storage.set" | "json.get" | "json.items" | "json.quote"
-            | "reverse" | "contains" | "lower" | "num" | "take" | "skip" | "concat" | "min" | "max"
-            | "abs" | "floor" | "ceil" | "round" | "lines" | "split" | "join" | "trim" | "upper"
-            | "starts_with" | "ends_with",
+            | "reverse" | "contains" | "lower" | "fold" | "num" | "take" | "skip" | "concat"
+            | "min" | "max" | "abs" | "floor" | "ceil" | "round" | "lines" | "split" | "join"
+            | "trim" | "upper" | "starts_with" | "ends_with",
             n,
         ) => Err(fault(
             "replay-type-error",

@@ -30,11 +30,13 @@ component Rows {
     state body: String = "";
     state recs: List[String] = [];
     state joined: String = "";
+    state folded: String = "";
     state pages: Int = 0;
     state r: Result[String, String] = Ok("");
 
     on Query(v) {
         q = v;
+        folded = fold(v);
         body = "\\{\\\"q\\\":" + json.quote(v) + "\\}";
         shown = sort(filter(names, s => contains(lower(s), lower(v))), s => lower(s));
     }
@@ -60,6 +62,7 @@ component Rows {
             Button { label: "Pages" on: Pages }
             Text { "pages {pages}" }
             Text { "joined: {joined}" }
+            Text { "folded: {folded}" }
             For {
                 over: recs
                 as: rec
@@ -89,7 +92,7 @@ component Rows {
   const from = js.indexOf('function __cui_sort');
   const to = js.indexOf('function mount_', from);
   if (from < 0 || to < 0) { throw new Error('the helpers are not in the built program'); }
-  const lib = new Function(js.slice(from, to) + '\nreturn { sort: __cui_sort, lower: __cui_lower, contains: __cui_contains, reverse: __cui_reverse, num: __cui_num, take: __cui_take, skip: __cui_skip, concat: __cui_concat, lines: __cui_lines, split: __cui_split, join: __cui_join, trim: __cui_trim, upper: __cui_upper, starts_with: __cui_starts_with, ends_with: __cui_ends_with, quote: __cui_json_quote, min: __cui_min, max: __cui_max, abs: __cui_abs, floor: __cui_floor, ceil: __cui_ceil, round: __cui_round };')();
+  const lib = new Function(js.slice(from, to) + '\nreturn { sort: __cui_sort, lower: __cui_lower, contains: __cui_contains, reverse: __cui_reverse, num: __cui_num, take: __cui_take, skip: __cui_skip, concat: __cui_concat, fold: __cui_fold, fold_cp: __cui_fold_cp, lines: __cui_lines, split: __cui_split, join: __cui_join, trim: __cui_trim, upper: __cui_upper, starts_with: __cui_starts_with, ends_with: __cui_ends_with, quote: __cui_json_quote, min: __cui_min, max: __cui_max, abs: __cui_abs, floor: __cui_floor, ceil: __cui_ceil, round: __cui_round };')();
   const corpus = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'lists_corpus.json'), 'utf8'));
   for (const e of corpus) {
     const keys = e.keys.map((k) => (k !== null && typeof k === 'object' && !Array.isArray(k) ? NaN : k));
@@ -135,6 +138,23 @@ component Rows {
     try { lib.concat(e.a, e.b); } catch (err) { message = String(err && err.message); }
     check(`concat refuses: ${e.why}`, message !== null && message.startsWith(e.rule), `got ${message}`);
   }
+
+  const fold = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fold_corpus.json'), 'utf8'));
+  for (const e of fold.cases) {
+    check(`fold: ${e.why}`, lib.fold(e.text) === e.fold, `got ${JSON.stringify(lib.fold(e.text))}`);
+  }
+  for (const [a, b] of fold.equal) { check(`fold equal: ${a} ${b}`, lib.fold(a) === lib.fold(b)); }
+  for (const [a, b] of fold.different) { check(`fold different: ${a} ${b}`, lib.fold(a) !== lib.fold(b)); }
+  // Every code point through the emitted table: an FNV-1a digest, computed by the generator from Python's own folding.
+  let h = 2166136261;
+  for (let cp = 0; cp < 0x110000; cp++) {
+    if (cp >= 0xD800 && cp <= 0xDFFF) { continue; }
+    h = Math.imul(h ^ lib.fold_cp(cp), 16777619) >>> 0;
+  }
+  check(`fold: the digest over every code point (${fold.all_code_points.count}) matches the generator's`, h === fold.all_code_points.fnv1a32, `got ${h}, want ${fold.all_code_points.fnv1a32}`);
+  let threw = null;
+  try { lib.fold(5); } catch (err) { threw = String(err && err.message); }
+  check('fold refuses a non-string', threw !== null && threw.startsWith('replay-type-error'), `got ${threw}`);
 
   const math = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'math_corpus.json'), 'utf8'));
   const special_num = { NaN: NaN, Infinity: Infinity, '-Infinity': -Infinity };
@@ -200,6 +220,8 @@ component Rows {
   check('and is filtered and joined', (await page.locator('#root').innerText()).includes('joined: TEMP 21.5/PRESS 1013'));
   await page.fill('input', 'a"b\\c');
   check('braces and json.quote on the page: an object body whose text cannot change it', (await page.locator('#root').innerText()).includes('body {"q":"a\\"b\\\\c"}'), (await page.locator('#root').innerText()).split('\n').find((l) => l.startsWith('body')));
+  await page.fill('input', '\u00dcNIT \u0130');
+  check('fold on the page: capital U-umlaut folds, the dotted capital I stays', (await page.locator('#root').innerText()).includes('folded: \u00fcnit \u0130'), (await page.locator('#root').innerText()).split('\n').find((l) => l.startsWith('folded')));
   check('no script errors', errors.length === 0, errors.join(' | '));
   await browser.close();
   server.close();

@@ -13,6 +13,7 @@ const PAGING_CORPUS: &str = include_str!("../../../tests/paging_corpus.json");
 const TEXT_CORPUS: &str = include_str!("../../../tests/text_corpus.json");
 const NUM_CORPUS: &str = include_str!("../../../tests/num_corpus.json");
 const CONCAT_CORPUS: &str = include_str!("../../../tests/concat_corpus.json");
+const FOLD_CORPUS: &str = include_str!("../../../tests/fold_corpus.json");
 
 fn run(args: &[&str]) -> (i32, String, String) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -502,5 +503,105 @@ fn the_concat_helper_is_emitted_only_when_used() {
         assert_eq!(code, 0, "{stdout}{stderr}");
         let text = std::fs::read_to_string(&js).expect("the built module");
         assert_eq!(text.contains("function __cui_concat("), has);
+    }
+}
+
+/// `fold(text)` (docs/lists.md section 10) through the real replay: one trace step per case of `tests/fold_corpus.json`,
+/// the same file `scripts/check-lists.js` runs against the emitted `__cui_fold`.
+#[test]
+fn fold_agrees_with_every_case_of_its_corpus() {
+    let corpus: Value = serde_json::from_str(FOLD_CORPUS).expect("the corpus is JSON");
+    let cases = corpus["cases"].as_array().expect("cases");
+    assert!(cases.len() >= 15, "{} cases", cases.len());
+    let src = "component F {\n    state out: String = \"\";\n    on Go(t) { out = fold(t); }\n    view { Text { \"{out}\" } }\n}\n";
+    let steps: Vec<Value> = cases
+        .iter()
+        .map(|e| serde_json::json!({"event": "Go", "params": [e["text"]], "state": {"out": e["fold"]}}))
+        .collect();
+    let trace = serde_json::json!({
+        "schema": "cancho-ui-trace", "version": "0.1.0", "component": "F", "steps": steps
+    });
+    let file = scratch("fold.cui", src);
+    let trace = scratch("fold.trace.json", &trace.to_string());
+    let (code, stdout, stderr) = run(&["test", p(&file), p(&trace)]);
+    assert_eq!(code, 0, "{stdout}{stderr}");
+}
+
+/// The table itself: an FNV-1a digest over the fold of every code point, which the generator computes from Python's own
+/// folding. The same number is checked against the emitted JavaScript in `scripts/check-lists.js`.
+#[test]
+fn the_fold_table_matches_the_generators_digest_for_every_code_point() {
+    let corpus: Value = serde_json::from_str(FOLD_CORPUS).expect("the corpus is JSON");
+    let want = corpus["all_code_points"]["fnv1a32"]
+        .as_u64()
+        .expect("a digest");
+    let mut h: u32 = 2_166_136_261;
+    let mut count = 0u32;
+    let mut changed = 0u32;
+    for cp in 0..=0x10FFFFu32 {
+        let Some(c) = char::from_u32(cp) else {
+            continue;
+        };
+        let f = cancho_ui_ir::casefold::fold_char(c);
+        count += 1;
+        if f != c {
+            changed += 1;
+        }
+        h = (h ^ f as u32).wrapping_mul(16_777_619);
+    }
+    assert_eq!(
+        u64::from(count),
+        corpus["all_code_points"]["count"].as_u64().expect("count")
+    );
+    assert_eq!(
+        u64::from(changed),
+        corpus["all_code_points"]["changed"]
+            .as_u64()
+            .expect("changed")
+    );
+    assert_eq!(u64::from(h), want);
+}
+
+#[test]
+fn a_case_insensitive_search_finds_an_accented_name() {
+    // The finding of #37: with `lower` (ASCII only) `ünit` did not find `Pumpe Ünit`.
+    let src = "component S {\n    state names: List[String] = [\"Pumpe \u{dc}nit\", \"pumpe \u{fc}nit\", \"Ventil\"];\n    state hits: Int = 0;\n    state hits_ascii: Int = 0;\n    on Search(q) {\n        hits = len(filter(names, n => contains(fold(n), fold(q))));\n        hits_ascii = len(filter(names, n => contains(lower(n), lower(q))));\n    }\n    view { Text { \"{hits}\" } }\n}\n";
+    let trace = r#"{"schema":"cancho-ui-trace","version":"0.1.0","component":"S","steps":[
+        {"event":"Search","params":["ünit"],"state":{"hits":2,"hits_ascii":1}},
+        {"event":"Search","params":["ÜNIT"],"state":{"hits":2,"hits_ascii":1}},
+        {"event":"Search","params":["PUMPE"],"state":{"hits":2,"hits_ascii":2}},
+        {"event":"Search","params":["zzz"],"state":{"hits":0,"hits_ascii":0}}]}"#;
+    let file = scratch("fold-search.cui", src);
+    let trace = scratch("fold-search.trace.json", trace);
+    let (code, stdout, stderr) = run(&["test", p(&file), p(&trace)]);
+    assert_eq!(code, 0, "{stdout}{stderr}");
+}
+
+#[test]
+fn fold_refuses_the_wrong_arguments_and_is_emitted_only_when_used() {
+    for call in ["fold()", "fold(s, s)"] {
+        let src = format!(
+            "component C {{\n    state s: String = \"a\";\n    on Go {{ s = {call}; }}\n    view {{ Text {{ \"x\" }} }}\n}}\n"
+        );
+        let file = scratch("fold-arity.cui", &src);
+        let (code, stdout, _) = run(&["check", p(&file), "--output", "json"]);
+        assert_eq!(code, 1, "{call}: {stdout}");
+        assert!(
+            stdout.contains("builtin-shape-mismatch"),
+            "{call}: {stdout}"
+        );
+        assert!(stdout.contains("fold(text)"), "{call}: {stdout}");
+    }
+    let dir = std::env::temp_dir().join(format!("cancho-ui-lists-{}", std::process::id()));
+    for (call, has) in [("fold(s)", true), ("lower(s)", false)] {
+        let src = format!(
+            "component C {{\n    state s: String = \"a\";\n    on Go {{ s = {call}; }}\n    view {{ Text {{ \"x\" }} }}\n}}\n"
+        );
+        let file = scratch("fold-emit.cui", &src);
+        let js = dir.join("fold-emit.js");
+        let (code, stdout, stderr) = run(&["build", p(&file), "-o", p(&js)]);
+        assert_eq!(code, 0, "{stdout}{stderr}");
+        let text = std::fs::read_to_string(&js).expect("the built module");
+        assert_eq!(text.contains("function __cui_fold("), has, "{call}");
     }
 }

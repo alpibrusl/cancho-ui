@@ -56,9 +56,8 @@ fn kind_of_call(path: &[String]) -> Kind {
     match name.as_str() {
         "contains" | "starts_with" | "ends_with" => Kind::Bool,
         "min" | "max" | "abs" | "floor" | "ceil" | "round" | "num" => Kind::Num,
-        "lower" | "upper" | "trim" | "join" | "json.quote" | "json.get" | "storage.get" => {
-            Kind::Str
-        }
+        "lower" | "fold" | "upper" | "trim" | "join" | "json.quote" | "json.get"
+        | "storage.get" => Kind::Str,
         "lines" | "split" | "take" | "skip" | "reverse" | "concat" | "json.items" => Kind::List,
         _ => Kind::Unknown,
     }

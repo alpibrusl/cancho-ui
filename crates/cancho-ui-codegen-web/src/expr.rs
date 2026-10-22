@@ -389,6 +389,7 @@ fn emit_call_runtime(path: &[String], args: &[IrExpr], params: &[&str]) -> Strin
             "reverse"
                 | "contains"
                 | "lower"
+                | "fold"
                 | "num"
                 | "take"
                 | "skip"

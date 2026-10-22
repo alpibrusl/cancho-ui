@@ -172,5 +172,43 @@ pub fn helpers_used(emitted: &str) -> String {
             out.push('\n');
         }
     }
+    if emitted.contains("__cui_fold(") {
+        out.push_str(&fold_js());
+        out.push('\n');
+    }
     out
+}
+
+/// `fold(text)` (docs/lists.md section 10): simple case folding, from the same ranges replay reads
+/// (`cancho_ui_ir::casefold`), never from the engine's own `toLowerCase`. Walks code points, so an astral letter folds
+/// as one; the table is searched by binary search over `[first, last, delta, stride]` runs. ASCII is the fast path.
+fn fold_js() -> String {
+    format!(
+        "\
+// Builtin: fold(text) (docs/lists.md section 10). Unicode {version} simple case folding, one code point for one code point.
+var __cui_fold_runs = {runs};
+function __cui_fold_cp(cp) {{
+    var lo = 0, hi = __cui_fold_runs.length / 4 - 1;
+    while (lo <= hi) {{
+        var mid = (lo + hi) >> 1, i = mid * 4;
+        if (cp < __cui_fold_runs[i]) {{ hi = mid - 1; }}
+        else if (cp > __cui_fold_runs[i + 1]) {{ lo = mid + 1; }}
+        else {{ return (cp - __cui_fold_runs[i]) % __cui_fold_runs[i + 3] === 0 ? cp + __cui_fold_runs[i + 2] : cp; }}
+    }}
+    return cp;
+}}
+function __cui_fold(text) {{
+    if (typeof text !== \"string\") {{ throw new Error(\"replay-type-error: `fold` needs a String\"); }}
+    var out = \"\";
+    for (var i = 0; i < text.length; ) {{
+        var cp = text.codePointAt(i);
+        i += cp > 0xFFFF ? 2 : 1;
+        out += String.fromCodePoint(__cui_fold_cp(cp));
+    }}
+    return out;
+}}
+",
+        version = cancho_ui_ir::casefold::UNICODE_VERSION,
+        runs = cancho_ui_ir::casefold::js_ranges()
+    )
 }
