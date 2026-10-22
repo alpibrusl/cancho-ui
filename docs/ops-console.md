@@ -157,7 +157,7 @@ wrap at a hyphen on a narrow screen, no column widths or alignment.
 With the service stopped, the installed page opened (the service worker precaches the page files) and said
 `status: error: network error` and `0 of 0 machines`: the service worker does not cache API answers, and the program held the
 list only in memory. The console now keeps the last good answer in `Storage("ops-console")` and shows it when the read fails,
-with a status that says so (`error: network error (showing the last saved list, if any)`). Why the program and not the worker:
+with a status that says so (`error: network error (showing the list saved <age>)`, or `nothing is saved yet` when there is none: `docs/adapters.md` section 20). Why the program and not the worker:
 `docs/adapters.md` section 19. (A test note: Playwright's `setOffline` does not reach a service worker's own requests, so the
 checks stop the server.)
 

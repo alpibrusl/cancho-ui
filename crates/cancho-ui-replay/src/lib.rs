@@ -156,6 +156,7 @@ fn run_trace(comp: &IrComponent, trace: &Trace, file: &str, trace_name: &str) ->
         }
     };
     machine.storage = trace.storage.clone();
+    machine.storage_quota = trace.storage_quota;
     // docs/adapters.md section 18: a trace lists only credentials the component declares.
     let declared = credential_name(comp);
     for given in &trace.credentials {

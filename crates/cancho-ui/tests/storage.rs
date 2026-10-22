@@ -307,3 +307,73 @@ fn a_namespaced_trace_reads_and_writes_namespaced_keys() {
     let (code, stdout, stderr) = run(&["test", p(&src), p(&seeded)]);
     assert_eq!(code, 0, "{stdout}{stderr}");
 }
+
+const QUOTA_CORPUS: &str = include_str!("../../../tests/storage_quota_corpus.json");
+
+/// A full `localStorage` (docs/adapters.md section 20) through the real replay: one trace per case of
+/// `tests/storage_quota_corpus.json`, the file `scripts/check-storage-quota.js` runs against the emitted adapter. The
+/// report's store after the last step is the persisted store; a refused write is not in it.
+#[test]
+fn a_full_store_refuses_writes_as_the_corpus_says() {
+    let corpus: Value = serde_json::from_str(QUOTA_CORPUS).expect("the corpus is JSON");
+    let cases = corpus["cases"].as_array().expect("cases");
+    assert!(cases.len() >= 10, "{} cases", cases.len());
+    let src = "component Keep {\n    requires Storage;\n    state ok: Bool = true;\n    state got: String = \"\";\n    on Set(k, v) { ok = storage.set(k, v); }\n    on Get(k) { got = storage.get(k, \"none\"); }\n    view { Text { \"{got}\" } }\n}\n";
+    let file = scratch("keep.cui", src);
+    for c in cases {
+        let mut steps = Vec::new();
+        for op in c["ops"].as_array().expect("ops") {
+            if let Some(set) = op.get("set") {
+                steps.push(serde_json::json!({
+                    "event": "Set", "params": [set[0], set[1]], "state": {"ok": op["ok"]}
+                }));
+            } else {
+                let get = &op["get"];
+                steps.push(serde_json::json!({
+                    "event": "Get", "params": [get[0]], "state": {"got": op["is"]}
+                }));
+            }
+        }
+        let mut trace = serde_json::json!({
+            "schema": "cancho-ui-trace", "version": "0.1.0", "component": "Keep",
+            "storage": c["seed"], "steps": steps
+        });
+        if !c["quota"].is_null() {
+            trace["storage_quota"] = c["quota"].clone();
+        }
+        let trace_file = scratch("keep.trace.json", &trace.to_string());
+        let (code, stdout, stderr) = run(&["test", p(&file), p(&trace_file), "--output", "json"]);
+        assert_eq!(code, 0, "{}: {stdout}{stderr}", c["why"]);
+        let report: Value = serde_json::from_str(&stdout).expect("a JSON report");
+        let last = report["steps"]
+            .as_array()
+            .and_then(|s| s.last())
+            .expect("a step");
+        let stored = last
+            .get("storage")
+            .cloned()
+            .unwrap_or(serde_json::json!({}));
+        assert_eq!(stored, c["stored"], "{}: the persisted store", c["why"]);
+    }
+}
+
+#[test]
+fn a_bad_storage_quota_is_a_trace_error() {
+    for bad in ["-1", "1.5", "\"big\"", "null"] {
+        let trace = scratch(
+            "badquota.trace.json",
+            &format!(
+                r#"{{"schema":"cancho-ui-trace","version":"0.1.0","component":"Notes","storage_quota":{bad},"steps":[{{"event":"Save"}}]}}"#
+            ),
+        );
+        let (code, stdout, _) = run(&[
+            "test",
+            "examples/notes/notes.cui",
+            p(&trace),
+            "--output",
+            "json",
+        ]);
+        assert_eq!(code, 4, "{bad}: {stdout}");
+        assert!(stdout.contains("trace-bad-value"), "{bad}: {stdout}");
+    }
+}

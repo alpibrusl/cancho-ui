@@ -2,6 +2,7 @@
   "schema": "cancho-ui-trace",
   "version": "0.1.0",
   "component": "OpsConsole",
+  "clock": 1700000000000,
   "note": "The operator console end to end (docs/ops-console.md): the first read, a search, both sort directions, paging that stops at both ends, a write answered 409, 201, 503, with no answer, and refused for an id nobody has or a setpoint that is not a number, the 5-second refresh, a hidden page, and a refresh superseded by the next. The first answer has a record with no temperature (last in both directions), a truncated line and a blank line (both dropped). The refresh that lands while the operator is on page 1 returns three records: the page returns to 0 instead of showing an empty page.",
   "steps": [
     {
@@ -380,7 +381,7 @@
         "ticks": [
           {
             "event": "Refresh",
-            "at": 5000,
+            "at": 1700000005000,
             "ran": true
           }
         ],
@@ -469,7 +470,7 @@
         "Err": "HTTP 503"
       },
       "state": {
-        "note": "error: HTTP 503 (showing the last saved list, if any)"
+        "note": "error: HTTP 503 (showing the list saved less than a minute ago)"
       }
     },
     {

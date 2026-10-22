@@ -164,6 +164,10 @@ pub struct Ctx<'a> {
     pub storage: &'a mut BTreeMap<String, String>,
     /// The component's `Storage("ns")` namespace, or "" : a key is looked up as `ns:key`, as the adapter does.
     pub storage_ns: &'a str,
+    /// The most UTF-16 units the persisted store may hold (`None`: no limit), and the page-lifetime copies of the values a
+    /// full store refused (docs/adapters.md section 20). The adapter reads this memory first (a refused value is newer than the persisted one), then the store.
+    pub storage_quota: Option<u64>,
+    pub storage_memory: &'a mut BTreeMap<String, String>,
     pub journal: &'a mut Journal,
     pub locals: Vec<(String, Value)>,
     /// Evaluating a state initial value: identifiers, calls, `match` and
@@ -432,7 +436,11 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                 ));
             };
             let full = storage_key(ctx.storage_ns, k);
-            let v = match ctx.storage.get(&full) {
+            let v = match ctx
+                .storage_memory
+                .get(&full)
+                .or_else(|| ctx.storage.get(&full))
+            {
                 Some(found) => Value::Str(found.clone()),
                 None => fallback,
             };
@@ -456,10 +464,29 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                     span,
                 ));
             };
-            ctx.storage
-                .insert(storage_key(ctx.storage_ns, k), v.clone());
-            ctx.journal.record(Value::Bool(true));
-            Ok(Value::Bool(true))
+            let full = storage_key(ctx.storage_ns, k);
+            // The adapter writes `cui:<key>`; a full store refuses the write, keeps what it had, and the adapter keeps the new
+            // value in memory for the life of the page and answers false.
+            let units = |key: &str, value: &str| {
+                ("cui:".len() + key.encode_utf16().count() + value.encode_utf16().count()) as u64
+            };
+            let others: u64 = ctx
+                .storage
+                .iter()
+                .filter(|(key, _)| **key != full)
+                .map(|(key, value)| units(key, value))
+                .sum();
+            let fits = ctx
+                .storage_quota
+                .is_none_or(|quota| others + units(&full, v) <= quota);
+            if fits {
+                ctx.storage.insert(full.clone(), v.clone());
+                ctx.storage_memory.remove(&full);
+            } else {
+                ctx.storage_memory.insert(full, v.clone());
+            }
+            ctx.journal.record(Value::Bool(fits));
+            Ok(Value::Bool(fits))
         }
         ("json.quote", 1) => match eval(ctx, &args[0])? {
             Value::Str(t) => Ok(Value::Str(json_quote(&t))),

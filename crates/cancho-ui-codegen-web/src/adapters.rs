@@ -73,15 +73,17 @@ pub(crate) const STORAGE_ADAPTER_JS: &str = "\
 // Platform adapter: Storage capability (docs/adapters.md).
 // Keys live under the prefix `cui:` in localStorage, or `cui:<ns>:` for a component that declares
 // `requires Storage(\"ns\")`; a program cannot read or write any other key. When localStorage is
-// unavailable the store lasts as long as the page, and `storage.set` answers false.
+// unavailable (or full) the value lasts as long as the page, `storage.get` returns it, and `storage.set` answers false.
 var __cui_storage_memory = {};
 function __cui_storage_get(key, fallback, ns) {
     var k = 'cui:' + (ns ? ns + ':' : '') + String(key);
+    // A value the store refused is newer than whatever is persisted under the key: the page reads what it last wrote.
+    if (Object.prototype.hasOwnProperty.call(__cui_storage_memory, k)) { return __cui_storage_memory[k]; }
     try {
         var v = window.localStorage.getItem(k);
         if (v !== null) { return v; }
-    } catch (e) { /* unavailable: fall through to memory */ }
-    return Object.prototype.hasOwnProperty.call(__cui_storage_memory, k) ? __cui_storage_memory[k] : fallback;
+    } catch (e) { /* unavailable */ }
+    return fallback;
 }
 function __cui_storage_set(key, value, ns) {
     var k = 'cui:' + (ns ? ns + ':' : '') + String(key);
