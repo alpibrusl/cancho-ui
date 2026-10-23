@@ -25,6 +25,7 @@ pub mod lower;
 pub mod messages;
 pub mod routing;
 pub mod serialize;
+pub mod sortlist;
 pub mod stream;
 pub mod table;
 

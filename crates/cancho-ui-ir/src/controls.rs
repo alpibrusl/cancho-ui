@@ -35,6 +35,7 @@ pub const ELEMENT_KEYS: &[&str] = &[
     "values",
     "labels",
     "unit",
+    "items",
 ];
 
 /// What a `Chart` takes (docs/charts.md section 3); every other key is `binding-unknown` on it.
@@ -94,6 +95,7 @@ fn check_node(c: &IrComponent, node: &IrViewNode, in_for: bool) -> Result<(), Lo
                 check_chart(kind, accessibility, bindings, *span, in_for)?;
                 check_checkbox_complete(kind, bindings, *span)?;
                 check_select_complete(kind, bindings, *span)?;
+                crate::sortlist::check_complete(kind, accessibility, bindings, *span, in_for)?;
             }
             for ch in children {
                 check_node(c, ch, in_for)?;
@@ -130,6 +132,7 @@ fn element_name(kind: &IrElementKind) -> &'static str {
         IrElementKind::FileField => "FileField",
         IrElementKind::Chart => "Chart",
         IrElementKind::NavLink => "NavLink",
+        IrElementKind::SortList => "SortList",
         IrElementKind::Named(_) => "a component",
     }
 }
@@ -179,6 +182,8 @@ fn check_on(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), 
             | IrElementKind::Select
             | IrElementKind::FileField,
         ) => event.params.len().min(1),
+        // a move gives the two indexes (docs/drag-and-drop.md)
+        (None, IrElementKind::SortList) => 2,
         (None, _) => 0,
     };
     if event.params.len() != given {
@@ -851,6 +856,7 @@ fn check_to(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
 }
 
 fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
+    crate::sortlist::check_binding(c, kind, b)?;
     if matches!(kind, IrElementKind::FileField)
         && !FILEFIELD_KEYS.contains(&b.key.as_str())
         && ELEMENT_KEYS.contains(&b.key.as_str())

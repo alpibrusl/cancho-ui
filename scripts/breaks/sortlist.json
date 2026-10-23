@@ -1,0 +1,145 @@
+{
+  "checks": [
+    {
+      "name": "cargo test sortlist",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "sortlist"
+      ]
+    },
+    {
+      "name": "check-sortlist.js",
+      "argv": [
+        "node",
+        "scripts/check-sortlist.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "replay move puts the element back where it was",
+      "file": "crates/cancho-ui-replay/src/eval.rs",
+      "from": "    items.insert(to as usize, x);",
+      "to": "    items.insert(from as usize, x);"
+    },
+    {
+      "name": "the page's move puts the element one place late",
+      "file": "crates/cancho-ui-codegen-web/src/lists.rs",
+      "from": "out.splice(to, 0, out.splice(from, 1)[0]);",
+      "to": "out.splice(to + 1, 0, out.splice(from, 1)[0]);"
+    },
+    {
+      "name": "the page's move accepts an index past the end",
+      "file": "crates/cancho-ui-codegen-web/src/lists.rs",
+      "from": "|| from < 0 || to < 0 || from >= list.length || to >= list.length || from === to) { return list; }",
+      "to": "|| from < 0 || to < 0 || to >= list.length || from === to) { return list; }"
+    },
+    {
+      "name": "a move to the same place is accepted in a trace",
+      "file": "crates/cancho-ui-replay/src/lib.rs",
+      "from": "                        f != t\n",
+      "to": "                        true\n"
+    },
+    {
+      "name": "a move past the end is accepted in a trace",
+      "file": "crates/cancho-ui-replay/src/lib.rs",
+      "from": "**x < *n as f64",
+      "to": "true"
+    },
+    {
+      "name": "a SortList may be drawn in a loop",
+      "file": "crates/cancho-ui-ir/src/sortlist.rs",
+      "from": "    if in_for {",
+      "to": "    if in_for && false {"
+    },
+    {
+      "name": "items may be any field",
+      "file": "crates/cancho-ui-ir/src/sortlist.rs",
+      "from": "if c.state.iter().any(|f| &f.name == name && matches!(f.ty, IrType::List { .. }))",
+      "to": "if c.state.iter().any(|f| &f.name == name)"
+    },
+    {
+      "name": "a SortList needs no name",
+      "file": "crates/cancho-ui-ir/src/sortlist.rs",
+      "from": "    if accessibility.label.is_none() && accessibility.label_expr.is_none() {",
+      "to": "    if false {"
+    },
+    {
+      "name": "the event may take one parameter",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "        (None, IrElementKind::SortList) => 2,",
+      "to": "        (None, IrElementKind::SortList) => 1,"
+    },
+    {
+      "name": "the page is rebuilt under a drag",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "if (__cui_drag.on) {",
+      "to": "if (false) {"
+    },
+    {
+      "name": "the focus does not follow the row",
+      "file": "crates/cancho-ui-codegen-web/src/sortlist.rs",
+      "from": "if (target && !target.disabled) { target.focus(); }",
+      "to": "if (false) { target.focus(); }"
+    },
+    {
+      "name": "the first row can be moved up",
+      "file": "crates/cancho-ui-codegen-web/src/sortlist.rs",
+      "from": "up.disabled = i === 0;",
+      "to": "up.disabled = false;"
+    },
+    {
+      "name": "Escape does not cancel a drag",
+      "file": "crates/cancho-ui-codegen-web/src/sortlist.rs",
+      "from": "if (k.key === 'Escape')",
+      "to": "if (k.key === 'Never')"
+    },
+    {
+      "name": "the handle gives the page's scroll to the browser",
+      "file": "crates/cancho-ui-codegen-web/src/sortlist.rs",
+      "from": "touch-action: none; cursor: grab;",
+      "to": "cursor: grab;"
+    },
+    {
+      "name": "a drop is reported twice",
+      "file": "crates/cancho-ui-codegen-web/src/sortlist.rs",
+      "from": "if (commit && target !== i) { onMove(i, target); settle(i, target, null); }",
+      "to": "if (commit && target !== i) { onMove(i, target); onMove(i, target); settle(i, target, null); }"
+    },
+    {
+      "name": "a move is not announced",
+      "file": "crates/cancho-ui-codegen-web/src/sortlist.rs",
+      "from": "if (accepted) { __cui_sort_say(",
+      "to": "if (false) { __cui_sort_say("
+    },
+    {
+      "name": "the drop target is the farthest row",
+      "file": "crates/cancho-ui-codegen-web/src/sortlist.rs",
+      "from": "if (Math.abs(mids[k] - y) < Math.abs(mids[best] - y))",
+      "to": "if (Math.abs(mids[k] - y) > Math.abs(mids[best] - y))"
+    },
+    {
+      "name": "the handle is 30 px",
+      "file": "crates/cancho-ui-codegen-web/src/sortlist.rs",
+      "from": "width: 44px; height: 44px; touch-action",
+      "to": "width: 30px; height: 30px; touch-action"
+    },
+    {
+      "name": "a button does not say which row it moves",
+      "file": "crates/cancho-ui-codegen-web/src/sortlist.rs",
+      "from": "up.setAttribute('aria-label', 'Move ' + text + ' up');",
+      "to": "up.setAttribute('aria-label', 'Move up');"
+    },
+    {
+      "name": "the handle is drawn after the text",
+      "file": "crates/cancho-ui-codegen-web/src/sortlist.rs",
+      "from": "        li.appendChild(handle);\n        li.appendChild(name);",
+      "to": "        li.appendChild(name);\n        li.appendChild(handle);"
+    }
+  ]
+}

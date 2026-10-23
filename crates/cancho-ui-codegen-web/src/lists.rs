@@ -130,6 +130,18 @@ const JSON_QUOTE_JS: &str = "\
 function __cui_json_quote(text) { return JSON.stringify(String(text)); }
 ";
 
+/// `move(list, from, to)` (docs/drag-and-drop.md section 3): the list with the element at `from` taken out and put at `to`; the same list
+/// when an index is not a whole number inside it or the two are equal. A new list otherwise: the old one is never changed.
+const MOVE_JS: &str = "\
+function __cui_move(list, from, to) {
+    if (!Array.isArray(list) || typeof from !== 'number' || typeof to !== 'number' || from % 1 !== 0 || to % 1 !== 0
+        || from < 0 || to < 0 || from >= list.length || to >= list.length || from === to) { return list; }
+    const out = list.slice();
+    out.splice(to, 0, out.splice(from, 1)[0]);
+    return out;
+}
+";
+
 pub fn helpers_used(emitted: &str) -> String {
     let mut out = String::new();
     // A helper shared by two calls (take and skip) is listed once: a module may not declare a function twice.
@@ -143,6 +155,7 @@ pub fn helpers_used(emitted: &str) -> String {
         (&["__cui_json_quote("][..], JSON_QUOTE_JS),
         (&["__cui_take(", "__cui_skip("][..], PAGING_JS),
         (&["__cui_concat("][..], CONCAT_JS),
+        (&["__cui_move("][..], MOVE_JS),
         (
             &[
                 "__cui_min(",

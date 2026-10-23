@@ -127,6 +127,7 @@ const EXPECT_KEYS: &[&str] = &[
     "charts",
     "stream",
     "document",
+    "sortlists",
 ];
 
 pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {

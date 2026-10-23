@@ -749,6 +749,26 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                 span,
             )),
         },
+        ("move", 3) => {
+            let list = eval(ctx, &args[0])?;
+            let from = eval(ctx, &args[1])?;
+            let to = eval(ctx, &args[2])?;
+            match (list, &from, &to) {
+                (Value::List(items), Value::Num(f), Value::Num(t)) => {
+                    Ok(Value::List(move_item(items, *f, *t)))
+                }
+                (list, _, _) => Err(fault(
+                    "replay-type-error",
+                    format!(
+                        "`move` needs a list and two numbers (from, to), got {}, {} and {}",
+                        describe(&list),
+                        describe(&from),
+                        describe(&to)
+                    ),
+                    span,
+                )),
+            }
+        }
         ("concat", 2) => {
             let a = eval(ctx, &args[0])?;
             let b = eval(ctx, &args[1])?;
@@ -932,9 +952,9 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
             | "net.delete" | "location.current" | "sleep" | "storage.get" | "storage.set"
             | "router.go" | "router.replace" | "credential.set" | "credential.clear" | "json.get"
             | "json.items" | "json.quote" | "reverse" | "contains" | "lower" | "fold" | "num"
-            | "take" | "skip" | "concat" | "min" | "max" | "abs" | "floor" | "ceil" | "round"
-            | "lines" | "split" | "join" | "trim" | "upper" | "starts_with" | "ends_with" | "t"
-            | "fmt.number" | "fmt.percent" | "fmt.date" | "fmt.time" | "locale.current"
+            | "take" | "skip" | "concat" | "move" | "min" | "max" | "abs" | "floor" | "ceil"
+            | "round" | "lines" | "split" | "join" | "trim" | "upper" | "starts_with" | "ends_with"
+            | "t" | "fmt.number" | "fmt.percent" | "fmt.date" | "fmt.time" | "locale.current"
             | "locale.set",
             n,
         ) => Err(fault(
@@ -966,6 +986,18 @@ pub fn page_count(n: f64, len: usize) -> usize {
     } else {
         k as usize
     }
+}
+
+/// `move(list, from, to)` (docs/drag-and-drop.md section 3): the element at `from` taken out and put at `to`; the list as it was when an index is
+/// not a whole number inside it or the two are equal. The emitted `__cui_move` is the same function; `tests/move_corpus.json` is checked against both.
+pub fn move_item<T>(mut items: Vec<T>, from: f64, to: f64) -> Vec<T> {
+    let whole = |x: f64| x.fract() == 0.0 && x >= 0.0 && x < items.len() as f64;
+    if !whole(from) || !whole(to) || from == to {
+        return items;
+    }
+    let x = items.remove(from as usize);
+    items.insert(to as usize, x);
+    items
 }
 
 fn math_arity(name: &str) -> Option<usize> {

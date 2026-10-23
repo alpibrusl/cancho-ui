@@ -1,0 +1,357 @@
+{
+ "note": "move(list, from, to): the element at from taken out and put at to; the same list when an index is not a whole number inside it or the two are equal. Written by hand.",
+ "cases": [
+  {
+   "why": "first to last",
+   "list": [
+    "a",
+    "b",
+    "c"
+   ],
+   "from": 0,
+   "to": 2,
+   "want": [
+    "b",
+    "c",
+    "a"
+   ]
+  },
+  {
+   "why": "last to first",
+   "list": [
+    "a",
+    "b",
+    "c"
+   ],
+   "from": 2,
+   "to": 0,
+   "want": [
+    "c",
+    "a",
+    "b"
+   ]
+  },
+  {
+   "why": "down one",
+   "list": [
+    "a",
+    "b",
+    "c"
+   ],
+   "from": 0,
+   "to": 1,
+   "want": [
+    "b",
+    "a",
+    "c"
+   ]
+  },
+  {
+   "why": "up one",
+   "list": [
+    "a",
+    "b",
+    "c"
+   ],
+   "from": 1,
+   "to": 0,
+   "want": [
+    "b",
+    "a",
+    "c"
+   ]
+  },
+  {
+   "why": "down one from the middle",
+   "list": [
+    "a",
+    "b",
+    "c"
+   ],
+   "from": 1,
+   "to": 2,
+   "want": [
+    "a",
+    "c",
+    "b"
+   ]
+  },
+  {
+   "why": "up one from the end",
+   "list": [
+    "a",
+    "b",
+    "c"
+   ],
+   "from": 2,
+   "to": 1,
+   "want": [
+    "a",
+    "c",
+    "b"
+   ]
+  },
+  {
+   "why": "the same place",
+   "list": [
+    "a",
+    "b",
+    "c"
+   ],
+   "from": 1,
+   "to": 1,
+   "want": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "why": "from past the end",
+   "list": [
+    "a",
+    "b",
+    "c"
+   ],
+   "from": 3,
+   "to": 0,
+   "want": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "why": "to past the end",
+   "list": [
+    "a",
+    "b",
+    "c"
+   ],
+   "from": 0,
+   "to": 3,
+   "want": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "why": "from before the start",
+   "list": [
+    "a",
+    "b",
+    "c"
+   ],
+   "from": -1,
+   "to": 0,
+   "want": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "why": "to before the start",
+   "list": [
+    "a",
+    "b",
+    "c"
+   ],
+   "from": 0,
+   "to": -1,
+   "want": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "why": "from a fraction",
+   "list": [
+    "a",
+    "b",
+    "c"
+   ],
+   "from": 0.5,
+   "to": 1,
+   "want": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "why": "to a fraction",
+   "list": [
+    "a",
+    "b",
+    "c"
+   ],
+   "from": 0,
+   "to": 1.5,
+   "want": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "why": "whole numbers written with a point",
+   "list": [
+    "a",
+    "b",
+    "c"
+   ],
+   "from": 1.0,
+   "to": 2.0,
+   "want": [
+    "a",
+    "c",
+    "b"
+   ]
+  },
+  {
+   "why": "an empty list",
+   "list": [],
+   "from": 0,
+   "to": 0,
+   "want": []
+  },
+  {
+   "why": "an empty list, two places",
+   "list": [],
+   "from": 0,
+   "to": 1,
+   "want": []
+  },
+  {
+   "why": "one row",
+   "list": [
+    "x"
+   ],
+   "from": 0,
+   "to": 0,
+   "want": [
+    "x"
+   ]
+  },
+  {
+   "why": "one row, to past the end",
+   "list": [
+    "x"
+   ],
+   "from": 0,
+   "to": 1,
+   "want": [
+    "x"
+   ]
+  },
+  {
+   "why": "five rows, last to first",
+   "list": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "from": 4,
+   "to": 0,
+   "want": [
+    5,
+    1,
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "why": "five rows, first to last",
+   "list": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "from": 0,
+   "to": 4,
+   "want": [
+    2,
+    3,
+    4,
+    5,
+    1
+   ]
+  },
+  {
+   "why": "five rows, a stretch in the middle",
+   "list": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "from": 1,
+   "to": 3,
+   "want": [
+    1,
+    3,
+    4,
+    2,
+    5
+   ]
+  },
+  {
+   "why": "five rows, backwards in the middle",
+   "list": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "from": 3,
+   "to": 1,
+   "want": [
+    1,
+    4,
+    2,
+    3,
+    5
+   ]
+  },
+  {
+   "why": "equal rows keep their places by index",
+   "list": [
+    "a",
+    "a",
+    "b"
+   ],
+   "from": 0,
+   "to": 2,
+   "want": [
+    "a",
+    "b",
+    "a"
+   ]
+  },
+  {
+   "why": "numbers",
+   "list": [
+    10,
+    20,
+    30
+   ],
+   "from": 0,
+   "to": 2,
+   "want": [
+    20,
+    30,
+    10
+   ]
+  }
+ ]
+}

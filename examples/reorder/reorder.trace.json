@@ -1,0 +1,27 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "note": "A drag and the buttons both report the same event with two indexes: the last row to the top, the first row one place down, and a reset.",
+  "steps": [
+    {
+      "advance": 0,
+      "expect": { "sortlists": [{ "label": "Tasks, in the order to do them", "count": 4, "items": ["Write the note", "Build it", "Check it", "Ship it"] }] }
+    },
+    {
+      "event": "Moved",
+      "params": [3, 0],
+      "note": "the last row dragged to the top",
+      "state": { "tasks": ["Ship it", "Write the note", "Build it", "Check it"], "moves": 1 }
+    },
+    {
+      "event": "Moved",
+      "params": [0, 1],
+      "note": "the first row moved down one place with its button",
+      "state": { "tasks": ["Write the note", "Ship it", "Build it", "Check it"], "moves": 2 }
+    },
+    {
+      "event": "Reset",
+      "state": { "tasks": ["Write the note", "Build it", "Check it", "Ship it"], "moves": 0 }
+    }
+  ]
+}

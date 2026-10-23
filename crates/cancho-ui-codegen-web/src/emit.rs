@@ -205,6 +205,14 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
         out.push_str(ROUTER_ADAPTER_JS);
         out.push('\n');
     }
+    if ir
+        .components
+        .iter()
+        .any(|c| view_has_sortlist(&c.view.body))
+    {
+        out.push_str(crate::sortlist::ADAPTER_JS);
+        out.push('\n');
+    }
     if ir.components.iter().any(|c| view_has_chart(&c.view.body)) {
         out.push_str(CHART_ADAPTER_JS);
         out.push('\n');
@@ -312,6 +320,18 @@ fn view_has_chart(node: &IrViewNode) -> bool {
         }
         IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
             children.iter().any(view_has_chart)
+        }
+        IrViewNode::Text { .. } => false,
+    }
+}
+
+fn view_has_sortlist(node: &IrViewNode) -> bool {
+    match node {
+        IrViewNode::Element { kind, children, .. } => {
+            matches!(kind, IrElementKind::SortList) || children.iter().any(view_has_sortlist)
+        }
+        IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
+            children.iter().any(view_has_sortlist)
         }
         IrViewNode::Text { .. } => false,
     }
@@ -728,6 +748,10 @@ fn emit_component(
     // screen that last appeared is.
     out.push_str("        let __cui_ifs_prev = {};\n        let __cui_screen_of = null;\n");
     out.push_str("        function __render() {\n            const __cui_ifs_now = {};\n");
+    // docs/drag-and-drop.md section 3: a drag does not survive a rebuild, so the page is not rebuilt under one; the render runs once, after it.
+    if view_has_sortlist(&c.view.body) {
+        out.push_str("            if (__cui_drag.on) { if (__cui_drag.defer.indexOf(__render) < 0) { __cui_drag.defer.push(__render); } return; }\n");
+    }
     if keep_focus {
         out.push_str("            const __focus = __cui_focus_save(root);\n");
     }
