@@ -1,0 +1,24 @@
+{
+  "program": [
+    "component F {",
+    "    state agreed: Bool = false;",
+    "    state locked: Bool = false;",
+    "    state msg: String = \"You must agree.\";",
+    "    state log: String = \"\";",
+    "    on Agree(v) { agreed = v; msg = if v { \"\" } else { \"You must agree.\" }; log = log + (if v { \"on;\" } else { \"off;\" }); }",
+    "    on Lock { locked = !locked; }",
+    "    view { Column { Checkbox { label: \"I agree\" checked: agreed on: Agree disabled: locked error: msg } Button { label: \"Lock\" on: Lock } Text { \"agreed={agreed} log={log}\" } } }",
+    "}"
+  ],
+  "initial": { "checked": false, "invalid": true, "message": "You must agree.", "log": "" },
+  "steps": [
+    { "why": "a click on the box turns it on and reports true", "do": "click box", "event": "Agree", "params": [true], "outcome": "completed", "state": { "agreed": true, "msg": "", "log": "on;" }, "checked": true, "invalid": false, "message": "", "log": "on;" },
+    { "why": "a click on the text of the label turns it off and reports false", "do": "click text", "event": "Agree", "params": [false], "outcome": "completed", "state": { "agreed": false, "msg": "You must agree.", "log": "on;off;" }, "checked": false, "invalid": true, "message": "You must agree.", "log": "on;off;" },
+    { "why": "Space on the focused box turns it on", "do": "space", "event": "Agree", "params": [true], "outcome": "completed", "state": { "agreed": true, "msg": "", "log": "on;off;on;" }, "checked": true, "invalid": false, "message": "", "log": "on;off;on;" },
+    { "why": "Space again turns it off: the focus survived the redraw", "do": "space", "event": "Agree", "params": [false], "outcome": "completed", "state": { "agreed": false, "log": "on;off;on;off;" }, "checked": false, "invalid": true, "message": "You must agree.", "log": "on;off;on;off;" },
+    { "why": "a disabled box cannot be toggled", "do": "lock", "event": "Lock", "params": [], "outcome": "completed", "state": { "locked": true }, "checked": false, "invalid": true, "message": "You must agree.", "log": "on;off;on;off;" },
+    { "why": "a click on a disabled box reports nothing (replay: disabled)", "do": "click box", "event": "Agree", "params": [true], "outcome": "disabled", "state": { "agreed": false, "log": "on;off;on;off;" }, "checked": false, "invalid": true, "message": "You must agree.", "log": "on;off;on;off;" },
+    { "why": "unlocked, it works again", "do": "lock", "event": "Lock", "params": [], "outcome": "completed", "state": { "locked": false }, "checked": false, "invalid": true, "message": "You must agree.", "log": "on;off;on;off;" },
+    { "why": "and reports true", "do": "click box", "event": "Agree", "params": [true], "outcome": "completed", "state": { "agreed": true, "log": "on;off;on;off;on;" }, "checked": true, "invalid": false, "message": "", "log": "on;off;on;off;on;" }
+  ]
+}

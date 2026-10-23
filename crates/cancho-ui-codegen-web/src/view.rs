@@ -424,6 +424,9 @@ pub(crate) fn emit_view_node(
             let mut input_type: Option<String> = None;
             // `error: msg` (docs/controls.md section 7): the state field holding the message of this control.
             let mut field_error: Option<String> = None;
+            // `checked: flag` / `on: Toggle` of a `Checkbox` (docs/controls.md section 9).
+            let mut checked_field: Option<String> = None;
+            let mut change_handler: Option<String> = None;
             let mut button_label: Option<String> = None;
             // Tier 13: on a component instance, `Const` bindings
             // are *properties* — constant initial values for the
@@ -479,6 +482,9 @@ pub(crate) fn emit_view_node(
                     }
                     IrBindingValue::StateRef(name) if b.key == "error" => {
                         field_error = Some(name.clone());
+                    }
+                    IrBindingValue::StateRef(name) if b.key == "checked" => {
+                        checked_field = Some(name.clone());
                     }
                     IrBindingValue::StateRef(name) if b.key == "tone" => {
                         out.push_str(&format!(
@@ -548,6 +554,8 @@ pub(crate) fn emit_view_node(
                                 click_handler = Some(name.clone());
                             } else if kind.is_field() {
                                 input_handler = Some(name.clone());
+                            } else if matches!(kind, IrElementKind::Checkbox) {
+                                change_handler = Some(name.clone());
                             } else {
                                 out.push_str(&format!(
                                     "{0}// on: {1} on a non-button/non-textfield primitive (Phase 2+)\n",
@@ -727,6 +735,20 @@ pub(crate) fn emit_view_node(
                 }
             }
 
+            // A checkbox is an `<input type="checkbox">` drawn from its `Bool`.
+            if matches!(kind, IrElementKind::Checkbox) {
+                out.push_str(&format!(
+                    "{0}{1}.setAttribute('type', 'checkbox');\n",
+                    indent, var
+                ));
+                if let Some(name) = &checked_field {
+                    out.push_str(&format!(
+                        "{0}{1}.checked = !!{2}{3};\n",
+                        indent, var, STATE_PREFIX, name
+                    ));
+                }
+            }
+
             // Append to parent. A field with a label is drawn inside a `<label>` that shows it
             // (docs/presentation.md section 1); the field keeps its `aria-label`.
             let field_label = if kind.is_field() {
@@ -738,7 +760,22 @@ pub(crate) fn emit_view_node(
             } else {
                 None
             };
-            if let Some(text) = field_label {
+            let box_label = if matches!(kind, IrElementKind::Checkbox) {
+                accessibility
+                    .label
+                    .as_ref()
+                    .map(|l| js_string(l))
+                    .or_else(|| accessibility.label_expr.as_ref().map(|_| label_var.clone()))
+            } else {
+                None
+            };
+            if let Some(text) = box_label {
+                // The box first, then the text, in one label: clicking the text toggles the box.
+                out.push_str(&format!(
+                    "{0}const {1}_field = document.createElement('label');\n{0}{1}_field.classList.add('cui-check');\n{0}{1}_field.appendChild({1});\n{0}{1}_field.appendChild(document.createTextNode({2}));\n{0}{3}.appendChild({1}_field);\n",
+                    indent, var, text, parent_var
+                ));
+            } else if let Some(text) = field_label {
                 out.push_str(&format!(
                     "{0}const {1}_field = document.createElement('label');\n{0}{1}_field.classList.add('cui-field');\n{0}{1}_field.appendChild(document.createTextNode({2}));\n{0}{1}_field.appendChild({1});\n{0}{3}.appendChild({1}_field);\n",
                     indent, var, text, parent_var
@@ -785,6 +822,12 @@ pub(crate) fn emit_view_node(
             if let Some(event_name) = submit_handler {
                 out.push_str(&format!(
                     "{0}{1}.addEventListener('keydown', function (e) {{ if (e.key === 'Enter' && !e.isComposing && !e.repeat) {{ e.preventDefault(); if (!(__submit_blocked.{2} && __submit_blocked.{2}())) {{ __on_{2}(); }} }} }});\n",
+                    indent, var, event_name
+                ));
+            }
+            if let Some(event_name) = change_handler {
+                out.push_str(&format!(
+                    "{0}{1}.addEventListener('change', function (e) {{ __on_{2}(e.target.checked); }});\n",
                     indent, var, event_name
                 ));
             }

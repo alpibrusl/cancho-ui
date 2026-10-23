@@ -239,6 +239,8 @@ pub enum ElementKind {
     TextField,
     /// A multi-line text input (docs/controls.md section 8).
     TextArea,
+    /// A box that is on or off, bound to a `Bool` (docs/controls.md section 9).
+    Checkbox,
     Named(String),
 }
 

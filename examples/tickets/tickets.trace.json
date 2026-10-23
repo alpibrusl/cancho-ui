@@ -147,6 +147,28 @@
       }
     },
     {
+      "note": "the checkbox reports a Bool",
+      "event": "HideDone",
+      "params": [
+        true
+      ],
+      "state": {
+        "hide_done": true
+      },
+      "expect": {
+        "outcome": "completed"
+      }
+    },
+    {
+      "event": "HideDone",
+      "params": [
+        false
+      ],
+      "state": {
+        "hide_done": false
+      }
+    },
+    {
       "event": "Pick",
       "params": [
         "T-2"

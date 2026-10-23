@@ -252,6 +252,7 @@ impl Parser {
             "Button" => ElementKind::Button,
             "TextField" => ElementKind::TextField,
             "TextArea" => ElementKind::TextArea,
+            "Checkbox" => ElementKind::Checkbox,
             other => ElementKind::Named(other.to_string()),
         };
 
@@ -567,7 +568,8 @@ impl Parser {
                     Token::Ident(s)
                         if matches!(kind, ElementKind::Named(_))
                             || key == "disabled"
-                            || key == "error" =>
+                            || key == "error"
+                            || key == "checked" =>
                     {
                         // `disabled: sending` names a Bool state field (docs/controls.md section 1).
                         Ok(BindingValue::StateRef(s))

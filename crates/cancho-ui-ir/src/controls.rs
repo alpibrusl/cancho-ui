@@ -26,6 +26,12 @@ pub const ELEMENT_KEYS: &[&str] = &[
     "name",
     "error",
     "rows",
+    "checked",
+];
+
+/// What a `Checkbox` takes (docs/controls.md section 9); every other key is `binding-unknown` on it.
+pub const CHECKBOX_KEYS: &[&str] = &[
+    "label", "role", "on", "checked", "disabled", "error", "name",
 ];
 
 /// The `rows:` range of a `TextArea`: how many lines it shows.
@@ -54,12 +60,14 @@ fn check_node(c: &IrComponent, node: &IrViewNode) -> Result<(), LowerError> {
             kind,
             bindings,
             children,
+            span,
             ..
         } => {
             if !matches!(kind, IrElementKind::Named(_)) {
                 for b in bindings {
                     check_binding(c, kind, b)?;
                 }
+                check_checkbox_complete(kind, bindings, *span)?;
             }
             for ch in children {
                 check_node(c, ch)?;
@@ -86,6 +94,7 @@ fn element_name(kind: &IrElementKind) -> &'static str {
         IrElementKind::Button => "Button",
         IrElementKind::TextField => "TextField",
         IrElementKind::TextArea => "TextArea",
+        IrElementKind::Checkbox => "Checkbox",
         IrElementKind::Named(_) => "a component",
     }
 }
@@ -126,7 +135,10 @@ fn check_on(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), 
     let given = match (args, kind) {
         (Some(n), _) => n,
         // A click gives no arguments; a field gives the value it holds.
-        (None, IrElementKind::TextField | IrElementKind::TextArea) => event.params.len().min(1),
+        // A field gives the text it holds, a checkbox whether it is checked now.
+        (None, IrElementKind::TextField | IrElementKind::TextArea | IrElementKind::Checkbox) => {
+            event.params.len().min(1)
+        }
         (None, _) => 0,
     };
     if event.params.len() != given {
@@ -296,11 +308,11 @@ fn check_rows(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
 /// `error:` is a binding of a control that holds a value (docs/controls.md section 7) and names a `String` state field: the
 /// message that goes with the control, empty while the control is valid.
 fn check_error(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
-    if !kind.is_field() {
+    if !kind.is_field() && !matches!(kind, IrElementKind::Checkbox) {
         return Err(LowerError::ControlRefused {
             code: "binding-unknown",
             message: format!(
-                "`error:` is a binding of TextField and TextArea (the message that goes with a field), not of {}",
+                "`error:` is a binding of TextField, TextArea and Checkbox (the message that goes with a control), not of {}",
                 element_name(kind)
             ),
             span: b.span,
@@ -324,7 +336,7 @@ fn check_error(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(
 
 /// `autocomplete:`, `inputmode:`, `maxlength:` and `name:` are bindings of a `TextField` with a checked value.
 fn check_text_attribute(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
-    if !kind.is_field() {
+    if !kind.is_field() && !(b.key == "name" && matches!(kind, IrElementKind::Checkbox)) {
         return Err(LowerError::ControlRefused {
             code: "binding-unknown",
             message: format!(
@@ -436,7 +448,76 @@ fn check_layout(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
     }
 }
 
+/// `checked:` is a binding of a `Checkbox` and names a `Bool` state field: the box is on while it is true.
+fn check_checked(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
+    if !matches!(kind, IrElementKind::Checkbox) {
+        return Err(LowerError::ControlRefused {
+            code: "binding-unknown",
+            message: format!(
+                "`checked:` is a binding of Checkbox, not of {}",
+                element_name(kind)
+            ),
+            span: b.span,
+        });
+    }
+    match &b.value {
+        IrBindingValue::StateRef(name)
+            if c.state
+                .iter()
+                .any(|f| &f.name == name && f.ty == IrType::Bool) =>
+        {
+            Ok(())
+        }
+        _ => Err(LowerError::ControlRefused {
+            code: "checked-binding-invalid",
+            message: "`checked:` takes the name of a `Bool` state field of this component, e.g. `checked: agreed`; the box is on while the field is true".to_string(),
+            span: b.span,
+        }),
+    }
+}
+
+/// A `Checkbox` is drawn from `checked:` and reports through `on:`; without either it would be a box the page forgets at the
+/// next redraw, or one that tells the program nothing.
+fn check_checkbox_complete(
+    kind: &IrElementKind,
+    bindings: &[IrBinding],
+    span: cancho_ui_syntax::span::Span,
+) -> Result<(), LowerError> {
+    if !matches!(kind, IrElementKind::Checkbox) {
+        return Ok(());
+    }
+    for (key, what) in [
+        ("checked", "the `Bool` it shows"),
+        ("on", "the event it reports to"),
+    ] {
+        if !bindings.iter().any(|b| b.key == key) {
+            return Err(LowerError::ControlRefused {
+                code: "checkbox-incomplete",
+                message: format!(
+                    "a Checkbox needs `{key}:`, {what}: `Checkbox {{ label: \"..\" checked: flag on: Toggle }}`"
+                ),
+                span,
+            });
+        }
+    }
+    Ok(())
+}
+
 fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
+    if matches!(kind, IrElementKind::Checkbox)
+        && !CHECKBOX_KEYS.contains(&b.key.as_str())
+        && ELEMENT_KEYS.contains(&b.key.as_str())
+    {
+        return Err(LowerError::ControlRefused {
+            code: "binding-unknown",
+            message: format!(
+                "`{}:` is not a binding of Checkbox; it takes {}",
+                b.key,
+                CHECKBOX_KEYS.join(", ")
+            ),
+            span: b.span,
+        });
+    }
     if !ELEMENT_KEYS.contains(&b.key.as_str()) {
         return Err(LowerError::ControlRefused {
             code: "binding-unknown",
@@ -472,6 +553,9 @@ fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result
     }
     if b.key == "rows" {
         check_rows(kind, b)?;
+    }
+    if b.key == "checked" {
+        check_checked(c, kind, b)?;
     }
     if b.key == "submit" {
         if !matches!(kind, IrElementKind::TextField) {
@@ -518,12 +602,12 @@ fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result
         }
     }
     if b.key == "disabled" {
-        let interactive = matches!(kind, IrElementKind::Button) || kind.is_field();
+        let interactive = kind.is_focusable();
         if !interactive {
             return Err(LowerError::ControlRefused {
                 code: "binding-unknown",
                 message: format!(
-                    "`disabled:` is a binding of Button, TextField and TextArea, not of {}",
+                    "`disabled:` is a binding of Button, TextField, TextArea and Checkbox, not of {}",
                     element_name(kind)
                 ),
                 span: b.span,
