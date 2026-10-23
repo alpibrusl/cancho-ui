@@ -61,9 +61,9 @@
       "id": "forms",
       "title": "Rich forms",
       "issue": 76,
-      "missing": "Validation messages work (a `Text` derived with `if`) and a `TextField` can be a password, email, search, telephone or url field (`type:`), but there is no number input, checkbox, select or text area, and no invalid state for assistive technology.",
+      "missing": "Validation messages, password, email and other single-line fields (`type:`), a multi-line `TextArea`, a `Checkbox`, and an invalid state tied to its message all exist; there is no select and no number input.",
       "probe": {
-        "view": "Checkbox { label: \"Agree\" }",
+        "view": "Select { label: \"Pick\" }",
         "rule": "component-kind-unknown"
       }
     },
