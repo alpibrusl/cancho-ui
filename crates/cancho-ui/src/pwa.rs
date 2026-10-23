@@ -16,7 +16,7 @@ const MARK: [u8; 3] = [0xff, 0xff, 0xff];
 pub fn generate(js: &str, name: &str) -> PwaFiles {
     let mut files: PwaFiles = vec![
         ("app.js", js.as_bytes().to_vec()),
-        ("index.html", index_html(name).into_bytes()),
+        ("index.html", index_html(name, true).into_bytes()),
         ("manifest.webmanifest", manifest(name).into_bytes()),
         ("icon-192.png", icon_png(192)),
         ("icon-512.png", icon_png(512)),
@@ -24,6 +24,16 @@ pub fn generate(js: &str, name: &str) -> PwaFiles {
     let sw = service_worker(&files);
     files.push(("sw.js", sw.into_bytes()));
     files
+}
+
+/// What `--page` writes for a program compiled to `js`, named `name`: a web page and its script, and nothing that makes it an app
+/// (no manifest, no icons, no service worker, no `theme-color`), so a browser has nothing to offer to install and nothing
+/// caches it behind the author's back (docs/mobile-backend.md section 5.2).
+pub fn generate_page(js: &str, name: &str) -> PwaFiles {
+    vec![
+        ("app.js", js.as_bytes().to_vec()),
+        ("index.html", index_html(name, false).into_bytes()),
+    ]
 }
 
 /// Write `files` into `dir`, creating it. Nothing is written before the caller has a program that compiled.
@@ -43,7 +53,8 @@ fn html_escape(s: &str) -> String {
         .replace('"', "&quot;")
 }
 
-fn index_html(name: &str) -> String {
+/// The page; `installable` adds what makes it an app (`--pwa`), and leaves it out for a plain page (`--page`).
+fn index_html(name: &str, installable: bool) -> String {
     let title = html_escape(name);
     let mut html = String::from(
         r##"<!DOCTYPE html>
@@ -51,12 +62,8 @@ fn index_html(name: &str) -> String {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1f6feb">
-<title>@TITLE@</title>
-<link rel="manifest" href="./manifest.webmanifest">
-<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
-<link rel="apple-touch-icon" href="./icon-192.png">
-<style>
+@APP_THEME@<title>@TITLE@</title>
+@APP_LINKS@<style>
 /* A default so a program is usable on a phone; the page owns presentation, replace it freely. */
 :root { color-scheme: light dark; }
 body {
@@ -93,17 +100,23 @@ button, input, textarea { min-height: 44px; min-width: 44px; font: inherit; }
 <div id="root"></div>
 <noscript>This app needs JavaScript.</noscript>
 <script type="module" src="./app.js"></script>
-<script>
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function () { navigator.serviceWorker.register('./sw.js'); });
-}
-</script>
-</body>
+@APP_REGISTER@</body>
 </html>
 "##,
     );
     html = html.replace("@TITLE@", &title);
-    html
+    let (theme, links, register) = if installable {
+        (
+            "<meta name=\"theme-color\" content=\"#1f6feb\">\n",
+            "<link rel=\"manifest\" href=\"./manifest.webmanifest\">\n<link rel=\"icon\" type=\"image/png\" sizes=\"192x192\" href=\"./icon-192.png\">\n<link rel=\"apple-touch-icon\" href=\"./icon-192.png\">\n",
+            "<script>\nif ('serviceWorker' in navigator) {\n    window.addEventListener('load', function () { navigator.serviceWorker.register('./sw.js'); });\n}\n</script>\n",
+        )
+    } else {
+        ("", "", "")
+    };
+    html.replace("@APP_THEME@", theme)
+        .replace("@APP_LINKS@", links)
+        .replace("@APP_REGISTER@", register)
 }
 
 fn manifest(name: &str) -> String {
@@ -315,6 +328,32 @@ mod tests {
         assert!(html.contains("<title>A &quot;b&quot; &lt;c&gt; &amp; d</title>"));
         let manifest: serde_json::Value = serde_json::from_slice(&files[2].1).unwrap();
         assert_eq!(manifest["name"], "A \"b\" <c> & d");
+    }
+
+    #[test]
+    fn a_page_is_not_an_app() {
+        // `--page` (docs/mobile-backend.md section 5.2): the script and the page, and nothing a browser installs from.
+        let files = generate_page("//", "Demo");
+        let names: Vec<&str> = files.iter().map(|(n, _)| *n).collect();
+        assert_eq!(names, ["app.js", "index.html"]);
+        let html = String::from_utf8(files[1].1.clone()).unwrap();
+        for banned in [
+            "manifest",
+            "serviceWorker",
+            "theme-color",
+            "apple-touch-icon",
+            "icon-192",
+        ] {
+            assert!(!html.contains(banned), "{banned}");
+        }
+        assert!(html.contains("<title>Demo</title>") && html.contains("src=\"./app.js\""));
+        assert!(
+            html.contains("viewport-fit=cover"),
+            "still a page for a phone"
+        );
+        // The page of `--pwa` is the same page plus those lines.
+        let app = String::from_utf8(generate("//", "Demo")[1].1.clone()).unwrap();
+        assert!(app.contains("manifest") && app.contains("serviceWorker"));
     }
 
     #[test]

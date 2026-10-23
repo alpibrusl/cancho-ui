@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Builds the landing-page gallery (docs/index.html, section #gallery) from docs/gallery.json:
-//   - each "supported" tile's example is compiled with `cancho-ui build --pwa` into docs/demo/<id>/ (the ops-console tile also
+//   - each "supported" tile's example is compiled with `cancho-ui build --page` (a page, not an installable app: docs/mobile-backend.md
+//     section 5.2) into docs/demo/<id>/ (the ops-console tile also
 //     gets a static sample of its service at docs/demo/ops-console/api/machines);
 //   - the section's markup is written between the markers <!-- gallery:start --> and <!-- gallery:end -->.
 // `node scripts/build-gallery.js` writes; `scripts/check-gallery.js` rebuilds into a temporary directory and fails on any drift.
@@ -62,7 +63,7 @@ function buildDemos(m, cancho, outRoot) {
     const dir = path.join(outRoot, t.id);
     fs.rmSync(dir, { recursive: true, force: true });
     // run from the repository root with the relative source path: the emitted code names its source in a comment
-    const r = spawnSync(cancho, ['build', t.source, '--pwa', '-o', dir, '--name', t.title], { encoding: 'utf8', cwd: ROOT });
+    const r = spawnSync(cancho, ['build', t.source, '--page', '-o', dir, '--name', t.title], { encoding: 'utf8', cwd: ROOT });
     if (r.status !== 0) { throw new Error(`building ${t.source}: ${r.stderr}${r.stdout}`); }
     if (t.id === 'ops-console') {
       fs.mkdirSync(path.join(dir, 'api'), { recursive: true });

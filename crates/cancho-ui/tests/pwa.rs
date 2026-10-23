@@ -296,7 +296,7 @@ fn the_command_line_is_checked() {
     let d = dir.to_str().unwrap();
     let (code, _, stderr) = run(&["build", "examples/counter/counter.cui", "--pwa"]);
     assert_eq!(code, 2, "{stderr}");
-    assert!(stderr.contains("requires `-o <dir>`"), "{stderr}");
+    assert!(stderr.contains("require `-o <dir>`"), "{stderr}");
     let (code, ..) = run(&[
         "build",
         "examples/counter/counter.cui",

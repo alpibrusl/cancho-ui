@@ -53,6 +53,8 @@ give it real network, storage or location access; those are adapter work (§6).
 
 ## 3. The slice built here: `cancho-ui build <file.cui> --pwa -o <dir>`
 
+(For a page that must *not* be installable, such as a gallery demo, use `--page`: `app.js` and `index.html` only, §5.2.)
+
 ```
 cancho-ui build counter.cui --pwa -o out/ [--name "Counter"]
 ```
@@ -135,6 +137,49 @@ in the language (section 6). Neither is built. If it matters for a product, the 
 item 4), not a change to the worker. Deliberate breaks of the check: `skipWaiting()` in the worker (fails "waiting" and "a second tab
 shows version one"), a constant cache name (fails five checks, the user would be served the old build for ever).
 
+### 5.2 A page that is not an app: `build --page` (issue #65, first real-device report)
+
+**What was reported.** On Chrome for Android, the landing page's `#gallery` showed a large empty bordered box
+where the Stopwatch demo should be, and "Open on its own" made the browser offer to install the stopwatch.
+
+**What was measured** (Playwright `Pixel 7` profile: touch, 412 px, Android UA; `scripts/check-mobile-demos.js`;
+the tree served is `git ls-files --cached --others --exclude-standard docs`, that is, what a push publishes):
+
+| Hypothesis | Result |
+|---|---|
+| The lazy iframe never intersects | **Refuted.** All 7 iframes carry `loading="lazy"` and all load once scrolled into view. |
+| The demo's service worker breaks the embed | **A consequence, not the cause.** `sw.js` was never committed (404), so registration failed; the cause is below. |
+| The demo script is missing | **Confirmed.** `.gitignore` has `*.js`, so `docs/demo/<id>/app.js` was never in git: the pages were published without their program. All 7 embedded demos were blank, with a 404 for `app.js`, on the committed tree. |
+| The install prompt | `--pwa` is *meant* to write a manifest, icons and `display: standalone`; that is what makes a page installable. Intended for apps, wrong for demos. |
+
+Side effect, measured on the working tree (where the files existed): viewing the landing page registered **7 service
+workers**, one per demo scope, from iframes of a page nobody asked to install.
+
+**Why `check-gallery` R2 and R3 passed.** Both read the *working tree*, where the ignored `app.js` files exist, so
+the demos load clean there. CI runs only `cargo fmt`, `clippy` and `test`; no `scripts/check-*.js` runs in CI. The
+check and the thing it checks did not see the same files. `check-mobile-demos.js` exports the tree git would publish.
+Desktop vs. mobile played no part: a desktop load of the committed tree is blank too.
+
+**Decision.** Gallery demos are *pages*, not apps. `build --page -o <dir>` writes `app.js` and `index.html` only: the
+same `index.html` as `--pwa` minus the `theme-color`, manifest, icon links and service-worker registration
+(`--pwa` output is byte-identical to before). `--page` and `--pwa` together, and `--page` with `--no-auto-mount`, are usage
+errors. The "Open on its own" link now opens a plain page. `build-gallery.js` uses `--page`; `.gitignore` excepts
+`docs/demo/*/app.js`; `crates/cancho-ui/tests/gallery_demos.rs` (in the cargo gate, so CI runs it) asserts that each
+committed demo equals a fresh `--page` build, that the file set is `app.js`, `index.html` and `api/`, that no file is
+git-ignored, and that the landing page links every demo it embeds.
+
+**The check.** `node scripts/check-mobile-demos.js`: each demo, embedded and on its own, in the mobile profile: renders,
+`loading="lazy"`, no 4xx / failed request / console error, no manifest link, an empty `Page.getAppManifest().url`, no
+service-worker registration. `--self-test` applies six breaks (script not published; manifest link re-added; worker
+registered; iframe not lazy; demo throws; demo blank) and requires each to be caught. Against the old committed tree it
+fails as the phone did.
+
+**Not verified.** The live GitHub Pages URL (the proxy refuses `github.io`); a real Android phone; iOS Safari; the real install
+prompt. `Page.getInstallabilityErrors` returns `[]` in headless Chromium *with no manifest at all*, so install
+eligibility cannot be measured headlessly; the check asserts the cause (no manifest, no worker) instead. Whether a
+real phone's lazy loading matches the emulation is untested; the cause found fully explains the blank box, so it is
+not needed to explain it.
+
 ## 6. Not done, on purpose
 
 - **Real adapters.** *(`Storage` over `localStorage` and a same-origin `net.get` are built: [`adapters.md`](adapters.md). The rest of
@@ -210,7 +255,8 @@ path's length; the script's own totals (43,580 and 49,989) are that, 21 bytes mo
 
 - **Runtime dependencies: none.** `app.js` has 0 occurrences of `import`, `fetch(` or `require(` in
   both programs; nothing is fetched at run time.
-- **Chromium reports no installability errors** (`Page.getInstallabilityErrors` is empty) and the
+- **Chromium reports no installability errors** (`Page.getInstallabilityErrors` is empty; *corrected, §5.2:
+  this is empty in headless Chromium with no manifest at all, so it shows nothing about installability*) and the
   manifest has a URL, the name, and no parse errors, for both programs. (An absent manifest is
   reported as an empty one with no errors, so the check requires the URL and the name too.)
 - **One cache**, named `cancho-ui-` and the content hash, after two loads.
@@ -223,7 +269,7 @@ path's length; the script's own totals (43,580 and 49,989) are that, 21 bytes mo
   and `app.js` left out of the precache list (the offline start fails). The first run of the script
   passed two of these mutants: it trusted an empty manifest and used `setOffline`; both were fixed
   and the mutants re-run.
-- **Not measured:** iOS Safari, a real phone, Lighthouse, update behaviour (a new version
+- **Not measured:** iOS Safari, Lighthouse (a real phone was first reported on in §5.2: Chrome for Android, by screenshot description, not measured), update behaviour (a new version
   taking over after the old tabs close), and what any browser does with the install prompt.
 
 ---
