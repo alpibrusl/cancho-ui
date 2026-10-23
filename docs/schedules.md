@@ -175,6 +175,8 @@ It does not stop a `sleep`-based loop the program wrote itself, a request alread
 the Battery or Network Information APIs. A page that is visible but covered (a window behind another, a split screen) is
 active: the browser says so, and so does this.
 
+A `subscribe` (`streams.md`) follows the same rule for the same reason: a hidden page closes its stream (`paused`) and a visible one connects at once, after the catch-up ticks. A stream is not a tick: it has no period, so nothing is "caught up"; the server keeps what it can.
+
 ### 11.6 Checks planned
 
 Unit: the parser is unchanged; replay: hide, an `advance` across several periods, show (one catch-up tick; none when not

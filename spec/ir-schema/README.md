@@ -70,7 +70,7 @@ Component {
     state: Vec<StateField>,
     requires: Vec<CapabilityRef>,       // declared capabilities
     events: Vec<EventHandler>,
-    schedules: Vec<Schedule>,           // `start E;` / `every N E;` (docs/schedules.md); [{kind, event, period_ms?, span}]
+    schedules: Vec<Schedule>,           // `start E;` / `every N E;` / `route E;` / `subscribe E "url" [status E2];` (docs/schedules.md, routing.md, streams.md); [{kind, event, period_ms?, url?, status?, span}]
     view: ViewBlock,
     lifecycle: LifecycleHooks,
     target_overrides: Vec<TargetOverride>,

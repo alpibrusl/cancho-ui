@@ -66,18 +66,6 @@
   ],
   "soon": [
     {
-      "id": "realtime",
-      "title": "Real-time updates",
-      "issue": 78,
-      "missing": "Push: a page can poll with `every`, but nothing speaks WebSocket or Server-Sent Events.",
-      "probe": {
-        "absent": [
-          "WebSocket",
-          "EventSource"
-        ]
-      }
-    },
-    {
       "id": "dnd",
       "title": "Drag and drop",
       "issue": 80,

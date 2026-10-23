@@ -907,10 +907,10 @@ other limits of 17.4. iOS Safari is not tested.
 |---|---|---|---|
 | `Clock` | `clock.now()`, `sleep(ms)` | none | `Date.now`, `setTimeout` |
 | `Storage` | `storage.get(k, d)`, `storage.set(k, v)` | `Storage("ns")` keeps keys under `cui:ns:` | `localStorage`, with a page-lifetime fallback |
-| `Network` | `net.get(url)`, `net.fetch(url)` (keeps an error status); `net.search(q)` is the simulated demo | `Network("host", ..)` adds hosts | `fetch`, same-origin plus the allow-list |
-| `Credential` | none of its own: `Authorization: Bearer` on `net.get`, `net.fetch`, `net.post`, `net.put`, `net.delete` | `Credential("name", "host"..)` | header added in the adapter, this origin and the named hosts only |
+| `Network` | `net.get(url)`, `net.fetch(url)` (keeps an error status); `subscribe Event "url"` (a stream of messages the server pushes, `streams.md`); `net.search(q)` is the simulated demo | `Network("host", ..)` adds hosts | `fetch`, same-origin plus the allow-list; a stream is a `fetch` read as it arrives |
+| `Credential` | none of its own: `Authorization: Bearer` on `net.get`, `net.fetch`, `net.post`, `net.put`, `net.delete` and on the stream of `subscribe` | `Credential("name", "host"..)` | header added in the adapter, this origin and the named hosts only |
 | `NetworkWrite` | `net.post(url, body)`, `net.put(url, body)`, `net.delete(url)` (the envelope of `net.fetch`) | none: this origin only | `fetch` POST, PUT, DELETE, same-origin, not aborted |
 | `Location` | `location.current()` | `Location("coarse" \| "fine")` | Geolocation, rounded in the adapter |
 
-Not built anywhere: wildcard or per-path `Network` bounds, `watchPosition`, a typed position,
+Not built anywhere: wildcard or per-path `Network` bounds, WebSocket, `watchPosition`, a typed position,
 IndexedDB, and any of it on iOS Safari (nothing here was run there).

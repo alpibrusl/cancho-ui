@@ -70,7 +70,7 @@ demo needs. Phase 2+ adds more, each with its own design entry.
 
 | Capability | What it grants | Tier |
 |---|---|---|
-| **Network** | Outbound HTTP / WebSocket requests | static + runtime |
+| **Network** | Outbound HTTP requests, and the Server-Sent Events stream of `subscribe` (`streams.md`); WebSocket is not built | static + runtime |
 | **Storage** | Read/write key-value storage on the device | static + runtime |
 | **Clock** | Read the current time | static + runtime |
 | **Location** | Read the device location | static + runtime |

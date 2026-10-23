@@ -166,12 +166,6 @@
       "to": "parser.feed(dec.decode(r.value));"
     },
     {
-      "name": "a comment line is data",
-      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
-      "from": "if (l.charCodeAt(0) === 58) { return; }",
-      "to": ""
-    },
-    {
       "name": "a message is skipped while another handler waits",
       "file": "crates/cancho-ui-codegen-web/src/emit.rs",
       "from": "onMessage: function (t) {{ __on_{}(t); }}",
@@ -252,8 +246,8 @@
     {
       "name": "replay: a message on a stream that is not open is accepted",
       "file": "crates/cancho-ui-replay/src/lib.rs",
-      "from": "                Some(other) => {\n                    return Err(stop(\n                        \"trace-stream-state\",\n                        \"message\",",
-      "to": "                Some(other) if false => {\n                    return Err(stop(\n                        \"trace-stream-state\",\n                        \"message\","
+      "from": "                Some(stream::StreamStatus::Open) => {}",
+      "to": "                Some(_) => {}"
     },
     {
       "name": "a stream's address may have a fragment",

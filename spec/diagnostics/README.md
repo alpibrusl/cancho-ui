@@ -158,6 +158,10 @@ in `examples/refusal/`, and by the evidence report.
 | `navlink-target-invalid` | `Component` | `Error` | `Static` | A literal `to:` of a `NavLink` that is not a path: it must start with `/`, hold no space, `#`, `"`, `<`, `>`, backtick or character outside printable ASCII, and be at most 2,000 characters. `to:` on anything but a `NavLink` is `binding-unknown`. *(Built 2026-10-23, issue #75.)* |
 | `file-field-incomplete` | `Component` | `Error` | `Static` | A `FileField` without `label:` or without `on:`. *(Built 2026-10-23, issue #79, `docs/file-upload.md`.)* |
 | `file-accept-invalid` | `Component` | `Error` | `Static` | An `accept:` of a `FileField` that is not a string literal of comma-separated tokens (`.ext`, `type/subtype`, `type/*`; no spaces; at most 20). `accept:` on anything but a `FileField` is `binding-unknown`. *(Built 2026-10-23, issue #79.)* |
+| `subscribe-event-unknown` | `Component` | `Error` | `Static` | A `subscribe Event "url";` (or its `status Event`) naming an event the component does not handle. *(Built 2026-10-24, issue #78, `docs/streams.md` section 3.)* |
+| `subscribe-event-params` | `Component` | `Error` | `Static` | A `subscribe` whose message event, or whose `status` event, does not take exactly one parameter (the message's text, the status word). *(Built 2026-10-24, issue #78.)* |
+| `subscribe-url-invalid` | `Component` | `Error` | `Static` | A `subscribe` whose address is not a string literal naming a path (`/api/stream`, `api/stream`) or an `http(s)://` URL with a host: empty, over 2,000 characters, with a space, backslash or character outside printable ASCII, with a fragment (`#`), protocol-relative (`//host/x`), of another scheme (`ws:`, `ftp:`, `javascript:`, `data:`), or carrying credentials (`user@host`). *(Built 2026-10-24, issue #78.)* |
+| `subscribe-duplicate` | `Component` | `Error` | `Static` | Two `subscribe` lines in a component: it listens to one stream. *(Built 2026-10-24, issue #78.)* |
 | `file-limit-invalid` | `Component` | `Error` | `Static` | A `max_bytes:` of a `FileField` that is not an integer literal from 1 to 1,048,576. On anything else it is `binding-unknown`. *(Built 2026-10-23, issue #79.)* |
 | `file-field-in-loop` | `Component` | `Error` | `Static` | A `FileField` drawn inside a `For`: the page keeps the chosen file by the place of the field in the source, and every row would share one. *(Built 2026-10-23, issue #79.)* |
 | `chart-incomplete` | `Component` | `Error` | `Static` | A `Chart` without `label:`, `kind:` or `values:`. *(Built 2026-10-24, issue #77, `docs/charts.md`.)* |
@@ -204,7 +208,7 @@ tags: `test-state-mismatch`, `test-expect-mismatch`, `test-fault-missing`, `test
 `trace-unknown-event`, `trace-params-arity`, `trace-value-too-long`, `trace-value-not-an-option`, `trace-unknown-state-field`,
 `trace-unknown-request`, `trace-request-not-pending`,
 `trace-request-not-scriptable`, `trace-bad-response`,
-`trace-event-after-dispose`, `trace-navigate-invalid`, `trace-history-empty`, `trace-value-not-a-file`, `replay-unsupported`, `replay-tick-limit`, `replay-route-limit`, `replay-type-error`,
+`trace-event-after-dispose`, `trace-navigate-invalid`, `trace-history-empty`, `trace-value-not-a-file`, `trace-stream-state`, `replay-unsupported`, `replay-tick-limit`, `replay-route-limit`, `replay-type-error`,
 `replay-unknown-identifier`, `replay-no-match-arm`, `replay-non-finite`,
 `replay-number-format`. (`replay-non-finite` is also what the emitted page throws for the same result: `docs/semantics.md`,
 "Arithmetic is finite".) Their meanings are in `docs/replay.md` §7.1. A program that

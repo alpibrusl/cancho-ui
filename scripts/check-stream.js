@@ -34,6 +34,8 @@ const MESSAGE_MAX = 65536;
 const LINE_MAX = MESSAGE_MAX + 6;
 
 const failures = [];
+// a check that waits for something that never comes (a spoiled page) must end, not hang: the whole run takes about 45 s
+setTimeout(() => { console.error('FAIL the run took more than 4 minutes: something never arrived'); process.exit(1); }, 240000).unref();
 function check(label, ok, detail) {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${label}${detail ? `: ${detail}` : ''}`);
   if (!ok) { failures.push(label); }
@@ -413,7 +415,7 @@ const sseOf = (text, id) => {
     }
     const d = parseText(await readText(page));
     check('C: a line that never ends fails the stream', d && d.link === 'failed', JSON.stringify(d));
-    check('C: after at most about a megabyte the page stopped reading and the connection is closed', (await until(() => p.closed)) && written <= (2 << 20), `${written} bytes written`);
+    check('C: after at most 2 MiB written the page had stopped reading and the connection is closed', (await until(() => p.closed)) && written <= (2 << 20), `${written} bytes written`);
     await sleep(200);
     check('C: and the page does not retry', srv.reqs.length === 1);
     check('C: the page stayed responsive', (await page.evaluate(() => 1 + 1)) === 2);
