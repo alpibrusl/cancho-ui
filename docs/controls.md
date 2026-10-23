@@ -355,6 +355,10 @@ that is its own issue (#111), because making a number field safe is a change to 
 
 A control that had the focus and is replaced with its screen no longer drops the focus to the body: the heading of the screen that appeared takes it (`tabindex="-1"`, the browser's ring after the keyboard, none after touch), and a routed page's title follows it. The rule, the measurements and its limits are in [`screen-focus.md`](screen-focus.md); replay does not claim it.
 
+## 11b. `FileField`, a file picker (issue #79)
+
+A native `<input type="file">` whose chosen text file reaches the handler as one JSON `String`: [`file-upload.md`](file-upload.md). Not repeated here.
+
 ## 12. Not done
 
 `disabled:` on an expression (`disabled: len(q) == 0`: the language has no `&&`, `||` or `!` and no Bool expression binding,

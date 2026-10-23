@@ -1,0 +1,49 @@
+// examples/upload/upload.cui: choose a text file, see what the page read of it, and send it (docs/file-upload.md, issue #79).
+//
+// A FileField is a native file picker. The program is told the chosen file as one JSON text: {"name","size","type","text"}, or the same
+// with an "error" (too large, not text, not an accepted type, unreadable) in place of the text. It takes it apart with json.get. The
+// page reads at most 100,000 bytes, as UTF-8 text only: a binary file is an error here, never garbage. Sending is net.post with the JSON
+// body the program builds; there is no multipart and no binary upload.
+
+component Upload {
+    requires NetworkWrite;
+
+    state name: String = "";
+    state size: String = "";
+    state body: String = "";
+    state note: String = "No file chosen.";
+    state preview: String = "";
+    state blocked: Bool = true;
+    state sent: Result[String, String] = Ok("");
+
+    on Picked(f) {
+        name = json.get(f, "name", "");
+        size = json.get(f, "size", "0");
+        body = json.get(f, "text", "");
+        blocked = len(json.get(f, "error", "")) > 0;
+        preview = join(take(lines(body), 1), "");
+        note = if !blocked { name + " (" + size + " bytes) is ready to send." } else { name + " cannot be sent: " + json.get(f, "error", "") + "." };
+    }
+
+    on Send {
+        blocked = true;
+        note = "Sending " + name + " ...";
+        sent = await(net.post("api/upload", "[" + json.quote(name) + "," + json.quote(body) + "]"));
+        note = match sent {
+            Ok(reply) => { if json.get(reply, "status", "") == "200" { name + " was sent." } else { "The service refused " + name + " (" + json.get(reply, "status", "?") + ")." } }
+            Err(e) => { "Could not send " + name + ": " + e }
+            Cancelled => { "Sending was cancelled." }
+        };
+        blocked = false;
+    }
+
+    view {
+        Column {
+            Text { role: heading "Send a text file" }
+            FileField { label: "Report" accept: ".txt,.csv,text/plain,text/csv" max_bytes: 100000 on: Picked }
+            Text { role: status "{note}" }
+            Text { "first line: {preview}" }
+            Button { label: "Send" on: Send disabled: blocked }
+        }
+    }
+}

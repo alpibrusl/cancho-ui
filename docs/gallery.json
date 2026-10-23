@@ -50,6 +50,12 @@
       "title": "Screens at their own URLs",
       "source": "examples/routes/routes.cui",
       "says": "`route`, `NavLink` and `router.go`: a list and a detail, each at its own URL fragment (`#/items/valve`). The browser's Back button works, a reload stays on the page, and \"Open on its own\" gives a link you can share."
+    },
+    {
+      "id": "upload",
+      "title": "Choosing a file",
+      "source": "examples/upload/upload.cui",
+      "says": "`FileField`: a native file picker. The page reads a text file (UTF-8 only, at most 100,000 bytes, `.txt` or `.csv`), shows its name, size and first line, and sends it with `net.post`. On this static site there is no service to send to, so Send reports the refusal."
     }
   ],
   "soon": [
@@ -73,16 +79,6 @@
           "WebSocket",
           "EventSource"
         ]
-      }
-    },
-    {
-      "id": "upload",
-      "title": "File upload",
-      "issue": 79,
-      "missing": "A file picker and a way to send the chosen file; `net.post` sends text.",
-      "probe": {
-        "view": "FileField { label: \"Upload\" }",
-        "rule": "component-kind-unknown"
       }
     },
     {

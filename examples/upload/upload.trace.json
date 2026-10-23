@@ -1,0 +1,103 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "note": "A file the page read, files it would not (too large, not an accepted type), and a send the service accepts and one it refuses.",
+  "steps": [
+    {
+      "event": "Picked",
+      "params": [
+        "{\"name\":\"notes.txt\",\"size\":17,\"type\":\"text/plain\",\"text\":\"first line\\nsecond\"}"
+      ],
+      "state": {
+        "name": "notes.txt",
+        "size": "17",
+        "body": "first line\nsecond",
+        "preview": "first line",
+        "blocked": false,
+        "note": "notes.txt (17 bytes) is ready to send."
+      }
+    },
+    {
+      "event": "Picked",
+      "params": [
+        "{\"name\":\"big.txt\",\"size\":200000,\"type\":\"text/plain\",\"error\":\"too large\"}"
+      ],
+      "state": {
+        "name": "big.txt",
+        "body": "",
+        "blocked": true,
+        "note": "big.txt cannot be sent: too large."
+      }
+    },
+    {
+      "event": "Picked",
+      "params": [
+        "{\"name\":\"logo.png\",\"size\":900,\"type\":\"image/png\",\"error\":\"not an accepted type\"}"
+      ],
+      "state": {
+        "name": "logo.png",
+        "blocked": true,
+        "note": "logo.png cannot be sent: not an accepted type."
+      }
+    },
+    {
+      "event": "Send",
+      "expect": {
+        "outcome": "disabled"
+      }
+    },
+    {
+      "event": "Picked",
+      "params": [
+        "{\"name\":\"notes.txt\",\"size\":17,\"type\":\"text/plain\",\"text\":\"first line\\nsecond\"}"
+      ],
+      "state": {
+        "blocked": false
+      }
+    },
+    {
+      "event": "Send",
+      "expect": {
+        "outcome": "suspended",
+        "issued": [
+          {
+            "request": 1,
+            "effect": "net.post",
+            "args": [
+              "api/upload",
+              "[\"notes.txt\",\"first line\\nsecond\"]"
+            ]
+          }
+        ]
+      },
+      "state": {
+        "blocked": true
+      }
+    },
+    {
+      "resolve": 1,
+      "with": {
+        "Ok": "{\"status\":200,\"body\":\"ok\"}"
+      },
+      "state": {
+        "note": "notes.txt was sent.",
+        "blocked": false
+      }
+    },
+    {
+      "event": "Send",
+      "expect": {
+        "outcome": "suspended"
+      }
+    },
+    {
+      "resolve": 2,
+      "with": {
+        "Ok": "{\"status\":413,\"body\":\"too big\"}"
+      },
+      "state": {
+        "note": "The service refused notes.txt (413)."
+      }
+    }
+  ]
+}

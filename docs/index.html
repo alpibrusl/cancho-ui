@@ -178,7 +178,7 @@ footer { border-top: 1px solid var(--line); padding: 1.5rem 0 2rem; color: var(-
         }
     }
 }</code></pre>
-  <p class="fine">Every example is in <a href="https://github.com/alpibrusl/cancho-ui/tree/main/examples">examples/</a> (20 programs): a counter, a stopwatch, a searchable list with cancellation, composed components, cross-file imports, notes in <code>Storage</code>, a machine console and more. Eight of them run live in the <a href="#gallery">gallery</a>.</p>
+  <p class="fine">Every example is in <a href="https://github.com/alpibrusl/cancho-ui/tree/main/examples">examples/</a> (21 programs): a counter, a stopwatch, a searchable list with cancellation, composed components, cross-file imports, notes in <code>Storage</code>, a machine console and more. Nine of them run live in the <a href="#gallery">gallery</a>.</p>
 </div></section>
 
 <!-- gallery:start -->
@@ -219,6 +219,10 @@ footer { border-top: 1px solid var(--line); padding: 1.5rem 0 2rem; color: var(-
       <p><code>route</code>, <code>NavLink</code> and <code>router.go</code>: a list and a detail, each at its own URL fragment (<code>#/items/valve</code>). The browser's Back button works, a reload stays on the page, and &quot;Open on its own&quot; gives a link you can share.</p>
       <iframe class="" title="Screens at their own URLs, built by cancho-ui" src="demo/routes/" loading="lazy"></iframe>
       <p class="glinks"><a href="demo/routes/">Open on its own</a> <a href="https://github.com/alpibrusl/cancho-ui/blob/main/examples/routes/routes.cui">Source: routes.cui</a></p></li>
+    <li class="gtile"><h4>Choosing a file</h4>
+      <p><code>FileField</code>: a native file picker. The page reads a text file (UTF-8 only, at most 100,000 bytes, <code>.txt</code> or <code>.csv</code>), shows its name, size and first line, and sends it with <code>net.post</code>. On this static site there is no service to send to, so Send reports the refusal.</p>
+      <iframe class="" title="Choosing a file, built by cancho-ui" src="demo/upload/" loading="lazy"></iframe>
+      <p class="glinks"><a href="demo/upload/">Open on its own</a> <a href="https://github.com/alpibrusl/cancho-ui/blob/main/examples/upload/upload.cui">Source: upload.cui</a></p></li>
   </ul>
   <h3 class="gh">Coming soon</h3>
   <p class="lead">Not built, and not promised for any date. Each tile says what is missing and links the issue that tracks it.</p>
@@ -229,9 +233,6 @@ footer { border-top: 1px solid var(--line); padding: 1.5rem 0 2rem; color: var(-
     <li class="gtile soon"><h4>Real-time updates <span class="badge">Coming soon</span></h4>
       <p>Missing: Push: a page can poll with <code>every</code>, but nothing speaks WebSocket or Server-Sent Events.</p>
       <p class="glinks"><a href="https://github.com/alpibrusl/cancho-ui/issues/78">Tracked in #78</a></p></li>
-    <li class="gtile soon"><h4>File upload <span class="badge">Coming soon</span></h4>
-      <p>Missing: A file picker and a way to send the chosen file; <code>net.post</code> sends text.</p>
-      <p class="glinks"><a href="https://github.com/alpibrusl/cancho-ui/issues/79">Tracked in #79</a></p></li>
     <li class="gtile soon"><h4>Drag and drop <span class="badge">Coming soon</span></h4>
       <p>Missing: Drag events and a keyboard alternative; the only events are a button press and text input.</p>
       <p class="glinks"><a href="https://github.com/alpibrusl/cancho-ui/issues/80">Tracked in #80</a></p></li>
@@ -252,7 +253,7 @@ footer { border-top: 1px solid var(--line); padding: 1.5rem 0 2rem; color: var(-
   <h2>Measured, not promised</h2>
   <p class="lead">What the repository can show today.</p>
   <div class="nums">
-    <div class="num"><b>20</b><span>example programs compile, and 16 of them replay a recorded trace</span></div>
+    <div class="num"><b>21</b><span>example programs compile, and 17 of them replay a recorded trace</span></div>
     <div class="num"><b>390+</b><span>tests pass under <code>cargo test --workspace</code></span></div>
     <div class="num"><b>~26,000</b><span>mutated programs (every prefix, every one-character deletion) refused or accepted, never a panic</span></div>
     <div class="num"><b>0</b><span>clippy warnings under <code>-D warnings</code></span></div>

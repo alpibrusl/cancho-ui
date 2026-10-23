@@ -156,6 +156,10 @@ in `examples/refusal/`, and by the evidence report.
 | `route-duplicate` | `Component` | `Error` | `Static` | Two `route` lines in a component: one event receives every path. *(Built 2026-10-23, issue #75.)* |
 | `navlink-incomplete` | `Component` | `Error` | `Static` | A `NavLink` without `label:` (its text) or without `to:` (the path). *(Built 2026-10-23, issue #75, `docs/routing.md` section 4.)* |
 | `navlink-target-invalid` | `Component` | `Error` | `Static` | A literal `to:` of a `NavLink` that is not a path: it must start with `/`, hold no space, `#`, `"`, `<`, `>`, backtick or character outside printable ASCII, and be at most 2,000 characters. `to:` on anything but a `NavLink` is `binding-unknown`. *(Built 2026-10-23, issue #75.)* |
+| `file-field-incomplete` | `Component` | `Error` | `Static` | A `FileField` without `label:` or without `on:`. *(Built 2026-10-23, issue #79, `docs/file-upload.md`.)* |
+| `file-accept-invalid` | `Component` | `Error` | `Static` | An `accept:` of a `FileField` that is not a string literal of comma-separated tokens (`.ext`, `type/subtype`, `type/*`; no spaces; at most 20). `accept:` on anything but a `FileField` is `binding-unknown`. *(Built 2026-10-23, issue #79.)* |
+| `file-limit-invalid` | `Component` | `Error` | `Static` | A `max_bytes:` of a `FileField` that is not an integer literal from 1 to 1,048,576. On anything else it is `binding-unknown`. *(Built 2026-10-23, issue #79.)* |
+| `file-field-in-loop` | `Component` | `Error` | `Static` | A `FileField` drawn inside a `For`: the page keeps the chosen file by the place of the field in the source, and every row would share one. *(Built 2026-10-23, issue #79.)* |
 | `parse-nesting-too-deep` | `Component` | `Error` | `Static` | `if` statements nested more than 32 deep: a parse error, not a stack overflow. Only statements are limited so far; see alpibrusl/cancho-ui#99 for expressions and views. *(Built 2026-10-22, issue #93.)* |
 | `table-child-invalid` | `Component` | `Error` | `Static` | A `Table` child that is not a `Row` or a `For` that makes `Row`s. *(Built 2026-10-21, issue #42, section 4.)* |
 | `capability-missing` | `Capability` | `Error` | `Static` | A component using an effect without `requires Capability` |
@@ -194,7 +198,7 @@ tags: `test-state-mismatch`, `test-expect-mismatch`, `test-fault-missing`, `test
 `trace-unknown-event`, `trace-params-arity`, `trace-value-too-long`, `trace-value-not-an-option`, `trace-unknown-state-field`,
 `trace-unknown-request`, `trace-request-not-pending`,
 `trace-request-not-scriptable`, `trace-bad-response`,
-`trace-event-after-dispose`, `trace-navigate-invalid`, `trace-history-empty`, `replay-unsupported`, `replay-tick-limit`, `replay-route-limit`, `replay-type-error`,
+`trace-event-after-dispose`, `trace-navigate-invalid`, `trace-history-empty`, `trace-value-not-a-file`, `replay-unsupported`, `replay-tick-limit`, `replay-route-limit`, `replay-type-error`,
 `replay-unknown-identifier`, `replay-no-match-arm`, `replay-non-finite`,
 `replay-number-format`. (`replay-non-finite` is also what the emitted page throws for the same result: `docs/semantics.md`,
 "Arithmetic is finite".) Their meanings are in `docs/replay.md` §7.1. A program that

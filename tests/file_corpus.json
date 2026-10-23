@@ -1,0 +1,195 @@
+{
+ "program": [
+  "component U {",
+  "    state last: String = \"\";",
+  "    state count: Int = 0;",
+  "    state bumps: Int = 0;",
+  "    on Picked(f) { last = f; count = count + 1; }",
+  "    on Bump { bumps = bumps + 1; }",
+  "    view {",
+  "        Column {",
+  "            FileField { label: \"Report\" accept: \".txt,text/csv\" max_bytes: 20 on: Picked }",
+  "            Button { label: \"Bump\" on: Bump }",
+  "            Text { \"picked={count} bumps={bumps}\" }",
+  "            Text { \"last={last}\" }",
+  "        }",
+  "    }",
+  "}"
+ ],
+ "steps": [
+  {
+   "why": "a plain text file",
+   "name": "hello.txt",
+   "type": "text/plain",
+   "hex": "68656c6c6f",
+   "value": "{\"name\":\"hello.txt\",\"size\":5,\"type\":\"text/plain\",\"text\":\"hello\"}"
+  },
+  {
+   "why": "an empty file is an empty text",
+   "name": "empty.txt",
+   "type": "text/plain",
+   "hex": "",
+   "value": "{\"name\":\"empty.txt\",\"size\":0,\"type\":\"text/plain\",\"text\":\"\"}"
+  },
+  {
+   "why": "a BOM is dropped: 8 bytes, 4 characters",
+   "name": "bom.txt",
+   "type": "text/plain",
+   "hex": "efbbbf636166c3a9",
+   "value": "{\"name\":\"bom.txt\",\"size\":8,\"type\":\"text/plain\",\"text\":\"café\"}"
+  },
+  {
+   "why": "exactly max_bytes is read",
+   "name": "a20.txt",
+   "type": "text/plain",
+   "hex": "7878787878787878787878787878787878787878",
+   "value": "{\"name\":\"a20.txt\",\"size\":20,\"type\":\"text/plain\",\"text\":\"xxxxxxxxxxxxxxxxxxxx\"}"
+  },
+  {
+   "why": "one byte over max_bytes is not read",
+   "name": "b21.txt",
+   "type": "text/plain",
+   "hex": "787878787878787878787878787878787878787878",
+   "value": "{\"name\":\"b21.txt\",\"size\":21,\"type\":\"text/plain\",\"error\":\"too large\"}"
+  },
+  {
+   "why": "bytes that are not UTF-8 are 'not text', never garbage",
+   "name": "bad.txt",
+   "type": "text/plain",
+   "hex": "fffefd",
+   "value": "{\"name\":\"bad.txt\",\"size\":3,\"type\":\"text/plain\",\"error\":\"not text\"}"
+  },
+  {
+   "why": "a PNG is not an accepted type, whatever its size",
+   "name": "pic.png",
+   "type": "image/png",
+   "hex": "89504e470d0a1a0a000000",
+   "value": "{\"name\":\"pic.png\",\"size\":11,\"type\":\"image/png\",\"error\":\"not an accepted type\"}"
+  },
+  {
+   "why": "accepted by type: text/csv",
+   "name": "data.csv",
+   "type": "text/csv",
+   "hex": "612c62",
+   "value": "{\"name\":\"data.csv\",\"size\":3,\"type\":\"text/csv\",\"text\":\"a,b\"}"
+  },
+  {
+   "why": "an extension is compared without case",
+   "name": "UPPER.TXT",
+   "type": "text/plain",
+   "hex": "6f6b",
+   "value": "{\"name\":\"UPPER.TXT\",\"size\":2,\"type\":\"text/plain\",\"text\":\"ok\"}"
+  },
+  {
+   "why": "a name with quotes and spaces is escaped in the JSON",
+   "name": "my \"q\" file.txt",
+   "type": "text/plain",
+   "hex": "71",
+   "value": "{\"name\":\"my \\\"q\\\" file.txt\",\"size\":1,\"type\":\"text/plain\",\"text\":\"q\"}"
+  },
+  {
+   "why": "a non-ASCII name and text; size is bytes",
+   "name": "résumé.txt",
+   "type": "text/plain",
+   "hex": "72c3a9",
+   "value": "{\"name\":\"résumé.txt\",\"size\":3,\"type\":\"text/plain\",\"text\":\"ré\"}"
+  },
+  {
+   "why": "accepted by the type alone (no extension)",
+   "name": "data",
+   "type": "text/csv",
+   "hex": "782c79",
+   "value": "{\"name\":\"data\",\"size\":3,\"type\":\"text/csv\",\"text\":\"x,y\"}"
+  },
+  {
+   "why": "a file whose type the browser does not know is judged by its name",
+   "name": "x.TxT",
+   "type": "application/octet-stream",
+   "hex": "78",
+   "value": "{\"name\":\"x.TxT\",\"size\":1,\"type\":\"application/octet-stream\",\"text\":\"x\"}"
+  },
+  {
+   "why": "an unknown extension with a generic type is not accepted (the chooser reports application/octet-stream for a type it does not know)",
+   "name": "a.qqq",
+   "type": "application/octet-stream",
+   "hex": "78",
+   "value": "{\"name\":\"a.qqq\",\"size\":1,\"type\":\"application/octet-stream\",\"error\":\"not an accepted type\"}"
+  },
+  {
+   "why": "the type is judged before the size",
+   "name": "pic2.png",
+   "type": "image/png",
+   "hex": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "value": "{\"name\":\"pic2.png\",\"size\":100,\"type\":\"image/png\",\"error\":\"not an accepted type\"}"
+  },
+  {
+   "why": "the size is judged before the bytes are read",
+   "name": "bad2.txt",
+   "type": "text/plain",
+   "hex": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+   "value": "{\"name\":\"bad2.txt\",\"size\":30,\"type\":\"text/plain\",\"error\":\"too large\"}"
+  }
+ ],
+ "notFiles": [
+  {
+   "why": "not JSON",
+   "value": "hello"
+  },
+  {
+   "why": "not an object",
+   "value": "[1]"
+  },
+  {
+   "why": "text and error together",
+   "value": "{\"name\":\"a.txt\",\"size\":1,\"type\":\"\",\"text\":\"x\",\"error\":\"too large\"}"
+  },
+  {
+   "why": "neither text nor error",
+   "value": "{\"name\":\"a.txt\",\"size\":1,\"type\":\"\"}"
+  },
+  {
+   "why": "a name with a slash",
+   "value": "{\"name\":\"d/a.txt\",\"size\":1,\"type\":\"\",\"text\":\"x\"}"
+  },
+  {
+   "why": "an empty name",
+   "value": "{\"name\":\"\",\"size\":1,\"type\":\"\",\"text\":\"x\"}"
+  },
+  {
+   "why": "a negative size",
+   "value": "{\"name\":\"a.txt\",\"size\":-1,\"type\":\"\",\"text\":\"\"}"
+  },
+  {
+   "why": "a size that is a string",
+   "value": "{\"name\":\"a.txt\",\"size\":\"1\",\"type\":\"\",\"text\":\"x\"}"
+  },
+  {
+   "why": "text from a file over max_bytes",
+   "value": "{\"name\":\"a.txt\",\"size\":21,\"type\":\"text/plain\",\"text\":\"x\"}"
+  },
+  {
+   "why": "text longer in bytes than the size",
+   "value": "{\"name\":\"a.txt\",\"size\":1,\"type\":\"text/plain\",\"text\":\"xyz\"}"
+  },
+  {
+   "why": "an error that is not one of the four",
+   "value": "{\"name\":\"a.txt\",\"size\":1,\"type\":\"\",\"error\":\"broken\"}"
+  },
+  {
+   "why": "'too large' for a file within max_bytes",
+   "value": "{\"name\":\"a.txt\",\"size\":5,\"type\":\"text/plain\",\"error\":\"too large\"}"
+  },
+  {
+   "why": "'not an accepted type' for a file accept allows",
+   "value": "{\"name\":\"a.txt\",\"size\":5,\"type\":\"text/plain\",\"error\":\"not an accepted type\"}"
+  },
+  {
+   "why": "text of a file accept does not allow",
+   "value": "{\"name\":\"a.png\",\"size\":1,\"type\":\"image/png\",\"text\":\"x\"}"
+  },
+  {
+   "why": "an extra key",
+   "value": "{\"name\":\"a.txt\",\"size\":1,\"type\":\"\",\"text\":\"x\",\"path\":\"/home/u/a.txt\"}"
+  }
+ ]
+}

@@ -29,7 +29,12 @@ pub const ELEMENT_KEYS: &[&str] = &[
     "checked",
     "options",
     "to",
+    "accept",
+    "max_bytes",
 ];
+
+/// What a `FileField` takes (docs/file-upload.md section 3); every other key is `binding-unknown` on it.
+pub const FILEFIELD_KEYS: &[&str] = &["label", "role", "on", "accept", "max_bytes", "disabled"];
 
 /// What a `NavLink` takes (docs/routing.md section 4); every other key is `binding-unknown` on it.
 pub const NAVLINK_KEYS: &[&str] = &["label", "role", "to"];
@@ -59,12 +64,12 @@ pub const MAX_WIDTH_RANGE: (i64, i64) = (10, 200);
 
 pub fn check_controls(ir: &IrFile) -> Result<(), LowerError> {
     for c in &ir.components {
-        check_node(c, &c.view.body)?;
+        check_node(c, &c.view.body, false)?;
     }
     Ok(())
 }
 
-fn check_node(c: &IrComponent, node: &IrViewNode) -> Result<(), LowerError> {
+fn check_node(c: &IrComponent, node: &IrViewNode, in_for: bool) -> Result<(), LowerError> {
     match node {
         IrViewNode::Element {
             kind,
@@ -78,16 +83,22 @@ fn check_node(c: &IrComponent, node: &IrViewNode) -> Result<(), LowerError> {
                     check_binding(c, kind, b)?;
                 }
                 check_navlink_complete(kind, accessibility, bindings, *span)?;
+                check_file_field(kind, accessibility, bindings, *span, in_for)?;
                 check_checkbox_complete(kind, bindings, *span)?;
                 check_select_complete(kind, bindings, *span)?;
             }
             for ch in children {
-                check_node(c, ch)?;
+                check_node(c, ch, in_for)?;
             }
         }
-        IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
+        IrViewNode::For { children, .. } => {
             for ch in children {
-                check_node(c, ch)?;
+                check_node(c, ch, true)?;
+            }
+        }
+        IrViewNode::If { children, .. } => {
+            for ch in children {
+                check_node(c, ch, in_for)?;
             }
         }
         IrViewNode::Text { .. } => {}
@@ -108,6 +119,7 @@ fn element_name(kind: &IrElementKind) -> &'static str {
         IrElementKind::TextArea => "TextArea",
         IrElementKind::Checkbox => "Checkbox",
         IrElementKind::Select => "Select",
+        IrElementKind::FileField => "FileField",
         IrElementKind::NavLink => "NavLink",
         IrElementKind::Named(_) => "a component",
     }
@@ -155,7 +167,8 @@ fn check_on(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), 
             IrElementKind::TextField
             | IrElementKind::TextArea
             | IrElementKind::Checkbox
-            | IrElementKind::Select,
+            | IrElementKind::Select
+            | IrElementKind::FileField,
         ) => event.params.len().min(1),
         (None, _) => 0,
     };
@@ -610,6 +623,73 @@ fn check_select_complete(
     Ok(())
 }
 
+/// A `FileField` has a name to read and an event to tell, and its choice is kept by the place it has in the source, so it is not drawn
+/// once per row of a `For` (docs/file-upload.md section 3).
+fn check_file_field(
+    kind: &IrElementKind,
+    accessibility: &IrAccessibility,
+    bindings: &[IrBinding],
+    span: cancho_ui_syntax::span::Span,
+    in_for: bool,
+) -> Result<(), LowerError> {
+    if !matches!(kind, IrElementKind::FileField) {
+        return Ok(());
+    }
+    let has_label = accessibility.label.is_some() || accessibility.label_expr.is_some();
+    if !has_label || !bindings.iter().any(|b| b.key == "on") {
+        return Err(LowerError::ControlRefused {
+            code: "file-field-incomplete",
+            message: "a FileField needs `label:` and `on:`, the event that is told the chosen file: `FileField { label: \"Report\" on: Picked }`".to_string(),
+            span,
+        });
+    }
+    if in_for {
+        return Err(LowerError::ControlRefused {
+            code: "file-field-in-loop",
+            message: "a FileField is not drawn inside a `For`: the page keeps the chosen file by the place of the FileField in the source, and every row would share one".to_string(),
+            span,
+        });
+    }
+    Ok(())
+}
+
+/// `accept:` and `max_bytes:` are bindings of a `FileField` with checked values.
+fn check_file_binding(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
+    if !matches!(kind, IrElementKind::FileField) {
+        return Err(LowerError::ControlRefused {
+            code: "binding-unknown",
+            message: format!(
+                "`{}:` is a binding of FileField, not of {}",
+                b.key,
+                element_name(kind)
+            ),
+            span: b.span,
+        });
+    }
+    match (b.key.as_str(), &b.value) {
+        ("accept", IrBindingValue::String(a)) if crate::file_field::accept_valid(a) => Ok(()),
+        ("accept", _) => Err(LowerError::ControlRefused {
+            code: "file-accept-invalid",
+            message: format!(
+                "`accept:` takes a string literal of comma-separated tokens, no spaces, at most {}: `.ext`, `type/subtype` or `type/*`, like `\".txt,text/csv\"`",
+                crate::file_field::ACCEPT_TOKENS_MAX
+            ),
+            span: b.span,
+        }),
+        ("max_bytes", IrBindingValue::Const { expr, .. }) if matches!(**expr, IrExpr::IntLit { value, .. } if (1..=crate::file_field::MAX_BYTES).contains(&value)) => {
+            Ok(())
+        }
+        _ => Err(LowerError::ControlRefused {
+            code: "file-limit-invalid",
+            message: format!(
+                "`max_bytes:` takes an integer literal from 1 to {}",
+                crate::file_field::MAX_BYTES
+            ),
+            span: b.span,
+        }),
+    }
+}
+
 /// A `NavLink` has a name to read and a path to point at (docs/routing.md section 4).
 fn check_navlink_complete(
     kind: &IrElementKind,
@@ -660,6 +740,23 @@ fn check_to(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
 }
 
 fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
+    if matches!(kind, IrElementKind::FileField)
+        && !FILEFIELD_KEYS.contains(&b.key.as_str())
+        && ELEMENT_KEYS.contains(&b.key.as_str())
+    {
+        return Err(LowerError::ControlRefused {
+            code: "binding-unknown",
+            message: format!(
+                "`{}:` is not a binding of FileField; it takes {}",
+                b.key,
+                FILEFIELD_KEYS.join(", ")
+            ),
+            span: b.span,
+        });
+    }
+    if b.key == "accept" || b.key == "max_bytes" {
+        check_file_binding(kind, b)?;
+    }
     if matches!(kind, IrElementKind::NavLink)
         && !NAVLINK_KEYS.contains(&b.key.as_str())
         && ELEMENT_KEYS.contains(&b.key.as_str())
