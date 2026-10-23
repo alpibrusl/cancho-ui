@@ -57,14 +57,20 @@ function __cui_add(a, b) {
 
 // Component: Clock (id 0)
 function mount_Clock(root) {
-    (function () {
+    return (function () {
         let __state_started_at = 0;
+        let __state_elapsed = 0;
         let __state_ticking = false;
+        const __cui_every = [];
+        let __cui_active = typeof document === 'undefined' || document.visibilityState !== 'hidden';
+        const __cui_busy = { Tick: 0 };
         async function __on_Start() {
             let __snap = [__state_started_at, __state_ticking];
             try {
-                __state_started_at = __cui_clock_now();
-                __state_ticking = true;
+                if ((!__state_ticking)) {
+                    __state_started_at = __cui_fin(__cui_clock_now() - __state_elapsed);
+                    __state_ticking = true;
+                }
                 __render();
             } catch (e) {
                 if (e !== __cui_cancelled) {
@@ -75,18 +81,32 @@ function mount_Clock(root) {
             }
         }
         async function __on_Stop() {
+            let __snap = [__state_elapsed, __state_ticking];
             try {
-                __state_ticking = false;
+                if (__state_ticking) {
+                    __state_elapsed = __cui_fin(__cui_clock_now() - __state_started_at);
+                    __state_ticking = false;
+                }
                 __render();
             } catch (e) {
-                if (e !== __cui_cancelled) { throw e; }
+                if (e !== __cui_cancelled) {
+                    if (__snap) { [__state_elapsed, __state_ticking] = __snap; }
+                    __render();
+                    throw e;
+                }
             }
         }
         async function __on_Tick() {
+            __cui_busy.Tick++;
             try {
+                if (__state_ticking) {
+                    __state_elapsed = __cui_fin(__cui_clock_now() - __state_started_at);
+                }
                 __render();
             } catch (e) {
                 if (e !== __cui_cancelled) { throw e; }
+            } finally {
+                __cui_busy.Tick--;
             }
         }
         function __render() {
@@ -98,7 +118,7 @@ function mount_Clock(root) {
                 __n1.setAttribute('role', "status");
                 __n1.setAttribute('aria-label', "elapsed time");
                 __n1.appendChild(document.createTextNode("Elapsed: "));
-                __n1.appendChild(document.createTextNode(String(__cui_fin(__cui_fin(__cui_clock_now() - __state_started_at) / 1000))));
+                __n1.appendChild(document.createTextNode(String(__cui_fin(__state_elapsed / 1000))));
                 __n1.appendChild(document.createTextNode("s"));
                 __n0.appendChild(__n1);
                 const __n2 = document.createElement('button');
@@ -115,6 +135,26 @@ function mount_Clock(root) {
             __cui_focus_restore(root, __focus);
         }
         __render();
+        __cui_every.push({ ms: 100, next: Date.now() + 100, o: null, run: function () { if (__cui_busy.Tick === 0) { __on_Tick(); } } });
+        function __cui_arm(s) { s.o = setTimeout(function () { s.o = null; s.next += s.ms; if (s.next <= Date.now()) { s.next = Date.now() + s.ms; } __cui_arm(s); s.run(); }, Math.max(0, s.next - Date.now())); }
+        function __cui_pause() { __cui_every.forEach(function (s) { if (s.o !== null) { clearTimeout(s.o); s.o = null; } }); }
+        function __cui_resume() { const now = Date.now(); __cui_every.forEach(function (s) { if (s.o !== null) { return; } if (s.next <= now) { s.next = now + s.ms; __cui_arm(s); s.run(); } else { __cui_arm(s); } }); }
+        function __cui_visibility() { const a = document.visibilityState !== 'hidden'; if (a === __cui_active) { return; } __cui_active = a; if (a) { __cui_resume(); } else { __cui_pause(); } }
+        function __cui_pagehide() { if (__cui_active) { __cui_active = false; __cui_pause(); } }
+        function __cui_pageshow(e) { if (e.persisted) { __cui_visibility(); } }
+        document.addEventListener('visibilitychange', __cui_visibility);
+        window.addEventListener('pagehide', __cui_pagehide);
+        window.addEventListener('pageshow', __cui_pageshow);
+        if (__cui_active) { __cui_every.forEach(__cui_arm); }
+        return {
+            __cui_dispose: function () {
+                __cui_every.forEach(function (s) { if (s.o !== null) { clearTimeout(s.o); s.o = null; } });
+                __cui_every.length = 0;
+                document.removeEventListener('visibilitychange', __cui_visibility);
+                window.removeEventListener('pagehide', __cui_pagehide);
+                window.removeEventListener('pageshow', __cui_pageshow);
+            }
+        };
     })();
 }
 

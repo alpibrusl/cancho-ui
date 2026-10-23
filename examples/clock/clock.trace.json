@@ -1,14 +1,16 @@
 {
   "schema": "cancho-ui-trace",
   "version": "0.1.0",
-  "note": "The clock is the trace's: Start reads exactly the time the trace says it is.",
+  "note": "The clock is the trace's. Before Start the reading is 0; a running stopwatch ticks every 100 ms; Stop freezes it; Start resumes from it.",
   "clock": 1000,
   "steps": [
-    { "event": "Start", "state": { "started_at": 1000, "ticking": true } },
-    { "advance": 2500, "expect": { "outcome": "ok" } },
-    { "event": "Stop", "state": { "started_at": 1000, "ticking": false } },
-    { "advance": 500 },
-    { "event": "Start", "state": { "started_at": 4000, "ticking": true } },
-    { "event": "Tick", "state": { "started_at": 4000, "ticking": true }, "expect": { "outcome": "completed" } }
+    { "event": "Tick", "state": { "started_at": 0, "elapsed": 0, "ticking": false } },
+    { "event": "Start", "state": { "started_at": 1000, "elapsed": 0, "ticking": true } },
+    { "advance": 100, "state": { "started_at": 1000, "elapsed": 100, "ticking": true } },
+    { "advance": 2400, "state": { "started_at": 1000, "elapsed": 2500, "ticking": true } },
+    { "event": "Stop", "state": { "started_at": 1000, "elapsed": 2500, "ticking": false } },
+    { "advance": 500, "state": { "started_at": 1000, "elapsed": 2500, "ticking": false } },
+    { "event": "Start", "state": { "started_at": 1500, "elapsed": 2500, "ticking": true } },
+    { "advance": 100, "state": { "started_at": 1500, "elapsed": 2600, "ticking": true } }
   ]
 }
