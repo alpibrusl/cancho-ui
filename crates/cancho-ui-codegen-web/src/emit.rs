@@ -85,12 +85,20 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
     let mut any_location = false;
     let mut any_router = false;
     let mut any_stream = false;
+    let mut locale_langs: Vec<String> = Vec::new();
     let mut any_storage = false;
     let mut any_cancel = false;
     for c in &ir.components {
         for e in &c.reachable_effects {
             if e.capability == "Clock" {
                 any_clock = true;
+            }
+            if e.capability == "Locale" {
+                for l in crate::i18n::languages(c) {
+                    if !locale_langs.contains(&l) {
+                        locale_langs.push(l);
+                    }
+                }
             }
             if e.capability == "Network" && e.path == ["subscribe"] {
                 any_stream = true;
@@ -163,6 +171,10 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
     }
     if any_credential {
         out.push_str("let __cui_cur_creds = null;\n");
+        out.push('\n');
+    }
+    if !locale_langs.is_empty() {
+        out.push_str(&crate::i18n::adapter_js(&locale_langs));
         out.push('\n');
     }
     if any_stream {
@@ -495,6 +507,13 @@ fn emit_component(
     }
     out.push_str("(function () {\n");
 
+    // docs/i18n.md: the language in use is the component's, chosen at mount from the browser's languages; the page's `lang` and `dir` follow it.
+    if c.reachable_effects.iter().any(|e| e.capability == "Locale") {
+        out.push_str(&format!(
+            "        const __cui_msgs = {};\n        const __cui_loc = {{ lang: __cui_locale_init(__cui_msgs.langs), langs: __cui_msgs.langs }};\n        __cui_doc(__cui_loc.lang);\n",
+            crate::i18n::component_json(c)
+        ));
+    }
     for s in &c.state {
         out.push_str("        let ");
         out.push_str(STATE_PREFIX);

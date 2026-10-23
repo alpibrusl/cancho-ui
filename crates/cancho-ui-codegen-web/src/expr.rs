@@ -375,6 +375,21 @@ fn emit_call_runtime(path: &[String], args: &[IrExpr], params: &[&str]) -> Strin
             rendered_args.join(", ")
         );
     }
+    if cancho_ui_ir::messages::is_call(path) {
+        // docs/i18n.md: synchronous; the language in use and the catalogs are the component's.
+        let rendered_args: Vec<String> =
+            args.iter().map(|a| emit_expr_runtime(a, params)).collect();
+        return match path.join(".").as_str() {
+            "t" => format!("__cui_t(__cui_loc, __cui_msgs, {})", rendered_args.join(", ")),
+            "locale.current" => "__cui_locale_current(__cui_loc)".to_string(),
+            name => format!(
+                "__cui_{}(__cui_loc{}{})",
+                name.replace('.', "_"),
+                if rendered_args.is_empty() { "" } else { ", " },
+                rendered_args.join(", ")
+            ),
+        };
+    }
     if path.len() == 2 && path[0] == "router" && (path[1] == "go" || path[1] == "replace") {
         // docs/routing.md section 4: synchronous, a Bool.
         let rendered_args: Vec<String> =

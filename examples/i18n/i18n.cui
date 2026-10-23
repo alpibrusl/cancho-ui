@@ -1,0 +1,72 @@
+// examples/i18n/i18n.cui: one screen in English, Arabic and Russian (docs/i18n.md, issue #82).
+//
+// The texts are in `messages`, one catalog per language; the compiler refuses a program in which a language lacks a key another has,
+// whose holes differ, or whose plural forms are not the ones the language has (Arabic has six, Russian four, English two).
+// `t("orders", count)` picks the form from the count. The number, the percent and the date are written by the page from tables the
+// compiler holds (not from `Intl`, which two browsers answer differently), and replay writes the same text. The language starts as
+// the browser's first one the program has, and the page's `lang` and `dir` follow it: Arabic reads right to left.
+
+component Orders {
+    requires Locale;
+
+    state count: Int = 3;
+    state total: Float = 1234.5;
+    state due: Int = 1792854309000;
+    state done: Float = 0.256;
+    state ok: Bool = true;
+
+    messages {
+        en {
+            title: "Orders";
+            orders(n): one "{n} order", other "{n} orders";
+            total: "Total: {amount}";
+            due: "Due {date} at {time}";
+            done: "{share} done";
+            more: "One more";
+            fewer: "One fewer";
+        }
+        ar {
+            title: "الطلبات";
+            orders(n): zero "لا طلبات", one "طلب واحد", two "طلبان", few "{n} طلبات", many "{n} طلبًا", other "{n} طلب";
+            total: "المجموع: {amount}";
+            due: "الموعد {date} الساعة {time}";
+            done: "اكتمل {share}";
+            more: "طلب آخر";
+            fewer: "طلب أقل";
+        }
+        ru {
+            title: "Заказы";
+            orders(n): one "{n} заказ", few "{n} заказа", many "{n} заказов", other "{n} заказа";
+            total: "Итого: {amount}";
+            due: "Срок: {date}, {time}";
+            done: "Готово: {share}";
+            more: "Ещё один";
+            fewer: "Один меньше";
+        }
+    }
+
+    on More { count = count + 1; }
+    on Fewer { count = max(count - 1, 0); }
+    on English { ok = locale.set("en"); }
+    on Arabic { ok = locale.set("ar"); }
+    on Russian { ok = locale.set("ru"); }
+
+    view {
+        Column {
+            Text { role: heading t("title") }
+            Row {
+                Button { label: "English" on: English }
+                Button { label: "العربية" on: Arabic }
+                Button { label: "Русский" on: Russian }
+            }
+            Text { role: status t("orders", count) }
+            Text { t("total", fmt.number(total, 2)) }
+            Text { t("due", fmt.date(due, "long"), fmt.time(due)) }
+            Text { t("done", fmt.percent(done)) }
+            Row {
+                Button { label: t("more") on: More }
+                Button { label: t("fewer") on: Fewer }
+            }
+        }
+    }
+}

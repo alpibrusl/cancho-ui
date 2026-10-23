@@ -387,6 +387,7 @@ impl Parser {
         let mut schedules = Vec::new();
         let mut events = Vec::new();
         let mut blocks = Vec::new();
+        let mut messages = Vec::new();
         let mut view: Option<ViewBlock> = None;
         loop {
             match &self.peek().token {
@@ -409,6 +410,16 @@ impl Parser {
                         ) =>
                 {
                     blocks.push(self.parse_block_decl()?)
+                }
+                // `messages` is a keyword only here, followed by `{` (docs/i18n.md section 3).
+                Token::Ident(word)
+                    if word == "messages"
+                        && matches!(
+                            self.tokens.get(self.pos + 1).map(|t| &t.token),
+                            Some(Token::LBrace)
+                        ) =>
+                {
+                    self.parse_messages_decl(&mut messages)?
                 }
                 Token::State => state.push(self.parse_state_decl()?),
                 Token::Requires => requires.push(self.parse_requires_decl()?),
@@ -448,6 +459,7 @@ impl Parser {
             schedules,
             events,
             blocks,
+            messages,
             view,
             span: Span::new(kw.span.start, close.span.end),
         })
@@ -757,6 +769,57 @@ impl Parser {
     }
 
     /// `block Name { stmts }`; the word `block` is the current token.
+    /// `messages { lang { key: "text"; key(n): one "..", other ".."; } .. }`; the current token is `messages`.
+    fn parse_messages_decl(&mut self, out: &mut Vec<MessageCatalog>) -> Result<(), ParseError> {
+        self.bump();
+        self.expect(Token::LBrace)?;
+        while !matches!(self.peek().token, Token::RBrace) {
+            let (lang, lang_span) = self.bump_ident("language code")?;
+            self.expect(Token::LBrace)?;
+            let mut entries = Vec::new();
+            while !matches!(self.peek().token, Token::RBrace) {
+                let (key, key_span) = self.bump_ident("message key")?;
+                let mut plural = None;
+                if matches!(self.peek().token, Token::LParen) {
+                    self.bump();
+                    plural = Some(self.bump_ident("the count's name")?.0);
+                    self.expect(Token::RParen)?;
+                }
+                self.expect(Token::DotDot)?;
+                let mut forms = Vec::new();
+                if plural.is_some() {
+                    loop {
+                        let (cat, _) = self.bump_ident("plural category (one, few, many, other ..)")?;
+                        let text = self.bump_string_lit("the text of the form")?.0;
+                        forms.push((Some(cat), text));
+                        if matches!(self.peek().token, Token::Comma) {
+                            self.bump();
+                        } else {
+                            break;
+                        }
+                    }
+                } else {
+                    forms.push((None, self.bump_string_lit("the text of the message")?.0));
+                }
+                let semi = self.expect(Token::Semi)?;
+                entries.push(MessageEntry {
+                    key,
+                    plural,
+                    forms,
+                    span: Span::new(key_span.start, semi.span.end),
+                });
+            }
+            let close = self.expect(Token::RBrace)?;
+            out.push(MessageCatalog {
+                lang,
+                entries,
+                span: Span::new(lang_span.start, close.span.end),
+            });
+        }
+        self.expect(Token::RBrace)?;
+        Ok(())
+    }
+
     fn parse_block_decl(&mut self) -> Result<BlockDecl, ParseError> {
         let kw = self.bump();
         let (name, _) = self.bump_ident("block name")?;

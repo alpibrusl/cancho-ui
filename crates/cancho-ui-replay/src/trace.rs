@@ -108,6 +108,8 @@ pub struct Trace {
     pub credentials: Vec<String>,
     /// The URL fragment the page loaded at, as a path (docs/routing.md section 5); `/` when the trace does not say.
     pub url: String,
+    /// The browser's languages in order of preference, as `navigator.languages` (docs/i18n.md section 3); empty when the trace does not say.
+    pub locales: Vec<String>,
     pub steps: Vec<Step>,
 }
 
@@ -124,6 +126,7 @@ const EXPECT_KEYS: &[&str] = &[
     "credentials",
     "charts",
     "stream",
+    "document",
 ];
 
 pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {
@@ -153,6 +156,7 @@ pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {
             "storage_quota",
             "credentials",
             "url",
+            "locales",
             "steps",
             "note",
         ],
@@ -269,6 +273,31 @@ pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {
             ));
         }
     };
+    let mut locales: Vec<String> = Vec::new();
+    match obj.get("locales") {
+        None => {}
+        Some(Json::Array(a)) => {
+            for (i, v) in a.iter().enumerate() {
+                match v {
+                    Json::String(s) if locale_tag_is_legal(s) => locales.push(s.clone()),
+                    _ => {
+                        return Err(err(
+                            "trace-locale-invalid",
+                            format!("locales[{i}]"),
+                            "a language is a tag like `es` or `es-MX` (2 or 3 letters, then parts of 1 to 8 letters or digits after `-` or `_`)",
+                        ));
+                    }
+                }
+            }
+        }
+        Some(_) => {
+            return Err(err(
+                "trace-locale-invalid",
+                "locales",
+                "`locales` is the list of languages the browser prefers, like `navigator.languages`",
+            ));
+        }
+    }
     let steps_json = match obj.get("steps") {
         Some(Json::Array(a)) if !a.is_empty() => a,
         Some(Json::Array(_)) => {
@@ -312,8 +341,17 @@ pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {
         storage,
         credentials,
         url,
+        locales,
         steps,
     })
+}
+
+fn locale_tag_is_legal(s: &str) -> bool {
+    let mut parts = s.split(['-', '_']);
+    let first = parts.next().unwrap_or("");
+    (2..=3).contains(&first.len())
+        && first.chars().all(|c| c.is_ascii_alphabetic())
+        && parts.all(|p| (1..=8).contains(&p.len()) && p.chars().all(|c| c.is_ascii_alphanumeric()))
 }
 
 fn allow_keys(obj: &Map<String, Json>, allowed: &[&str], at: &str) -> Result<(), TraceError> {

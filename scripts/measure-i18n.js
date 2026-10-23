@@ -102,3 +102,39 @@ const show = (s) => JSON.stringify(s).replace(/ /g, '<U+202F>').replace(/ /g,
   await browser.close();
   if (process.argv.includes('--json')) { console.log(JSON.stringify({ chromium: inChromium, node: inNode }, null, 1)); }
 })().catch((e) => { console.error(e); process.exit(1); });
+
+// ---- bidirectional isolation of a hole (docs/i18n.md section 8.3): does a value inside a sentence of the other direction read as written? ------
+if (process.argv.includes('--bidi')) {
+  (async () => {
+    const browser = await chromium.launch({ args: ['--no-proxy-server'] });
+    const page = await browser.newPage();
+    const rows = await page.evaluate(() => {
+      const out = [];
+      const cases = [['rtl', ['A-12', 'C#7!', '(B)', '12', '-5', 'x.y', 'Ada Lovelace']], ['ltr', ['علي', '(ب)', 'ب!', '-٥', 'ب 12']]];
+      for (const [dir, ids] of cases) {
+        for (const id of ids) {
+          for (const iso of [false, true]) {
+            const el = document.createElement('p');
+            el.dir = dir;
+            el.style.cssText = 'font: 20px sans-serif; width: 600px';
+            const FSI = iso ? '⁨' : '';
+            const PDI = iso ? '⁩' : '';
+            const text = dir === 'rtl' ? `الطلب ${FSI}${id}${PDI} جاهز.` : `Order ${FSI}${id}${PDI} is ready.`;
+            el.textContent = text;
+            document.body.appendChild(el);
+            const node = el.firstChild;
+            const start = text.indexOf(id);
+            const xs = [...id].map((_, i) => { const r = document.createRange(); r.setStart(node, start + i); r.setEnd(node, start + i + 1); return Math.round(r.getBoundingClientRect().left); });
+            // as written: left to right for a value that starts with a Latin letter, digit or sign, right to left for an Arabic one
+            const rtlValue = /^[؀-ۿ(]/.test(id) && /[؀-ۿ]/.test(id);
+            out.push({ dir, id, isolated: iso, readsAsWritten: xs.every((x, i) => i === 0 || (rtlValue ? x < xs[i - 1] : x > xs[i - 1])), xs });
+            el.remove();
+          }
+        }
+      }
+      return out;
+    });
+    for (const r of rows) { console.log(`bidi ${r.dir} ${JSON.stringify(r.id)} isolated=${r.isolated}: reads as written ${r.readsAsWritten} (x ${r.xs.join(',')})`); }
+    await browser.close();
+  })().catch((e) => { console.error(e); process.exit(1); });
+}

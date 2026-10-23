@@ -210,6 +210,8 @@ pub struct Machine<'a> {
     pub visible: bool,
     /// The connection of `subscribe` (docs/streams.md), when the component declares one.
     pub(crate) stream: Option<StreamState>,
+    /// The language in use (docs/i18n.md).
+    pub locale: crate::locale::LocaleState,
 }
 
 impl<'a> Machine<'a> {
@@ -220,6 +222,7 @@ impl<'a> Machine<'a> {
         let mut no_memory: BTreeMap<String, String> = BTreeMap::new();
         let mut no_router = Router::new("/");
         let mut no_credentials: Vec<String> = Vec::new();
+        let mut no_locale = crate::locale::LocaleState::new(comp);
         for field in &comp.state {
             let mut journal = Journal::default();
             let value = {
@@ -232,6 +235,7 @@ impl<'a> Machine<'a> {
                     storage_memory: &mut no_memory,
                     router: &mut no_router,
                     credentials: &mut no_credentials,
+                    locale: &mut no_locale,
                     journal: &mut journal,
                     locals: Vec::new(),
                     init: true,
@@ -285,6 +289,7 @@ impl<'a> Machine<'a> {
                 .collect(),
             started: false,
             visible: true,
+            locale: crate::locale::LocaleState::new(comp),
             stream: comp
                 .schedules
                 .iter()
@@ -461,6 +466,7 @@ impl<'a> Machine<'a> {
         let mut no_memory = BTreeMap::new();
         let mut no_router = Router::new("/");
         let mut no_credentials: Vec<String> = Vec::new();
+        let mut locale = self.locale.clone();
         let mut ctx = Ctx {
             state: &self.state,
             clock: self.clock,
@@ -470,6 +476,7 @@ impl<'a> Machine<'a> {
             storage_memory: &mut no_memory,
             router: &mut no_router,
             credentials: &mut no_credentials,
+            locale: &mut locale,
             journal: &mut journal,
             locals: Vec::new(),
             init: false,
@@ -485,6 +492,7 @@ impl<'a> Machine<'a> {
         let mut no_memory = BTreeMap::new();
         let mut no_router = Router::new("/");
         let mut no_credentials: Vec<String> = Vec::new();
+        let mut locale = self.locale.clone();
         let mut ctx = Ctx {
             state: &self.state,
             clock: self.clock,
@@ -494,6 +502,7 @@ impl<'a> Machine<'a> {
             storage_memory: &mut no_memory,
             router: &mut no_router,
             credentials: &mut no_credentials,
+            locale: &mut locale,
             journal: &mut journal,
             locals: Vec::new(),
             init: false,
@@ -1152,6 +1161,7 @@ impl<'a> Machine<'a> {
                     storage_memory: &mut self.storage_memory,
                     router: &mut self.router,
                     credentials: &mut self.credentials,
+                    locale: &mut self.locale,
                     journal: &mut task.journal,
                     locals: task.params.clone(),
                     init: false,

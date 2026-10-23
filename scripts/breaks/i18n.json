@@ -1,0 +1,235 @@
+{
+  "checks": [
+    {
+      "name": "cargo test i18n (ir)",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui-ir",
+        "--test",
+        "i18n"
+      ]
+    },
+    {
+      "name": "cargo test i18n",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "i18n"
+      ]
+    },
+    {
+      "name": "check-i18n.js",
+      "argv": [
+        "node",
+        "scripts/check-i18n.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "a half rounds down",
+      "file": "crates/cancho-ui-ir/src/i18n.rs",
+      "from": "let up = all.get(keep).is_some_and(|d| *d >= 5);",
+      "to": "let up = all.get(keep).is_some_and(|d| *d > 5);"
+    },
+    {
+      "name": "a thousand is always grouped",
+      "file": "crates/cancho-ui-ir/src/i18n.rs",
+      "from": "if n < 3 + usize::from(l.min_group) {",
+      "to": "if n < 4 {"
+    },
+    {
+      "name": "Hindi groups by three",
+      "file": "crates/cancho-ui-ir/src/i18n.rs",
+      "from": "let step = if l.indian { 2 } else { 3 };",
+      "to": "let step = 3;"
+    },
+    {
+      "name": "Spanish counts zero as one",
+      "file": "crates/cancho-ui-ir/src/i18n.rs",
+      "from": "if n == 1 || (n == 0 && code != \"es\") {",
+      "to": "if n == 1 || n == 0 {"
+    },
+    {
+      "name": "Russian few reaches 5",
+      "file": "crates/cancho-ui-ir/src/i18n.rs",
+      "from": "} else if (2..=4).contains(&m10) && !(12..=14).contains(&m100) {",
+      "to": "} else if (2..=5).contains(&m10) && !(12..=14).contains(&m100) {"
+    },
+    {
+      "name": "Arabic few reaches 11",
+      "file": "crates/cancho-ui-ir/src/i18n.rs",
+      "from": "_ if (3..=10).contains(&m100) => \"few\",",
+      "to": "_ if (3..=11).contains(&m100) => \"few\","
+    },
+    {
+      "name": "the weekday is a day early",
+      "file": "crates/cancho-ui-ir/src/i18n.rs",
+      "from": "weekday: (days + 4).rem_euclid(7) as usize,",
+      "to": "weekday: (days + 3).rem_euclid(7) as usize,"
+    },
+    {
+      "name": "midnight is 0 o'clock on a twelve-hour clock",
+      "file": "crates/cancho-ui-ir/src/i18n.rs",
+      "from": "                        0 => 12,",
+      "to": "                        0 => 0,"
+    },
+    {
+      "name": "a two-digit year is not padded",
+      "file": "crates/cancho-ui-ir/src/i18n.rs",
+      "from": "out.push_str(&format!(\"{:02}\", c.year % 100));",
+      "to": "out.push_str(&format!(\"{}\", c.year % 100));"
+    },
+    {
+      "name": "a negative that rounds to zero loses its sign",
+      "file": "crates/cancho-ui-ir/src/i18n.rs",
+      "from": "write_decimal(l, x.is_sign_negative(), &int, &frac, digits as usize)",
+      "to": "write_decimal(l, x < 0.0 && x.abs() >= 0.5 * 10f64.powf(-digits), &int, &frac, digits as usize)"
+    },
+    {
+      "name": "a fraction of a millisecond rounds down",
+      "file": "crates/cancho-ui-ir/src/i18n.rs",
+      "from": "let ms = ms.trunc() as i64;",
+      "to": "let ms = ms.floor() as i64;"
+    },
+    {
+      "name": "the percent moves the point by multiplying",
+      "file": "crates/cancho-ui-ir/src/i18n.rs",
+      "from": "    let (int, frac) = digits_of(x.abs());\n    let mut all = format!(\"{int}{frac}\");",
+      "to": "    let (int, frac) = digits_of((x * 100.0).abs() / 100.0);\n    let mut all = format!(\"{int}{frac}\");"
+    },
+    {
+      "name": "two catalogs of one language are allowed",
+      "file": "crates/cancho-ui-ir/src/messages.rs",
+      "from": "        if out.iter().any(|o| o.lang == cat.lang) {",
+      "to": "        if out.iter().any(|o| o.lang == cat.lang) && false {"
+    },
+    {
+      "name": "holes may differ between languages",
+      "file": "crates/cancho-ui-ir/src/messages.rs",
+      "from": "                if a != b {",
+      "to": "                if a != b && false {"
+    },
+    {
+      "name": "a plural may lack a form",
+      "file": "crates/cancho-ui-ir/src/messages.rs",
+      "from": "            if let Some(missing) = want.iter().find(|c| !seen.contains(c)) {",
+      "to": "            if let Some(missing) = want.iter().find(|c| !seen.contains(c) && false) {"
+    },
+    {
+      "name": "a language may have a key the first lacks",
+      "file": "crates/cancho-ui-ir/src/messages.rs",
+      "from": "            if !first.entries.iter().any(|m| m.key == o.key) {",
+      "to": "            if !first.entries.iter().any(|m| m.key == o.key) && false {"
+    },
+    {
+      "name": "a call may give the wrong number of arguments",
+      "file": "crates/cancho-ui-ir/src/messages.rs",
+      "from": "        if args.len() != 1 + wanted {",
+      "to": "        if args.len() != 1 + wanted && false {"
+    },
+    {
+      "name": "a plural form may hold another hole",
+      "file": "crates/cancho-ui-ir/src/messages.rs",
+      "from": "                if let Some(h) = holes_of(&parts).into_iter().find(|h| h != param) {",
+      "to": "                if let Some(h) = holes_of(&parts).into_iter().find(|h| h != param && false) {"
+    },
+    {
+      "name": "fmt.percent needs no capability",
+      "file": "crates/cancho-ui-ir/src/messages.rs",
+      "from": "(\"fmt\", \"number\" | \"percent\" | \"date\" | \"time\")",
+      "to": "(\"fmt\", \"number\" | \"date\" | \"time\")"
+    },
+    {
+      "name": "a replay value is not isolated",
+      "file": "crates/cancho-ui-replay/src/locale.rs",
+      "from": "                            out.push('\\u{2068}');\n",
+      "to": ""
+    },
+    {
+      "name": "the primary subtag is split at - only",
+      "file": "crates/cancho-ui-replay/src/locale.rs",
+      "from": ".split(['-', '_'])\n                .next()\n                .unwrap_or(\"\")\n                .to_string();",
+      "to": ".split(['-'])\n                .next()\n                .unwrap_or(\"\")\n                .to_string();"
+    },
+    {
+      "name": "locale.set accepts any language",
+      "file": "crates/cancho-ui-replay/src/locale.rs",
+      "from": "        if self.langs.iter().any(|l| l == lang) {",
+      "to": "        if self.langs.iter().any(|l| l == lang) || true {"
+    },
+    {
+      "name": "Arabic is left to right in replay",
+      "file": "crates/cancho-ui-replay/src/locale.rs",
+      "from": "if i18n::lang(&self.lang).is_some_and(|l| l.rtl) {",
+      "to": "if i18n::lang(&self.lang).is_some_and(|l| l.rtl && false) {"
+    },
+    {
+      "name": "the page sets dir the wrong way round",
+      "file": "crates/cancho-ui-codegen-web/src/i18n.rs",
+      "from": "document.documentElement.dir = __CUI_I18N[lang].r ? 'rtl' : 'ltr';",
+      "to": "document.documentElement.dir = __CUI_I18N[lang].r ? 'ltr' : 'rtl';"
+    },
+    {
+      "name": "the page rounds a half down",
+      "file": "crates/cancho-ui-codegen-web/src/i18n.rs",
+      "from": "const up = keep < all.length && all[keep] >= 5;",
+      "to": "const up = keep < all.length && all[keep] > 5;"
+    },
+    {
+      "name": "the page's Russian few reaches 5",
+      "file": "crates/cancho-ui-codegen-web/src/i18n.rs",
+      "from": "return m10 >= 2 && m10 <= 4 && !(m100 >= 12 && m100 <= 14) ? 'few' : 'many';",
+      "to": "return m10 >= 2 && m10 <= 5 && !(m100 >= 12 && m100 <= 14) ? 'few' : 'many';"
+    },
+    {
+      "name": "the page's weekday is a day late",
+      "file": "crates/cancho-ui-codegen-web/src/i18n.rs",
+      "from": "case 'w': out += p[1][c.w]; break;",
+      "to": "case 'w': out += p[1][(c.w + 1) % 7]; break;"
+    },
+    {
+      "name": "the page reads the whole tag, not its primary subtag",
+      "file": "crates/cancho-ui-codegen-web/src/i18n.rs",
+      "from": "const primary = String(p).toLowerCase().split(/[-_]/)[0];",
+      "to": "const primary = String(p).toLowerCase();"
+    },
+    {
+      "name": "a page value is not isolated",
+      "file": "crates/cancho-ui-codegen-web/src/i18n.rs",
+      "from": "else { out += '\\u2068' + String(arguments[3 + holes.indexOf(part[0])]) + '\\u2069'; }",
+      "to": "else { out += String(arguments[3 + holes.indexOf(part[0])]); }"
+    },
+    {
+      "name": "the page's grouping ignores the Indian pattern",
+      "file": "crates/cancho-ui-codegen-web/src/i18n.rs",
+      "from": "const from = Math.max(0, first - (L.in ? 2 : 3));",
+      "to": "const from = Math.max(0, first - 3);"
+    },
+    {
+      "name": "the page writes a hyphen for every language's minus",
+      "file": "crates/cancho-ui-codegen-web/src/i18n.rs",
+      "from": "return (negative ? L.neg : '') + __cui_i18n_group",
+      "to": "return (negative ? '-' : '') + __cui_i18n_group"
+    },
+    {
+      "name": "the table header is aligned left",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "text-align: start; padding: 0.25rem",
+      "to": "text-align: left; padding: 0.25rem"
+    },
+    {
+      "name": "the document is not set at mount",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "        __cui_doc(__cui_loc.lang);\\n",
+      "to": "\\n"
+    }
+  ]
+}

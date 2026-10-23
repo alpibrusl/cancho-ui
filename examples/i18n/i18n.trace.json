@@ -1,0 +1,32 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "note": "The browser prefers Egyptian Arabic, then English: the page starts in Arabic and reads right to left; the user switches to English and Russian.",
+  "locales": ["ar-EG", "en"],
+  "steps": [
+    {
+      "advance": 0,
+      "note": "mount: Arabic, right to left",
+      "expect": { "document": { "lang": "ar", "dir": "rtl" } }
+    },
+    {
+      "event": "More",
+      "state": { "count": 4 },
+      "expect": { "document": { "lang": "ar", "dir": "rtl" } }
+    },
+    {
+      "event": "English",
+      "state": { "ok": true },
+      "expect": { "document": { "lang": "en", "dir": "ltr" } }
+    },
+    {
+      "event": "Fewer",
+      "state": { "count": 3 }
+    },
+    {
+      "event": "Russian",
+      "state": { "ok": true },
+      "expect": { "document": { "lang": "ru", "dir": "ltr" } }
+    }
+  ]
+}

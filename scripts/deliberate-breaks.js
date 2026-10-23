@@ -14,11 +14,17 @@ const ROOT = path.join(__dirname, '..');
 const spec = JSON.parse(fs.readFileSync(path.resolve(process.argv[2]), 'utf8'));
 const only = process.argv.slice(3);
 
+// A check that does not end by itself within the time is killed, and that is not a detection: the break is reported as HUNG and counts as
+// not caught (a check that hangs on a spoiled program must carry its own watchdog and fail on its own).
+const LIMIT_MS = 15 * 60 * 1000;
+let hung = [];
 function sh(argv) {
-  const r = spawnSync(argv[0], argv.slice(1), { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 28 });
+  const r = spawnSync(argv[0], argv.slice(1), { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 28, timeout: LIMIT_MS, killSignal: 'SIGKILL' });
+  if (r.error && r.error.code === 'ETIMEDOUT') { hung.push(argv.join(' ')); }
   return r.status === 0;
 }
 function runChecks() {
+  hung = [];
   if (!sh(['cargo', 'build', '--quiet'])) { return null; }
   return spec.checks.filter((c) => !sh(c.argv)).map((c) => c.name);
 }
@@ -43,8 +49,12 @@ for (const b of spec.breaks) {
   try {
     fs.writeFileSync(file, original.replace(b.from, () => b.to));
     const failed = runChecks();
-    if (failed === null) {
-      console.log(`ok   ${b.name}: caught (the build fails)`);
+    if (hung.length) {
+      console.log(`HUNG ${b.name}: ${hung.join(', ')} did not end within ${LIMIT_MS / 60000} minutes and was killed; that is not a detection`);
+      uncaught.push(b.name);
+    } else if (failed === null) {
+      console.log(`BUILD ${b.name}: the spoiled source does not compile, which no check detected; write a break that compiles`);
+      uncaught.push(b.name);
     } else if (failed.length) {
       console.log(`ok   ${b.name}: caught by ${failed.join(', ')}`);
     } else {
