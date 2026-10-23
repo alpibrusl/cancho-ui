@@ -54,7 +54,27 @@ pub struct Component {
     pub events: Vec<EventHandler>,
     /// `block Name { .. }` (docs/handler-sequences.md): a named sequence of statements that handlers `run`.
     pub blocks: Vec<BlockDecl>,
+    /// `messages { en { key: ".."; } es { .. } }` (docs/i18n.md): the texts of the component, one catalog per language.
+    pub messages: Vec<MessageCatalog>,
     pub view: ViewBlock,
+    pub span: Span,
+}
+
+/// The messages of one language: `en { title: "Orders"; orders(n): one "{n} order", other "{n} orders"; }`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MessageCatalog {
+    pub lang: String,
+    pub entries: Vec<MessageEntry>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct MessageEntry {
+    pub key: String,
+    /// The count's name for a plural entry, `n` in `orders(n)`.
+    pub plural: Option<String>,
+    /// One text with no category for a plain entry; a (category, text) pair each for a plural one.
+    pub forms: Vec<(Option<String>, String)>,
     pub span: Span,
 }
 

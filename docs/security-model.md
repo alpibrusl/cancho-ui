@@ -72,6 +72,7 @@ demo needs. Phase 2+ adds more, each with its own design entry.
 |---|---|---|
 | **Network** | Outbound HTTP requests, and the Server-Sent Events stream of `subscribe` (`streams.md`); WebSocket is not built | static + runtime |
 | **Storage** | Read/write key-value storage on the device | static + runtime |
+| **Locale** | Read and change the language in use, and with it `<html lang dir>` and the text of `t(..)` and `fmt.*` (`i18n.md`) | static + runtime |
 | **Clock** | Read the current time | static + runtime |
 | **Location** | Read the device location | static + runtime |
 

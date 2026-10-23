@@ -101,7 +101,13 @@ function scriptable(dir, opts = {}) {
   S.latest = () => S.conns[S.conns.length - 1] || null;
   // `connection: close` here too: a stream that ended must not leave a socket for the next request to reuse (see above)
   S.accept = (c) => { c.res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'close' }); c.res.flushHeaders(); c.state = 'open'; };
-  S.write = (c, data) => new Promise((ok) => c.res.write(data, ok));
+  // a write to a connection the page has just closed may never call back: the write ends when the connection closes, or after 3 s
+  S.write = (c, data) => new Promise((ok) => {
+    if (c.closed) { ok(); return; }
+    c.res.once('close', ok);
+    c.res.write(data, ok);
+    setTimeout(ok, 3000).unref();
+  });
   S.close = () => new Promise((ok) => { server.closeAllConnections(); server.close(ok); });
   return new Promise((ok) => server.listen(0, '127.0.0.1', () => { S.port = server.address().port; ok(S); }));
 }

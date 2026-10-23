@@ -17,8 +17,10 @@ pub fn check_call(
     args: usize,
     span: cancho_ui_syntax::span::Span,
 ) -> Result<(), LowerError> {
+    // only `credential.set` and `credential.clear`: `storage.set` and `locale.set` have their own shapes
     let Some((name, want)) = CALLS
         .iter()
+        .filter(|_| path.first().is_some_and(|p| p == "credential"))
         .find(|(n, _)| path.get(1).is_some_and(|p| p == n))
     else {
         return Ok(());

@@ -150,6 +150,9 @@ pub struct StepReport {
     /// component that does not `subscribe`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stream: Option<Json>,
+    /// The `lang` and `dir` the page gives its document after the step (docs/i18n.md section 3); absent for a component without `requires Locale`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub document: Option<Json>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]

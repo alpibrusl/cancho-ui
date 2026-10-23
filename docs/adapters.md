@@ -910,6 +910,7 @@ other limits of 17.4. iOS Safari is not tested.
 | `Network` | `net.get(url)`, `net.fetch(url)` (keeps an error status); `subscribe Event "url"` (a stream of messages the server pushes, `streams.md`); `net.search(q)` is the simulated demo | `Network("host", ..)` adds hosts | `fetch`, same-origin plus the allow-list; a stream is a `fetch` read as it arrives |
 | `Credential` | none of its own: `Authorization: Bearer` on `net.get`, `net.fetch`, `net.post`, `net.put`, `net.delete` and on the stream of `subscribe` | `Credential("name", "host"..)` | header added in the adapter, this origin and the named hosts only |
 | `NetworkWrite` | `net.post(url, body)`, `net.put(url, body)`, `net.delete(url)` (the envelope of `net.fetch`) | none: this origin only | `fetch` POST, PUT, DELETE, same-origin, not aborted |
+| `Locale` | `t(key, ..)`, `fmt.number`, `fmt.percent`, `fmt.date`, `fmt.time`, `locale.current()`, `locale.set(lang)` (`i18n.md`) | none | tables the compiler holds (no `Intl`); `<html lang dir>` |
 | `Location` | `location.current()` | `Location("coarse" \| "fine")` | Geolocation, rounded in the adapter |
 
 Not built anywhere: wildcard or per-path `Network` bounds, WebSocket, `watchPosition`, a typed position,

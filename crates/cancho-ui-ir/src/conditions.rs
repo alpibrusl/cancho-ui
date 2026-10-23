@@ -57,7 +57,9 @@ fn kind_of_call(path: &[String]) -> Kind {
         "contains" | "starts_with" | "ends_with" => Kind::Bool,
         "min" | "max" | "abs" | "floor" | "ceil" | "round" | "num" => Kind::Num,
         "lower" | "fold" | "upper" | "trim" | "join" | "json.quote" | "json.get"
-        | "storage.get" => Kind::Str,
+        | "storage.get" | "t" | "fmt.number" | "fmt.percent" | "fmt.date" | "fmt.time"
+        | "locale.current" => Kind::Str,
+        "locale.set" => Kind::Bool,
         "lines" | "split" | "take" | "skip" | "reverse" | "concat" | "json.items" => Kind::List,
         _ => Kind::Unknown,
     }

@@ -76,7 +76,7 @@ impl Serialize for IrFile {
 impl Serialize for IrComponent {
     fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
-        let mut s = ser.serialize_struct("IrComponent", 8)?;
+        let mut s = ser.serialize_struct("IrComponent", 9)?;
         s.serialize_field("id", &self.id.0)?;
         s.serialize_field("name", &self.name)?;
         s.serialize_field("state", &self.state)?;
@@ -84,8 +84,40 @@ impl Serialize for IrComponent {
         s.serialize_field("schedules", &self.schedules)?;
         s.serialize_field("reachable_effects", &self.reachable_effects)?;
         s.serialize_field("events", &self.events)?;
+        if !self.messages.is_empty() {
+            s.serialize_field("messages", &self.messages)?;
+        }
         s.serialize_field("view", &self.view)?;
         s.serialize_field("span", &IrSpan::from(self.span))?;
+        s.end()
+    }
+}
+
+impl Serialize for IrCatalog {
+    fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut s = ser.serialize_struct("IrCatalog", 3)?;
+        s.serialize_field("lang", &self.lang)?;
+        s.serialize_field("entries", &self.entries)?;
+        s.serialize_field("span", &IrSpan::from(self.span))?;
+        s.end()
+    }
+}
+
+impl Serialize for IrMessage {
+    fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut s = ser.serialize_struct("IrMessage", 3)?;
+        s.serialize_field("key", &self.key)?;
+        if let Some(p) = &self.plural {
+            s.serialize_field("plural", p)?;
+        }
+        let forms: Vec<(&str, String)> = self
+            .forms
+            .iter()
+            .map(|(cat, parts)| (cat.as_str(), crate::messages::text_of(parts)))
+            .collect();
+        s.serialize_field("forms", &forms)?;
         s.end()
     }
 }

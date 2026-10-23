@@ -25,8 +25,35 @@ pub struct IrComponent {
     pub schedules: Vec<IrSchedule>,
     pub reachable_effects: Vec<IrReachableEffect>,
     pub events: Vec<IrEventHandler>,
+    /// The `messages` catalogs, in the order written; the first language is the default (docs/i18n.md section 3).
+    pub messages: Vec<IrCatalog>,
     pub view: IrViewBlock,
     pub span: Span,
+}
+
+/// The messages of one language.
+#[derive(Debug, Clone, PartialEq)]
+pub struct IrCatalog {
+    pub lang: String,
+    pub entries: Vec<IrMessage>,
+    pub span: Span,
+}
+
+/// One message: a text with `{name}` holes, or a plural with one text per category of the language.
+#[derive(Debug, Clone, PartialEq)]
+pub struct IrMessage {
+    pub key: String,
+    /// The count's name of a plural message.
+    pub plural: Option<String>,
+    /// (category, text): the category is "" for a plain message.
+    pub forms: Vec<(String, Vec<MsgPart>)>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MsgPart {
+    Lit(String),
+    Hole(String),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

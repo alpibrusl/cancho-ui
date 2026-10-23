@@ -233,6 +233,8 @@ fn lower_component(c: &Component, next_id: &mut u32) -> Result<IrComponent, Lowe
     }
     let requires = c.requires.iter().map(lower_capability).collect();
     let schedules = lower_schedules(c)?;
+    let messages = crate::messages::lower_messages(c)?;
+    let _messages_guard = crate::messages::enter(&messages);
     let mut events = Vec::with_capacity(c.events.len());
     let mut reachable_effects: Vec<IrReachableEffect> = Vec::new();
     // `run Name;` is replaced by the block's statements here, before anything else sees the handler (docs/handler-sequences.md).
@@ -263,6 +265,7 @@ fn lower_component(c: &Component, next_id: &mut u32) -> Result<IrComponent, Lowe
         schedules,
         reachable_effects,
         events,
+        messages,
         view,
         span: c.span,
     })
@@ -619,6 +622,9 @@ fn lower_expr_with_effects(e: &Expr) -> Result<(IrExpr, Vec<IrReachableEffect>),
                 }
             }
             crate::credential::check_call(path, args.len(), *span)?;
+            if crate::messages::is_call(path) {
+                crate::messages::check_call(path, args, *span)?;
+            }
             if path.len() == 2 && path[0] == "router" && (path[1] == "go" || path[1] == "replace") {
                 crate::routing::check_router_call(&path[1], args.len(), *span)?;
             }
@@ -993,6 +999,9 @@ fn builtin_capability(path: &[String]) -> Option<&'static str> {
         // docs/adapters.md: `storage.get(key, default)` and `storage.set(key, value)` read and
         // write a persistent key-value store, synchronously. Both need `Storage`.
         Some("Storage")
+    } else if crate::messages::is_call(path) {
+        // docs/i18n.md: the texts, formats and plurals depend on the language in use, which `Locale` is the authority to read and change.
+        Some("Locale")
     } else if crate::credential::is_call(path) {
         // docs/bearer-token.md: the program holds a token it received, in the component's `Credential`.
         Some("Credential")
@@ -1636,7 +1645,9 @@ fn await_driven_fields(c: &IrComponent) -> BTreeSet<String> {
 /// (`call-unknown`, docs/ops-console.md).
 fn is_known_call(path: &[String]) -> bool {
     match path {
-        [one] => one == "sleep" || PURE_BUILTINS.iter().any(|(name, _, _)| name == one),
+        [one] => {
+            one == "sleep" || one == "t" || PURE_BUILTINS.iter().any(|(name, _, _)| name == one)
+        }
         [a, b] => matches!(
             (a.as_str(), b.as_str()),
             ("clock", "now")
@@ -1645,6 +1656,8 @@ fn is_known_call(path: &[String]) -> bool {
                 | ("credential", "set" | "clear")
                 | ("json", "get" | "items" | "quote")
                 | ("location", "current")
+                | ("fmt", "number" | "percent" | "date" | "time")
+                | ("locale", "current" | "set")
                 | (
                     "net",
                     "search" | "get" | "fetch" | "post" | "put" | "delete"

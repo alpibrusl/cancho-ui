@@ -172,6 +172,8 @@ pub struct Ctx<'a> {
     pub router: &'a mut crate::router::Router,
     /// The names of the credentials the component holds a token for (docs/bearer-token.md): the value is never kept.
     pub credentials: &'a mut Vec<String>,
+    /// The language in use and the catalogs (docs/i18n.md), for `t`, `fmt.*` and `locale.*`.
+    pub locale: &'a mut crate::locale::LocaleState,
     pub journal: &'a mut Journal,
     pub locals: Vec<(String, Value)>,
     /// Evaluating a state initial value: identifiers, calls, `match` and
@@ -491,6 +493,110 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
             }
             ctx.journal.record(Value::Bool(fits));
             Ok(Value::Bool(fits))
+        }
+        ("t", n) if n >= 1 => {
+            let mut vals = Vec::with_capacity(n);
+            for a in args {
+                vals.push(eval(ctx, a)?);
+            }
+            if let Some(v) = ctx.journal.replayed() {
+                return Ok(v);
+            }
+            let Value::Str(key) = &vals[0] else {
+                return Err(fault(
+                    "replay-type-error",
+                    format!("`t` needs the key as a String, got {}", describe(&vals[0])),
+                    span,
+                ));
+            };
+            let plural = ctx
+                .locale
+                .catalogs
+                .first()
+                .and_then(|c| c.entries.iter().find(|e| &e.key == key))
+                .is_some_and(|e| e.plural.is_some());
+            let count = if plural {
+                match vals.get(1) {
+                    Some(Value::Num(c)) => Some(*c),
+                    other => {
+                        return Err(fault(
+                            "replay-type-error",
+                            format!(
+                                "`t(\"{key}\", count)` needs a number count, got {}",
+                                other.map_or("nothing".to_string(), describe)
+                            ),
+                            span,
+                        ));
+                    }
+                }
+            } else {
+                None
+            };
+            let mut texts = Vec::new();
+            for v in &vals[1..] {
+                texts.push(concat_form(v, span)?);
+            }
+            let v = Value::Str(ctx.locale.text(key, &texts, count));
+            ctx.journal.record(v.clone());
+            Ok(v)
+        }
+        ("fmt.number", 2) | ("fmt.percent", 1) | ("fmt.date", 2) | ("fmt.time", 1) => {
+            let mut vals = Vec::with_capacity(args.len());
+            for a in args {
+                vals.push(eval(ctx, a)?);
+            }
+            if let Some(v) = ctx.journal.replayed() {
+                return Ok(v);
+            }
+            let l = ctx.locale.data();
+            let text = match (name.as_str(), vals.as_slice()) {
+                ("fmt.number", [Value::Num(x), Value::Num(d)]) => {
+                    cancho_ui_ir::i18n::format_number(l, *x, *d)
+                }
+                ("fmt.percent", [Value::Num(x)]) => cancho_ui_ir::i18n::format_percent(l, *x),
+                ("fmt.date", [Value::Num(ms), Value::Str(style)]) => {
+                    cancho_ui_ir::i18n::format_date(l, *ms, style)
+                }
+                ("fmt.time", [Value::Num(ms)]) => cancho_ui_ir::i18n::format_time(l, *ms),
+                _ => {
+                    return Err(fault(
+                        "replay-type-error",
+                        format!(
+                            "`{name}` needs numbers{}, got {}",
+                            if name == "fmt.date" {
+                                " and a style"
+                            } else {
+                                ""
+                            },
+                            vals.iter().map(describe).collect::<Vec<_>>().join(", ")
+                        ),
+                        span,
+                    ));
+                }
+            };
+            let v = Value::Str(text);
+            ctx.journal.record(v.clone());
+            Ok(v)
+        }
+        ("locale.current", 0) => {
+            if let Some(v) = ctx.journal.replayed() {
+                return Ok(v);
+            }
+            let v = Value::Str(ctx.locale.lang.clone());
+            ctx.journal.record(v.clone());
+            Ok(v)
+        }
+        ("locale.set", 1) => {
+            let value = eval(ctx, &args[0])?;
+            if let Some(v) = ctx.journal.replayed() {
+                return Ok(v);
+            }
+            let answer = match &value {
+                Value::Str(l) => ctx.locale.set(l),
+                _ => false,
+            };
+            ctx.journal.record(Value::Bool(answer));
+            Ok(Value::Bool(answer))
         }
         ("credential.set", 2) | ("credential.clear", 1) => {
             let given = eval(ctx, &args[0])?;
@@ -827,7 +933,9 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
             | "router.go" | "router.replace" | "credential.set" | "credential.clear" | "json.get"
             | "json.items" | "json.quote" | "reverse" | "contains" | "lower" | "fold" | "num"
             | "take" | "skip" | "concat" | "min" | "max" | "abs" | "floor" | "ceil" | "round"
-            | "lines" | "split" | "join" | "trim" | "upper" | "starts_with" | "ends_with",
+            | "lines" | "split" | "join" | "trim" | "upper" | "starts_with" | "ends_with" | "t"
+            | "fmt.number" | "fmt.percent" | "fmt.date" | "fmt.time" | "locale.current"
+            | "locale.set",
             n,
         ) => Err(fault(
             "replay-type-error",

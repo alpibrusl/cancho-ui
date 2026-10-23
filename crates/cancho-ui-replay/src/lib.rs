@@ -7,6 +7,7 @@
 
 mod chart;
 mod eval;
+mod locale;
 mod machine;
 mod report;
 mod router;
@@ -138,6 +139,11 @@ fn routes_used(comp: &IrComponent) -> bool {
     comp.requires.iter().any(|r| r.name == "Router")
 }
 
+/// Does the component use the language in use (`t`, `fmt.*`, `locale.*`)? Only then do the reports carry the document's `lang` and `dir`.
+fn locale_used(comp: &IrComponent) -> bool {
+    comp.requires.iter().any(|r| r.name == "Locale")
+}
+
 /// Does the component receive its token itself (`credential.set`)? Then its requests go out without one until it holds one.
 fn sets_its_token(comp: &IrComponent) -> bool {
     comp.reachable_effects
@@ -198,6 +204,7 @@ fn run_trace(comp: &IrComponent, trace: &Trace, file: &str, trace_name: &str) ->
         }
     }
     machine.credentials = trace.credentials.clone();
+    machine.locale.choose(&trace.locales);
     for (i, step) in trace.steps.iter().enumerate() {
         match run_step(&mut machine, comp, step, i, file, &mut report) {
             Ok(()) => report.steps_run += 1,
@@ -671,6 +678,8 @@ fn run_step(
         credentials: credential_name(comp).map(|_| m.credentials.clone()),
         charts: m.charts(),
         stream: m.stream_report(),
+        document: locale_used(comp)
+            .then(|| serde_json::json!({"lang": m.locale.lang, "dir": m.locale.dir()})),
         history: routes_used(comp).then(|| {
             serde_json::json!({
                 "entries": m.router.entries,
