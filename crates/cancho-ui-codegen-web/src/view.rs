@@ -693,6 +693,16 @@ pub(crate) fn emit_view_node(
                 }
             }
 
+            // A status text with nothing to say has no tone: the stylesheet would draw its mark (a cross, a check) beside
+            // nothing (docs/presentation.md section 3). The element stays, with its role, so a message put there at the next
+            // render is still in a live region.
+            if bindings.iter().any(|b| b.key == "tone") {
+                out.push_str(&format!(
+                    "{0}if (!{1}.textContent.trim()) {{ {1}.removeAttribute('data-tone'); }}\n",
+                    indent, var
+                ));
+            }
+
             // TextField: set the value attribute, type, and initial value.
             if matches!(kind, IrElementKind::TextField) {
                 out.push_str(&format!(

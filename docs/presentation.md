@@ -41,6 +41,27 @@ field, anything but a literal or a name (`tone-invalid`); `tone:` on anything bu
 The ops console computes its tone from the status the service answered, which has no `if` to say it
 (`docs/conditionals.md`, #40): `join(filter(["ok"], t => starts_with(code, "2")), "") + ...`, one filter per tone.
 
+**Corrected 2026-10-23 (#94): a toned text with nothing to say has no tone.** The paragraph above said the page writes
+`data-tone` and the stylesheet draws the prefix. It did so even for an empty text: `Text { role: status tone: "error" "{msg}" }`
+with `msg = ""` was `<span role="status" data-tone="error">` with the `✗ ` mark drawn (`::before` content `"✗ "`, 24 px tall) beside
+no message, so a form that shows a message only when a field is wrong showed a cross beside every valid field. Two repairs were
+measured against the same page (`scripts/check-tone.js`; a message that is empty, a single space, filled, cleared, filled again),
+each with the accessibility tree read through Chromium's DevTools protocol:
+
+| | empty `""` | `" "` | a message |
+|---|---|---|---|
+| before (`data-tone` always) | mark drawn, 24 px | mark drawn, 24 px | mark |
+| A: CSS `[data-tone]:not(:empty)::before` | no mark, 0 px | **mark drawn, 24 px** (a space is not `:empty`) | mark |
+| B: the page drops `data-tone` when the text has no visible characters | no mark, 0 px | no mark, 0 px | mark |
+
+In all three the element is still there with `role="status"` and the accessibility tree has it as a polite, atomic live region
+whether it is empty or not, so a message put there by a later render is in a live region as before. **B was built**: after the
+text is appended, `if (!el.textContent.trim()) { el.removeAttribute('data-tone'); }` (only for a `Text` with a `tone:`). It needs
+no stylesheet (a page built without `--pwa` has none) and it is exact for a text of spaces, which `:empty` is not. What was *not*
+established: whether a screen reader announces a message put into a live region that was drawn again in the same render. The
+page replaces every status node at every render (before and after this change), which is its own issue (#106).
+`examples/tickets` uses a constant `tone: "error"` on its messages again: three state fields and their assignments are gone.
+
 Measured (Chromium): a 201 shows `data-tone="ok"`, the prefix `✓ ` and `rgb(26, 127, 55)`; a 409 `warn`, `⚠ `,
 `rgb(154, 103, 0)`; a 503 `error`, `✗ `, `rgb(207, 34, 46)`. **Contrast** against the page's own background (`Canvas`), WCAG AA
 is 4.5:1: light 5.08 (ok), 4.87 (warn), 5.36 (error); dark (the stylesheet has its own colours under

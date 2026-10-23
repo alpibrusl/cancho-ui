@@ -1,0 +1,33 @@
+{
+  "checks": [
+    { "name": "cargo test presentation", "argv": ["cargo", "test", "--quiet", "-p", "cancho-ui", "--test", "presentation"] },
+    { "name": "check-tone.js", "argv": ["node", "scripts/check-tone.js"] },
+    { "name": "check-tickets.js", "argv": ["node", "scripts/check-tickets.js"] }
+  ],
+  "breaks": [
+    {
+      "name": "the old rule: a toned text keeps its tone when empty",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "            if bindings.iter().any(|b| b.key == \"tone\") {\n                out.push_str(&format!(\n                    \"{0}if (!{1}.textContent.trim())",
+      "to": "            if false && bindings.iter().any(|b| b.key == \"tone\") {\n                out.push_str(&format!(\n                    \"{0}if (!{1}.textContent.trim())"
+    },
+    {
+      "name": "a text of only spaces keeps its tone",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "\"{0}if (!{1}.textContent.trim()) {{ {1}.removeAttribute('data-tone'); }}\\n\",",
+      "to": "\"{0}if (!{1}.textContent) {{ {1}.removeAttribute('data-tone'); }}\\n\","
+    },
+    {
+      "name": "the tone is dropped when there is a message",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "\"{0}if (!{1}.textContent.trim()) {{ {1}.removeAttribute('data-tone'); }}\\n\",",
+      "to": "\"{0}if ({1}.textContent.trim()) {{ {1}.removeAttribute('data-tone'); }}\\n\","
+    },
+    {
+      "name": "the element is removed instead of the tone (no live region left)",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "\"{0}if (!{1}.textContent.trim()) {{ {1}.removeAttribute('data-tone'); }}\\n\",",
+      "to": "\"{0}if (!{1}.textContent.trim()) {{ {1}.removeAttribute('role'); {1}.removeAttribute('data-tone'); }}\\n\","
+    }
+  ]
+}
