@@ -229,6 +229,17 @@ pub(crate) fn emit_view_node(
             }
             let mut out = format!("{0}if ({1}) {{\n", indent, emit_expr_runtime(cond, params));
             let child_indent = format!("{}    ", indent);
+            // A screen is what an `If` draws (docs/screen-focus.md section 3): outside a `For` (no loop variable in scope) the
+            // nodes it appends to its parent are recorded, so the page can tell which `If` just became true and find the heading
+            // of the screen that appeared. The key is the place in the source.
+            let site =
+                (params.is_empty()).then(|| format!("{}:{}", span.start.line, span.start.column));
+            if site.is_some() {
+                out.push_str(&format!(
+                    "{0}const __if_from = {1}.childNodes.length;\n",
+                    child_indent, parent_var
+                ));
+            }
             for c in children {
                 out.push_str(&emit_view_node(
                     next_id,
@@ -241,6 +252,12 @@ pub(crate) fn emit_view_node(
                     has_slots,
                     slot_prefix,
                     None,
+                ));
+            }
+            if let Some(key) = &site {
+                out.push_str(&format!(
+                    "{0}__cui_ifs_now[\"{1}\"] = [{2}, __if_from, {2}.childNodes.length];\n",
+                    child_indent, key, parent_var
                 ));
             }
             out.push_str(&format!("{0}}}\n", indent));

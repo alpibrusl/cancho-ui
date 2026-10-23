@@ -1,0 +1,92 @@
+{
+  "checks": [
+    {
+      "name": "check-screen-focus.js",
+      "argv": [
+        "node",
+        "scripts/check-screen-focus.js"
+      ]
+    },
+    {
+      "name": "cargo test routing",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "routing"
+      ]
+    },
+    {
+      "name": "check-tickets.js",
+      "argv": [
+        "node",
+        "scripts/check-tickets.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "lost focus is not given to the heading",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "__cui_focus_restore(root, __focus) && __focus) {{ __cui_screen(",
+      "to": "__cui_focus_restore(root, __focus) && __focus && false) {{ __cui_screen("
+    },
+    {
+      "name": "the heading takes the focus at every redraw, even from outside the page",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "__cui_focus_restore(root, __focus) && __focus) {{ __cui_screen(",
+      "to": "__cui_focus_restore(root, __focus)) {{ __cui_screen("
+    },
+    {
+      "name": "the focus moves at mount",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "__cui_screen(root, false, true, __cui_screen_of); }});",
+      "to": "__cui_screen(root, true, true, __cui_screen_of); }});"
+    },
+    {
+      "name": "a route change does not move the focus",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "finally(function () {{ __cui_screen(root, true, true, __cui_screen_of); }}); }} }}",
+      "to": "finally(function () {{ __cui_screen(root, false, true, __cui_screen_of); }}); }} }}"
+    },
+    {
+      "name": "the title is never set",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "    if (routed) {\n        const t",
+      "to": "    if (false) {\n        const t"
+    },
+    {
+      "name": "a page that does not route has its title written",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "    if (routed) {\n        const t",
+      "to": "    if (true) {\n        const t"
+    },
+    {
+      "name": "the heading cannot take focus from a script",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "h.setAttribute('tabindex', '-1'); h.focus();",
+      "to": "h.focus();"
+    },
+    {
+      "name": "the title forgets the title the page loaded with",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "(__cui_title0 ? t + ' \\u2013 ' + __cui_title0 : t) : __cui_title0;",
+      "to": "t : __cui_title0;"
+    },
+    {
+      "name": "a focused heading loses its tabindex at the next redraw",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "    if (saved.tabindex === '-1') { n.setAttribute('tabindex', '-1'); }\n",
+      "to": ""
+    },
+    {
+      "name": "the first heading of the page is used, not the heading of the screen that appeared",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "    if (seen) {\n        h = seen.path",
+      "to": "    if (false) {\n        h = seen.path"
+    }
+  ]
+}

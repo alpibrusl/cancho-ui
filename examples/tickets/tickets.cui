@@ -152,6 +152,7 @@ component Tickets {
             If {
                 when: signed
                 Column {
+                    Text { role: heading "Orders" }
                     Text { role: status "orders: {note}" }
                     Button { label: "Sign out" on: SignOut }
                     Checkbox { label: "Hide finished orders" checked: hide_done on: HideDone }

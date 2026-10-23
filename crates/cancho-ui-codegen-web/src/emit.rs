@@ -194,10 +194,10 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
         out.push_str("const __cui_cancelled = Symbol(\"__cui_cancelled\");\n\n");
     }
     // A control the user is using must keep focus across the rebuild a state change causes.
-    let keep_focus = ir
-        .components
-        .iter()
-        .any(|c| view_has_focusable(&c.view.body));
+    let keep_focus = ir.components.iter().any(|c| {
+        view_has_focusable(&c.view.body)
+            || c.schedules.iter().any(|s| s.kind == IrScheduleKind::Route)
+    });
     if keep_focus {
         out.push_str(FOCUS_ADAPTER_JS);
         out.push('\n');
@@ -425,6 +425,8 @@ fn emit_component(
     let has_awaits = c.events.iter().any(|e| e.body.iter().any(body_uses_await))
         || view_node_uses_await_or_sleep(&c.view.body);
     let has_schedules = !c.schedules.is_empty();
+    // docs/screen-focus.md section 3: only a component with `route` keeps the page title.
+    let routed = c.schedules.iter().any(|s| s.kind == IrScheduleKind::Route);
     let needs_dispose = has_awaits || has_instances || has_schedules;
     let mut out = String::new();
     out.push_str("// Component: ");
@@ -657,7 +659,10 @@ fn emit_component(
     }
 
     out.push_str(&crate::controls::submit_blocked_table(c, "        "));
-    out.push_str("        function __render() {\n");
+    // docs/screen-focus.md section 3: the `If` sites that are drawn now and in the render before, and where the heading of the
+    // screen that last appeared is.
+    out.push_str("        let __cui_ifs_prev = {};\n        let __cui_screen_of = null;\n");
+    out.push_str("        function __render() {\n            const __cui_ifs_now = {};\n");
     if keep_focus {
         out.push_str("            const __focus = __cui_focus_save(root);\n");
     }
@@ -676,8 +681,15 @@ fn emit_component(
         None,
     );
     out.push_str(&view_body);
+    if view_body.contains("__cui_ifs_now[") {
+        out.push_str("            const __cui_drawn = [];\n            for (const k in __cui_ifs_now) { if (!__cui_ifs_prev[k]) { __cui_drawn.push(__cui_ifs_now[k]); } }\n            __cui_ifs_prev = {};\n            for (const k in __cui_ifs_now) { __cui_ifs_prev[k] = true; }\n            if (__cui_drawn.length) { __cui_screen_of = { path: __cui_appeared(root, __cui_drawn) }; }\n");
+    }
     if keep_focus {
-        out.push_str("            __cui_focus_restore(root, __focus);\n");
+        // A control that had the focus and could not get it back: the screen changed under it (docs/screen-focus.md).
+        out.push_str(&format!(
+            "            if (!__cui_focus_restore(root, __focus) && __focus) {{ __cui_screen(root, true, {}, __cui_screen_of); }}\n",
+            routed
+        ));
     }
     out.push_str("        }\n");
 
@@ -692,8 +704,10 @@ fn emit_component(
             // docs/routing.md section 4: the route event hears the path the page loaded at, and every later change of the
             // fragment to a route (from the event's `newURL`, so two changes in one task are two paths).
             IrScheduleKind::Route => {
+                // After a change of the fragment the handler finishes, then the focus moves to the new screen's heading and the title
+                // follows; at mount only the title is set (docs/screen-focus.md section 3).
                 out.push_str(&format!(
-                    "        function __cui_hash(e) {{ const p = __cui_route_of(e.newURL); if (p !== null) {{ __on_{0}(p); }} }}\n        window.addEventListener('hashchange', __cui_hash);\n        __on_{0}(__cui_route_now());\n",
+                    "        function __cui_hash(e) {{ const p = __cui_route_of(e.newURL); if (p !== null) {{ Promise.resolve(__on_{0}(p)).finally(function () {{ __cui_screen(root, true, true, __cui_screen_of); }}); }} }}\n        window.addEventListener('hashchange', __cui_hash);\n        Promise.resolve(__on_{0}(__cui_route_now())).finally(function () {{ __cui_screen(root, false, true, __cui_screen_of); }});\n",
                     s.event
                 ));
             }

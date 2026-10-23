@@ -17,6 +17,7 @@ function __cui_focus_save(root) {
     return {
         path: path,
         tag: el.tagName,
+        tabindex: el.getAttribute('tabindex'),
         label: el.getAttribute('aria-label'),
         start: el.selectionStart,
         end: el.selectionEnd,
@@ -24,17 +25,63 @@ function __cui_focus_save(root) {
         scroll: el.scrollTop,
     };
 }
+// True when the control that had the focus has it again.
 function __cui_focus_restore(root, saved) {
-    if (!saved) { return; }
+    if (!saved) { return false; }
     let n = root;
     for (let i = 0; i < saved.path.length && n; i++) { n = n.childNodes[saved.path[i]]; }
-    if (!n || n.tagName !== saved.tag || n.getAttribute('aria-label') !== saved.label) { return; }
+    if (!n || n.tagName !== saved.tag || n.getAttribute('aria-label') !== saved.label) { return false; }
+    // A heading the page focused (docs/screen-focus.md) is not focusable until it has its tabindex again.
+    if (saved.tabindex === '-1') { n.setAttribute('tabindex', '-1'); }
     n.focus();
     if (typeof saved.start === 'number' && n.setSelectionRange) {
         try { n.setSelectionRange(saved.start, saved.end, saved.direction); } catch (e) { /* not a text control */ }
     }
     // A multi-line field keeps the lines it was scrolled to (docs/controls.md section 8).
     if (saved.scroll) { n.scrollTop = saved.scroll; }
+    return true;
+}
+// Where a node is: the child indices from the root down. The page is rebuilt at every render, so a place is kept, not a node.
+function __cui_path(root, el) {
+    const path = [];
+    for (let n = el; n !== root; n = n.parentNode) { path.unshift(Array.prototype.indexOf.call(n.parentNode.childNodes, n)); }
+    return path;
+}
+function __cui_at(root, path) {
+    let n = root;
+    for (let i = 0; i < path.length && n; i++) { n = n.childNodes[path[i]]; }
+    return n || null;
+}
+// The screens that just appeared (the nodes each `If` that became true drew, as [parent, from, to]): the place of the first heading in
+// them, or null when none of them has one (docs/screen-focus.md section 3).
+function __cui_appeared(root, drawn) {
+    for (const d of drawn) {
+        for (let i = d[1]; i < d[2]; i++) {
+            const n = d[0].childNodes[i];
+            if (n.nodeType !== 1) { continue; }
+            const h = n.getAttribute('role') === 'heading' ? n : n.querySelector('[role="heading"]');
+            if (h) { return __cui_path(root, h); }
+        }
+    }
+    return null;
+}
+// A screen changed (docs/screen-focus.md): the heading of the screen that appeared (`seen`: { path }, kept from the last render in which an
+// `If` became true) takes the focus (`move`), and a routed component's title follows it (`routed`): "<heading> - <the title the page loaded
+// with>", or that title alone when the screen has no heading. A page with no `If` has one screen: its first heading.
+const __cui_title0 = typeof document === 'undefined' ? '' : document.title;
+function __cui_screen(root, move, routed, seen) {
+    let h = null;
+    if (seen) {
+        h = seen.path ? __cui_at(root, seen.path) : null;
+        if (h && h.getAttribute('role') !== 'heading') { h = null; }
+    } else {
+        h = root.querySelector('[role="heading"]');
+    }
+    if (h && move) { h.setAttribute('tabindex', '-1'); h.focus(); }
+    if (routed) {
+        const t = h ? h.textContent.trim() : '';
+        document.title = t ? (__cui_title0 ? t + ' \u2013 ' + __cui_title0 : t) : __cui_title0;
+    }
 }
 
 // Arithmetic (docs/semantics.md, "Arithmetic"): + - * / never answer Infinity or NaN. A result that is not finite throws, the
@@ -68,7 +115,10 @@ function mount_Counter(root) {
                 if (e !== __cui_cancelled) { throw e; }
             }
         }
+        let __cui_ifs_prev = {};
+        let __cui_screen_of = null;
         function __render() {
+            const __cui_ifs_now = {};
             const __focus = __cui_focus_save(root);
             root.textContent = '';
             const __n0 = document.createElement('div');
@@ -91,7 +141,7 @@ function mount_Counter(root) {
                 __n0.appendChild(__n3);
                 __n3.addEventListener('click', __on_Reset);
             root.appendChild(__n0);
-            __cui_focus_restore(root, __focus);
+            if (!__cui_focus_restore(root, __focus) && __focus) { __cui_screen(root, true, false, __cui_screen_of); }
         }
         __render();
     })();

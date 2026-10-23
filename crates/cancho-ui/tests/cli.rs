@@ -141,7 +141,7 @@ fn focus_survives_a_rerender_in_every_program_with_a_focusable_control() {
             .expect("save");
         let clear = js.find("root.textContent = '';").expect("rebuild");
         let restore = js
-            .find("__cui_focus_restore(root, __focus);")
+            .find("__cui_focus_restore(root, __focus)")
             .expect("restore");
         assert!(
             save < clear && clear < restore,
