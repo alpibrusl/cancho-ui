@@ -486,12 +486,15 @@ pub(crate) fn emit_view_node(
                             indent, var, STATE_PREFIX, name
                         ));
                     }
-                    IrBindingValue::Const { expr, .. } if b.key == "maxlength" => {
-                        // An integer in range (`input-attribute-invalid`): the browser stops typing and pasting at it.
+                    IrBindingValue::Const { expr, .. }
+                        if b.key == "maxlength" || b.key == "rows" =>
+                    {
+                        // An integer in range (`input-attribute-invalid`): the browser stops typing and pasting at `maxlength`,
+                        // and `rows` is the height of a `TextArea`.
                         if let IrExpr::IntLit { value, .. } = **expr {
                             out.push_str(&format!(
-                                "{0}{1}.setAttribute('maxlength', '{2}');\n",
-                                indent, var, value
+                                "{0}{1}.setAttribute('{3}', '{2}');\n",
+                                indent, var, value, b.key
                             ));
                         }
                     }
@@ -521,7 +524,7 @@ pub(crate) fn emit_view_node(
                             // already kept anything but a known type out).
                             input_type = Some(s.clone());
                         } else if b.key == "value" {
-                            if matches!(kind, IrElementKind::TextField) {
+                            if kind.is_field() {
                                 input_value = Some(s.clone());
                             } else {
                                 out.push_str(&format!(
@@ -543,7 +546,7 @@ pub(crate) fn emit_view_node(
                         if b.key == "on" {
                             if matches!(kind, IrElementKind::Button) {
                                 click_handler = Some(name.clone());
-                            } else if matches!(kind, IrElementKind::TextField) {
+                            } else if kind.is_field() {
                                 input_handler = Some(name.clone());
                             } else {
                                 out.push_str(&format!(
@@ -587,7 +590,7 @@ pub(crate) fn emit_view_node(
                     }
                     IrBindingValue::StateRef(name) => {
                         if b.key == "value" {
-                            if matches!(kind, IrElementKind::TextField) {
+                            if kind.is_field() {
                                 // One-way binding to a state field;
                                 // re-render reflects the new value.
                                 input_value = Some(format!("{}{}", STATE_PREFIX, name));
@@ -708,15 +711,17 @@ pub(crate) fn emit_view_node(
                 ));
             }
 
-            // TextField: set the value attribute, type, and initial value.
-            if matches!(kind, IrElementKind::TextField) {
-                out.push_str(&format!(
-                    // One of `INPUT_TYPES` (`input-type-invalid`), plain lowercase words: no escaping to do.
-                    "{0}{1}.setAttribute('type', '{2}');\n",
-                    indent,
-                    var,
-                    input_type.as_deref().unwrap_or("text")
-                ));
+            // A field: set the type (a TextField), and the initial value.
+            if kind.is_field() {
+                if matches!(kind, IrElementKind::TextField) {
+                    out.push_str(&format!(
+                        // One of `INPUT_TYPES` (`input-type-invalid`), plain lowercase words: no escaping to do.
+                        "{0}{1}.setAttribute('type', '{2}');\n",
+                        indent,
+                        var,
+                        input_type.as_deref().unwrap_or("text")
+                    ));
+                }
                 if let Some(ref v) = input_value {
                     out.push_str(&format!("{0}{1}.value = {2};\n", indent, var, v));
                 }
@@ -724,7 +729,7 @@ pub(crate) fn emit_view_node(
 
             // Append to parent. A field with a label is drawn inside a `<label>` that shows it
             // (docs/presentation.md section 1); the field keeps its `aria-label`.
-            let field_label = if matches!(kind, IrElementKind::TextField) {
+            let field_label = if kind.is_field() {
                 accessibility
                     .label
                     .as_ref()

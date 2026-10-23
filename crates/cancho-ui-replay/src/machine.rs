@@ -383,7 +383,7 @@ impl<'a> Machine<'a> {
                             }
                     });
                     if fires {
-                        if matches!(kind, cancho_ui_ir::ir::IrElementKind::TextField) {
+                        if kind.is_field() {
                             let limit = bindings.iter().find_map(|b| match (&*b.key, &b.value) {
                                 ("maxlength", IrBindingValue::Const { expr, .. }) => match **expr {
                                     IrExpr::IntLit { value, .. } => usize::try_from(value).ok(),

@@ -237,6 +237,8 @@ pub enum ElementKind {
     Button,
     /// An editable text input. Tier 5 primitive.
     TextField,
+    /// A multi-line text input (docs/controls.md section 8).
+    TextArea,
     Named(String),
 }
 

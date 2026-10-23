@@ -251,6 +251,7 @@ impl Parser {
             "Text" => ElementKind::Text,
             "Button" => ElementKind::Button,
             "TextField" => ElementKind::TextField,
+            "TextArea" => ElementKind::TextArea,
             other => ElementKind::Named(other.to_string()),
         };
 

@@ -111,7 +111,7 @@ function __cui_clock_now() {
 /// using was replaced and focus fell to the page: typing "ada" into a `TextField` left "a", and pressing Enter three
 /// times on a focused `Button` counted once (both measured).
 /// Before the rebuild the focused control's place under this component's root (its path of child indices) and its
-/// text selection are recorded; after it, the control at that path gets both back. A control that is gone, or is a
+/// text selection (and, for a `TextArea`, its scroll position) are recorded; after it, the control at that path gets both back. A control that is gone, or is a
 /// different kind or has another label, stays unfocused rather than focusing the wrong one. Not handled: an
 /// input method composition in progress.
 pub(crate) const FOCUS_ADAPTER_JS: &str = r#"// Focus survives a re-render: see docs/semantics.md, Question 9.
@@ -129,6 +129,7 @@ function __cui_focus_save(root) {
         start: el.selectionStart,
         end: el.selectionEnd,
         direction: el.selectionDirection,
+        scroll: el.scrollTop,
     };
 }
 function __cui_focus_restore(root, saved) {
@@ -140,6 +141,8 @@ function __cui_focus_restore(root, saved) {
     if (typeof saved.start === 'number' && n.setSelectionRange) {
         try { n.setSelectionRange(saved.start, saved.end, saved.direction); } catch (e) { /* not a text control */ }
     }
+    // A multi-line field keeps the lines it was scrolled to (docs/controls.md section 8).
+    if (saved.scroll) { n.scrollTop = saved.scroll; }
 }
 "#;
 

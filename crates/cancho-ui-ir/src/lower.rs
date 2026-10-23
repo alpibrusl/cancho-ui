@@ -1083,6 +1083,7 @@ fn lower_kind(k: &ElementKind) -> IrElementKind {
         ElementKind::Text => IrElementKind::Text,
         ElementKind::Button => IrElementKind::Button,
         ElementKind::TextField => IrElementKind::TextField,
+        ElementKind::TextArea => IrElementKind::TextArea,
         ElementKind::Named(s) => IrElementKind::Named(s.clone()),
     }
 }
