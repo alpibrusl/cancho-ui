@@ -16,10 +16,6 @@ component Tickets {
     state pass: String = "";
     state user_msg: String = "Enter your user name.";
     state pass_msg: String = "Enter your password.";
-    // a status text with `tone:` shows its tone prefix even when it is empty (docs/tickets.md 3.5), so the tone is a state that is
-    // "" while there is no message
-    state user_tone: String = "error";
-    state pass_tone: String = "error";
     state blocked: Bool = true;
     state signin_msg: String = "";
     state signed: Bool = false;
@@ -35,7 +31,6 @@ component Tickets {
     state status_edit: String = "";
     state note_edit: String = "";
     state status_msg: String = "";
-    state status_tone: String = "";
     state edit_blocked: Bool = true;
     state save_msg: String = "";
     state saved_tone: String = "";
@@ -60,14 +55,12 @@ component Tickets {
     on User(v) {
         user = v;
         user_msg = if len(trim(v)) == 0 { "Enter your user name." } else if len(trim(v)) < 3 { "A user name has at least 3 characters." } else { "" };
-        user_tone = if len(user_msg) > 0 { "error" } else { "" };
         blocked = len(user_msg) > 0 || len(pass_msg) > 0;
     }
 
     on Pass(v) {
         pass = v;
         pass_msg = if len(v) == 0 { "Enter your password." } else if len(v) < 8 { "A password has at least 8 characters." } else { "" };
-        pass_tone = if len(pass_msg) > 0 { "error" } else { "" };
         blocked = len(user_msg) > 0 || len(pass_msg) > 0;
     }
 
@@ -83,7 +76,6 @@ component Tickets {
         signed = len(signin_msg) == 0;
         pass = "";
         pass_msg = if signed { "" } else { "Enter your password." };
-        pass_tone = if signed { "" } else { "error" };
         blocked = !signed;
         if signed {
             run LoadOrders;
@@ -97,7 +89,6 @@ component Tickets {
         status_edit = join(map(picked, x => json.get(x, "status", "")), "");
         note_edit = join(map(picked, x => json.get(x, "note", "")), "");
         status_msg = "";
-        status_tone = "";
         save_msg = "";
         edit_blocked = len(picked) == 0;
     }
@@ -105,7 +96,6 @@ component Tickets {
     on Status(v) {
         status_edit = v;
         status_msg = if v == "open" || v == "doing" || v == "done" { "" } else { "Use open, doing or done." };
-        status_tone = if len(status_msg) > 0 { "error" } else { "" };
         edit_blocked = len(status_msg) > 0 || len(selected) == 0;
     }
 
@@ -137,8 +127,6 @@ component Tickets {
         picked = [];
         user_msg = "Enter your user name.";
         pass_msg = "Enter your password.";
-        user_tone = "error";
-        pass_tone = "error";
         user = "";
         blocked = true;
         signin_msg = "You are signed out.";
@@ -153,9 +141,9 @@ component Tickets {
                 Column {
                     Text { role: heading "Sign in" }
                     TextField { label: "User name" value: user on: User autocomplete: "username" name: "username" }
-                    Text { role: status tone: user_tone "{user_msg}" }
+                    Text { role: status tone: "error" "{user_msg}" }
                     TextField { label: "Password" value: pass on: Pass submit: SignIn type: "password" autocomplete: "current-password" name: "password" }
-                    Text { role: status tone: pass_tone "{pass_msg}" }
+                    Text { role: status tone: "error" "{pass_msg}" }
                     Button { label: "Sign in" on: SignIn disabled: blocked }
                     Text { role: status "{signin_msg}" }
                 }
@@ -189,7 +177,7 @@ component Tickets {
                         Column {
                             Text { role: heading "Order {selected}: {title}" }
                             TextField { label: "Status (open, doing or done)" value: status_edit on: Status }
-                            Text { role: status tone: status_tone "{status_msg}" }
+                            Text { role: status tone: "error" "{status_msg}" }
                             TextField { label: "Note (at most 200 characters)" value: note_edit on: NoteEdit submit: Save maxlength: 200 }
                             Button { label: "Save" on: Save disabled: edit_blocked }
                             Text { role: status tone: saved_tone "{save_msg}" }

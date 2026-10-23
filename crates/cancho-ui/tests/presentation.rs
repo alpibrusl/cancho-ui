@@ -289,6 +289,31 @@ fn a_program_without_them_is_emitted_as_it_was() {
 }
 
 #[test]
+fn a_toned_text_drops_its_tone_when_it_has_nothing_to_say() {
+    // docs/presentation.md section 3 (#94): the check after the text is appended, only for a `Text` that has a `tone:`.
+    let with = scratch(
+        "tone.cui",
+        &program("            Text { role: status tone: \"error\" \"{q}\" }"),
+    );
+    let out = scratch("tone.html", "");
+    let (code, _, stderr) = run(&["build", p(&with), "-o", p(&out)]);
+    assert_eq!(code, 0, "{stderr}");
+    let js = std::fs::read_to_string(&out).expect("the page");
+    assert!(
+        js.contains(".textContent.trim()) {") && js.contains(".removeAttribute('data-tone');"),
+        "{js}"
+    );
+    let without = scratch(
+        "plain.cui",
+        &program("            Text { role: status \"{q}\" }"),
+    );
+    let (code, _, stderr) = run(&["build", p(&without), "-o", p(&out)]);
+    assert_eq!(code, 0, "{stderr}");
+    let js = std::fs::read_to_string(&out).expect("the page");
+    assert!(!js.contains("removeAttribute('data-tone')"), "{js}");
+}
+
+#[test]
 fn the_default_stylesheet_styles_what_the_page_emits() {
     let file = scratch("css.cui", &program("            Text { \"a\" }"));
     let out = scratch("css.cui", "").with_file_name("css_out");
