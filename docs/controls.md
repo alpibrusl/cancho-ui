@@ -230,10 +230,46 @@ asserts it (`"state": {"msg": "..."}`) and the corpus does. **Not measured:** th
 **`examples/tickets`** uses `error:` on both sign-in fields and on the status field of the edit form; `check-tickets.js` asserts
 `aria-invalid` and `aria-describedby` come and go with the message.
 
-## 8. Not done
+## 8. `TextArea`, several lines of text (issue #76, third part)
+
+> **Status: BUILT.**
+
+**Measured before.** `TextArea { label: "Note" value: n on: Note }` was `error[component-kind-unknown]`. A note in
+`examples/tickets` was a one-line field with `submit: Save`, so a service note could not hold a line break.
+
+**The form.** `TextArea { label: "Note" value: note on: Note rows: 4 maxlength: 200 error: msg }`. It is a `TextField` that holds
+several lines, written as a `<textarea>` inside the same `<label class="cui-field">`, with the same `label:` (required), `value:`,
+`on:` (the handler takes the text), `disabled:`, `placeholder:`, `autocomplete:`, `inputmode:`, `maxlength:`, `name:` and `error:`.
+Differences, all refused with a tag: **no `type:`** (a textarea has none; `binding-unknown`) and **no `submit:`** (Enter inserts a
+line break there; `binding-unknown`, and the message says so). One binding of its own, `rows:`, an integer literal from 1 to 30
+(`input-attribute-invalid`), because a textarea is two lines tall without it; on any other element `rows:` is `binding-unknown`.
+
+**What the browser gives the handler** (measured, `tests/textarea_corpus.json`, `scripts/check-textarea.js`): the text with its
+line breaks as LF; Enter inserts one; pasted CRLF and bare CR arrive as LF (so a trace gives LF, as for `email` in section 5); a
+leading and a trailing line break are kept; spaces are kept; **a line break counts as one character of `maxlength`** (`maxlength: 3`
+leaves `a\nb` of `a\nb\nc`, typed or pasted). Replay counts the same (UTF-16 code units, a line feed is one), so the
+`trace-value-too-long` of section 6 holds for a `TextArea`.
+
+**A finding, fixed:** the page draws a field again from nothing at each key, and restored the focus and the caret but not the
+scroll position. Measured in a 40-line note scrolled to line 12 with the caret there: after one more key the first draw of the new
+element starts at the top and the browser's scroll-to-caret leaves it 40 px off the old position. The focus helper
+(`__cui_focus_save` and `__cui_focus_restore`) now records `scrollTop` and puts it back; it applies to every field, and a field
+that does not scroll saves 0 and restores nothing. Measured after: caret, scroll position and focus are all as before the key.
+
+**Accessibility** (Chromium's tree): a `textbox` with `multiline: true`, its label as the name; with `error:` it is `invalid` and
+described by its message, as section 7.
+
+**Replay** treats it as it treats a `TextField` (the value is the event's parameter; `error:` and `rows:` are not modelled).
+**Rule tags:** none new (`binding-unknown`, `input-attribute-invalid`, `error-binding-invalid`). **Deliberate breaks:**
+`scripts/breaks/textarea.json`, ten, each caught. **`examples/tickets`** takes its note in a `TextArea` with `rows: 4`; the Save
+button is its only way to send (no Enter), and the check script is unchanged.
+
+**Not built:** `cols`, `wrap`, `resize`, `readonly`, `spellcheck`, a rich-text editor.
+
+## 9. Not done
 
 `disabled:` on an expression (`disabled: len(q) == 0`: the language has no `&&`, `||` or `!` and no Bool expression binding,
 issue #40), `aria-busy` for an in-flight request, a disabled state for the children of a component instance, the refusal
 `accessibility-keyboard-missing` for a form with no keyboard path, and `submit:` on anything but a `TextField` (a `Button` already
-fires on Enter and Space natively). From #76: `Checkbox` (a `Bool`), `Select` (over a list), `TextArea`; `number`, date and the other input types (section 5). (`invalid:` and the message tied to its field are section 7.) From #91: `autocomplete`,
+fires on Enter and Space natively). From #76: `Checkbox` (a `Bool`), `Select` (over a list); `number`, date and the other input types (section 5). (`invalid:` and the message tied to its field are section 7.) From #91: `autocomplete`,
 `maxlength`, `inputmode`, `name` (section 6, done).

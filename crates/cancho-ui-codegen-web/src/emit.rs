@@ -258,7 +258,8 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
 fn view_has_focusable(node: &IrViewNode) -> bool {
     match node {
         IrViewNode::Element { kind, children, .. } => {
-            matches!(kind, IrElementKind::Button | IrElementKind::TextField)
+            matches!(kind, IrElementKind::Button)
+                || kind.is_field()
                 || children.iter().any(view_has_focusable)
         }
         IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {

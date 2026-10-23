@@ -25,7 +25,11 @@ pub const ELEMENT_KEYS: &[&str] = &[
     "maxlength",
     "name",
     "error",
+    "rows",
 ];
+
+/// The `rows:` range of a `TextArea`: how many lines it shows.
+pub const ROWS_RANGE: (i64, i64) = (1, 30);
 
 /// The `type:` of a `TextField` (docs/controls.md section 5): the HTML input types that hold one line of text and give the
 /// handler a string. `number` is left out on purpose (measured: `1e5` typed key by key ends as `5`).
@@ -81,6 +85,7 @@ fn element_name(kind: &IrElementKind) -> &'static str {
         IrElementKind::Text => "Text",
         IrElementKind::Button => "Button",
         IrElementKind::TextField => "TextField",
+        IrElementKind::TextArea => "TextArea",
         IrElementKind::Named(_) => "a component",
     }
 }
@@ -121,7 +126,7 @@ fn check_on(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), 
     let given = match (args, kind) {
         (Some(n), _) => n,
         // A click gives no arguments; a field gives the value it holds.
-        (None, IrElementKind::TextField) => event.params.len().min(1),
+        (None, IrElementKind::TextField | IrElementKind::TextArea) => event.params.len().min(1),
         (None, _) => 0,
     };
     if event.params.len() != given {
@@ -261,14 +266,41 @@ pub const MAXLENGTH_RANGE: (i64, i64) = (1, 100_000);
 /// The longest `name:` of a field, and the characters it may hold.
 pub const NAME_MAX: usize = 64;
 
-/// `error:` is a binding of a control that holds a value (docs/controls.md section 7) and names a `String` state field: the
-/// message that goes with the control, empty while the control is valid.
-fn check_error(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
-    if !matches!(kind, IrElementKind::TextField) {
+/// `rows:` is a binding of a `TextArea` and takes an integer literal from 1 to 30.
+fn check_rows(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
+    if !matches!(kind, IrElementKind::TextArea) {
         return Err(LowerError::ControlRefused {
             code: "binding-unknown",
             message: format!(
-                "`error:` is a binding of TextField (the message that goes with a field), not of {}",
+                "`rows:` is a binding of TextArea (how many lines it shows), not of {}",
+                element_name(kind)
+            ),
+            span: b.span,
+        });
+    }
+    match &b.value {
+        IrBindingValue::Const { expr, .. } if matches!(**expr, IrExpr::IntLit { value, .. } if (ROWS_RANGE.0..=ROWS_RANGE.1).contains(&value)) => {
+            Ok(())
+        }
+        _ => Err(LowerError::ControlRefused {
+            code: "input-attribute-invalid",
+            message: format!(
+                "`rows:` takes an integer literal from {} to {}",
+                ROWS_RANGE.0, ROWS_RANGE.1
+            ),
+            span: b.span,
+        }),
+    }
+}
+
+/// `error:` is a binding of a control that holds a value (docs/controls.md section 7) and names a `String` state field: the
+/// message that goes with the control, empty while the control is valid.
+fn check_error(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
+    if !kind.is_field() {
+        return Err(LowerError::ControlRefused {
+            code: "binding-unknown",
+            message: format!(
+                "`error:` is a binding of TextField and TextArea (the message that goes with a field), not of {}",
                 element_name(kind)
             ),
             span: b.span,
@@ -292,11 +324,11 @@ fn check_error(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(
 
 /// `autocomplete:`, `inputmode:`, `maxlength:` and `name:` are bindings of a `TextField` with a checked value.
 fn check_text_attribute(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
-    if !matches!(kind, IrElementKind::TextField) {
+    if !kind.is_field() {
         return Err(LowerError::ControlRefused {
             code: "binding-unknown",
             message: format!(
-                "`{}:` is a binding of TextField, not of {}",
+                "`{}:` is a binding of TextField and TextArea, not of {}",
                 b.key,
                 element_name(kind)
             ),
@@ -438,13 +470,21 @@ fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result
     if b.key == "error" {
         check_error(c, kind, b)?;
     }
+    if b.key == "rows" {
+        check_rows(kind, b)?;
+    }
     if b.key == "submit" {
         if !matches!(kind, IrElementKind::TextField) {
             return Err(LowerError::ControlRefused {
                 code: "binding-unknown",
                 message: format!(
-                    "`submit:` is a binding of TextField (Enter in the field fires the event), not of {}",
-                    element_name(kind)
+                    "`submit:` is a binding of TextField (Enter in the field fires the event), not of {}{}",
+                    element_name(kind),
+                    if matches!(kind, IrElementKind::TextArea) {
+                        "; in a TextArea Enter starts a new line"
+                    } else {
+                        ""
+                    }
                 ),
                 span: b.span,
             });
@@ -478,12 +518,12 @@ fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result
         }
     }
     if b.key == "disabled" {
-        let interactive = matches!(kind, IrElementKind::Button | IrElementKind::TextField);
+        let interactive = matches!(kind, IrElementKind::Button) || kind.is_field();
         if !interactive {
             return Err(LowerError::ControlRefused {
                 code: "binding-unknown",
                 message: format!(
-                    "`disabled:` is a binding of Button and TextField, not of {}",
+                    "`disabled:` is a binding of Button, TextField and TextArea, not of {}",
                     element_name(kind)
                 ),
                 span: b.span,

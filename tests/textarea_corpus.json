@@ -1,0 +1,12 @@
+{
+  "typing": [
+    { "why": "a value set as a whole keeps its line breaks", "how": "fill", "typed": "line one\nline two", "received": "line one\nline two" },
+    { "why": "Enter starts a new line", "how": "keys", "typed": "a\nb", "received": "a\nb" },
+    { "why": "pasted CRLF and CR line breaks arrive as LF", "how": "paste", "typed": "a\r\nb\rc", "received": "a\nb\nc" },
+    { "why": "a leading and a trailing line break are kept", "how": "fill", "typed": "\nx\n", "received": "\nx\n" },
+    { "why": "spaces are kept", "how": "fill", "typed": "  two  spaces  ", "received": "  two  spaces  " },
+    { "why": "a line break counts as one character of maxlength", "maxlength": 3, "how": "keys", "typed": "a\nb\nc", "received": "a\nb" },
+    { "why": "pasted text is cut at maxlength, a line break counting as one", "maxlength": 3, "how": "paste", "typed": "a\nb\nc", "received": "a\nb" },
+    { "why": "text under maxlength is not touched", "maxlength": 10, "how": "fill", "typed": "a\nb", "received": "a\nb" }
+  ]
+}

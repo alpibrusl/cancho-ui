@@ -175,7 +175,7 @@ component Tickets {
                         Column {
                             Text { role: heading "Order {selected}: {title}" }
                             TextField { label: "Status (open, doing or done)" value: status_edit on: Status error: status_msg }
-                            TextField { label: "Note (at most 200 characters)" value: note_edit on: NoteEdit submit: Save maxlength: 200 }
+                            TextArea { label: "Note (at most 200 characters)" value: note_edit on: NoteEdit maxlength: 200 rows: 4 }
                             Button { label: "Save" on: Save disabled: edit_blocked }
                             Text { role: status tone: saved_tone "{save_msg}" }
                         }

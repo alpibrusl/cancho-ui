@@ -21,6 +21,7 @@ function __cui_focus_save(root) {
         start: el.selectionStart,
         end: el.selectionEnd,
         direction: el.selectionDirection,
+        scroll: el.scrollTop,
     };
 }
 function __cui_focus_restore(root, saved) {
@@ -32,6 +33,8 @@ function __cui_focus_restore(root, saved) {
     if (typeof saved.start === 'number' && n.setSelectionRange) {
         try { n.setSelectionRange(saved.start, saved.end, saved.direction); } catch (e) { /* not a text control */ }
     }
+    // A multi-line field keeps the lines it was scrolled to (docs/controls.md section 8).
+    if (saved.scroll) { n.scrollTop = saved.scroll; }
 }
 
 // Arithmetic (docs/semantics.md, "Arithmetic"): + - * / never answer Infinity or NaN. A result that is not finite throws, the

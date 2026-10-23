@@ -1,0 +1,69 @@
+{
+  "checks": [
+    { "name": "cargo test textarea", "argv": ["cargo", "test", "--quiet", "-p", "cancho-ui", "--test", "textarea"] },
+    { "name": "check-textarea.js", "argv": ["node", "scripts/check-textarea.js"] },
+    { "name": "check-tickets.js", "argv": ["node", "scripts/check-tickets.js"] }
+  ],
+  "breaks": [
+    {
+      "name": "a TextArea is written as an input",
+      "file": "crates/cancho-ui-ir/src/ir.rs",
+      "from": "IrElementKind::TextArea => \"textarea\",",
+      "to": "IrElementKind::TextArea => \"input\","
+    },
+    {
+      "name": "the scroll position is not restored",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "    if (saved.scroll) { n.scrollTop = saved.scroll; }",
+      "to": ""
+    },
+    {
+      "name": "rows is accepted on every element",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "    if !matches!(kind, IrElementKind::TextArea) {\n        return Err(LowerError::ControlRefused {\n            code: \"binding-unknown\",\n            message: format!(\n                \"`rows:` is a binding of TextArea",
+      "to": "    if false && !matches!(kind, IrElementKind::TextArea) {\n        return Err(LowerError::ControlRefused {\n            code: \"binding-unknown\",\n            message: format!(\n                \"`rows:` is a binding of TextArea"
+    },
+    {
+      "name": "submit is accepted on a TextArea",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "    if b.key == \"submit\" {\n        if !matches!(kind, IrElementKind::TextField) {",
+      "to": "    if b.key == \"submit\" {\n        if !kind.is_field() {"
+    },
+    {
+      "name": "type is accepted on a TextArea",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "fn check_input_type(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {\n    if !matches!(kind, IrElementKind::TextField) {",
+      "to": "fn check_input_type(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {\n    if !kind.is_field() {"
+    },
+    {
+      "name": "error is refused on a TextArea",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "fn check_error(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {\n    if !kind.is_field() {",
+      "to": "fn check_error(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {\n    if !matches!(kind, IrElementKind::TextField) {"
+    },
+    {
+      "name": "replay applies no limit to a TextArea",
+      "file": "crates/cancho-ui-replay/src/machine.rs",
+      "from": "                        if kind.is_field() {",
+      "to": "                        if matches!(kind, cancho_ui_ir::ir::IrElementKind::TextField) {"
+    },
+    {
+      "name": "the value is not drawn back into a TextArea",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "                        if b.key == \"value\" {\n                            if kind.is_field() {\n                                // One-way",
+      "to": "                        if b.key == \"value\" {\n                            if matches!(kind, IrElementKind::TextField) {\n                                // One-way"
+    },
+    {
+      "name": "typing in a TextArea reaches no handler",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "                            } else if kind.is_field() {\n                                input_handler",
+      "to": "                            } else if matches!(kind, IrElementKind::TextField) {\n                                input_handler"
+    },
+    {
+      "name": "a TextArea has no label element",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "let field_label = if kind.is_field() {",
+      "to": "let field_label = if matches!(kind, IrElementKind::TextField) {"
+    }
+  ]
+}
