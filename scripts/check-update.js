@@ -15,6 +15,9 @@ const { chromium } = require('playwright');
 const ROOT = path.join(__dirname, '..');
 const CANCHO_UI = process.argv[2] || path.join(ROOT, 'target', 'debug', 'cancho-ui');
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
+// a check that waits for something that never comes must end, not hang; nothing below waits for this long on purpose
+const CEILING_MS = 60000;
+setTimeout(() => { console.error('FAIL the run took more than 3 minutes: something never arrived'); process.exit(1); }, 180000).unref();
 const failures = [];
 function check(label, ok, detail) {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${label}${detail ? `: ${detail}` : ''}`);
@@ -67,8 +70,12 @@ function build(v, dir) {
 
   // the site is replaced by version two; the browser is asked to look for an update (it also does so on navigation)
   publish(v2);
-  await page1.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); await r.update(); });
-  await page1.waitForFunction(async () => { const r = await navigator.serviceWorker.getRegistration(); return !!r.waiting; }, null, { timeout: 8000 }).catch(() => {});
+  // Wait for the condition, not for a time (#97). The registration is kept in the page so that the predicate is a plain function: a predicate
+  // written `async () => { await getRegistration(); .. }` returns a Promise, which Playwright counts as true at once, so the "wait" returned
+  // after about 100 ms and the check passed or failed on whether the worker had finished installing by then (measured: under load it had
+  // not in 4 runs of 10; unloaded it had in 10 of 10). The ceiling only turns a hang into a failure: no step depends on it.
+  await page1.evaluate(async () => { window.__reg = await navigator.serviceWorker.getRegistration(); await window.__reg.update(); });
+  await page1.waitForFunction(() => !!window.__reg.waiting, null, { timeout: CEILING_MS });
   const s2 = await state(page1);
   const cachesTwo = await caches(page1);
   console.log(`     after the update check: ${JSON.stringify(s2)}, caches ${JSON.stringify(cachesTwo)}`);

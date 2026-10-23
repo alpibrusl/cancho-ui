@@ -1,0 +1,31 @@
+{
+  "checks": [
+    {
+      "name": "check-update.js",
+      "argv": [
+        "node",
+        "scripts/check-update.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "the new worker skips waiting (skipWaiting in install)",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "    event.waitUntil(caches.open(CACHE).then(function (cache) { return cache.addAll(PRECACHE); }));",
+      "to": "    self.skipWaiting();\n    event.waitUntil(caches.open(CACHE).then(function (cache) { return cache.addAll(PRECACHE); }));"
+    },
+    {
+      "name": "the cache name is constant",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "const CACHE = \"cancho-ui-@VERSION@\";",
+      "to": "const CACHE = \"cancho-ui-0000000000000000\";"
+    },
+    {
+      "name": "activate keeps the old cache",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "key.indexOf(\"cancho-ui-\") === 0 && key !== CACHE;",
+      "to": "key.indexOf(\"cancho-ui-\") === 0 && key === CACHE;"
+    }
+  ]
+}
