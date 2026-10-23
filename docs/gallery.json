@@ -11,7 +11,7 @@
       "id": "clock",
       "title": "Stopwatch",
       "source": "examples/clock/clock.cui",
-      "says": "A capability in use: elapsed time from `clock.now()`, declared with `requires Clock;`."
+      "says": "A capability in use: a stopwatch that reads `clock.now()`, declared with `requires Clock;`, and ticks every 100 ms with `every 100 Tick;`."
     },
     {
       "id": "search",

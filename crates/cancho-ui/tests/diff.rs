@@ -44,11 +44,7 @@ fn strs(v: &Value) -> Vec<String> {
 fn clock_without_capability() -> String {
     CLOCK
         .replace("    requires Clock;\n", "")
-        .replace("started_at = clock.now();", "started_at = 1;")
-        .replace(
-            "\"Elapsed: {(clock.now() - started_at) / 1000}s\"",
-            "\"Elapsed: {started_at}s\"",
-        )
+        .replace("clock.now()", "1")
 }
 
 /// The clock example plus `requires Network;` and a handler that uses it.
@@ -322,8 +318,8 @@ fn added_effect_carries_a_candidate_span() {
 #[test]
 fn effect_site_count_change_is_reported_without_a_new_capability() {
     let more = CLOCK.replace(
-        "ticking = false;\n    }\n\n    on Tick",
-        "ticking = false;\n        started_at = clock.now();\n    }\n\n    on Tick",
+        "ticking = false;\n        }\n    }\n\n    on Tick",
+        "ticking = false;\n            started_at = clock.now();\n        }\n    }\n\n    on Tick",
     );
     assert_ne!(more, CLOCK);
     let r = json(CLOCK, &more);

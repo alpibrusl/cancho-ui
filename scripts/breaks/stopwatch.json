@@ -1,0 +1,32 @@
+{
+  "checks": [
+    { "name": "check-stopwatch.js", "argv": ["node", "scripts/check-stopwatch.js"] },
+    { "name": "trace replay", "argv": ["target/debug/cancho-ui", "test", "examples/clock/clock.cui", "examples/clock/clock.trace.json"] }
+  ],
+  "breaks": [
+    {
+      "name": "it never ticks (no schedule)",
+      "file": "examples/clock/clock.cui",
+      "from": "    every 100 Tick;\n",
+      "to": ""
+    },
+    {
+      "name": "it shows the clock itself (epoch seconds before Start)",
+      "file": "examples/clock/clock.cui",
+      "from": "\"Elapsed: {elapsed / 1000}s\"",
+      "to": "\"Elapsed: {(clock.now() - started_at) / 1000}s\""
+    },
+    {
+      "name": "Stop does not freeze the reading",
+      "file": "examples/clock/clock.cui",
+      "from": "    on Stop {\n        if ticking {\n            elapsed = clock.now() - started_at;\n            ticking = false;",
+      "to": "    on Stop {\n        if ticking {\n            elapsed = clock.now() - started_at;\n            ticking = true;"
+    },
+    {
+      "name": "Start begins again from 0",
+      "file": "examples/clock/clock.cui",
+      "from": "started_at = clock.now() - elapsed;",
+      "to": "started_at = clock.now();"
+    }
+  ]
+}

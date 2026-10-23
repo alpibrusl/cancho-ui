@@ -1,30 +1,38 @@
-// examples/clock/clock.cui — the Tier 4 capability example.
-// Demonstrates `requires Clock;` + `clock.now()`. The state field
-// `started_at` records the moment the user pressed Start; the
-// displayed duration is the difference between `clock.now()` and
-// `started_at`, divided by 1000 (seconds; `/` is JavaScript division in
-// the emitted code, so it is not truncated: 1500 ms shows as 1.5s).
-// Reset returns the display to "Press Start".
+// examples/clock/clock.cui — the Tier 4 capability example, as a stopwatch.
+// Demonstrates `requires Clock;` + `clock.now()` + `every N Event;`.
+// `elapsed` is the stopwatch's reading in milliseconds, 0 until Start.
+// Start keeps the reading it had (`started_at` is moved back by it), so
+// Stop then Start resumes. While running, `every 100 Tick` recomputes the
+// reading from `clock.now()`; the view shows it in seconds (`/` is
+// JavaScript division, so 1500 ms shows as 1.5s).
 
 component Clock {
     requires Clock;
 
     state started_at: Int = 0;
+    state elapsed: Int = 0;
     state ticking: Bool = false;
 
+    every 100 Tick;
+
     on Start {
-        started_at = clock.now();
-        ticking = true;
+        if !ticking {
+            started_at = clock.now() - elapsed;
+            ticking = true;
+        }
     }
 
     on Stop {
-        ticking = false;
+        if ticking {
+            elapsed = clock.now() - started_at;
+            ticking = false;
+        }
     }
 
     on Tick {
-        // No-op for now — the render uses it indirectly via `ticking`.
-        // Phase 2 will add a real timer-driven event via the
-        // platform adapter.
+        if ticking {
+            elapsed = clock.now() - started_at;
+        }
     }
 
     view {
@@ -32,7 +40,7 @@ component Clock {
             Text {
                 role: status
                 label: "elapsed time"
-                "Elapsed: {(clock.now() - started_at) / 1000}s"
+                "Elapsed: {elapsed / 1000}s"
             }
             Button { label: "Start" on: Start }
             Button { label: "Stop"  on: Stop  }
