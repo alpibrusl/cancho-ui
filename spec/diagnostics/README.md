@@ -160,6 +160,12 @@ in `examples/refusal/`, and by the evidence report.
 | `file-accept-invalid` | `Component` | `Error` | `Static` | An `accept:` of a `FileField` that is not a string literal of comma-separated tokens (`.ext`, `type/subtype`, `type/*`; no spaces; at most 20). `accept:` on anything but a `FileField` is `binding-unknown`. *(Built 2026-10-23, issue #79.)* |
 | `file-limit-invalid` | `Component` | `Error` | `Static` | A `max_bytes:` of a `FileField` that is not an integer literal from 1 to 1,048,576. On anything else it is `binding-unknown`. *(Built 2026-10-23, issue #79.)* |
 | `file-field-in-loop` | `Component` | `Error` | `Static` | A `FileField` drawn inside a `For`: the page keeps the chosen file by the place of the field in the source, and every row would share one. *(Built 2026-10-23, issue #79.)* |
+| `chart-incomplete` | `Component` | `Error` | `Static` | A `Chart` without `label:`, `kind:` or `values:`. *(Built 2026-10-24, issue #77, `docs/charts.md`.)* |
+| `chart-kind-invalid` | `Component` | `Error` | `Static` | A `kind:` that is not the string literal `"line"` or `"bar"`. *(Built 2026-10-24, issue #77.)* |
+| `chart-values-invalid` | `Component` | `Error` | `Static` | A `values:` that is not the name of a `List[Int]` or `List[Float]` state field, or a list literal of number literals. *(Built 2026-10-24, issue #77.)* |
+| `chart-labels-invalid` | `Component` | `Error` | `Static` | A `labels:` that is not the name of a `List[String]` state field, or a list literal of string literals. *(Built 2026-10-24, issue #77.)* |
+| `chart-unit-invalid` | `Component` | `Error` | `Static` | A `unit:` that is not a string literal of at most 12 characters. *(Built 2026-10-24, issue #77.)* |
+| `chart-in-loop` | `Component` | `Error` | `Static` | A `Chart` drawn inside a `For`. *(Built 2026-10-24, issue #77.)* The keys of a chart on another element (and any other key on a `Chart`) are `binding-unknown`. |
 | `parse-nesting-too-deep` | `Component` | `Error` | `Static` | `if` statements nested more than 32 deep: a parse error, not a stack overflow. Only statements are limited so far; see alpibrusl/cancho-ui#99 for expressions and views. *(Built 2026-10-22, issue #93.)* |
 | `table-child-invalid` | `Component` | `Error` | `Static` | A `Table` child that is not a `Row` or a `For` that makes `Row`s. *(Built 2026-10-21, issue #42, section 4.)* |
 | `capability-missing` | `Capability` | `Error` | `Static` | A component using an effect without `requires Capability` |

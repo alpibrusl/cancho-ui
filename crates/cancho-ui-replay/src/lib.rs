@@ -5,6 +5,7 @@
 //! runtime. The design, the trace format, what it computes and what it
 //! deliberately does not claim are in `docs/replay.md`.
 
+mod chart;
 mod eval;
 mod machine;
 mod report;
@@ -585,6 +586,7 @@ fn run_step(
         routes: std::mem::take(&mut m.routes),
         url: routes_used(comp).then(|| m.router.current().to_string()),
         credentials: credential_name(comp).map(|_| m.credentials.clone()),
+        charts: m.charts(),
         history: routes_used(comp).then(|| {
             serde_json::json!({
                 "entries": m.router.entries,
@@ -637,8 +639,8 @@ fn check_expectations(
     let actual_step = serde_json::to_value(sr).unwrap_or(Json::Null);
     for (key, expected) in &step.expect {
         report.checks += 1;
-        // `ticks` and `routes` are absent from a step in which none fell due or none was heard: that is the empty list.
-        let absent = if key == "ticks" || key == "routes" {
+        // `ticks`, `routes` and `charts` are absent from a step in which none fell due, none was heard or none is in the page: that is the empty list.
+        let absent = if key == "ticks" || key == "routes" || key == "charts" {
             Json::Array(Vec::new())
         } else {
             Json::Null

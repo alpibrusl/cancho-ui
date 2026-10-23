@@ -1,6 +1,6 @@
 # Charts: `Chart`, an SVG drawn from data, with a text alternative (issue #77)
 
-> **Status: DESIGN** (this PR is the note alone; the build follows). Written 2026-10-24 before the code ([`CONTRIBUTING.md`](../CONTRIBUTING.md)
+> **Status: BUILT** (design in #125; section 7 says what the build found and corrected). Written 2026-10-24 before the code ([`CONTRIBUTING.md`](../CONTRIBUTING.md)
 > section 1). Numbers measured in Chromium (Playwright, `Pixel 7` profile, 412 px) on main at 5f61076.
 
 ## 1. What exists
@@ -68,3 +68,24 @@ contrast of the series colour, the axis text and the table text in both schemes 
 
 Several series and a legend; a gauge, area, scatter, pie; axes with dates; a tooltip, a crosshair, point focus and arrow-key reading; zoom; logarithmic scales; animation; exporting the image; a canvas escape hatch (an
 `Image`/`Canvas` for a picture the program cannot describe is a separate decision: it would need its own, explicit text alternative); a screen reader's speech; iOS and a real phone.
+
+## 7. Built (2026-10-24), and what the build found
+
+* **Built.** `Chart` in the language, IR (`IrElementKind::Chart`, JSON name `Chart`), replay (`crates/cancho-ui-replay/src/chart.rs`: the one sentence builder; the report's `charts`) and the page (`CHART_ADAPTER_JS`, emitted only
+  for a program with a `Chart`; the stylesheet's `--cui-chart` for both schemes). `examples/charts` (+ trace) and a live gallery demo; `tests/chart_corpus.json` (15 cases, including 1,000 and 1,500 values and markup
+  in labels); `crates/cancho-ui/tests/chart.rs` (9 tests) and 2 unit tests; `scripts/check-chart.js` (116 checks in Chromium); eighteen deliberate breaks (`scripts/breaks/chart.json`), each caught. The tags of section 5 are
+  in `spec/diagnostics/README.md`.
+* **Checked in Chromium** (Pixel 7, 412 px): for every case the SVG's accessible name is `<label>: <the sentence replay reports>`; the geometry (the polyline's points, every bar's `x`, `y`, `width` and `height`, the y ticks, the x
+  labels) agrees with an **oracle written again in the check script from the formulas of section 3**, sharing no code with the page, and for `[1, 2, 3]` equals the numbers worked out by hand before the page existed
+  (`40,145.55 175,81 310,16.45`; bars `53.5,104.67,63,47.33` and so on), which anchors the oracle too; 1,000 values draw 1,000 points and 1,000 bars, 1,500 draw the last 1,000, the table lists the last 200 (first row position 1,301, last
+  1,500) and says so; the table is collapsed, opens with Enter on its summary and closes with Space, and the summary is 44 px high; markup in labels ran nothing and created nothing; contrast read from the page in both
+  schemes: series colour 7.59 : 1 (light) and 9.63 : 1 (dark) against `Canvas`, axis and table text over 4.5 : 1; 412, 360 and 320 px wide: no horizontal scroll, a label at 13.7, 11.7 and 10.2 px; 1280 px: the chart stops at 640 px.
+* **Found while building.**
+  * **The text of the axis is in the accessibility tree.** §2 measured that 1,000 `<rect>` children of `role="img"` cost nothing; `<text>` children are different: Chromium lists them (seven numeric `StaticText` nodes
+    for one chart), although ARIA makes the children of an image presentational. The axis text is now `aria-hidden`, and a check asserts that no number of the axis is a node.
+  * **Rounding to two decimals is Math.round's, not the usual one.** `2.005` reads `2.01` (JavaScript's `2.005 * 100` is `200.5`), `1.005` reads `1`; replay's `math_builtin("round")` agrees with the page on every
+    corpus value, which is the point of using it. My first test of replay asserted `2` for `2.005`; the check against JavaScript is why the assertion was corrected, not the code.
+  * **A report with no chart has no `charts`**, so `expect: {"charts": []}` is the empty list, as for `ticks` and `routes`.
+* **The gallery tile.** The "Charts" coming-soon tile is removed and the page shows a live demo. `check-gallery` R5 did **not** force it (its probe, `Canvas` is still refused, is still true), so this is a judgment: the tile
+  promised charts, charts exist, and what is still missing (`Canvas`, `Image`) is already named by the Maps tile ("a map or image primitive").
+* **Still not done:** section 6. In addition, numbers of 1e21 or more are written `?` in the alternative on both sides.

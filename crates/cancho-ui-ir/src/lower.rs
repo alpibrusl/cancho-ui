@@ -1124,6 +1124,7 @@ fn lower_kind(k: &ElementKind) -> IrElementKind {
         ElementKind::Checkbox => IrElementKind::Checkbox,
         ElementKind::Select => IrElementKind::Select,
         ElementKind::FileField => IrElementKind::FileField,
+        ElementKind::Chart => IrElementKind::Chart,
         ElementKind::NavLink => IrElementKind::NavLink,
         ElementKind::Named(s) => IrElementKind::Named(s.clone()),
     }

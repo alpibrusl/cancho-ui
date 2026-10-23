@@ -615,3 +615,108 @@ function __cui_file_pick(root, key, input, max, accept, deliver) {
     }, function () { tell({ error: 'unreadable' }); });
 }
 "#;
+
+/// The `Chart` adapter (docs/charts.md): an SVG drawn from a list of numbers, its text alternative and its data table. `__cui_chart_summary`
+/// is the page's copy of `cancho_ui_replay::chart::summary`; `tests/chart_corpus.json` is run against both. Every string from the
+/// program goes in with `textContent` or `setAttribute`; every number is formatted here.
+pub(crate) const CHART_ADAPTER_JS: &str = r#"// Platform adapter: Chart (docs/charts.md). One series, a line or bars, the last 1000 values, a data table of the last 200.
+function __cui_chart_num(x) { const r = Math.round(x * 100) / 100; return Math.abs(r) >= 1e21 ? '?' : String(r); }
+function __cui_chart_summary(kind, nums, unit) {
+    const total = nums.length;
+    if (total === 0) { return kind + ' chart with no values'; }
+    const drawn = nums.slice(Math.max(0, total - 1000)), n = drawn.length;
+    const w = function (x) { return unit === '' ? __cui_chart_num(x) : __cui_chart_num(x) + ' ' + unit; };
+    let mn = drawn[0], mx = drawn[0];
+    for (let i = 1; i < n; i++) { if (drawn[i] < mn) { mn = drawn[i]; } if (drawn[i] > mx) { mx = drawn[i]; } }
+    let s = kind + ' chart of ' + n + ' value' + (n === 1 ? '' : 's') + ': minimum ' + w(mn) + ', maximum ' + w(mx) + ', last ' + w(drawn[n - 1]);
+    if (total > n) { s += ', the last ' + n + ' of ' + total + ' shown'; }
+    return s;
+}
+function __cui_chart(fig, label, kind, values, labels, unit) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const f2 = function (x) { return String(+x.toFixed(2)); };
+    const svgEl = function (tag, attrs) { const e = document.createElementNS(NS, tag); for (const k in attrs) { e.setAttribute(k, attrs[k]); } return e; };
+    const nums = [];
+    (values || []).forEach(function (v) { if (typeof v === 'number' && isFinite(v)) { nums.push(v); } });
+    const total = nums.length, start = Math.max(0, total - 1000), drawn = nums.slice(start), n = drawn.length;
+    const svg = svgEl('svg', { viewBox: '0 0 320 180', role: 'img', 'aria-label': label + ': ' + __cui_chart_summary(kind, nums, unit) });
+    svg.setAttribute('class', 'cui-chart-svg');
+    svg.style.cssText = 'display:block;width:100%;max-width:40rem;height:auto';
+    const text = function (x, y, anchor, s) {
+        const t = svgEl('text', { x: f2(x), y: f2(y), 'text-anchor': anchor, 'font-size': '12', fill: 'currentColor', 'aria-hidden': 'true' });
+        t.textContent = s;
+        svg.appendChild(t);
+    };
+    if (n === 0) {
+        text(175, 90, 'middle', 'No values');
+    } else {
+        const L = 40, R = 310, T = 10, B = 152, W = R - L, H = B - T;
+        let mn = drawn[0], mx = drawn[0];
+        for (let i = 1; i < n; i++) { if (drawn[i] < mn) { mn = drawn[i]; } if (drawn[i] > mx) { mx = drawn[i]; } }
+        let lo, hi;
+        if (kind === 'bar') { lo = Math.min(0, mn); hi = Math.max(0, mx); if (lo === hi) { hi = lo + 1; } }
+        else if (mn === mx) { lo = mn - 1; hi = mx + 1; }
+        else { const pad = (mx - mn) * 0.05; lo = mn - pad; hi = mx + pad; }
+        const raw = (hi - lo) / 4, base = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / base;
+        const step = (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * base;
+        const y = function (v) { return B - (v - lo) / (hi - lo) * H; };
+        for (let i = Math.ceil(lo / step - 1e-9); i <= Math.floor(hi / step + 1e-9); i++) {
+            const v = i * step;
+            svg.appendChild(svgEl('line', { x1: L, x2: R, y1: f2(y(v)), y2: f2(y(v)), stroke: 'currentColor', 'stroke-opacity': '0.25' }));
+            text(L - 4, y(v) + 4, 'end', __cui_chart_num(v));
+        }
+        svg.appendChild(svgEl('line', { x1: L, x2: L, y1: T, y2: B, stroke: 'currentColor' }));
+        svg.appendChild(svgEl('line', { x1: L, x2: R, y1: B, y2: B, stroke: 'currentColor' }));
+        const colour = 'var(--cui-chart, #0550ae)';
+        const slot = W / n;
+        const xAt = function (i) { return kind === 'bar' ? L + i * slot + slot / 2 : (n === 1 ? L + W / 2 : L + i * W / (n - 1)); };
+        if (kind === 'bar') {
+            if (lo < 0) { svg.appendChild(svgEl('line', { x1: L, x2: R, y1: f2(y(0)), y2: f2(y(0)), stroke: 'currentColor' })); }
+            for (let i = 0; i < n; i++) {
+                const yv = y(drawn[i]), y0 = y(0);
+                const r = svgEl('rect', { x: f2(L + i * slot + slot * 0.15), y: f2(Math.min(yv, y0)), width: f2(slot * 0.7), height: f2(Math.abs(yv - y0)) });
+                r.style.fill = colour;
+                svg.appendChild(r);
+            }
+        } else {
+            const pts = [];
+            for (let i = 0; i < n; i++) { pts.push(f2(xAt(i)) + ',' + f2(y(drawn[i]))); }
+            const pl = svgEl('polyline', { points: pts.join(' '), fill: 'none', 'stroke-width': '2', 'stroke-linejoin': 'round' });
+            pl.style.stroke = colour;
+            svg.appendChild(pl);
+            if (n === 1) { const c = svgEl('circle', { cx: f2(xAt(0)), cy: f2(y(drawn[0])), r: '3' }); c.style.fill = colour; svg.appendChild(c); }
+        }
+        const name = function (i) { const k = start + i; return labels && labels[k] !== undefined ? String(labels[k]) : String(k + 1); };
+        text(xAt(0), 170, 'start', name(0));
+        if (n > 2) { text(xAt(Math.floor((n - 1) / 2)), 170, 'middle', name(Math.floor((n - 1) / 2))); }
+        if (n > 1) { text(xAt(n - 1), 170, 'end', name(n - 1)); }
+        // the data table: the last 200 of what is drawn, collapsed
+        var rows = Math.min(n, 200);
+        var details = document.createElement('details');
+        var summary = document.createElement('summary');
+        summary.textContent = 'Data table';
+        details.appendChild(summary);
+        var table = document.createElement('table');
+        table.classList.add('cui-table');
+        if (n > rows) { var cap = document.createElement('caption'); cap.textContent = 'The last ' + rows + ' of ' + n + ' values.'; table.appendChild(cap); }
+        var head = document.createElement('tr');
+        ['label', 'value'].forEach(function (h) { var th = document.createElement('th'); th.setAttribute('scope', 'col'); th.textContent = h; head.appendChild(th); });
+        var thead = document.createElement('thead'); thead.appendChild(head); table.appendChild(thead);
+        var tbody = document.createElement('tbody');
+        for (let i = n - rows; i < n; i++) {
+            var tr = document.createElement('tr');
+            var a = document.createElement('td'); a.textContent = name(i);
+            var c2 = document.createElement('td'); c2.textContent = unit === '' ? __cui_chart_num(drawn[i]) : __cui_chart_num(drawn[i]) + ' ' + unit;
+            tr.appendChild(a); tr.appendChild(c2); tbody.appendChild(tr);
+        }
+        table.appendChild(tbody);
+        details.appendChild(table);
+        fig.appendChild(svg);
+        const cap2 = document.createElement('figcaption'); cap2.textContent = label; fig.appendChild(cap2);
+        fig.appendChild(details);
+        return;
+    }
+    fig.appendChild(svg);
+    const cap3 = document.createElement('figcaption'); cap3.textContent = label; fig.appendChild(cap3);
+}
+"#;

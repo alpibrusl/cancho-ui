@@ -570,6 +570,7 @@ impl Serialize for IrElementKind {
             IrElementKind::FileField => {
                 ser.serialize_unit_variant("IrElementKind", 13, "FileField")
             }
+            IrElementKind::Chart => ser.serialize_unit_variant("IrElementKind", 14, "Chart"),
             IrElementKind::NavLink => ser.serialize_unit_variant("IrElementKind", 12, "NavLink"),
             IrElementKind::Table => ser.serialize_unit_variant("IrElementKind", 5, "Table"),
             IrElementKind::TableRow => ser.serialize_unit_variant("IrElementKind", 6, "TableRow"),

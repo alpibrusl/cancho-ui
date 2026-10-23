@@ -31,7 +31,14 @@ pub const ELEMENT_KEYS: &[&str] = &[
     "to",
     "accept",
     "max_bytes",
+    "kind",
+    "values",
+    "labels",
+    "unit",
 ];
+
+/// What a `Chart` takes (docs/charts.md section 3); every other key is `binding-unknown` on it.
+pub const CHART_KEYS: &[&str] = &["label", "role", "kind", "values", "labels", "unit"];
 
 /// What a `FileField` takes (docs/file-upload.md section 3); every other key is `binding-unknown` on it.
 pub const FILEFIELD_KEYS: &[&str] = &["label", "role", "on", "accept", "max_bytes", "disabled"];
@@ -84,6 +91,7 @@ fn check_node(c: &IrComponent, node: &IrViewNode, in_for: bool) -> Result<(), Lo
                 }
                 check_navlink_complete(kind, accessibility, bindings, *span)?;
                 check_file_field(kind, accessibility, bindings, *span, in_for)?;
+                check_chart(kind, accessibility, bindings, *span, in_for)?;
                 check_checkbox_complete(kind, bindings, *span)?;
                 check_select_complete(kind, bindings, *span)?;
             }
@@ -120,6 +128,7 @@ fn element_name(kind: &IrElementKind) -> &'static str {
         IrElementKind::Checkbox => "Checkbox",
         IrElementKind::Select => "Select",
         IrElementKind::FileField => "FileField",
+        IrElementKind::Chart => "Chart",
         IrElementKind::NavLink => "NavLink",
         IrElementKind::Named(_) => "a component",
     }
@@ -653,6 +662,108 @@ fn check_file_field(
     Ok(())
 }
 
+/// A `Chart` has a name, a kind and the numbers it draws; it is not drawn in a `For` (docs/charts.md section 3).
+fn check_chart(
+    kind: &IrElementKind,
+    accessibility: &IrAccessibility,
+    bindings: &[IrBinding],
+    span: cancho_ui_syntax::span::Span,
+    in_for: bool,
+) -> Result<(), LowerError> {
+    if !matches!(kind, IrElementKind::Chart) {
+        return Ok(());
+    }
+    let has_label = accessibility.label.is_some() || accessibility.label_expr.is_some();
+    let has = |k: &str| bindings.iter().any(|b| b.key == k);
+    if !has_label || !has("kind") || !has("values") {
+        return Err(LowerError::ControlRefused {
+            code: "chart-incomplete",
+            message: "a Chart needs `label:` (its name), `kind:` (\"line\" or \"bar\") and `values:` (the numbers): `Chart { label: \"Temperature\" kind: \"line\" values: readings }`".to_string(),
+            span,
+        });
+    }
+    if in_for {
+        return Err(LowerError::ControlRefused {
+            code: "chart-in-loop",
+            message: "a Chart is not drawn inside a `For`; draw one chart of a list, or one `Chart` per series".to_string(),
+            span,
+        });
+    }
+    Ok(())
+}
+
+/// `kind:`, `values:`, `labels:` and `unit:` are bindings of a `Chart` with checked values.
+fn check_chart_binding(
+    c: &IrComponent,
+    kind: &IrElementKind,
+    b: &IrBinding,
+) -> Result<(), LowerError> {
+    if !matches!(kind, IrElementKind::Chart) {
+        return Err(LowerError::ControlRefused {
+            code: "binding-unknown",
+            message: format!(
+                "`{}:` is a binding of Chart, not of {}",
+                b.key,
+                element_name(kind)
+            ),
+            span: b.span,
+        });
+    }
+    let refuse = |code: &'static str, message: String| LowerError::ControlRefused {
+        code,
+        message,
+        span: b.span,
+    };
+    let field_is = |name: &str, want: &dyn Fn(&IrType) -> bool| {
+        c.state.iter().any(|f| f.name == name && want(&f.ty))
+    };
+    let numbers = |t: &IrType| matches!(t, IrType::List { elem } if matches!(**elem, IrType::Int | IrType::Float));
+    let strings = |t: &IrType| matches!(t, IrType::List { elem } if **elem == IrType::String);
+    fn number_lit(e: &IrExpr) -> bool {
+        match e {
+            IrExpr::IntLit { .. } | IrExpr::FloatLit { .. } => true,
+            IrExpr::Unary {
+                op: IrUnOp::Neg,
+                operand,
+                ..
+            } => number_lit(operand),
+            _ => false,
+        }
+    }
+    match (b.key.as_str(), &b.value) {
+        ("kind", IrBindingValue::String(k)) if k == "line" || k == "bar" => Ok(()),
+        ("kind", _) => Err(refuse(
+            "chart-kind-invalid",
+            "`kind:` is the string literal \"line\" or \"bar\"".to_string(),
+        )),
+        ("values", IrBindingValue::StateRef(n)) if field_is(n, &numbers) => Ok(()),
+        ("values", IrBindingValue::Const { expr, .. })
+            if matches!(&**expr, IrExpr::ListLit { items, .. } if items.iter().all(number_lit)) =>
+        {
+            Ok(())
+        }
+        ("values", _) => Err(refuse(
+            "chart-values-invalid",
+            "`values:` takes the name of a `List[Int]` or `List[Float]` state field, or a list literal of number literals".to_string(),
+        )),
+        ("labels", IrBindingValue::StateRef(n)) if field_is(n, &strings) => Ok(()),
+        ("labels", IrBindingValue::Const { expr, .. })
+            if matches!(&**expr, IrExpr::ListLit { items, .. } if items.iter().all(|i| matches!(i, IrExpr::StringLit { .. }))) =>
+        {
+            Ok(())
+        }
+        ("labels", _) => Err(refuse(
+            "chart-labels-invalid",
+            "`labels:` takes the name of a `List[String]` state field, or a list literal of string literals".to_string(),
+        )),
+        ("unit", IrBindingValue::String(u)) if u.chars().count() <= 12 => Ok(()),
+        _ => Err(refuse(
+            "chart-unit-invalid",
+            "`unit:` is a string literal of at most 12 characters, like \"°C\"".to_string(),
+        )),
+    }
+}
+
 /// `accept:` and `max_bytes:` are bindings of a `FileField` with checked values.
 fn check_file_binding(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
     if !matches!(kind, IrElementKind::FileField) {
@@ -756,6 +867,23 @@ fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result
     }
     if b.key == "accept" || b.key == "max_bytes" {
         check_file_binding(kind, b)?;
+    }
+    if matches!(b.key.as_str(), "kind" | "values" | "labels" | "unit") {
+        check_chart_binding(c, kind, b)?;
+    }
+    if matches!(kind, IrElementKind::Chart)
+        && !CHART_KEYS.contains(&b.key.as_str())
+        && ELEMENT_KEYS.contains(&b.key.as_str())
+    {
+        return Err(LowerError::ControlRefused {
+            code: "binding-unknown",
+            message: format!(
+                "`{}:` is not a binding of Chart; it takes {}",
+                b.key,
+                CHART_KEYS.join(", ")
+            ),
+            span: b.span,
+        });
     }
     if matches!(kind, IrElementKind::NavLink)
         && !NAVLINK_KEYS.contains(&b.key.as_str())

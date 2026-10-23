@@ -143,6 +143,9 @@ pub struct StepReport {
     /// declares none (docs/bearer-token.md section 4).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub credentials: Option<Vec<String>>,
+    /// The charts in the page after the step, each with its text alternative (docs/charts.md section 4); absent when there are none.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub charts: Vec<Json>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
