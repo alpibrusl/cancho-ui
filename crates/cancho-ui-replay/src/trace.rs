@@ -85,7 +85,16 @@ pub struct Trace {
 }
 
 const EXPECT_KEYS: &[&str] = &[
-    "outcome", "issued", "pending", "fired", "ticks", "storage", "url", "history", "routes",
+    "outcome",
+    "issued",
+    "pending",
+    "fired",
+    "ticks",
+    "storage",
+    "url",
+    "history",
+    "routes",
+    "credentials",
 ];
 
 pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {

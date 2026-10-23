@@ -139,6 +139,10 @@ pub struct StepReport {
     pub url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub history: Option<Json>,
+    /// The names of the credentials the component holds a token for after the step (never a value); absent for a component that
+    /// declares none (docs/bearer-token.md section 4).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub credentials: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]

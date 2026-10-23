@@ -878,11 +878,16 @@ pub fn compile_to_js(
     }
     let ir = compile_to_ir(file)?;
     // docs/adapters.md section 18: a module that mounts itself has nowhere to receive a credential.
+    // A component that receives its token itself (`credential.set`, docs/bearer-token.md) needs none from the mount.
     if options.auto_mount
         && let Some((comp, req)) = ir.components.iter().find_map(|c| {
+            let sets = c
+                .reachable_effects
+                .iter()
+                .any(|e| e.path == ["credential", "set"]);
             c.requires
                 .iter()
-                .find(|r| r.name == "Credential")
+                .find(|r| r.name == "Credential" && !sets)
                 .map(|r| (c, r))
         })
     {

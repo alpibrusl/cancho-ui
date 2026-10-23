@@ -707,6 +707,11 @@ added) and cannot reach an undeclared host.
 A scheme other than Bearer; a credential for `net.search`; a credential attached to a path rather than a host; refreshing or
 expiring a token (the page passes a new one by remounting).
 
+### 18.6 A token the program receives (#83)
+
+A program can also take the token from a login response: `credential.set("api", token)` and `credential.clear("api")` (`docs/bearer-token.md`). Such a component is anonymous until it holds a token
+(the "blocked until supplied" rule of 18.4 applies to a component that cannot set its own), can be auto-mounted and built with `--pwa`/`--page`, and holds the token in memory only.
+
 ## 19. The installed page, started with the service down (issue #44)
 
 **Measured** (`scripts/check-offline.js`, Chromium, the server stopped because `setOffline` does not reach a service worker): the

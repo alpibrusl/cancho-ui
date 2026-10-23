@@ -1,0 +1,75 @@
+{
+  "checks": [
+    { "name": "cargo test bearer", "argv": ["cargo", "test", "--quiet", "-p", "cancho-ui", "--test", "bearer"] },
+    { "name": "the example's trace", "argv": ["target/debug/cancho-ui", "test", "examples/bearer/bearer.cui", "examples/bearer/bearer.trace.json"] },
+    { "name": "check-bearer.js", "argv": ["node", "scripts/check-bearer.js"] }
+  ],
+  "breaks": [
+    {
+      "name": "the page accepts any value as a token",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "{1,4096}$/.test(value)) { return false; }",
+      "to": "{1,4096}$/.test(value) && false) { return false; }"
+    },
+    {
+      "name": "credential.clear keeps the token",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "cred.token = null;",
+      "to": "cred.token = cred.token;"
+    },
+    {
+      "name": "the token is also written to localStorage",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "    cred.token = value;\n    return true;",
+      "to": "    cred.token = value;\n    try { localStorage.setItem('cui:cred', value); } catch (e) { /* none */ }\n    return true;"
+    },
+    {
+      "name": "the token is sent to every host",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "    return !!cred && (target.origin === window.location.origin || cred.hosts.indexOf(target.host.toLowerCase()) !== -1);",
+      "to": "    return !!cred;"
+    },
+    {
+      "name": "a component that sets its token is blocked until it has one (the sign-in cannot be sent)",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "hosts: [{}], anon: {anon}, token:",
+      "to": "hosts: [{}], anon: false, token:"
+    },
+    {
+      "name": "the auto-mount refusal also applies to a component that sets its token",
+      "file": "crates/cancho-ui/src/pipeline.rs",
+      "from": ".find(|r| r.name == \"Credential\" && !sets)",
+      "to": ".find(|r| r.name == \"Credential\" && (!sets || true))"
+    },
+    {
+      "name": "the name of a credential is not checked",
+      "file": "crates/cancho-ui-ir/src/credential.rs",
+      "from": "        if !ok {",
+      "to": "        if !ok && false {"
+    },
+    {
+      "name": "replay holds a credential for any string",
+      "file": "crates/cancho-ui-replay/src/eval.rs",
+      "from": "                    if plain && !ctx.credentials.contains(cred) {",
+      "to": "                    if !ctx.credentials.contains(cred) {"
+    },
+    {
+      "name": "replay's clear forgets nothing",
+      "file": "crates/cancho-ui-replay/src/eval.rs",
+      "from": "                    ctx.credentials.retain(|c| c != cred);",
+      "to": "                    let _ = cred;"
+    },
+    {
+      "name": "the step report has no credentials",
+      "file": "crates/cancho-ui-replay/src/lib.rs",
+      "from": "credentials: credential_name(comp).map(|_| m.credentials.clone()),",
+      "to": "credentials: None,"
+    },
+    {
+      "name": "replay's report calls the sign-in a credentialed request",
+      "file": "crates/cancho-ui-replay/src/lib.rs",
+      "from": "                        } else if sets_its_token(comp) {",
+      "to": "                        } else if sets_its_token(comp) && false {"
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+// examples/bearer/bearer.cui: sign in with a bearer token the service returns in its body (docs/bearer-token.md, issue #83).
+//
+// `credential.set("api", token)` keeps the token in memory, inside the component's `Credential`; it is not in state, not in Storage and
+// not in a cookie, and a reload forgets it. Every later `net.get` and `net.post` sends it as `Authorization: Bearer ...` to this origin
+// (the credential names no other host). `credential.clear("api")` signs out. If your service can set an HttpOnly cookie instead, do that
+// (examples/tickets): a script of the page cannot read a cookie, and it can read this.
+
+component Bearer {
+    requires Network;
+    requires NetworkWrite;
+    requires Credential("api");
+
+    state user: String = "";
+    state pass: String = "";
+    state msg: String = "";
+    state who: String = "";
+    state signed: Bool = false;
+    state login: Result[String, String] = Ok("");
+    state me: Result[String, String] = Ok("");
+    state out: Result[String, String] = Ok("");
+
+    on User(v) { user = v; }
+    on Pass(v) { pass = v; }
+
+    // The token goes from the response into the credential. The response itself is in `login` until the handler overwrites it (an `await`
+    // always lands in a state field), so the handler does, before anything is drawn: the token is then in no state, report or trace.
+    on SignIn {
+        login = await(net.post("api/login", "[" + json.quote(user) + "," + json.quote(pass) + "]"));
+        signed = match login {
+            Ok(reply) => { credential.set("api", json.get(json.get(reply, "body", ""), "token", "")) }
+            Err(_) => { false }
+            Cancelled => { false }
+        };
+        login = Ok("");
+        msg = if signed { "" } else { "Wrong user name or password." };
+        pass = "";
+        if signed {
+            run Ask;
+        }
+    }
+
+    block Ask {
+        me = await(net.get("api/me"));
+        who = match me {
+            Ok(text) => { json.get(text, "user", "?") }
+            Err(e) => { "(" + e + ")" }
+            Cancelled => { "" }
+        };
+    }
+
+    on Again {
+        run Ask;
+    }
+
+    on SignOut {
+        out = await(net.post("api/logout", "[]"));
+        signed = !credential.clear("api");
+        who = "";
+        msg = "You are signed out.";
+    }
+
+    view {
+        Column {
+            If { when: !signed
+                Text { role: heading "Sign in" }
+                TextField { label: "User name" value: user on: User }
+                TextField { label: "Password" value: pass on: Pass type: "password" submit: SignIn }
+                Button { label: "Sign in" on: SignIn }
+            }
+            If { when: signed
+                Text { role: heading "Signed in" }
+                Text { role: status "Hello {who}" }
+                Button { label: "Ask again" on: Again }
+                Button { label: "Sign out" on: SignOut }
+            }
+            Text { role: status "{msg}" }
+        }
+    }
+}
