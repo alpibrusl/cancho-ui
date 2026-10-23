@@ -168,6 +168,8 @@ pub struct Ctx<'a> {
     /// full store refused (docs/adapters.md section 20). The adapter reads this memory first (a refused value is newer than the persisted one), then the store.
     pub storage_quota: Option<u64>,
     pub storage_memory: &'a mut BTreeMap<String, String>,
+    /// The URL fragment and its history (docs/routing.md section 5), for `router.go` and `router.replace`.
+    pub router: &'a mut crate::router::Router,
     pub journal: &'a mut Journal,
     pub locals: Vec<(String, Value)>,
     /// Evaluating a state initial value: identifiers, calls, `match` and
@@ -488,6 +490,30 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
             ctx.journal.record(Value::Bool(fits));
             Ok(Value::Bool(fits))
         }
+        ("router.go", 1) | ("router.replace", 1) => {
+            let value = eval(ctx, &args[0])?;
+            if let Some(v) = ctx.journal.replayed() {
+                return Ok(v);
+            }
+            let Value::Str(p) = &value else {
+                return Err(fault(
+                    "replay-type-error",
+                    format!("`{name}` needs a String path, got {}", describe(&value)),
+                    span,
+                ));
+            };
+            // A path the fragment cannot carry is refused as a value, not a throw (docs/routing.md section 4).
+            let legal = cancho_ui_ir::routing::path_is_legal(p);
+            if legal {
+                if name == "router.go" {
+                    ctx.router.push(p);
+                } else {
+                    ctx.router.replace(p);
+                }
+            }
+            ctx.journal.record(Value::Bool(legal));
+            Ok(Value::Bool(legal))
+        }
         ("json.quote", 1) => match eval(ctx, &args[0])? {
             Value::Str(t) => Ok(Value::Str(json_quote(&t))),
             other => Err(fault(
@@ -758,9 +784,10 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
         (
             "clock.now" | "net.search" | "net.get" | "net.fetch" | "net.post" | "net.put"
             | "net.delete" | "location.current" | "sleep" | "storage.get" | "storage.set"
-            | "json.get" | "json.items" | "json.quote" | "reverse" | "contains" | "lower" | "fold"
-            | "num" | "take" | "skip" | "concat" | "min" | "max" | "abs" | "floor" | "ceil"
-            | "round" | "lines" | "split" | "join" | "trim" | "upper" | "starts_with" | "ends_with",
+            | "router.go" | "router.replace" | "json.get" | "json.items" | "json.quote" | "reverse"
+            | "contains" | "lower" | "fold" | "num" | "take" | "skip" | "concat" | "min" | "max"
+            | "abs" | "floor" | "ceil" | "round" | "lines" | "split" | "join" | "trim" | "upper"
+            | "starts_with" | "ends_with",
             n,
         ) => Err(fault(
             "replay-type-error",

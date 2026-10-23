@@ -1,0 +1,194 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "note": "A deep link, then links, Back, Forward, a program that moves the page, a path the fragment cannot carry, and a page that is not there.",
+  "url": "/items/pump",
+  "steps": [
+    {
+      "advance": 0,
+      "note": "mount: the route event hears the path the page loaded at",
+      "state": {
+        "path": "/items/pump",
+        "item": "pump"
+      },
+      "expect": {
+        "routes": [
+          "/items/pump"
+        ],
+        "url": "/items/pump",
+        "history": {
+          "entries": [
+            "/items/pump"
+          ],
+          "position": 0
+        }
+      }
+    },
+    {
+      "navigate": "/items/gauge",
+      "state": {
+        "path": "/items/gauge",
+        "item": "gauge"
+      },
+      "expect": {
+        "outcome": "ok",
+        "routes": [
+          "/items/gauge"
+        ],
+        "history": {
+          "entries": [
+            "/items/pump",
+            "/items/gauge"
+          ],
+          "position": 1
+        }
+      }
+    },
+    {
+      "back": true,
+      "state": {
+        "path": "/items/pump",
+        "item": "pump"
+      },
+      "expect": {
+        "routes": [
+          "/items/pump"
+        ],
+        "history": {
+          "position": 0
+        }
+      }
+    },
+    {
+      "forward": true,
+      "state": {
+        "path": "/items/gauge"
+      },
+      "expect": {
+        "routes": [
+          "/items/gauge"
+        ],
+        "history": {
+          "position": 1
+        }
+      }
+    },
+    {
+      "navigate": "/items/gauge",
+      "note": "the same path again: the browser fires nothing",
+      "expect": {
+        "outcome": "unchanged",
+        "routes": [],
+        "history": {
+          "entries": [
+            "/items/pump",
+            "/items/gauge"
+          ],
+          "position": 1
+        }
+      }
+    },
+    {
+      "navigate": "/",
+      "note": "the list is at the root",
+      "state": {
+        "path": "/",
+        "item": ""
+      },
+      "expect": {
+        "routes": [
+          "/"
+        ],
+        "history": {
+          "entries": [
+            "/items/pump",
+            "/items/gauge",
+            "/"
+          ],
+          "position": 2
+        }
+      }
+    },
+    {
+      "event": "Refused",
+      "note": "a path without its leading slash is answered false, and nothing moves",
+      "state": {
+        "jumped": false,
+        "path": "/"
+      },
+      "expect": {
+        "routes": [],
+        "history": {
+          "position": 2
+        }
+      }
+    },
+    {
+      "event": "Jump",
+      "note": "router.go pushes an entry; the route event runs after the handler returned",
+      "state": {
+        "jumped": true,
+        "path": "/items/valve",
+        "item": "valve"
+      },
+      "expect": {
+        "routes": [
+          "/items/valve"
+        ],
+        "url": "/items/valve",
+        "history": {
+          "entries": [
+            "/items/pump",
+            "/items/gauge",
+            "/",
+            "/items/valve"
+          ],
+          "position": 3
+        }
+      }
+    },
+    {
+      "navigate": "/items/lamp",
+      "note": "a page that is not there is the program's to draw",
+      "state": {
+        "path": "/items/lamp",
+        "item": "lamp"
+      },
+      "expect": {
+        "routes": [
+          "/items/lamp"
+        ]
+      }
+    },
+    {
+      "back": true,
+      "state": {
+        "path": "/items/valve"
+      }
+    },
+    {
+      "back": true,
+      "state": {
+        "path": "/"
+      }
+    },
+    {
+      "navigate": "/items/pump",
+      "note": "a new entry drops the ones after the current",
+      "state": {
+        "path": "/items/pump"
+      },
+      "expect": {
+        "history": {
+          "entries": [
+            "/items/pump",
+            "/items/gauge",
+            "/",
+            "/items/pump"
+          ],
+          "position": 3
+        }
+      }
+    }
+  ]
+}

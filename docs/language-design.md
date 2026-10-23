@@ -279,7 +279,7 @@ form.
 | `TextField` | 1 | Bound to a state value |
 | `List` | 2 | Indexed over a state list |
 | `Image` | 2 | With `alt` text |
-| `NavLink` | 3 | Cross-screen navigation |
+| `NavLink` | 3 | Cross-screen navigation (built, replay only so far: [`routing.md`](routing.md)) |
 
 Each primitive has accessibility metadata (role, label, focus
 order) declared at the language level, not inferred from CSS or

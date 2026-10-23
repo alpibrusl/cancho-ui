@@ -49,6 +49,11 @@ pub enum Action {
     /// The page becomes hidden / visible again (docs/schedules.md section 11).
     Hide,
     Show,
+    /// The user follows a link or types a URL: the fragment becomes this path (docs/routing.md section 5).
+    Navigate(String),
+    /// The browser's Back and Forward buttons.
+    Back,
+    Forward,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -74,10 +79,14 @@ pub struct Trace {
     pub storage_quota: Option<u64>,
     /// The names of the credentials the page supplied at mount (docs/adapters.md section 18); never their values.
     pub credentials: Vec<String>,
+    /// The URL fragment the page loaded at, as a path (docs/routing.md section 5); `/` when the trace does not say.
+    pub url: String,
     pub steps: Vec<Step>,
 }
 
-const EXPECT_KEYS: &[&str] = &["outcome", "issued", "pending", "fired", "ticks", "storage"];
+const EXPECT_KEYS: &[&str] = &[
+    "outcome", "issued", "pending", "fired", "ticks", "storage", "url", "history", "routes",
+];
 
 pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {
     let root: Json = serde_json::from_str(text).map_err(|e| TraceError {
@@ -105,6 +114,7 @@ pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {
             "storage",
             "storage_quota",
             "credentials",
+            "url",
             "steps",
             "note",
         ],
@@ -210,6 +220,17 @@ pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {
             ));
         }
     }
+    let url = match obj.get("url") {
+        None => "/".to_string(),
+        Some(Json::String(p)) if cancho_ui_ir::routing::path_is_legal(p) => p.clone(),
+        Some(_) => {
+            return Err(err(
+                "trace-navigate-invalid",
+                "url",
+                "`url` is the path the page loaded at: it starts with `/` and holds no space, `#` or character outside printable ASCII",
+            ));
+        }
+    };
     let steps_json = match obj.get("steps") {
         Some(Json::Array(a)) if !a.is_empty() => a,
         Some(Json::Array(_)) => {
@@ -252,6 +273,7 @@ pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {
         storage_quota,
         storage,
         credentials,
+        url,
         steps,
     })
 }
@@ -300,21 +322,23 @@ fn parse_step(j: &Json, i: usize) -> Result<Step, TraceError> {
     allow_keys(
         obj,
         &[
-            "event", "params", "resolve", "with", "advance", "dispose", "hide", "show", "state",
-            "expect", "note", "fault",
+            "event", "params", "resolve", "with", "advance", "dispose", "hide", "show", "navigate",
+            "back", "forward", "state", "expect", "note", "fault",
         ],
         &at,
     )?;
-    let actions: Vec<&str> = ["event", "resolve", "advance", "dispose", "hide", "show"]
-        .into_iter()
-        .filter(|k| obj.contains_key(*k))
-        .collect();
+    let actions: Vec<&str> = [
+        "event", "resolve", "advance", "dispose", "hide", "show", "navigate", "back", "forward",
+    ]
+    .into_iter()
+    .filter(|k| obj.contains_key(*k))
+    .collect();
     if actions.len() != 1 {
         return Err(err(
             "trace-bad-step",
             &at,
             format!(
-                "a step has exactly one of `event`, `resolve`, `advance`, `dispose`, `hide`, `show`; this one has {}",
+                "a step has exactly one of `event`, `resolve`, `advance`, `dispose`, `hide`, `show`, `navigate`, `back`, `forward`; this one has {}",
                 actions.len()
             ),
         ));
@@ -389,6 +413,33 @@ fn parse_step(j: &Json, i: usize) -> Result<Step, TraceError> {
             Action::Resolve { request, answer }
         }
         "advance" => Action::Advance(non_negative(&obj["advance"], &format!("{at}.advance"))?),
+        "navigate" => match &obj["navigate"] {
+            Json::String(p) if cancho_ui_ir::routing::path_is_legal(p) => {
+                Action::Navigate(p.clone())
+            }
+            _ => {
+                return Err(err(
+                    "trace-navigate-invalid",
+                    format!("{at}.navigate"),
+                    "`navigate` is a path: it starts with `/` and holds no space, `#` or character outside printable ASCII (a fragment that is not a route, like `#main`, is not something the page's route event hears)",
+                ));
+            }
+        },
+        "back" | "forward" => {
+            let key = actions[0];
+            if obj[key] != Json::Bool(true) {
+                return Err(err(
+                    "trace-bad-step",
+                    format!("{at}.{key}"),
+                    format!("`{key}` is `true`"),
+                ));
+            }
+            if key == "back" {
+                Action::Back
+            } else {
+                Action::Forward
+            }
+        }
         "hide" | "show" => {
             let key = actions[0];
             if obj[key] != Json::Bool(true) {

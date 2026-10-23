@@ -15,9 +15,13 @@
 | every control stretches to the width of the window | `max_width: 10..200` (characters) on a `Column` or `Row`: at most that wide and centred |
 
 The program says what a thing *is*; the stylesheet says how it looks. The classes and attributes the page writes
-(`cui-row`, `cui-gap-N`, `cui-field`, `cui-table`, `data-tone`) are styled by the stylesheet that `build --pwa` writes
-(`crates/cancho-ui/src/pwa.rs`); a program built without `--pwa` is styled by its host page, as before, and gets the
-structure (the `<label>`, the `<table>`) either way.
+(`cui-row`, `cui-gap-N`, `cui-field`, `cui-table`, `data-tone`) are styled by the stylesheet that `build --pwa` **and `build --page`** write
+(`crates/cancho-ui/src/pwa.rs`; it is one inline `<style>` in the `index.html` both write); a program built with neither (`build -o app.js`, which writes
+only the script) is styled by its host page, as before, and gets the structure (the `<label>`, the `<table>`) either way.
+
+**Corrected 2026-10-23 (#116, found while measuring what a program can say about its looks).** This paragraph said the stylesheet comes from `--pwa`. It is
+the page template, so `--page` (the gallery demos, `docs/mobile-backend.md` section 5.2) has it too: measured, the counter built with `--page` has one
+`<style>` with the same baseline, and a build with no flag has no CSS in `app.js` (`<style`, `<link` and `css` do not occur in it).
 
 ## 2. `gap:` and `max_width:`
 

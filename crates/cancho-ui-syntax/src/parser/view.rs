@@ -254,6 +254,7 @@ impl Parser {
             "TextArea" => ElementKind::TextArea,
             "Checkbox" => ElementKind::Checkbox,
             "Select" => ElementKind::Select,
+            "NavLink" => ElementKind::NavLink,
             other => ElementKind::Named(other.to_string()),
         };
 
@@ -538,6 +539,11 @@ impl Parser {
                         column: self.peek().span.start.column,
                     }),
                 }
+            }
+            "to" if matches!(kind, ElementKind::NavLink) => {
+                // The path a `NavLink` points at: a `String` expression of the view, evaluated at each render
+                // (docs/routing.md section 4).
+                Ok(BindingValue::Prop(self.parse_expr()?))
             }
             "value" => {
                 // `value: <ident>` — bind to a state field, or

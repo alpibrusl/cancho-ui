@@ -151,6 +151,12 @@ in `examples/refusal/`, and by the evidence report.
 | `checkbox-incomplete` | `Component` | `Error` | `Static` | A `Checkbox` without `checked:` (the page would forget the box at the next redraw) or without `on:` (it would tell the program nothing). *(Built 2026-10-23, issue #76, `docs/controls.md` section 9.)* |
 | `select-incomplete` | `Component` | `Error` | `Static` | A `Select` without `options:` (the list), `value:` (the `String` field holding the choice) or `on:` (the event). *(Built 2026-10-23, issue #76, `docs/controls.md` section 10.)* |
 | `select-binding-invalid` | `Component` | `Error` | `Static` | An `options:` that is not a list of string literals or the name of a `List` state field, or a `value:` of a `Select` that is not the name of a `String` state field. `options:` on anything but a `Select` is `binding-unknown`. *(Built 2026-10-23, issue #76, `docs/controls.md` section 10.)* |
+| `route-event-unknown` | `Component` | `Error` | `Static` | A `route Event;` naming an event the component does not handle. *(Built 2026-10-23, issue #75, `docs/routing.md` section 4.)* |
+| `route-event-params` | `Component` | `Error` | `Static` | A `route Event;` whose event does not take exactly one parameter (the path). *(Built 2026-10-23, issue #75.)* |
+| `route-duplicate` | `Component` | `Error` | `Static` | Two `route` lines in a component: one event receives every path. *(Built 2026-10-23, issue #75.)* |
+| `navlink-incomplete` | `Component` | `Error` | `Static` | A `NavLink` without `label:` (its text) or without `to:` (the path). *(Built 2026-10-23, issue #75, `docs/routing.md` section 4.)* |
+| `navlink-target-invalid` | `Component` | `Error` | `Static` | A literal `to:` of a `NavLink` that is not a path: it must start with `/`, hold no space, `#` or character outside printable ASCII, and be at most 2,000 characters. `to:` on anything but a `NavLink` is `binding-unknown`. *(Built 2026-10-23, issue #75.)* |
+| `routing-not-emitted` | `Component` | `Error` | `Static` | **Temporary.** `build` of a component that uses `route`, `router.go`/`router.replace` or `NavLink`: `check`, `test`, `inspect` and `diff` support routing, the page is the next step of #75. Removed with that step. *(2026-10-23.)* |
 | `parse-nesting-too-deep` | `Component` | `Error` | `Static` | `if` statements nested more than 32 deep: a parse error, not a stack overflow. Only statements are limited so far; see alpibrusl/cancho-ui#99 for expressions and views. *(Built 2026-10-22, issue #93.)* |
 | `table-child-invalid` | `Component` | `Error` | `Static` | A `Table` child that is not a `Row` or a `For` that makes `Row`s. *(Built 2026-10-21, issue #42, section 4.)* |
 | `capability-missing` | `Capability` | `Error` | `Static` | A component using an effect without `requires Capability` |
@@ -188,7 +194,7 @@ tags: `test-state-mismatch`, `test-expect-mismatch`, `test-fault-missing`, `test
 `trace-unknown-event`, `trace-params-arity`, `trace-value-too-long`, `trace-value-not-an-option`, `trace-unknown-state-field`,
 `trace-unknown-request`, `trace-request-not-pending`,
 `trace-request-not-scriptable`, `trace-bad-response`,
-`trace-event-after-dispose`, `replay-unsupported`, `replay-tick-limit`, `replay-type-error`,
+`trace-event-after-dispose`, `trace-navigate-invalid`, `trace-history-empty`, `replay-unsupported`, `replay-tick-limit`, `replay-route-limit`, `replay-type-error`,
 `replay-unknown-identifier`, `replay-no-match-arm`, `replay-non-finite`,
 `replay-number-format`. (`replay-non-finite` is also what the emitted page throws for the same result: `docs/semantics.md`,
 "Arithmetic is finite".) Their meanings are in `docs/replay.md` §7.1. A program that

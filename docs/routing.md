@@ -1,6 +1,6 @@
 # Routing: `NavLink`, the URL as state, and the back button
 
-> **Status: DESIGN, not built** (issue #75). Written 2026-10-23 before any code ([`CONTRIBUTING.md`](../CONTRIBUTING.md) section 1). The numbers in
+> **Status: step 1 BUILT (language, IR, replay; section 12), the page is step 2** (issue #75). Written 2026-10-23 before any code ([`CONTRIBUTING.md`](../CONTRIBUTING.md) section 1). The numbers in
 > section 2 were measured in Chromium (Playwright, `Pixel 7` profile, a stand-in for a static host that answers an unknown path with 404
 > as GitHub Pages does) on main at 02f6763. A claim found false while building is corrected here, in place, and listed in section 9.
 > Guarantee tier of the replay semantics: **tested** once built; of the browser behaviour: **observed in Chromium**, not guaranteed.
@@ -12,7 +12,7 @@ A route is the **fragment of the URL** (`#/items/3`). Three small pieces, no rou
 | piece | what it is | authority |
 |---|---|---|
 | `NavLink { label: "Item 3" to: "/items/3" }` | a view element: a real `<a href="#/items/3">` | none: it can only point at this document's own fragment |
-| `route Navigated;` | a component member, next to `start` and `every`: runs the event `on Navigated(path: String)` once after the first render with the current path, and again at every change of the fragment (a link, Back, Forward, a typed URL, `router.go`) | `requires Router;` |
+| `route Navigated;` | a component member, next to `start` and `every`: runs the event `on Navigated(path)` once after the first render with the current path, and again at every change of the fragment (a link, Back, Forward, a typed URL, `router.go`) | `requires Router;` |
 | `router.go(path)` / `router.replace(path)` | builtins that push or replace the URL entry; `Bool`, synchronous, like `storage.set` | `requires Router;` |
 
 The program decides what a path means: it keeps the path (or what it makes of it) in state and draws screens with
@@ -62,7 +62,7 @@ component Shell {
     requires Router;
     state path: String = "/";
     route Navigated;
-    on Navigated(p: String) { path = p; }
+    on Navigated(p) { path = p; }
     view {
         Column {
             NavLink { label: "Home" to: "/" }
@@ -105,10 +105,11 @@ Replay does not draw; it needs the URL and the history the page would have. New,
 * `"url": "/items/3"` at the top: the fragment at load (default `"/"`). The route event runs after the first render with it.
 * `{ "navigate": "/items/4" }`: the user followed a link or typed a URL; the path becomes current, a new entry is pushed, the event
   runs. The same path as the current one runs nothing (`"outcome": "unchanged"`).
-* `{ "back": 1 }` and `{ "forward": 1 }`: move along the entries replay keeps; the event runs with the path reached. Nothing to go back to is a
-  refused step (`trace-history-empty`).
+* `{ "back": true }` and `{ "forward": true }`: move one entry along the history replay keeps; the event runs with the path reached
+  (when it differs from the one left). Nothing to go back or forward to is a refused step (`trace-history-empty`).
 * `router.go` / `router.replace` are effects like `storage.set`: journalled, updating the same history, queuing the event.
-* The report prints `url` and the history position after each step, as it prints the `Storage` store.
+* The report prints, for a component that `requires Router;`, `url`, `history` (`entries`, `position`) and `routes` (the paths the route event
+  received in the step, in order), and `expect` may assert any of them. The human report prints `route <path>` and `url=`.
 
 What replay cannot say: that the fragment of a *real* page is a route (the page decides in the browser), so a trace's `navigate` of a
 non-route is refused (`trace-navigate-invalid`), and the page-side rule of section 4 is checked by the Chromium corpus only.
@@ -145,14 +146,22 @@ example will use it when it lands. Until then the routing example says, in its t
 
 ## 9. Corrections
 
-(none yet)
+* **2026-10-23, found building step 1.** The sample in section 4 wrote `on Navigated(p: String)`. An event's parameters have no types in this language
+  (`on Go(p)`), so the event is `on Navigated(p)` and `route-event-params` can check the count only; that the argument is a `String` is by
+  construction (the page and replay both pass one). Sections 1 and 4 are corrected above.
+* **2026-10-23.** Section 5 wrote `{ "back": 1 }`. Like `hide` and `show` the steps are `{ "back": true }` and `{ "forward": true }`, one entry each;
+  corrected above.
+* **2026-10-23.** Section 4 says `router.replace` fires the route event when the path changes. Measure 5 found that `history.replaceState` fires **nothing**,
+  so the page cannot use it for `replace`; step 2 must implement it with `location.replace("#" + path)` (which does fire `hashchange` and adds no entry) and
+  measure that before relying on it. Replay models the event and the single entry; it is the page's job to agree.
 
 ## 10. Rule tags this adds (each to be documented in `spec/diagnostics/README.md` with its test)
 
 `route-event-unknown`, `route-event-params` (not exactly one `String` parameter), `route-duplicate` (two `route` lines in a component),
 `navlink-incomplete` (no `label:` or no `to:`), `navlink-target-invalid` (a literal that is not a path), `binding-unknown` (`to:` off a
-`NavLink`), `capability-missing` (`Router` not required), `trace-navigate-invalid`, `trace-history-empty`, and `builtin-shape-mismatch`
-for a wrong `router.go` call.
+`NavLink`), `capability-missing` (`Router` not required), `trace-navigate-invalid` (a `navigate` step or the trace's `url` that is not a path), `trace-history-empty`, `replay-route-limit` (a step that runs
+more than 1,000 route events, because a handler navigates to a new path every time), and `builtin-shape-mismatch` for a wrong `router.go` call.
+`routing-not-emitted` is **temporary**: `build` of a routing program until step 2.
 
 ## 11. Order of the build, in separate PRs
 
@@ -160,3 +169,22 @@ for a wrong `router.go` call.
 2. The emitted page (the adapter, the anchor, the event), the corpus in Chromium, the breaks, `examples/routes` (a list and a detail, with a
    deep link), a gallery demo that shows it on a static host, and this note's section 2 re-measured on the built page.
 3. #92 as its own design.
+
+## 12. Step 1, built: language, IR and replay (2026-10-23)
+
+* **Syntax and IR.** `route Event;` is a schedule of kind `route` (`inspect ir` says `"kind": "route"`); `NavLink` is an element (`IrElementKind::NavLink`, JSON
+  name `NavLink`); `to:` is parsed as an expression and lowered like the other constant-expression bindings. The checks live in `crates/cancho-ui-ir/src/routing.rs`
+  (and `controls.rs` for the bindings), which keeps `lower.rs` under the 2,000-line ceiling. A `route` is also recorded as a reachable effect of capability `Router`,
+  so a component without `requires Router;` is `capability-missing` and `inspect effects` and the semantic diff list it with no new code; the diff shows
+  `+ schedule route Event` and an `expanded` authority (tested).
+* **Builtins.** `router.go(path)` and `router.replace(path)` are `Bool`, synchronous, one argument (`builtin-shape-mismatch` otherwise); a path that is not
+  legal (section 4) answers `false` and moves nothing; the current path answers `true` and fires nothing.
+* **Replay.** The machine keeps the history (`router.rs`) and runs the route event after the handler that queued it returned (and after a `navigate`, `back`,
+  `forward`); a run may queue more, up to 1,000 per step. The first step also reports the mount's route event, so a trace's first step asserts it.
+* **What the example showed.** `examples/routes` replays 12 steps and 41 checks. The first draft of its trace pressed `Jump` while the page was at a detail
+  path; replay answered `hidden` (the button is under an `If` that is false), which is the existing outcome doing its job.
+* **Checked.** `crates/cancho-ui/tests/routing.rs` (17 tests: every refusal above reached, the replay semantics, the diff) in the gate; seventeen deliberate
+  breaks (`scripts/breaks/routing.json`), each caught.
+* **Not in this step.** The page: nothing is emitted for a routing program (`build` says `routing-not-emitted`), so the Chromium corpus, the `replace`
+  measurement above, the reload and offline checks and the gallery demo are step 2. The gallery tile now says so and its probe is a `build` that must
+  still be refused (`check-gallery` R5).

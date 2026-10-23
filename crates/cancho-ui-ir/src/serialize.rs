@@ -100,6 +100,7 @@ impl Serialize for IrSchedule {
             match self.kind {
                 IrScheduleKind::Start => "start",
                 IrScheduleKind::Every(_) => "every",
+                IrScheduleKind::Route => "route",
             },
         )?;
         s.serialize_field("event", &self.event)?;
@@ -566,6 +567,7 @@ impl Serialize for IrElementKind {
             IrElementKind::TextArea => ser.serialize_unit_variant("IrElementKind", 9, "TextArea"),
             IrElementKind::Checkbox => ser.serialize_unit_variant("IrElementKind", 10, "Checkbox"),
             IrElementKind::Select => ser.serialize_unit_variant("IrElementKind", 11, "Select"),
+            IrElementKind::NavLink => ser.serialize_unit_variant("IrElementKind", 12, "NavLink"),
             IrElementKind::Table => ser.serialize_unit_variant("IrElementKind", 5, "Table"),
             IrElementKind::TableRow => ser.serialize_unit_variant("IrElementKind", 6, "TableRow"),
             IrElementKind::Cell => ser.serialize_unit_variant("IrElementKind", 7, "Cell"),

@@ -51,10 +51,10 @@
       "id": "routing",
       "title": "Multi-page routing",
       "issue": 75,
-      "missing": "Moving between screens and putting state in the URL: `NavLink` is refused as an unknown component and nothing reads the URL.",
+      "missing": "Moving between screens and putting state in the URL: `check` and `cancho-ui test` accept `NavLink`, `route` and `router.go`, but `build` writes no page for them yet and refuses it as `routing-not-emitted`.",
       "probe": {
-        "view": "NavLink { label: \"Next page\" }",
-        "rule": "component-kind-unknown"
+        "build": "NavLink { label: \"Next page\" to: \"/next\" }",
+        "rule": "routing-not-emitted"
       }
     },
     {

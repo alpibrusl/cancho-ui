@@ -10,6 +10,7 @@ use cancho_ui_ir::ir_expr_suspends;
 use cancho_ui_syntax::span::Span;
 
 use crate::eval::{Ctx, Fault, Journal, Stop, eval, span_of};
+use crate::router::{MAX_ROUTE_EVENTS_PER_STEP, Router};
 use crate::value::{Effect, Req, Value};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -26,6 +27,8 @@ pub enum Outcome {
     /// The handler faulted and the step said it would (`"fault": "replay-.."`, docs/replay.md): its segment's writes
     /// are undone (docs/semantics.md, "A handler that faults").
     Faulted,
+    /// A `navigate` to the path the page is already at: the browser fires nothing (docs/routing.md section 5).
+    Unchanged,
     Ok,
 }
 
@@ -38,6 +41,7 @@ impl Outcome {
             Outcome::Disabled => "disabled",
             Outcome::Hidden => "hidden",
             Outcome::Faulted => "faulted",
+            Outcome::Unchanged => "unchanged",
             Outcome::Ok => "ok",
         }
     }
@@ -192,6 +196,11 @@ pub struct Machine<'a> {
     /// The names of the credentials the trace says the page supplied (docs/adapters.md section 18).
     pub credentials: Vec<String>,
     pub requests: Vec<Request>,
+    /// The URL fragment and the history (docs/routing.md section 5).
+    pub router: Router,
+    /// The paths the route event received in this step, for the report.
+    pub routes: Vec<String>,
+    draining: bool,
     inflight: BTreeMap<&'static str, u32>,
     pub disposed: bool,
     ticks: Vec<TickTimer>,
@@ -206,6 +215,7 @@ impl<'a> Machine<'a> {
         let mut state: BTreeMap<String, Value> = BTreeMap::new();
         let mut no_storage: BTreeMap<String, String> = BTreeMap::new();
         let mut no_memory: BTreeMap<String, String> = BTreeMap::new();
+        let mut no_router = Router::new("/");
         for field in &comp.state {
             let mut journal = Journal::default();
             let value = {
@@ -216,6 +226,7 @@ impl<'a> Machine<'a> {
                     storage_ns: "",
                     storage_quota: None,
                     storage_memory: &mut no_memory,
+                    router: &mut no_router,
                     journal: &mut journal,
                     locals: Vec::new(),
                     init: true,
@@ -243,6 +254,9 @@ impl<'a> Machine<'a> {
             storage_memory: BTreeMap::new(),
             credentials: Vec::new(),
             requests: Vec::new(),
+            router: Router::new("/"),
+            routes: Vec::new(),
+            draining: false,
             inflight: BTreeMap::new(),
             disposed: false,
             ticks: comp
@@ -259,7 +273,7 @@ impl<'a> Machine<'a> {
                             next: clock + f64::from(ms),
                             span: s.span,
                         }),
-                    IrScheduleKind::Start => None,
+                    IrScheduleKind::Start | IrScheduleKind::Route => None,
                 })
                 .collect(),
             started: false,
@@ -275,13 +289,94 @@ impl<'a> Machine<'a> {
         self.started = true;
         let comp = self.comp;
         for s in &comp.schedules {
-            if s.kind == IrScheduleKind::Start
-                && let Some(h) = comp.events.iter().position(|e| e.name == s.event)
-            {
-                self.dispatch(h, Vec::new(), fx)?;
+            let Some(h) = comp.events.iter().position(|e| e.name == s.event) else {
+                continue;
+            };
+            match s.kind {
+                IrScheduleKind::Start => {
+                    self.dispatch(h, Vec::new(), fx)?;
+                }
+                // The route event receives the path the page loaded at (docs/routing.md section 4).
+                IrScheduleKind::Route => {
+                    let path = Value::Str(self.router.current().to_string());
+                    self.routes.push(self.router.current().to_string());
+                    self.dispatch(h, vec![path], fx)?;
+                }
+                IrScheduleKind::Every(_) => {}
             }
         }
         Ok(())
+    }
+
+    /// The handler of `route Event;`, if the component declares one.
+    fn route_handler(&self) -> Option<usize> {
+        self.comp
+            .schedules
+            .iter()
+            .find(|s| s.kind == IrScheduleKind::Route)
+            .and_then(|s| self.comp.events.iter().position(|e| e.name == s.event))
+    }
+
+    /// Run the route event for each path the step queued (`router.go`, `router.replace`, a link, Back, Forward), in order,
+    /// each after the handler that queued it returned. A run may queue more; the step stops after
+    /// `MAX_ROUTE_EVENTS_PER_STEP`.
+    fn drain_routes(&mut self, fx: &mut StepEffects) -> Result<(), Fault> {
+        if self.draining {
+            return Ok(());
+        }
+        self.draining = true;
+        let result = self.drain_routes_inner(fx);
+        self.draining = false;
+        result
+    }
+
+    fn drain_routes_inner(&mut self, fx: &mut StepEffects) -> Result<(), Fault> {
+        let mut run = 0usize;
+        while let Some(path) = self.router.queued.pop_front() {
+            let Some(h) = self.route_handler() else {
+                continue;
+            };
+            run += 1;
+            if run > MAX_ROUTE_EVENTS_PER_STEP {
+                self.router.queued.clear();
+                return Err(Fault {
+                    rule: "replay-route-limit",
+                    message: format!(
+                        "one step runs more than {MAX_ROUTE_EVENTS_PER_STEP} route events: a handler navigates to a new path every time it runs"
+                    ),
+                    span: self.comp.events[h].span,
+                });
+            }
+            self.routes.push(path.clone());
+            self.dispatch(h, vec![Value::Str(path)], fx)?;
+        }
+        Ok(())
+    }
+
+    /// The user follows a link or types a URL (`navigate`): a new entry, then the route event. The same path as the
+    /// current one fires nothing. The caller has checked the path is legal.
+    pub fn navigate(&mut self, path: &str, fx: &mut StepEffects) -> Result<Outcome, Fault> {
+        if self.router.current() == path {
+            return Ok(Outcome::Unchanged);
+        }
+        self.router.push(path);
+        self.drain_routes(fx)?;
+        Ok(Outcome::Ok)
+    }
+
+    /// The browser's Back (`back`) or Forward (`forward`). The caller has checked there is an entry to go to.
+    pub fn travel(&mut self, forward: bool, fx: &mut StepEffects) -> Result<Outcome, Fault> {
+        let before = self.router.position;
+        if forward {
+            self.router.forward();
+        } else {
+            self.router.back();
+        }
+        if self.router.position == before {
+            return Ok(Outcome::Unchanged);
+        }
+        self.drain_routes(fx)?;
+        Ok(Outcome::Ok)
     }
 
     /// Is a run of handler `h` suspended on a request that is still current? A tick is skipped then
@@ -343,6 +438,7 @@ impl<'a> Machine<'a> {
         let mut journal = Journal::default();
         let mut no_storage = BTreeMap::new();
         let mut no_memory = BTreeMap::new();
+        let mut no_router = Router::new("/");
         let mut ctx = Ctx {
             state: &self.state,
             clock: self.clock,
@@ -350,6 +446,7 @@ impl<'a> Machine<'a> {
             storage_ns: "",
             storage_quota: None,
             storage_memory: &mut no_memory,
+            router: &mut no_router,
             journal: &mut journal,
             locals: Vec::new(),
             init: false,
@@ -793,7 +890,15 @@ impl<'a> Machine<'a> {
     /// and the report forgets them. `resumed` is true when the run continues an awaiting statement: the statements
     /// before it were committed when the handler suspended, and the statement itself writes only when it completes, so
     /// a fault in it has nothing to undo.
-    fn run(
+    /// Run a handler to its end or its first unanswered `await`; then the route events it queued (`router.go`) run, as
+    /// the browser's `hashchange` does after the task.
+    fn run(&mut self, task: Task, fx: &mut StepEffects, resumed: bool) -> Result<Outcome, Fault> {
+        let out = self.run_handler(task, fx, resumed)?;
+        self.drain_routes(fx)?;
+        Ok(out)
+    }
+
+    fn run_handler(
         &mut self,
         mut task: Task,
         fx: &mut StepEffects,
@@ -821,6 +926,7 @@ impl<'a> Machine<'a> {
                     storage_ns: storage_ns(comp),
                     storage_quota: self.storage_quota,
                     storage_memory: &mut self.storage_memory,
+                    router: &mut self.router,
                     journal: &mut task.journal,
                     locals: task.params.clone(),
                     init: false,

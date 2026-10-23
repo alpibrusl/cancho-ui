@@ -18,6 +18,7 @@ pub mod conditions;
 pub mod controls;
 pub mod ir;
 pub mod lower;
+pub mod routing;
 pub mod serialize;
 pub mod table;
 

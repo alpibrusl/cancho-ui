@@ -69,6 +69,11 @@ fn every_example_builds_to_ascii() {
     for (i, f) in all.iter().enumerate() {
         let out = dir.join(format!("{i}.js"));
         let (code, _, stderr) = run(&["build", p(f), "-o", p(&out)]);
+        // docs/routing.md section 12: `build` writes no page for a routing program until step 2 of #75; this skip goes with it.
+        if code == 1 && stderr.contains("routing-not-emitted") {
+            assert!(f.ends_with("routes/routes.cui"), "{}", f.display());
+            continue;
+        }
         assert_eq!(code, 0, "{}: {stderr}", f.display());
         let bytes = std::fs::read(&out).expect("the built module");
         assert_eq!(first_non_ascii(&bytes), None, "{}", f.display());
