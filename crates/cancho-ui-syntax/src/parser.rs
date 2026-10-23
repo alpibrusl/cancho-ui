@@ -392,7 +392,12 @@ impl Parser {
             match &self.peek().token {
                 Token::RBrace => break,
                 // `start` and `every` are keywords only here, at the start of a member (docs/schedules.md section 3).
-                Token::Ident(word) if word == "start" || word == "every" || word == "route" => {
+                Token::Ident(word)
+                    if word == "start"
+                        || word == "every"
+                        || word == "route"
+                        || word == "subscribe" =>
+                {
                     schedules.push(self.parse_schedule_decl()?)
                 }
                 // `block` is a keyword only here, followed by a name and `{` (docs/handler-sequences.md section 4).
@@ -421,7 +426,7 @@ impl Parser {
                 }
                 other => {
                     return Err(ParseError::Unexpected {
-                        expected: "component member (`state`, `requires`, `start`, `every`, `on`, `block`, `view`)",
+                        expected: "component member (`state`, `requires`, `start`, `every`, `route`, `subscribe`, `on`, `block`, `view`)",
                         found: other.clone(),
                         line: self.peek().span.start.line,
                         column: self.peek().span.start.column,
@@ -556,6 +561,8 @@ impl Parser {
             }
         } else if matches!(&kw.token, Token::Ident(w) if w == "route") {
             ScheduleKind::Route
+        } else if matches!(&kw.token, Token::Ident(w) if w == "subscribe") {
+            ScheduleKind::Subscribe
         } else {
             ScheduleKind::Start
         };
@@ -571,10 +578,46 @@ impl Parser {
                 });
             }
         };
+        // docs/streams.md: `subscribe Event "url" [status Event];`
+        let stream = if kind == ScheduleKind::Subscribe {
+            let url_tok = self.bump();
+            let url = match url_tok.token {
+                Token::StringLit(s) => s,
+                other => {
+                    return Err(ParseError::Unexpected {
+                        expected: "the address to listen to (a string literal)",
+                        found: other,
+                        line: url_tok.span.start.line,
+                        column: url_tok.span.start.column,
+                    });
+                }
+            };
+            let status = if matches!(&self.peek().token, Token::Ident(w) if w == "status") {
+                self.bump();
+                let tok = self.bump();
+                match tok.token {
+                    Token::Ident(s) => Some(s),
+                    other => {
+                        return Err(ParseError::Unexpected {
+                            expected: "status event name (identifier)",
+                            found: other,
+                            line: tok.span.start.line,
+                            column: tok.span.start.column,
+                        });
+                    }
+                }
+            } else {
+                None
+            };
+            Some(StreamDecl { url, status })
+        } else {
+            None
+        };
         let semi = self.expect(Token::Semi)?;
         Ok(Schedule {
             kind,
             event,
+            stream,
             span: Span::new(kw.span.start, semi.span.end),
         })
     }

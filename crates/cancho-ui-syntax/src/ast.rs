@@ -48,7 +48,8 @@ pub struct Component {
     pub name: String,
     pub state: Vec<StateField>,
     pub requires: Vec<CapabilityRef>,
-    /// `start Event;`, `every <ms> Event;` and `route Event;` (docs/schedules.md, docs/routing.md), in the order written.
+    /// `start Event;`, `every <ms> Event;`, `route Event;` and `subscribe Event "url";` (docs/schedules.md, docs/routing.md,
+    /// docs/streams.md), in the order written.
     pub schedules: Vec<Schedule>,
     pub events: Vec<EventHandler>,
     /// `block Name { .. }` (docs/handler-sequences.md): a named sequence of statements that handlers `run`.
@@ -66,13 +67,26 @@ pub enum ScheduleKind {
     /// `route Event;` (docs/routing.md section 4): the event runs with the path at mount and at every change of the
     /// fragment.
     Route,
+    /// `subscribe Event "url";` (docs/streams.md): the event runs for each message the server pushes; the address is in
+    /// `Schedule::stream`.
+    Subscribe,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Schedule {
     pub kind: ScheduleKind,
     pub event: String,
+    /// The address and the optional `status Event` of a `subscribe`; `None` for the other kinds.
+    pub stream: Option<StreamDecl>,
     pub span: Span,
+}
+
+/// What follows the event of `subscribe Event "url" [status Event];`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct StreamDecl {
+    pub url: String,
+    /// The event that hears the connection change (`connecting`, `open`, `retrying`, `paused`, `failed`).
+    pub status: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

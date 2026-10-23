@@ -1,0 +1,202 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "note": "The server plays out: the page connects, three readings arrive with ids, the connection drops and the page waits a second and connects again (asking for the id of the last reading), a connection that cannot be made doubles the wait, and a page that is hidden closes the connection while a page that is shown opens it.",
+  "steps": [
+    {
+      "advance": 0,
+      "note": "mount: the connection is being made",
+      "state": {
+        "link": "connecting",
+        "count": 0
+      },
+      "expect": {
+        "stream": {
+          "status": "connecting",
+          "attempt": 0,
+          "retry_in_ms": null,
+          "last_event_id": null
+        }
+      }
+    },
+    {
+      "stream": "open",
+      "state": {
+        "link": "open"
+      }
+    },
+    {
+      "message": "20",
+      "id": "1",
+      "state": {
+        "readings": [
+          20
+        ],
+        "count": 1
+      },
+      "expect": {
+        "stream": {
+          "last_event_id": "1"
+        }
+      }
+    },
+    {
+      "message": "22.5",
+      "id": "2",
+      "state": {
+        "readings": [
+          20,
+          22.5
+        ],
+        "count": 2
+      }
+    },
+    {
+      "message": "not a number",
+      "id": "3",
+      "note": "a message is text: `num` keeps the default when it is not a number",
+      "state": {
+        "readings": [
+          20,
+          22.5,
+          0
+        ],
+        "count": 3
+      },
+      "expect": {
+        "stream": {
+          "last_event_id": "3"
+        },
+        "charts": [
+          {
+            "label": "Latest readings",
+            "kind": "line",
+            "count": 3
+          }
+        ]
+      }
+    },
+    {
+      "stream": "drop",
+      "note": "the server closed the stream: the page waits one second",
+      "state": {
+        "link": "retrying"
+      },
+      "expect": {
+        "stream": {
+          "status": "retrying",
+          "attempt": 1,
+          "retry_in_ms": 1000,
+          "last_event_id": "3"
+        }
+      }
+    },
+    {
+      "advance": 999,
+      "state": {
+        "link": "retrying"
+      },
+      "expect": {
+        "stream": {
+          "retry_in_ms": 1
+        }
+      }
+    },
+    {
+      "advance": 1,
+      "note": "the wait is over: the page connects again, and the request carries `Last-Event-ID: 3`",
+      "state": {
+        "link": "connecting"
+      },
+      "expect": {
+        "stream": {
+          "status": "connecting",
+          "last_event_id": "3"
+        }
+      }
+    },
+    {
+      "stream": "drop",
+      "note": "the connection could not be made: the wait doubles",
+      "state": {
+        "link": "retrying"
+      },
+      "expect": {
+        "stream": {
+          "attempt": 2,
+          "retry_in_ms": 2000
+        }
+      }
+    },
+    {
+      "advance": 2000,
+      "state": {
+        "link": "connecting"
+      }
+    },
+    {
+      "stream": "open",
+      "state": {
+        "link": "open"
+      },
+      "expect": {
+        "stream": {
+          "attempt": 0
+        }
+      }
+    },
+    {
+      "message": "21",
+      "id": "4",
+      "state": {
+        "readings": [
+          20,
+          22.5,
+          0,
+          21
+        ],
+        "count": 4
+      }
+    },
+    {
+      "hide": true,
+      "note": "the page is hidden: the connection is closed",
+      "state": {
+        "link": "paused"
+      },
+      "expect": {
+        "stream": {
+          "status": "paused",
+          "retry_in_ms": null,
+          "last_event_id": "4"
+        }
+      }
+    },
+    {
+      "advance": 60000,
+      "note": "nothing is asked of the server while nobody is looking",
+      "state": {
+        "link": "paused"
+      }
+    },
+    {
+      "show": true,
+      "state": {
+        "link": "connecting"
+      }
+    },
+    {
+      "stream": "open",
+      "state": {
+        "link": "open"
+      }
+    },
+    {
+      "event": "Clear",
+      "state": {
+        "readings": [],
+        "count": 0
+      }
+    }
+  ]
+}

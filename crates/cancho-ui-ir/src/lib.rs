@@ -22,6 +22,7 @@ pub mod ir;
 pub mod lower;
 pub mod routing;
 pub mod serialize;
+pub mod stream;
 pub mod table;
 
 pub use ir::*;

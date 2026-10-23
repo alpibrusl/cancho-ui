@@ -1,0 +1,43 @@
+// examples/stream/stream.cui: live readings the server pushes (docs/streams.md, issue #78).
+//
+// `subscribe` opens a Server-Sent Events stream. The program says where to listen once; the page connects, hands each message to
+// `Reading`, and tells `Link` when the connection changes (connecting, open, retrying, paused, failed). After a drop it waits 1, 2, 4, 8,
+// 16 and then 30 seconds, sends the id of the last reading it had so a server that keeps a log can resume, and closes the connection while
+// the page is hidden. `requires Network` is the authority: this site's own `/api/readings`, and no other host.
+//
+// Only the connection state is a live region (`role: status`); the readings change every second and are not announced.
+
+component Live {
+    requires Network;
+
+    state readings: List[Float] = [];
+    state count: Int = 0;
+    state link: String = "connecting";
+
+    subscribe Reading "/api/readings" status Link;
+
+    // the newest 30 readings; the text of a message is whatever the server sent, `num` reads it or keeps 0
+    on Reading(text) {
+        readings = skip(concat(readings, [num(text, 0)]), max(len(readings) - 29, 0));
+        count = count + 1;
+    }
+
+    on Link(word) {
+        link = word;
+    }
+
+    on Clear {
+        readings = [];
+        count = 0;
+    }
+
+    view {
+        Column {
+            Text { role: heading "Live readings" }
+            Text { role: status "Connection: {link}" }
+            Chart { label: "Latest readings" kind: "line" values: readings unit: "°C" }
+            Text { "{count} readings received" }
+            Button { label: "Clear" on: Clear }
+        }
+    }
+}

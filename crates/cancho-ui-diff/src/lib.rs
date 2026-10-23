@@ -242,6 +242,13 @@ fn facets(c: &IrComponent) -> Facets {
                 IrScheduleKind::Start => format!("start {}", s.event),
                 IrScheduleKind::Every(ms) => format!("every {ms} {}", s.event),
                 IrScheduleKind::Route => format!("route {}", s.event),
+                IrScheduleKind::Subscribe => match &s.stream {
+                    Some(t) => match &t.status {
+                        Some(st) => format!("subscribe {} {:?} status {st}", s.event, t.url),
+                        None => format!("subscribe {} {:?}", s.event, t.url),
+                    },
+                    None => format!("subscribe {}", s.event),
+                },
             })
             .collect(),
         // A bound is part of the declared authority: `Network("a.example")` is not `Network`.

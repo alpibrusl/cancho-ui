@@ -72,6 +72,7 @@ pub fn lower_route(
     Ok(IrSchedule {
         kind: IrScheduleKind::Route,
         event: s.event.clone(),
+        stream: None,
         span: s.span,
     })
 }
