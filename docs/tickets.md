@@ -42,7 +42,7 @@ Each has a measured reproduction in its issue.
 |---|---|
 | ~~A view has no conditional; screens are zero-or-one-element lists~~ | #90, closed by `If { when: .. }` |
 | ~~TextField `autocomplete`, `maxlength`, `inputmode`, `name` are not bindings~~ | #91, closed (`docs/controls.md` section 6) |
-| Focus falls to BODY after sign-in and sign-out; nothing announces the screen change | #92 |
+| Focus falls to BODY after sign-in and sign-out; nothing announces the screen change | #92 (built: [`screen-focus.md`](screen-focus.md); the example's orders screen got a heading) |
 | ~~Handlers cannot share a sequence or make a request conditionally (the orders request is written twice and runs after a failed sign-in)~~ | #93, closed by the statement `if` and `block`/`run` (`docs/handler-sequences.md`) |
 | ~~A status Text with a tone draws its mark when empty~~ | #94, closed (`docs/presentation.md` section 3) |
 | ~~`json.get(reply, "status", "") == 200` (String against number) is accepted and always false~~ | #95, closed by `comparison-type-mismatch` (`docs/comparisons.md`) |

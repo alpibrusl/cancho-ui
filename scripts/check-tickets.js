@@ -71,7 +71,9 @@ function note(label, detail) { console.log(`note ${label}: ${detail}`); }
   check('the right password, sent with Enter, shows the work orders', (await page.locator('tbody tr:has(td)').count()) === 4, `${await page.locator('tbody tr:has(td)').count()} rows`);
   check('the session is a cookie the page cannot read (HttpOnly)', (await page.evaluate(() => document.cookie)) === '' && (await context.cookies()).some((c) => c.name === 'sid' && c.httpOnly));
   check('the sign-in form is gone and the password is not left in the page', (await page.getByLabel('Password').count()) === 0 && !(await page.content()).includes('hunter22!'));
-  note('focus after the screen changed', `document.activeElement is ${await page.evaluate(() => document.activeElement.tagName)} (docs/tickets.md 3.4)`);
+  const focused = () => page.evaluate(() => ({ role: document.activeElement.getAttribute('role'), text: document.activeElement.textContent.trim(), tabindex: document.activeElement.getAttribute('tabindex') }));
+  const afterSignIn = await focused();
+  check('after sign-in the focus is the work-order screen\'s heading (docs/screen-focus.md, #92)', afterSignIn.role === 'heading' && afterSignIn.text === 'Orders' && afterSignIn.tabindex === '-1', JSON.stringify(afterSignIn));
   await page.getByRole('checkbox', { name: 'Hide finished orders' }).check();
   check('the checkbox hides the finished orders and unchecking brings them back', (await page.locator('tbody tr:has(td)').count()) === 3 && !/T-3/.test(await body()) && (await (async () => { await page.getByRole('checkbox', { name: 'Hide finished orders' }).uncheck(); return (await page.locator('tbody tr:has(td)').count()) === 4 && /T-3/.test(await body()); })()));
 
@@ -104,6 +106,9 @@ function note(label, detail) { console.log(`note ${label}: ${detail}`); }
   check('no horizontal scroll at 420 px with the table and the detail open', wide.d <= wide.v, JSON.stringify(wide));
   await page.getByRole('button', { name: 'Sign out' }).click();
   await page.waitForFunction(() => /You are signed out\./.test(document.body.innerText), null, { timeout: 5000 });
+  await page.waitForFunction(() => document.activeElement.getAttribute('role') === 'heading' && document.activeElement.textContent.trim() === 'Sign in', null, { timeout: 3000 }).catch(() => {});
+  const afterSignOut = await focused();
+  check('after sign-out the focus is the sign-in screen\'s heading (docs/screen-focus.md, #92)', afterSignOut.role === 'heading' && afterSignOut.text === 'Sign in' && afterSignOut.tabindex === '-1', JSON.stringify(afterSignOut));
   check('signing out shows the form again and clears the cookie', (await page.getByLabel('User name').count()) === 1 && !(await context.cookies()).some((c) => c.name === 'sid' && c.value));
   check('the orders are not reachable after sign-out', (await page.evaluate(async () => (await fetch('api/orders')).status)) === 401);
   check('no script errors', errors.length === 0, errors.join(' | '));

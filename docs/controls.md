@@ -351,6 +351,10 @@ refusal with a rule tag and the design with its measurements here. Sections 5 to
 `examples/tickets` has all of them in one program. **`number` is not offered** (section 5: `1e5` typed key by key ends as `5`);
 that is its own issue (#111), because making a number field safe is a change to how the page redraws a field being typed in.
 
+## 11a. Focus when a screen replaces the control that had it
+
+A control that had the focus and is replaced with its screen no longer drops the focus to the body: the heading of the screen that appeared takes it (`tabindex="-1"`, the browser's ring after the keyboard, none after touch), and a routed page's title follows it. The rule, the measurements and its limits are in [`screen-focus.md`](screen-focus.md); replay does not claim it.
+
 ## 12. Not done
 
 `disabled:` on an expression (`disabled: len(q) == 0`: the language has no `&&`, `||` or `!` and no Bool expression binding,

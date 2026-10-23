@@ -1,6 +1,6 @@
 # Focus, announcements and the page title when a screen changes
 
-> **Status: DESIGN, then built in the same PR** (issue #92; found building `examples/tickets`, `docs/tickets.md` 3.4; routing, `docs/routing.md`, made it
+> **Status: BUILT** (issue #92; design first, built in the same PR, section 8 lists what the build corrected; found building `examples/tickets`, `docs/tickets.md` 3.4; routing, `docs/routing.md`, made it
 > matter more). Written 2026-10-23 before the code ([`CONTRIBUTING.md`](../CONTRIBUTING.md) section 1). Numbers were measured in Chromium (Playwright,
 > `Pixel 7` profile) on main at 90945d6 with two small programs: a sign-in form that swaps for a work-order screen (`If`), and `examples/routes`.
 > Guarantee tier of the page behaviour: **observed in Chromium**. Replay cannot claim it (section 5). No screen reader was run (section 7).
@@ -39,22 +39,25 @@ form) without changing A.
 ## 3. The rule
 
 1. **Focus lost.** At the end of a render, if the focus was inside the component before it and the rebuild could not give it back to the same control (the control is gone, or
-   it is another kind or has another label), focus moves to the component's first `role: heading`. Nothing happens when the focus was elsewhere (the URL bar, another
+   it is another kind or has another label), focus moves to the heading of the screen that appeared (rule 3). Nothing happens when the focus was elsewhere (the URL bar, another
    component, the body): a timer or a request that redraws the page never takes focus.
 2. **Route change.** When a `route` event runs because the fragment changed (a link, Back, Forward, a typed URL, `router.go`), then after its handler has finished, focus moves
    to the first heading, **whether or not it was inside the page**. At mount (the page loaded at a deep link) nothing is focused.
-3. **The heading** gets `tabindex="-1"` when it is focused (so it takes focus from a script and is not a Tab stop). The page draws no ring of its own: Chromium draws its
+3. **Which heading.** A screen is what an `If` draws. The page records, at each render, the nodes each `If` outside a `For` appended, and which of them were
+   not drawn in the render before; the heading is the first `role: heading` in what those just-appeared `If`s drew (kept from the last render in which one
+   appeared). A page with no `If` has one screen: its first heading. A screen that appeared without a heading has none (focus is not moved to a heading elsewhere on
+   the page, the application's title included).
+4. **The heading element** gets `tabindex="-1"` when it is focused (so it takes focus from a script and is not a Tab stop). The page draws no ring of its own: Chromium draws its
    default one after the keyboard and none after touch (section 1).
-4. **The title.** A component that declares `route` keeps `document.title` equal to `<heading text> – <the title the page loaded with>` at mount, after each route event, and
+5. **The title.** A component that declares `route` keeps `document.title` equal to `<heading text> – <the title the page loaded with>` at mount, after each route event, and
    whenever rule 1 moves its focus; a screen with no heading gets the title it loaded with. A component without `route` never touches the title (a title that follows a heading
    changes every page that has one, and only a routed page has screens at different URLs).
-5. **No heading, no move.** A screen without a heading keeps today's behaviour (focus is on the body). The fix for that is in the program: a screen has a heading.
+6. **No heading, no move.** A screen without a heading keeps today's behaviour (focus is on the body). The fix for that is in the program: a screen has a heading.
 
 ## 4. Limits, stated
 
-* "The first heading" is the first `role: heading` in the component's root, in document order. A page whose *application* title is a heading draws it before every screen's
-  heading, so the move would go to the application title, which announces the app, not the screen. Keep the application name out of `role: heading` (it is the title) and give each
-  screen its own.
+* A screen is an `If`. A page that swaps its screens some other way (a `For` over a list of one, a component instance, a state that changes only the text) has no
+  screen to point at, and gets its first heading; an `If` inside a `For` is not tracked (its key would be the same for every row).
 * A button whose label changes when it is pressed (`label:` computed) is "another label" for the restore that already existed, so rule 1 now moves focus to the heading
   instead of dropping it to the body. Neither is right (the control should keep focus); the restore compares labels so that it never focuses a *different* control. Not changed here.
 * A route handler that waits for a request (`await`) moves focus when it has finished, not when the first screen appears. That is the point at which the screen is complete,
@@ -78,8 +81,9 @@ Replay does not draw, so it cannot say which node would hold focus or what the t
   restores the loaded title; a non-routed page's title is never written;
 * a screen with no heading leaves focus on the body.
 
-Breaks: no move on lost focus; a move when focus was elsewhere; a move at mount; no move on a route change; the title not set; the title set on a non-routed page; the heading not
-focusable (`tabindex` missing).
+Breaks (`scripts/breaks/screen-focus.json`, eleven): no move on lost focus; a move when focus was elsewhere; a move at mount; no move on a route change; the title not set; the title
+set on a non-routed page; the heading not focusable (`tabindex` missing); the title without the loaded title; a focused heading losing its `tabindex` at the next redraw; the first heading
+of the page used instead of the screen's. Each is caught.
 
 ## 7. Not done, and not verified
 
@@ -92,4 +96,15 @@ focusable (`tabindex` missing).
 
 ## 8. Corrections
 
-(none yet)
+Found building this, in the order found:
+
+* **The first-heading rule was wrong for the flagship example.** Section 3 first said "the first `role: heading` in the component's root". `examples/tickets` draws its
+  application title (`Work orders`) as a heading before both screens, so after sign-in and after sign-out the focus went to the application title; `scripts/check-tickets.js`
+  measured it. The rule is now "the heading of the screen that appeared" (section 3, rule 3), which needed the page to record what each `If` drew. The orders screen had no
+  heading of its own; `examples/tickets` now has `Orders`. The check page `check-screen-focus.js` has an application title above its screens, and a deliberate break puts the
+  first-heading rule back.
+* **A heading that held the focus lost it at the next redraw.** The restore that keeps a control focused compared the tag and the label and then called `focus()`, but the
+  rebuilt heading has no `tabindex`, so `focus()` did nothing and the focus fell to the body after the first request that finished (measured with a 5 ms poll of
+  `document.activeElement` through sign-in: input, heading, body). The restore writes `tabindex="-1"` back first. A ticker page that redraws while its heading is focused checks it.
+* **Timing, in the check.** `check-tickets.js` read the focus when the text "You are signed out." appeared, which is the render before the screen swap; it waits for the
+  heading now.

@@ -1,7 +1,24 @@
 {
   "checks": [
-    { "name": "cargo test routing", "argv": ["cargo", "test", "--quiet", "-p", "cancho-ui", "--test", "routing"] },
-    { "name": "check-routing.js", "argv": ["node", "scripts/check-routing.js"] }
+    {
+      "name": "cargo test routing",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "routing"
+      ]
+    },
+    {
+      "name": "check-routing.js",
+      "argv": [
+        "node",
+        "scripts/check-routing.js"
+      ]
+    }
   ],
   "breaks": [
     {
@@ -19,8 +36,8 @@
     {
       "name": "the route event is not run at mount",
       "file": "crates/cancho-ui-codegen-web/src/emit.rs",
-      "from": "        __on_{0}(__cui_route_now());\\n",
-      "to": "\\n"
+      "from": "Promise.resolve(__on_{0}(__cui_route_now())).finally(",
+      "to": "Promise.resolve(0).finally("
     },
     {
       "name": "the route event reads the location, not the event's newURL",
