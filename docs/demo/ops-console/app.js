@@ -51,13 +51,15 @@ function __cui_sleep_ms(ms) {
     });
 }
 
-// Credential capability (docs/adapters.md section 18). `cred` is {name, hosts, token} for a component that declared
+// Credential capability (docs/adapters.md section 18). `cred` is {name, hosts, anon, token} for a component that declared
 // `requires Credential(name, hosts..)`, or null. A declared credential that was not supplied at mount, or that is not
 // a plain visible-ASCII token, answers Err before any request is made; otherwise the value is "Bearer <token>".
 // The header is attached only when the target is this page's own origin or a host the declaration names.
 function __cui_credential_check(cred, resolve) {
     if (!cred) { return null; }
     var token = cred.token;
+    // a component that sets its own token is anonymous until it has one (docs/bearer-token.md)
+    if (cred.anon && (token === null || token === undefined)) { return null; }
     if (typeof token !== "string" || token === "") {
         resolve({__cui_tag: "Err", reason: "blocked: no credential " + cred.name});
         return false;
@@ -67,6 +69,19 @@ function __cui_credential_check(cred, resolve) {
         return false;
     }
     return "Bearer " + token;
+}
+// docs/bearer-token.md: the program receives a token and holds it in this component's credential, in memory (gone at reload). `set`
+// answers true when `value` is a plain token (the test applied when one is sent) and changes nothing otherwise; `clear` forgets it.
+function __cui_credential_set(cred, name, value) {
+    if (!cred || cred.name !== name) { return false; }
+    if (typeof value !== "string" || !/^[\x21-\x7e]{1,4096}$/.test(value)) { return false; }
+    cred.token = value;
+    return true;
+}
+function __cui_credential_clear(cred, name) {
+    if (!cred || cred.name !== name) { return false; }
+    cred.token = null;
+    return true;
 }
 function __cui_credential_applies(cred, target) {
     return !!cred && (target.origin === window.location.origin || cred.hosts.indexOf(target.host.toLowerCase()) !== -1);

@@ -365,6 +365,16 @@ fn emit_call_runtime(path: &[String], args: &[IrExpr], params: &[&str]) -> Strin
             args.iter().map(|a| emit_expr_runtime(a, params)).collect();
         return format!("__cui_sleep_ms({})", rendered_args.join(", "));
     }
+    if cancho_ui_ir::credential::is_call(path) {
+        // docs/bearer-token.md: synchronous, a Bool; the component's own credential record.
+        let rendered_args: Vec<String> =
+            args.iter().map(|a| emit_expr_runtime(a, params)).collect();
+        return format!(
+            "__cui_credential_{}(__cui_cred, {})",
+            path[1],
+            rendered_args.join(", ")
+        );
+    }
     if path.len() == 2 && path[0] == "router" && (path[1] == "go" || path[1] == "replace") {
         // docs/routing.md section 4: synchronous, a Bool.
         let rendered_args: Vec<String> =

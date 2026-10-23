@@ -153,7 +153,7 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
         .components
         .iter()
         .any(|c| c.requires.iter().any(|r| r.name == "Credential"));
-    if any_net_get || any_net_post || any_net_put || any_net_delete {
+    if any_net_get || any_net_post || any_net_put || any_net_delete || any_credential {
         out.push_str(CREDENTIAL_ADAPTER_JS);
         out.push('\n');
     }
@@ -550,8 +550,14 @@ fn emit_component(
                     .iter()
                     .map(|h| format!("\"{}\"", h.to_ascii_lowercase()))
                     .collect();
+                // A component that can set its own token (docs/bearer-token.md) sends its first requests, the sign-in among them,
+                // without one; a component that cannot is blocked until the page supplies it (docs/adapters.md section 18).
+                let anon = c
+                    .reachable_effects
+                    .iter()
+                    .any(|e| e.path == ["credential", "set"]);
                 out.push_str(&format!(
-                    "        const __cui_cred = {{ name: \"{name}\", hosts: [{}], token: (__cui_creds && Object.prototype.hasOwnProperty.call(__cui_creds, \"{name}\")) ? __cui_creds[\"{name}\"] : null }};\n",
+                    "        const __cui_cred = {{ name: \"{name}\", hosts: [{}], anon: {anon}, token: (__cui_creds && Object.prototype.hasOwnProperty.call(__cui_creds, \"{name}\")) ? __cui_creds[\"{name}\"] : null }};\n",
                     hosts.join(", ")
                 ));
             }

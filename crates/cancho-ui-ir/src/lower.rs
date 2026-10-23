@@ -609,6 +609,7 @@ fn lower_expr_with_effects(e: &Expr) -> Result<(IrExpr, Vec<IrReachableEffect>),
                     });
                 }
             }
+            crate::credential::check_call(path, args.len(), *span)?;
             if path.len() == 2 && path[0] == "router" && (path[1] == "go" || path[1] == "replace") {
                 crate::routing::check_router_call(&path[1], args.len(), *span)?;
             }
@@ -983,6 +984,9 @@ fn builtin_capability(path: &[String]) -> Option<&'static str> {
         // docs/adapters.md: `storage.get(key, default)` and `storage.set(key, value)` read and
         // write a persistent key-value store, synchronously. Both need `Storage`.
         Some("Storage")
+    } else if crate::credential::is_call(path) {
+        // docs/bearer-token.md: the program holds a token it received, in the component's `Credential`.
+        Some("Credential")
     } else if path.len() == 2 && path[0] == "router" && (path[1] == "go" || path[1] == "replace") {
         // docs/routing.md section 4: `router.go(path)` and `router.replace(path)` write the URL fragment, synchronously.
         Some("Router")
@@ -1429,6 +1433,8 @@ fn check_capabilities(ir: &IrFile) -> Result<(), LowerError> {
                 });
             }
         }
+        // docs/bearer-token.md: a call names the credential the component declares.
+        crate::credential::check_names(c)?;
         // docs/adapters.md section 18: one credential per component, and the hosts it names are hosts `Network` allows.
         let credentials: Vec<_> = c
             .requires
@@ -1621,6 +1627,7 @@ fn is_known_call(path: &[String]) -> bool {
             ("clock", "now")
                 | ("storage", "get" | "set")
                 | ("router", "go" | "replace")
+                | ("credential", "set" | "clear")
                 | ("json", "get" | "items" | "quote")
                 | ("location", "current")
                 | (

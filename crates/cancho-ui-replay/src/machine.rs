@@ -216,6 +216,7 @@ impl<'a> Machine<'a> {
         let mut no_storage: BTreeMap<String, String> = BTreeMap::new();
         let mut no_memory: BTreeMap<String, String> = BTreeMap::new();
         let mut no_router = Router::new("/");
+        let mut no_credentials: Vec<String> = Vec::new();
         for field in &comp.state {
             let mut journal = Journal::default();
             let value = {
@@ -227,6 +228,7 @@ impl<'a> Machine<'a> {
                     storage_quota: None,
                     storage_memory: &mut no_memory,
                     router: &mut no_router,
+                    credentials: &mut no_credentials,
                     journal: &mut journal,
                     locals: Vec::new(),
                     init: true,
@@ -439,6 +441,7 @@ impl<'a> Machine<'a> {
         let mut no_storage = BTreeMap::new();
         let mut no_memory = BTreeMap::new();
         let mut no_router = Router::new("/");
+        let mut no_credentials: Vec<String> = Vec::new();
         let mut ctx = Ctx {
             state: &self.state,
             clock: self.clock,
@@ -447,6 +450,7 @@ impl<'a> Machine<'a> {
             storage_quota: None,
             storage_memory: &mut no_memory,
             router: &mut no_router,
+            credentials: &mut no_credentials,
             journal: &mut journal,
             locals: Vec::new(),
             init: false,
@@ -927,6 +931,7 @@ impl<'a> Machine<'a> {
                     storage_quota: self.storage_quota,
                     storage_memory: &mut self.storage_memory,
                     router: &mut self.router,
+                    credentials: &mut self.credentials,
                     journal: &mut task.journal,
                     locals: task.params.clone(),
                     init: false,

@@ -136,6 +136,13 @@ fn routes_used(comp: &IrComponent) -> bool {
     comp.requires.iter().any(|r| r.name == "Router")
 }
 
+/// Does the component receive its token itself (`credential.set`)? Then its requests go out without one until it holds one.
+fn sets_its_token(comp: &IrComponent) -> bool {
+    comp.reachable_effects
+        .iter()
+        .any(|e| e.path == ["credential", "set"])
+}
+
 fn state_json(m: &Machine) -> BTreeMap<String, Json> {
     m.state
         .iter()
@@ -518,11 +525,16 @@ fn run_step(
                         | value::Effect::NetPost
                         | value::Effect::NetPut
                         | value::Effect::NetDelete,
-                    ) => Some(if m.credentials.iter().any(|c| c == name) {
-                        name.to_string()
-                    } else {
-                        format!("{name} (not supplied)")
-                    }),
+                    ) => {
+                        if m.credentials.iter().any(|c| c == name) {
+                            Some(name.to_string())
+                        } else if sets_its_token(comp) {
+                            // anonymous until it holds a token (docs/bearer-token.md): the sign-in carries none
+                            None
+                        } else {
+                            Some(format!("{name} (not supplied)"))
+                        }
+                    }
                     _ => None,
                 },
             })
@@ -559,6 +571,7 @@ fn run_step(
         storage: m.storage.clone(),
         routes: std::mem::take(&mut m.routes),
         url: routes_used(comp).then(|| m.router.current().to_string()),
+        credentials: credential_name(comp).map(|_| m.credentials.clone()),
         history: routes_used(comp).then(|| {
             serde_json::json!({
                 "entries": m.router.entries,

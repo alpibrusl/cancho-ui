@@ -1,6 +1,6 @@
 # A bearer token the program receives and sends (issue #83)
 
-> **Status: DESIGN** (this PR is the note alone; the build follows in the next PR). Written 2026-10-23 before the code
+> **Status: BUILT** (design in #121, build in the next PR; section 7 says what the build corrected). Written 2026-10-23 before the code
 > ([`CONTRIBUTING.md`](../CONTRIBUTING.md) section 1). The numbers in section 2 were measured in Chromium (Playwright, a real HTTP server) on main at 61df10c.
 > Builds on `docs/adapters.md` section 18 (`requires Credential(..)`), which this note does not change.
 
@@ -42,11 +42,10 @@ Build it, small, and keep the cookie as the recommended default.
 * **No new capability.** Setting and sending are one authority; `cancho-ui diff` already shows `Credential("api")` added. The calls are effect sites under it (`capability-missing` without it).
 * **Memory only.** The token lives in the component instance's record and is gone at reload (the user signs in again). A program that wants it to survive writes it to `Storage` itself, which puts
   `requires Storage` on the report and makes the exposure in the table above its own, visible choice. No `persist` option is offered.
-* **The value does not go through state if the program does not put it there.** `credential.set("api", json.get(reply, "token", ""))` passes it from the response to the credential in one expression.
-  A program that assigns it to a state field first has it in every report's final state; the note says so, and cannot prevent it (a lint for "a state field that receives a response's `token`"
-  would be a heuristic; not built).
-* **Sign-out** is `credential.clear("api")`, usually after a `net.post` that tells the service to revoke. The next request answers `Err("blocked: no credential api")` before any request is made
-  (the existing behaviour for a missing token).
+* **The value passes through state, once, unless the program overwrites it.** *(Corrected in section 7.)* `credential.set("api", json.get(json.get(reply, "body", ""), "token", ""))` passes the token from the
+  response to the credential in one expression, but the response itself is in the state field that received the `await`. The handler overwrites that field (`login = Ok("");`) before anything is drawn, so
+  the token is in no report's state. A program that keeps it, or assigns the token to its own field, has it in every report's final state; a lint for that would be a heuristic, not built.
+* **Sign-out** is `credential.clear("api")`, usually after a `net.post` that tells the service to revoke. *(Corrected in section 7: the next request goes out without a token, it is not blocked.)*
 * **Auto-mount.** `credential-needs-mount-options` exists because an auto-mounted page has nothing to give a component its token. A component that calls `credential.set` does not need one, so the
   refusal applies only to a component that declares a `Credential` and never sets it; `build --pwa` and `--page` can then carry a program that signs in by itself.
 * **Children.** A component's children receive the credentials it was mounted with, copied when they mount. A token set later is not seen by a child already mounted. The program that holds the
@@ -76,3 +75,20 @@ string, clear that keeps the token, set that widens the hosts, the auto-mount re
   *after* load would no longer see the header) but not close it (a wrapper installed before load still would), so it is recorded, not built.
 * A lint for a token stored in state; a credential for `net.search`; setting a credential of a child component from its parent.
 * A real service, a real phone, iOS: the evidence is a stand-in service in Chromium.
+
+## 7. Built, and what the build corrected (2026-10-23)
+
+* **Built.** `credential.set(name, value)` and `credential.clear(name)` (`crates/cancho-ui-ir/src/credential.rs`; the page's `__cui_credential_set` / `__cui_credential_clear`); `credential-name-invalid`
+  (new; the other refusals are the existing `builtin-shape-mismatch`, `capability-missing`, `capability-unused`); replay keeps the names held and the step report has `credentials` (absent for a component that
+  declares none); `examples/bearer` and its trace; `tests/bearer.rs` (11 tests); `scripts/check-bearer.js` (Chromium, a service that returns a token); eleven deliberate breaks (`scripts/breaks/bearer.json`).
+* **Corrected: a component that sets its own token is anonymous until it holds one.** Section 3 left the existing rule alone ("a declared credential that was not supplied answers
+  `Err("blocked: no credential api")` before any request"). The first run of the check showed what that does to a sign-in: the login request itself was blocked, so no token could ever arrive.
+  A component that contains a `credential.set` now sends its requests with no `Authorization` header while it holds none (`cred.anon`); a component that cannot set its token keeps the blocking rule
+  unchanged (`adapters.md` 18.4). Consequences, measured: after `credential.clear`, and after a reload, a request goes out **without** a header and the service refuses it with 401; it is not blocked in the
+  page. A token that is malformed (supplied by a mount) still blocks. The step report marks a request carrying the token `[credential api]` and a sign-in request nothing.
+* **Corrected: the token is in state unless overwritten.** See section 3. `examples/bearer` overwrites the response field in the same handler; its report was checked for the token (`tests/bearer.rs`).
+* **Measured with the check:** the token is sent as `Authorization: Bearer <token>` on the GET after sign-in, on a later GET and on the sign-out POST; it is in no `localStorage`, `sessionStorage`, cookie, window property or
+  serialized DOM; a second origin the credential does **not** name receives no `Authorization` on a call the program makes to it, and one it names receives it; `Space`, empty and a 4,097-character value answer `false`
+  and store nothing; after a reload the page holds no token.
+* **No gallery demo.** The example needs a service that returns a token, and the gallery is a static host. `examples/tickets` stays on its cookie.
+* **Still not done:** section 6.

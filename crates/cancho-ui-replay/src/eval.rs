@@ -170,6 +170,8 @@ pub struct Ctx<'a> {
     pub storage_memory: &'a mut BTreeMap<String, String>,
     /// The URL fragment and its history (docs/routing.md section 5), for `router.go` and `router.replace`.
     pub router: &'a mut crate::router::Router,
+    /// The names of the credentials the component holds a token for (docs/bearer-token.md): the value is never kept.
+    pub credentials: &'a mut Vec<String>,
     pub journal: &'a mut Journal,
     pub locals: Vec<(String, Value)>,
     /// Evaluating a state initial value: identifiers, calls, `match` and
@@ -490,6 +492,44 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
             ctx.journal.record(Value::Bool(fits));
             Ok(Value::Bool(fits))
         }
+        ("credential.set", 2) | ("credential.clear", 1) => {
+            let given = eval(ctx, &args[0])?;
+            let value = if args.len() == 2 {
+                Some(eval(ctx, &args[1])?)
+            } else {
+                None
+            };
+            if let Some(v) = ctx.journal.replayed() {
+                return Ok(v);
+            }
+            let Value::Str(cred) = &given else {
+                return Err(fault(
+                    "replay-type-error",
+                    format!("`{name}` needs a String name, got {}", describe(&given)),
+                    span,
+                ));
+            };
+            let answer = match value {
+                // `set` stores the fact that a token is held when it is a plain token, and never the token (the same test the
+                // page applies when it sends one: 1 to 4096 visible ASCII characters).
+                Some(Value::Str(t)) => {
+                    let plain = (1..=4096).contains(&t.len())
+                        && t.bytes().all(|b| (0x21..=0x7e).contains(&b));
+                    if plain && !ctx.credentials.contains(cred) {
+                        ctx.credentials.push(cred.clone());
+                    }
+                    plain
+                }
+                // a value that is not a text is not a token
+                Some(_) => false,
+                None => {
+                    ctx.credentials.retain(|c| c != cred);
+                    true
+                }
+            };
+            ctx.journal.record(Value::Bool(answer));
+            Ok(Value::Bool(answer))
+        }
         ("router.go", 1) | ("router.replace", 1) => {
             let value = eval(ctx, &args[0])?;
             if let Some(v) = ctx.journal.replayed() {
@@ -784,10 +824,10 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
         (
             "clock.now" | "net.search" | "net.get" | "net.fetch" | "net.post" | "net.put"
             | "net.delete" | "location.current" | "sleep" | "storage.get" | "storage.set"
-            | "router.go" | "router.replace" | "json.get" | "json.items" | "json.quote" | "reverse"
-            | "contains" | "lower" | "fold" | "num" | "take" | "skip" | "concat" | "min" | "max"
-            | "abs" | "floor" | "ceil" | "round" | "lines" | "split" | "join" | "trim" | "upper"
-            | "starts_with" | "ends_with",
+            | "router.go" | "router.replace" | "credential.set" | "credential.clear" | "json.get"
+            | "json.items" | "json.quote" | "reverse" | "contains" | "lower" | "fold" | "num"
+            | "take" | "skip" | "concat" | "min" | "max" | "abs" | "floor" | "ceil" | "round"
+            | "lines" | "split" | "join" | "trim" | "upper" | "starts_with" | "ends_with",
             n,
         ) => Err(fault(
             "replay-type-error",

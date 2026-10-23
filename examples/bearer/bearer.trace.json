@@ -1,0 +1,25 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "note": "A refused sign-in holds no token; a good one holds it (by name, never the value) and the next request carries it; signing out forgets it.",
+  "steps": [
+    { "event": "User", "params": ["ada"], "state": { "user": "ada" } },
+    { "event": "Pass", "params": ["wrong-pass"], "state": { "pass": "wrong-pass" } },
+    { "event": "SignIn", "expect": { "outcome": "suspended", "credentials": [], "issued": [{ "request": 1, "effect": "net.post", "args": ["api/login", "[\"ada\",\"wrong-pass\"]"] }] } },
+    { "resolve": 1, "with": { "Ok": "{\"status\":401,\"body\":\"wrong user name or password\"}" },
+      "state": { "signed": false, "msg": "Wrong user name or password.", "pass": "" },
+      "expect": { "credentials": [] } },
+    { "event": "Pass", "params": ["hunter22!"], "state": { "pass": "hunter22!" } },
+    { "event": "SignIn", "expect": { "outcome": "suspended", "credentials": [] } },
+    { "resolve": 2, "with": { "Ok": "{\"status\":200,\"body\":\"{\\\"token\\\":\\\"t-8f3a\\\"}\"}" },
+      "state": { "signed": true, "msg": "", "pass": "" },
+      "expect": { "credentials": ["api"], "issued": [{ "request": 3, "effect": "net.get", "args": ["api/me"], "credential": "api" }] } },
+    { "resolve": 3, "with": { "Ok": "{\"user\":\"ada\"}" }, "state": { "who": "ada" }, "expect": { "credentials": ["api"] } },
+    { "event": "Again", "expect": { "outcome": "suspended", "issued": [{ "request": 4, "effect": "net.get", "credential": "api" }] } },
+    { "resolve": 4, "with": { "Ok": "{\"user\":\"ada\"}" } },
+    { "event": "SignOut", "expect": { "outcome": "suspended", "credentials": ["api"], "issued": [{ "request": 5, "effect": "net.post", "args": ["api/logout", "[]"], "credential": "api" }] } },
+    { "resolve": 5, "with": { "Ok": "{\"status\":200,\"body\":\"bye\"}" },
+      "state": { "signed": false, "who": "", "msg": "You are signed out." },
+      "expect": { "credentials": [] } }
+  ]
+}

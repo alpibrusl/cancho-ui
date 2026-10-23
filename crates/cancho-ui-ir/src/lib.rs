@@ -16,6 +16,7 @@ pub mod blocks;
 pub mod casefold;
 pub mod conditions;
 pub mod controls;
+pub mod credential;
 pub mod ir;
 pub mod lower;
 pub mod routing;
