@@ -17,7 +17,7 @@ for (let i = 0; i < 40; i++) { const mag = 10 ** Math.floor(rnd() * 12 - 3); num
 // a value under 1e-6 in size is written as zero by the language (docs/i18n.md section 3.3), which Intl does not: leave those out
 for (let i = numbers.length - 1; i >= 0; i--) { if (numbers[i] !== 0 && Math.abs(numbers[i]) < 1e-6) { numbers.splice(i, 1); } }
 const U = (y, m, d, h = 0, mi = 0, s = 0, ms = 0) => Date.UTC(y, m, d, h, mi, s, ms);
-const dates = [U(2026, 9, 24, 15, 5, 9), U(2026, 0, 5, 9, 5), U(1000, 0, 1), U(9999, 11, 31, 23, 59, 59, 999), U(2024, 1, 29, 12, 0), U(2026, 11, 31, 0, 0), U(2000, 0, 1, 0, 0), U(1970, 0, 1), U(1969, 11, 31, 23, 59, 59, 999), U(1900, 2, 1, 6, 30), U(2100, 1, 28, 18, 45), U(1582, 9, 15, 11, 11), U(2026, 5, 15, 12, 59), U(2026, 5, 15, 13, 0), U(2026, 2, 8, 0, 5), -1.5, 1e12 + 0.7];
+const dates = [U(2026, 9, 24, 15, 5, 9), U(2026, 0, 5, 9, 5), U(1000, 0, 1), U(9999, 11, 31, 23, 59, 59, 999), U(2024, 1, 29, 12, 0), U(2026, 11, 31, 0, 0), U(2000, 0, 1, 0, 0), U(1970, 0, 1), U(1969, 11, 31, 23, 59, 59, 999), U(1900, 2, 1, 6, 30), U(2100, 1, 28, 18, 45), U(1582, 9, 15, 11, 11), U(2026, 5, 15, 12, 59), U(2026, 5, 15, 13, 0), U(2026, 2, 8, 0, 5), -1.5, -0.5, -86400000.5, 1e12 + 0.7, 86399999.5];
 for (let i = 0; i < 25; i++) { dates.push(Math.floor(U(1001, 0, 1) + rnd() * (U(9998, 0, 1) - U(1001, 0, 1)))); }
 // whole counts only: CLDR gives `one` to 1.5 in French, Portuguese and Hindi; the language models whole counts and calls the rest `other` (docs/i18n.md)
 const counts = Array.from({ length: 112 }, (_, i) => i).concat([200, 999, 1000, 1001, 1002, 1011, 1111, 100000, 1000000, 2000000, 1000001, 1e9, 1e12, -1]);

@@ -140,6 +140,7 @@ numbers (a 32-second wait, a bound of 65,537).
 * **One break was equivalent and is removed:** "a comment line is data" changes nothing, because a line that starts with `:` has the empty field name, which is ignored anyway. The explicit test stays; it is no longer claimed to be checked.
 * **A hang, and what it taught.** On the third break (a hidden page keeps its connection) `check-stream.js` waited for something that never arrived and hung for about 55 minutes; I killed it by hand, which proves nothing. The script now ends itself
   after 4 minutes (a watchdog). The break was then run again alone: `check-stream.js` fails by itself in 58 s (exit 1: A11, A12, A13, F) with nothing killed.
+  Later, in the #82 gate, `check-stream.js` hit its own watchdog once in 7 runs (after "C: no page error", in the block that writes many small lines to a page that closes the connection). The probable cause, inferred and not proven: a write to a connection the page had just closed never called back. The stand-in's write now ends when the connection closes or after 3 s; 10 runs in a row after that passed.
 
 ## 9. Not done
 

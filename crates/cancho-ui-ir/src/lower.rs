@@ -1645,7 +1645,9 @@ fn await_driven_fields(c: &IrComponent) -> BTreeSet<String> {
 /// (`call-unknown`, docs/ops-console.md).
 fn is_known_call(path: &[String]) -> bool {
     match path {
-        [one] => one == "sleep" || one == "t" || PURE_BUILTINS.iter().any(|(name, _, _)| name == one),
+        [one] => {
+            one == "sleep" || one == "t" || PURE_BUILTINS.iter().any(|(name, _, _)| name == one)
+        }
         [a, b] => matches!(
             (a.as_str(), b.as_str()),
             ("clock", "now")

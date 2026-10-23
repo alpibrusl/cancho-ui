@@ -162,6 +162,14 @@ in `examples/refusal/`, and by the evidence report.
 | `subscribe-event-params` | `Component` | `Error` | `Static` | A `subscribe` whose message event, or whose `status` event, does not take exactly one parameter (the message's text, the status word). *(Built 2026-10-24, issue #78.)* |
 | `subscribe-url-invalid` | `Component` | `Error` | `Static` | A `subscribe` whose address is not a string literal naming a path (`/api/stream`, `api/stream`) or an `http(s)://` URL with a host: empty, over 2,000 characters, with a space, backslash or character outside printable ASCII, with a fragment (`#`), protocol-relative (`//host/x`), of another scheme (`ws:`, `ftp:`, `javascript:`, `data:`), or carrying credentials (`user@host`). *(Built 2026-10-24, issue #78.)* |
 | `subscribe-duplicate` | `Component` | `Error` | `Static` | Two `subscribe` lines in a component: it listens to one stream. *(Built 2026-10-24, issue #78.)* |
+| `message-language-unknown` | `Component` | `Error` | `Static` | A `messages` catalog for a language the compiler has no formats for (`en es de fr pt ru ar he ja hi`). *(Built 2026-10-24, issue #82, `docs/i18n.md` section 3.)* |
+| `message-key-missing` | `Component` | `Error` | `Static` | A message one language has and another lacks (either way round): every language of a component has the same keys. *(Built 2026-10-24, issue #82.)* |
+| `message-key-duplicate` | `Component` | `Error` | `Static` | The same key twice in one language, or two catalogs for one language. *(Built 2026-10-24, issue #82.)* |
+| `message-hole-mismatch` | `Component` | `Error` | `Static` | A message whose `{name}` holes differ between languages, or that is a plural in one language and a plain text in another. *(Built 2026-10-24, issue #82.)* |
+| `message-plural-incomplete` | `Component` | `Error` | `Static` | A plural message that lacks a form its language has, has one it does not, or gives one twice (English `one`, `other`; Spanish also `many`; Russian `one`, `few`, `many`, `other`; Arabic six; Japanese `other`). *(Built 2026-10-24, issue #82.)* |
+| `message-text-invalid` | `Component` | `Error` | `Static` | A message text with a brace that is not a hole (`{name}`: letters, digits and `_`, not starting with a digit), or a plural form with a hole other than its count. *(Built 2026-10-24, issue #82.)* |
+| `message-key-unknown` | `Component` | `Error` | `Static` | A `t("key")` whose key is in no catalog of the component. *(Built 2026-10-24, issue #82.)* |
+| `message-call-invalid` | `Component` | `Error` | `Static` | A `t`, `fmt.*` or `locale.*` call of the wrong shape: a key that is not a string literal, a number of arguments the message does not take, a `fmt.date` style that is not one of the literals `"short"`, `"medium"`, `"long"`, `"full"`. *(Built 2026-10-24, issue #82.)* |
 | `file-limit-invalid` | `Component` | `Error` | `Static` | A `max_bytes:` of a `FileField` that is not an integer literal from 1 to 1,048,576. On anything else it is `binding-unknown`. *(Built 2026-10-23, issue #79.)* |
 | `file-field-in-loop` | `Component` | `Error` | `Static` | A `FileField` drawn inside a `For`: the page keeps the chosen file by the place of the field in the source, and every row would share one. *(Built 2026-10-23, issue #79.)* |
 | `chart-incomplete` | `Component` | `Error` | `Static` | A `Chart` without `label:`, `kind:` or `values:`. *(Built 2026-10-24, issue #77, `docs/charts.md`.)* |
@@ -208,7 +216,7 @@ tags: `test-state-mismatch`, `test-expect-mismatch`, `test-fault-missing`, `test
 `trace-unknown-event`, `trace-params-arity`, `trace-value-too-long`, `trace-value-not-an-option`, `trace-unknown-state-field`,
 `trace-unknown-request`, `trace-request-not-pending`,
 `trace-request-not-scriptable`, `trace-bad-response`,
-`trace-event-after-dispose`, `trace-navigate-invalid`, `trace-history-empty`, `trace-value-not-a-file`, `trace-stream-state`, `replay-unsupported`, `replay-tick-limit`, `replay-route-limit`, `replay-type-error`,
+`trace-event-after-dispose`, `trace-navigate-invalid`, `trace-history-empty`, `trace-value-not-a-file`, `trace-stream-state`, `trace-locale-invalid`, `replay-unsupported`, `replay-tick-limit`, `replay-route-limit`, `replay-type-error`,
 `replay-unknown-identifier`, `replay-no-match-arm`, `replay-non-finite`,
 `replay-number-format`. (`replay-non-finite` is also what the emitted page throws for the same result: `docs/semantics.md`,
 "Arithmetic is finite".) Their meanings are in `docs/replay.md` §7.1. A program that

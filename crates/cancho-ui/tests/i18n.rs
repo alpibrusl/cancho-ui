@@ -84,7 +84,8 @@ const EN_DE: &str = "        en { a: \"A\"; h: \"Hi {name}\"; o(n): one \"{n} x\
 // ---- the pages corpus in replay ------------------------------------------------------------------------------------
 
 fn pages() -> Value {
-    serde_json::from_str(include_str!("../../../tests/i18n_pages.json")).expect("the corpus is JSON")
+    serde_json::from_str(include_str!("../../../tests/i18n_pages.json"))
+        .expect("the corpus is JSON")
 }
 
 #[test]
@@ -107,7 +108,9 @@ fn the_pages_corpus_passes_in_replay() {
             if let Some(n) = s["count"].as_i64()
                 && n != count
             {
-                steps.push(json!({"event": "SetCount", "params": [n.to_string()], "state": {"count": n}}));
+                steps.push(
+                    json!({"event": "SetCount", "params": [n.to_string()], "state": {"count": n}}),
+                );
                 count = n;
             }
             let mut step = json!({"event": event});
@@ -132,99 +135,182 @@ fn the_pages_corpus_passes_in_replay() {
 fn a_component_with_catalogs_is_accepted() {
     accepted(&comp(EN_DE, "t(\"a\") + t(\"h\", \"Ada\") + t(\"o\", 3)"));
     // no catalogs: English, and the formats work
-    accepted("component C {\n    requires Locale;\n    state s: String = \"\";\n    on Go { s = fmt.number(1234.5, 2) + fmt.percent(0.5) + fmt.date(0, \"short\") + fmt.time(0) + locale.current(); }\n    view { Text { \"{s}\" } }\n}\n");
+    accepted(
+        "component C {\n    requires Locale;\n    state s: String = \"\";\n    on Go { s = fmt.number(1234.5, 2) + fmt.percent(0.5) + fmt.date(0, \"short\") + fmt.time(0) + locale.current(); }\n    view { Text { \"{s}\" } }\n}\n",
+    );
 }
 
 #[test]
 fn each_message_tag_is_reached() {
     let ok_call = "t(\"a\")";
     // an unknown language
-    assert_eq!(codes(&comp("        xx { a: \"A\"; }", ok_call)), ["message-language-unknown"]);
+    assert_eq!(
+        codes(&comp("        xx { a: \"A\"; }", ok_call)),
+        ["message-language-unknown"]
+    );
     // a key one language lacks, either way round
     assert_eq!(
-        codes(&comp("        en { a: \"A\"; b: \"B\"; }\n        de { a: \"A\"; }", ok_call)),
+        codes(&comp(
+            "        en { a: \"A\"; b: \"B\"; }\n        de { a: \"A\"; }",
+            ok_call
+        )),
         ["message-key-missing"]
     );
     assert_eq!(
-        codes(&comp("        en { a: \"A\"; }\n        de { a: \"A\"; b: \"B\"; }", ok_call)),
+        codes(&comp(
+            "        en { a: \"A\"; }\n        de { a: \"A\"; b: \"B\"; }",
+            ok_call
+        )),
         ["message-key-missing"]
     );
     // a duplicate key, a duplicate language
-    assert_eq!(codes(&comp("        en { a: \"A\"; a: \"B\"; }", ok_call)), ["message-key-duplicate"]);
-    assert_eq!(codes(&comp("        en { a: \"A\"; }\n        en { a: \"B\"; }", ok_call)), ["message-key-duplicate"]);
+    assert_eq!(
+        codes(&comp("        en { a: \"A\"; a: \"B\"; }", ok_call)),
+        ["message-key-duplicate"]
+    );
+    assert_eq!(
+        codes(&comp(
+            "        en { a: \"A\"; }\n        en { a: \"B\"; }",
+            ok_call
+        )),
+        ["message-key-duplicate"]
+    );
     // holes that differ, and a plural in one language and a plain text in the other
     assert_eq!(
-        codes(&comp("        en { h: \"Hi {name}\"; }\n        de { h: \"Hallo {who}\"; }", "t(\"h\", \"x\")")),
+        codes(&comp(
+            "        en { h: \"Hi {name}\"; }\n        de { h: \"Hallo {who}\"; }",
+            "t(\"h\", \"x\")"
+        )),
         ["message-hole-mismatch"]
     );
     assert_eq!(
-        codes(&comp("        en { o(n): one \"{n}\", other \"{n}\"; }\n        de { o: \"x\"; }", "t(\"o\", 1)")),
+        codes(&comp(
+            "        en { o(n): one \"{n}\", other \"{n}\"; }\n        de { o: \"x\"; }",
+            "t(\"o\", 1)"
+        )),
         ["message-hole-mismatch"]
     );
     // a plural with a form missing, one too many, one twice
-    assert_eq!(codes(&comp("        en { o(n): other \"{n}\"; }", "t(\"o\", 1)")), ["message-plural-incomplete"]);
     assert_eq!(
-        codes(&comp("        en { o(n): one \"{n}\", few \"{n}\", other \"{n}\"; }", "t(\"o\", 1)")),
+        codes(&comp("        en { o(n): other \"{n}\"; }", "t(\"o\", 1)")),
         ["message-plural-incomplete"]
     );
     assert_eq!(
-        codes(&comp("        en { o(n): one \"{n}\", one \"{n}\", other \"{n}\"; }", "t(\"o\", 1)")),
+        codes(&comp(
+            "        en { o(n): one \"{n}\", few \"{n}\", other \"{n}\"; }",
+            "t(\"o\", 1)"
+        )),
+        ["message-plural-incomplete"]
+    );
+    assert_eq!(
+        codes(&comp(
+            "        en { o(n): one \"{n}\", one \"{n}\", other \"{n}\"; }",
+            "t(\"o\", 1)"
+        )),
         ["message-plural-incomplete"]
     );
     // Spanish has `many`; Japanese only `other`
     assert_eq!(
-        codes(&comp("        es { o(n): one \"{n}\", other \"{n}\"; }", "t(\"o\", 1)")),
+        codes(&comp(
+            "        es { o(n): one \"{n}\", other \"{n}\"; }",
+            "t(\"o\", 1)"
+        )),
         ["message-plural-incomplete"]
     );
     accepted(&comp("        ja { o(n): other \"{n}\"; }", "t(\"o\", 1)"));
     // text that is not a text: an unclosed brace, a stray brace, an empty hole, a hole in a plural that is not its count
     for bad in ["a {b", "a } b", "a {} b", "a {1x} b", "a {b-c} b"] {
-        assert_eq!(codes(&comp(&format!("        en {{ a: \"{bad}\"; }}"), ok_call)), ["message-text-invalid"], "{bad}");
+        assert_eq!(
+            codes(&comp(&format!("        en {{ a: \"{bad}\"; }}"), ok_call)),
+            ["message-text-invalid"],
+            "{bad}"
+        );
     }
     assert_eq!(
-        codes(&comp("        en { o(n): one \"{m}\", other \"{n}\"; }", "t(\"o\", 1)")),
+        codes(&comp(
+            "        en { o(n): one \"{m}\", other \"{n}\"; }",
+            "t(\"o\", 1)"
+        )),
         ["message-text-invalid"]
     );
     // calls: an unknown key, a key that is not a literal, the wrong number of arguments, a style that is not one of the four
     assert_eq!(codes(&comp(EN_DE, "t(\"zzz\")")), ["message-key-unknown"]);
     assert_eq!(codes(&comp(EN_DE, "t(s)")), ["message-call-invalid"]);
     assert_eq!(codes(&comp(EN_DE, "t(\"h\")")), ["message-call-invalid"]);
-    assert_eq!(codes(&comp(EN_DE, "t(\"h\", \"a\", \"b\")")), ["message-call-invalid"]);
+    assert_eq!(
+        codes(&comp(EN_DE, "t(\"h\", \"a\", \"b\")")),
+        ["message-call-invalid"]
+    );
     assert_eq!(codes(&comp(EN_DE, "t(\"o\")")), ["message-call-invalid"]);
     assert_eq!(codes(&comp(EN_DE, "t(\"a\", 1)")), ["message-call-invalid"]);
-    assert_eq!(codes(&comp(EN_DE, "fmt.date(0, \"tiny\")")), ["message-call-invalid"]);
-    assert_eq!(codes(&comp(EN_DE, "fmt.date(0, s)")), ["message-call-invalid"]);
-    assert_eq!(codes(&comp(EN_DE, "fmt.number(1)")), ["message-call-invalid"]);
+    assert_eq!(
+        codes(&comp(EN_DE, "fmt.date(0, \"tiny\")")),
+        ["message-call-invalid"]
+    );
+    assert_eq!(
+        codes(&comp(EN_DE, "fmt.date(0, s)")),
+        ["message-call-invalid"]
+    );
+    assert_eq!(
+        codes(&comp(EN_DE, "fmt.number(1)")),
+        ["message-call-invalid"]
+    );
     assert_eq!(codes(&comp(EN_DE, "fmt.time()")), ["message-call-invalid"]);
-    assert_eq!(codes(&comp(EN_DE, "locale.current(1)")), ["message-call-invalid"]);
-    assert_eq!(codes(&comp(EN_DE, "locale.set()")), ["message-call-invalid"]);
+    assert_eq!(
+        codes(&comp(EN_DE, "locale.current(1)")),
+        ["message-call-invalid"]
+    );
+    assert_eq!(
+        codes(&comp(EN_DE, "locale.set()")),
+        ["message-call-invalid"]
+    );
     // a program with no catalogs has no key
     assert_eq!(
-        codes("component C {\n    requires Locale;\n    state s: String = \"\";\n    on Go { s = t(\"a\"); }\n    view { Text { \"{s}\" } }\n}\n"),
+        codes(
+            "component C {\n    requires Locale;\n    state s: String = \"\";\n    on Go { s = t(\"a\"); }\n    view { Text { \"{s}\" } }\n}\n"
+        ),
         ["message-key-unknown"]
     );
 }
 
 #[test]
 fn the_calls_need_the_locale_capability_and_it_takes_no_bound() {
-    for call in ["t(\"a\")", "fmt.number(1, 2)", "fmt.percent(1)", "fmt.date(0, \"short\")", "fmt.time(0)", "locale.current()"] {
+    for call in [
+        "t(\"a\")",
+        "fmt.number(1, 2)",
+        "fmt.percent(1)",
+        "fmt.date(0, \"short\")",
+        "fmt.time(0)",
+        "locale.current()",
+    ] {
         let src = comp(EN_DE, call).replace("    requires Locale;\n", "");
         assert_eq!(codes(&src), ["capability-missing"], "{call}");
     }
-    let set = comp(EN_DE, "\"x\"").replace("on Go { s = \"x\"; }", "on Go { ok = locale.set(\"en\"); }").replace("state s: String", "state ok: Bool = false;\n    state s: String").replace("    requires Locale;\n", "");
+    let set = comp(EN_DE, "\"x\"")
+        .replace("on Go { s = \"x\"; }", "on Go { ok = locale.set(\"en\"); }")
+        .replace(
+            "state s: String",
+            "state ok: Bool = false;\n    state s: String",
+        )
+        .replace("    requires Locale;\n", "");
     assert_eq!(codes(&set), ["capability-missing"], "locale.set");
     let unused = comp(EN_DE, "\"x\"");
     assert_eq!(codes(&unused), ["capability-unused"]);
     let bounded = comp(EN_DE, "t(\"a\")").replace("requires Locale;", "requires Locale(\"en\");");
     assert_eq!(codes(&bounded), ["capability-narrowing-illegal"]);
     // storage.set keeps its own shape (the credential check no longer reads any `.set`)
-    accepted("component C {\n    requires Storage;\n    state ok: Bool = false;\n    on Go { ok = storage.set(\"k\", \"v\"); }\n    view { Text { \"x\" } }\n}\n");
+    accepted(
+        "component C {\n    requires Storage;\n    state ok: Bool = false;\n    on Go { ok = storage.set(\"k\", \"v\"); }\n    view { Text { \"x\" } }\n}\n",
+    );
 }
 
 #[test]
 fn the_language_is_in_requires_and_diff_shows_a_message_change() {
     let a = scratch("a.cui", &comp(EN_DE, "t(\"a\")"));
-    let b = scratch("b.cui", &comp(&EN_DE.replace("\"B\"", "\"Bee\""), "t(\"a\")"));
+    let b = scratch(
+        "b.cui",
+        &comp(&EN_DE.replace("\"B\"", "\"Bee\""), "t(\"a\")"),
+    );
     let (code, out, err) = run(&["inspect", "effects", p(&a), "C", "--output", "json"]);
     assert_eq!(code, 0, "{err}");
     assert!(out.contains("Locale"), "{out}");
@@ -242,14 +328,27 @@ fn the_language_is_in_requires_and_diff_shows_a_message_change() {
 fn the_language_comes_from_the_trace_and_is_in_the_report() {
     let src = comp(EN_DE, "t(\"a\") + locale.current()");
     let t = |locales: Value| json!({"schema": "cancho-ui-trace", "version": "0.1.0", "locales": locales, "steps": [{"event": "Go"}]});
-    for (locales, want) in [(json!(["de"]), "Bde"), (json!(["de-AT", "en"]), "Bde"), (json!(["fr", "en"]), "Aen"), (json!([]), "Aen"), (json!(["EN_gb"]), "Aen")] {
+    for (locales, want) in [
+        (json!(["de"]), "Bde"),
+        (json!(["de-AT", "en"]), "Bde"),
+        (json!(["fr", "en"]), "Aen"),
+        (json!([]), "Aen"),
+        (json!(["EN_gb"]), "Aen"),
+        (json!(["de_AT"]), "Bde"),
+    ] {
         let mut trace = t(locales.clone());
         trace["steps"][0]["state"] = json!({"s": want});
         let (code, report) = replay(&src, &trace);
         assert_eq!(code, 0, "{locales}\n{report:#}");
     }
     // a malformed language list
-    for bad in [json!("de"), json!([1]), json!(["x"]), json!(["de-"]), json!(["d e"])] {
+    for bad in [
+        json!("de"),
+        json!([1]),
+        json!(["x"]),
+        json!(["de-"]),
+        json!(["d e"]),
+    ] {
         let (code, report) = replay(&src, &t(bad.clone()));
         assert_eq!(code, 4, "{bad}");
         assert_eq!(rules(&report), ["trace-locale-invalid"], "{bad}");
@@ -259,7 +358,10 @@ fn the_language_comes_from_the_trace_and_is_in_the_report() {
 #[test]
 fn a_component_without_the_capability_has_no_document_in_its_report() {
     let src = "component C {\n    state n: Int = 0;\n    view { Text { \"x\" } }\n}\n";
-    let (code, report) = replay(src, &json!({"schema": "cancho-ui-trace", "version": "0.1.0", "steps": [{"advance": 1, "expect": {"outcome": "ok"}}]}));
+    let (code, report) = replay(
+        src,
+        &json!({"schema": "cancho-ui-trace", "version": "0.1.0", "steps": [{"advance": 1, "expect": {"outcome": "ok"}}]}),
+    );
     assert_eq!(code, 0);
     assert!(report["steps"][0].get("document").is_none());
 }
@@ -267,7 +369,10 @@ fn a_component_without_the_capability_has_no_document_in_its_report() {
 #[test]
 fn a_value_that_is_not_what_the_call_needs_is_a_replay_type_error() {
     let src = "component C {\n    requires Locale;\n    state s: String = \"\";\n    state x: String = \"a\";\n    on Go { s = fmt.number(x, 2); }\n    view { Text { \"{s}\" } }\n}\n";
-    let (code, report) = replay(src, &json!({"schema": "cancho-ui-trace", "version": "0.1.0", "steps": [{"event": "Go", "state": {"s": ""}}]}));
+    let (code, report) = replay(
+        src,
+        &json!({"schema": "cancho-ui-trace", "version": "0.1.0", "steps": [{"event": "Go", "state": {"s": ""}}]}),
+    );
     assert_eq!(code, 4);
     assert_eq!(rules(&report), ["replay-type-error"]);
 }
@@ -299,22 +404,47 @@ fn the_page_carries_the_data_and_the_steps() {
     assert!(js.contains("const __CUI_I18N ="), "the data");
     assert!(js.contains("function __cui_fmt_number("), "the formatting");
     assert!(js.contains("function __cui_plural("), "the plural rules");
-    assert!(js.contains("__cui_doc(__cui_loc.lang)"), "the document follows the language");
+    assert!(
+        js.contains("__cui_doc(__cui_loc.lang)"),
+        "the document follows the language"
+    );
     assert!(!js.contains("Intl."), "the page does not call Intl");
     assert!(!js.contains("toLocale"), "the page does not call toLocale");
     // only the languages the module uses
-    assert!(js.contains("\"de\":{") && js.contains("\"en\":{") && !js.contains("\"ja\":{"), "data for en and de only");
+    assert!(
+        js.contains("\"de\":{") && js.contains("\"en\":{") && !js.contains("\"ja\":{"),
+        "data for en and de only"
+    );
+    // a catalog with text outside ASCII still builds to an ASCII module, one escape per UTF-16 unit
+    let wide = built(&comp(
+        "        en { a: \"caf\u{e9} \u{1F600}\"; }",
+        "t(\"a\")",
+    ));
+    assert!(wide.is_ascii(), "the module is ASCII");
+    assert!(
+        wide.contains("caf\\u00e9 \\ud83d\\ude00"),
+        "the escapes are in the data"
+    );
     let plain = built("component A {\n    state n: Int = 0;\n    view { Text { \"x\" } }\n}\n");
-    assert!(!plain.contains("__CUI_I18N"), "a program with no Locale carries none of it");
+    assert!(
+        !plain.contains("__CUI_I18N"),
+        "a program with no Locale carries none of it"
+    );
 }
 
 #[test]
 fn the_stylesheet_aligns_table_headers_to_the_start() {
-    let file = scratch("f.cui", "component A {\n    state n: Int = 0;\n    view { Text { \"x\" } }\n}\n");
+    let file = scratch(
+        "f.cui",
+        "component A {\n    state n: Int = 0;\n    view { Text { \"x\" } }\n}\n",
+    );
     let dir = file.parent().expect("a directory").join("page");
     let (code, _, err) = run(&["build", p(&file), "--page", "-o", p(&dir)]);
     assert_eq!(code, 0, "{err}");
     let html = std::fs::read_to_string(dir.join("index.html")).expect("index.html");
-    assert!(html.contains(".cui-table th, .cui-table td { text-align: start;"), "start, not left");
+    assert!(
+        html.contains(".cui-table th, .cui-table td { text-align: start;"),
+        "start, not left"
+    );
     assert!(!html.contains("text-align: left"));
 }

@@ -678,7 +678,8 @@ fn run_step(
         credentials: credential_name(comp).map(|_| m.credentials.clone()),
         charts: m.charts(),
         stream: m.stream_report(),
-        document: locale_used(comp).then(|| serde_json::json!({"lang": m.locale.lang, "dir": m.locale.dir()})),
+        document: locale_used(comp)
+            .then(|| serde_json::json!({"lang": m.locale.lang, "dir": m.locale.dir()})),
         history: routes_used(comp).then(|| {
             serde_json::json!({
                 "entries": m.router.entries,

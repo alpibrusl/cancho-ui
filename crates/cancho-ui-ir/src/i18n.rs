@@ -93,7 +93,7 @@ pub fn plural(code: &str, n: f64) -> &'static str {
         "fr" | "es" | "pt" => {
             if n == 1 || (n == 0 && code != "es") {
                 "one"
-            } else if n != 0 && n % 1_000_000 == 0 {
+            } else if n != 0 && n.is_multiple_of(1_000_000) {
                 "many"
             } else {
                 "other"
@@ -280,7 +280,11 @@ fn civil(ms: f64) -> Option<Civil> {
 }
 
 fn two(n: i64, pad: bool) -> String {
-    if pad { format!("{n:02}") } else { n.to_string() }
+    if pad {
+        format!("{n:02}")
+    } else {
+        n.to_string()
+    }
 }
 
 fn apply(parts: &[Part], c: &Civil) -> String {

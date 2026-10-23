@@ -44,6 +44,23 @@ fn parts_json(parts: &[MsgPart]) -> Value {
     )
 }
 
+/// JSON with every character outside ASCII written as `\uXXXX` (one per UTF-16 unit): a built module is ASCII whatever its texts are, so a
+/// server that sends it with the wrong charset cannot garble a catalog (`tests/build_output.rs`).
+fn ascii(json: String) -> String {
+    let mut out = String::with_capacity(json.len());
+    for c in json.chars() {
+        if c.is_ascii() {
+            out.push(c);
+        } else {
+            let mut buf = [0u16; 2];
+            for unit in c.encode_utf16(&mut buf) {
+                out.push_str(&format!("\\u{unit:04x}"));
+            }
+        }
+    }
+    out
+}
+
 /// The languages a component speaks: its catalogs', in order, or English.
 pub fn languages(c: &IrComponent) -> Vec<String> {
     if c.messages.is_empty() {
@@ -78,7 +95,7 @@ pub fn component_json(c: &IrComponent) -> String {
             o.insert(e.key.clone(), json!(cancho_ui_ir::messages::hole_order(e)));
         }
     }
-    json!({"langs": languages(c), "m": m, "o": o}).to_string()
+    ascii(json!({"langs": languages(c), "m": m, "o": o}).to_string())
 }
 
 /// The module-level adapter, with the data of the given languages.
@@ -93,7 +110,7 @@ pub fn adapter_js(langs: &[String]) -> String {
         .filter_map(|l| categories(l.code).map(|c| (l.code.to_string(), json!(c))))
         .collect();
     TEMPLATE
-        .replace("/*DATA*/", &Value::Object(data).to_string())
+        .replace("/*DATA*/", &ascii(Value::Object(data).to_string()))
         .replace("/*CATS*/", &Value::Object(cats).to_string())
 }
 

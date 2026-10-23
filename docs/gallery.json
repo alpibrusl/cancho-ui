@@ -62,6 +62,12 @@
       "title": "Charts",
       "source": "examples/charts/charts.cui",
       "says": "`Chart`: a line and a bar chart drawn as SVG from one list of numbers, with a text alternative a screen reader reads and a collapsed data table. The chart draws the last 1,000 values and the table lists the last 200; \"Double them\" shows the limit."
+    },
+    {
+      "id": "i18n",
+      "title": "Languages and right to left",
+      "source": "examples/i18n/i18n.cui",
+      "says": "One screen in English, Arabic and Russian. The texts are catalogs the compiler checks (a missing key or a plural form a language lacks is refused); numbers, percent, dates and times are written from tables, not `Intl`. The page starts in the browser's language, switches with a button, and turns right to left for Arabic."
     }
   ],
   "soon": [
@@ -83,18 +89,6 @@
       "probe": {
         "view": "Image { label: \"Map\" }",
         "rule": "component-kind-unknown"
-      }
-    },
-    {
-      "id": "i18n",
-      "title": "Internationalization",
-      "issue": 82,
-      "missing": "Message catalogs, locale-aware number and date formatting, and text direction; `fold` is the only text feature beyond ASCII.",
-      "probe": {
-        "absent": [
-          "Intl.",
-          "toLocale"
-        ]
       }
     },
     {

@@ -563,7 +563,11 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                         "replay-type-error",
                         format!(
                             "`{name}` needs numbers{}, got {}",
-                            if name == "fmt.date" { " and a style" } else { "" },
+                            if name == "fmt.date" {
+                                " and a style"
+                            } else {
+                                ""
+                            },
                             vals.iter().map(describe).collect::<Vec<_>>().join(", ")
                         ),
                         span,
@@ -929,8 +933,8 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
             | "router.go" | "router.replace" | "credential.set" | "credential.clear" | "json.get"
             | "json.items" | "json.quote" | "reverse" | "contains" | "lower" | "fold" | "num"
             | "take" | "skip" | "concat" | "min" | "max" | "abs" | "floor" | "ceil" | "round"
-            | "lines" | "split" | "join" | "trim" | "upper" | "starts_with" | "ends_with"
-            | "t" | "fmt.number" | "fmt.percent" | "fmt.date" | "fmt.time" | "locale.current"
+            | "lines" | "split" | "join" | "trim" | "upper" | "starts_with" | "ends_with" | "t"
+            | "fmt.number" | "fmt.percent" | "fmt.date" | "fmt.time" | "locale.current"
             | "locale.set",
             n,
         ) => Err(fault(

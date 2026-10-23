@@ -102,8 +102,8 @@
     {
       "name": "the percent moves the point by multiplying",
       "file": "crates/cancho-ui-ir/src/i18n.rs",
-      "from": "    let (int, frac) = digits_of(x.abs());\n    let mut all = format!(\"{int}{frac}\");",
-      "to": "    let (int, frac) = digits_of((x * 100.0).abs() / 100.0);\n    let mut all = format!(\"{int}{frac}\");"
+      "from": "    let (int, frac) = digits_of(x.abs());\n    let mut all = format!(\"{int}{frac}\");\n    let point = int.len() + 2;",
+      "to": "    let (int, frac) = digits_of(x.abs() * 100.0);\n    let mut all = format!(\"{int}{frac}\");\n    let point = int.len();"
     },
     {
       "name": "two catalogs of one language are allowed",

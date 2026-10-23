@@ -789,7 +789,8 @@ impl Parser {
                 let mut forms = Vec::new();
                 if plural.is_some() {
                     loop {
-                        let (cat, _) = self.bump_ident("plural category (one, few, many, other ..)")?;
+                        let (cat, _) =
+                            self.bump_ident("plural category (one, few, many, other ..)")?;
                         let text = self.bump_string_lit("the text of the form")?.0;
                         forms.push((Some(cat), text));
                         if matches!(self.peek().token, Token::Comma) {

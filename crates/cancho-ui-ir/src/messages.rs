@@ -99,7 +99,9 @@ fn parse_text(text: &str, key: &str, span: Span) -> Result<Vec<MsgPart>, LowerEr
     let bad = |why: &str| {
         refused(
             "message-text-invalid",
-            format!("message `{key}`: {why}; a hole is `{{name}}` (letters, digits and `_`) and there is no way to write a brace in a message"),
+            format!(
+                "message `{key}`: {why}; a hole is `{{name}}` (letters, digits and `_`) and there is no way to write a brace in a message"
+            ),
             span,
         )
     };
@@ -178,7 +180,10 @@ fn lower_entry(lang: &str, e: &MessageEntry) -> Result<IrMessage, LowerError> {
                 if seen.contains(&cat) {
                     return Err(refused(
                         "message-plural-incomplete",
-                        format!("message `{}` in `{lang}` gives the form `{cat}` twice", e.key),
+                        format!(
+                            "message `{}` in `{lang}` gives the form `{cat}` twice",
+                            e.key
+                        ),
                         e.span,
                     ));
                 }
@@ -187,7 +192,10 @@ fn lower_entry(lang: &str, e: &MessageEntry) -> Result<IrMessage, LowerError> {
                 if let Some(h) = holes_of(&parts).into_iter().find(|h| h != param) {
                     return Err(refused(
                         "message-text-invalid",
-                        format!("message `{}`: a plural form can only use its count `{{{param}}}`, not `{{{h}}}`", e.key),
+                        format!(
+                            "message `{}`: a plural form can only use its count `{{{param}}}`, not `{{{h}}}`",
+                            e.key
+                        ),
                         e.span,
                     ));
                 }
@@ -233,7 +241,10 @@ fn lower_catalog(c: &Component, cat: &MessageCatalog) -> Result<IrCatalog, Lower
         if entries.iter().any(|m| m.key == e.key) {
             return Err(refused(
                 "message-key-duplicate",
-                format!("component `{}`: `{}` has the message `{}` twice", c.name, cat.lang, e.key),
+                format!(
+                    "component `{}`: `{}` has the message `{}` twice",
+                    c.name, cat.lang, e.key
+                ),
                 e.span,
             ));
         }
@@ -253,7 +264,10 @@ pub fn lower_messages(c: &Component) -> Result<Vec<IrCatalog>, LowerError> {
         if out.iter().any(|o| o.lang == cat.lang) {
             return Err(refused(
                 "message-key-duplicate",
-                format!("component `{}`: the language `{}` has two catalogs", c.name, cat.lang),
+                format!(
+                    "component `{}`: the language `{}` has two catalogs",
+                    c.name, cat.lang
+                ),
                 cat.span,
             ));
         }
@@ -340,7 +354,8 @@ pub fn check_call(
 ) -> Result<(), LowerError> {
     use cancho_ui_syntax::ast::Expr;
     let name = path.join(".");
-    let invalid = |detail: String| refused("message-call-invalid", format!("`{name}`: {detail}"), span);
+    let invalid =
+        |detail: String| refused("message-call-invalid", format!("`{name}`: {detail}"), span);
     let want = match name.as_str() {
         "fmt.number" | "fmt.date" => Some(2),
         "fmt.percent" | "fmt.time" | "locale.set" => Some(1),
@@ -359,18 +374,23 @@ pub fn check_call(
         && !matches!(&args[1], Expr::StringLit { value, .. } if i18n::DATE_STYLES.contains(&value.as_str()))
     {
         return Err(invalid(
-            "the style is one of the literals \"short\", \"medium\", \"long\", \"full\"".to_string(),
+            "the style is one of the literals \"short\", \"medium\", \"long\", \"full\""
+                .to_string(),
         ));
     }
     if name == "t" {
         let Some(Expr::StringLit { value: key, .. }) = args.first() else {
-            return Err(invalid("the first argument is the key, a string literal".to_string()));
+            return Err(invalid(
+                "the first argument is the key, a string literal".to_string(),
+            ));
         };
         let sig = SIGS.with(|s| s.borrow().get(key).cloned());
         let Some(sig) = sig else {
             return Err(refused(
                 "message-key-unknown",
-                format!("`t(\"{key}\")`: this component has no message `{key}`; add it to every language of its `messages`"),
+                format!(
+                    "`t(\"{key}\")`: this component has no message `{key}`; add it to every language of its `messages`"
+                ),
                 span,
             ));
         };

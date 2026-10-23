@@ -2,17 +2,24 @@
 //! `scripts/gen-i18n-corpus.js`. The same file is run against the page's JavaScript by `scripts/check-i18n.js`.
 
 use cancho_ui_ir::i18n::{
-    categories, format_date, format_number, format_percent, format_time, lang, plural, LANGS,
+    LANGS, categories, format_date, format_number, format_percent, format_time, lang, plural,
 };
 use serde_json::Value;
 
 fn corpus() -> Value {
-    serde_json::from_str(include_str!("../../../tests/i18n_corpus.json")).expect("the corpus is JSON")
+    serde_json::from_str(include_str!("../../../tests/i18n_corpus.json"))
+        .expect("the corpus is JSON")
 }
 
 fn show(s: &str) -> String {
     s.chars()
-        .map(|c| if c.is_ascii() && !c.is_control() { c.to_string() } else { format!("<U+{:04X}>", c as u32) })
+        .map(|c| {
+            if c.is_ascii() && !c.is_control() {
+                c.to_string()
+            } else {
+                format!("<U+{:04X}>", c as u32)
+            }
+        })
         .collect()
 }
 
@@ -24,47 +31,102 @@ fn numbers_percents_dates_and_times_are_what_intl_answered() {
     let mut check = |what: &str, got: String, want: &str, input: String| {
         checked += 1;
         if got != want && wrong.len() < 40 {
-            wrong.push(format!("{what} {input}: got {} wanted {}", show(&got), show(want)));
+            wrong.push(format!(
+                "{what} {input}: got {} wanted {}",
+                show(&got),
+                show(want)
+            ));
         }
     };
     for e in c["numbers"].as_array().expect("numbers") {
         let l = lang(e["lang"].as_str().expect("lang")).expect("a known language");
-        let got = format_number(l, e["x"].as_f64().expect("x"), e["digits"].as_f64().expect("digits"));
-        check("number", got, e["want"].as_str().expect("want"), format!("{} {} digits {}", l.code, e["x"], e["digits"]));
+        let got = format_number(
+            l,
+            e["x"].as_f64().expect("x"),
+            e["digits"].as_f64().expect("digits"),
+        );
+        check(
+            "number",
+            got,
+            e["want"].as_str().expect("want"),
+            format!("{} {} digits {}", l.code, e["x"], e["digits"]),
+        );
     }
     for e in c["percents"].as_array().expect("percents") {
         let l = lang(e["lang"].as_str().expect("lang")).expect("a known language");
         let got = format_percent(l, e["x"].as_f64().expect("x"));
-        check("percent", got, e["want"].as_str().expect("want"), format!("{} {}", l.code, e["x"]));
+        check(
+            "percent",
+            got,
+            e["want"].as_str().expect("want"),
+            format!("{} {}", l.code, e["x"]),
+        );
     }
     for e in c["dates"].as_array().expect("dates") {
         let l = lang(e["lang"].as_str().expect("lang")).expect("a known language");
-        let got = format_date(l, e["ms"].as_f64().expect("ms"), e["style"].as_str().expect("style"));
-        check("date", got, e["want"].as_str().expect("want"), format!("{} {} {}", l.code, e["ms"], e["style"]));
+        let got = format_date(
+            l,
+            e["ms"].as_f64().expect("ms"),
+            e["style"].as_str().expect("style"),
+        );
+        check(
+            "date",
+            got,
+            e["want"].as_str().expect("want"),
+            format!("{} {} {}", l.code, e["ms"], e["style"]),
+        );
     }
     for e in c["times"].as_array().expect("times") {
         let l = lang(e["lang"].as_str().expect("lang")).expect("a known language");
         let got = format_time(l, e["ms"].as_f64().expect("ms"));
-        check("time", got, e["want"].as_str().expect("want"), format!("{} {}", l.code, e["ms"]));
+        check(
+            "time",
+            got,
+            e["want"].as_str().expect("want"),
+            format!("{} {}", l.code, e["ms"]),
+        );
     }
     assert!(checked > 4000, "only {checked} cases");
-    assert!(wrong.is_empty(), "{} of {checked} differ from Intl:\n{}", wrong.len(), wrong.join("\n"));
+    assert!(
+        wrong.is_empty(),
+        "{} of {checked} differ from Intl:\n{}",
+        wrong.len(),
+        wrong.join("\n")
+    );
 }
 
 #[test]
 fn plural_categories_are_what_intl_answered_and_are_all_declared() {
     let c = corpus();
-    let counts: Vec<f64> = c["counts"].as_array().expect("counts").iter().map(|n| n.as_f64().expect("n")).collect();
+    let counts: Vec<f64> = c["counts"]
+        .as_array()
+        .expect("counts")
+        .iter()
+        .map(|n| n.as_f64().expect("n"))
+        .collect();
     for l in LANGS {
-        let want: Vec<&str> = c["plurals"][l.code].as_array().expect("a list").iter().map(|s| s.as_str().expect("s")).collect();
+        let want: Vec<&str> = c["plurals"][l.code]
+            .as_array()
+            .expect("a list")
+            .iter()
+            .map(|s| s.as_str().expect("s"))
+            .collect();
         let cats = categories(l.code).expect("categories of every language");
         for (n, w) in counts.iter().zip(&want) {
             assert_eq!(plural(l.code, *n), *w, "{} for {n}", l.code);
-            assert!(cats.contains(w), "{} says {w} for {n}, which its categories do not list", l.code);
+            assert!(
+                cats.contains(w),
+                "{} says {w} for {n}, which its categories do not list",
+                l.code
+            );
         }
         // every category is used by some count (so a catalog needs all of them) except `other`, which fractions use
         for cat in cats.iter().filter(|c| **c != "other") {
-            assert!(want.contains(cat), "{} never answers {cat} in the corpus", l.code);
+            assert!(
+                want.contains(cat),
+                "{} never answers {cat} in the corpus",
+                l.code
+            );
         }
     }
 }
