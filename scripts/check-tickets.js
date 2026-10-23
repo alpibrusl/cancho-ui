@@ -47,8 +47,10 @@ function note(label, detail) { console.log(`note ${label}: ${detail}`); }
   // 2. validation messages as the user types
   await page.getByLabel('User name').fill('ad');
   check('a short user name says so', /A user name has at least 3 characters\./.test(await body()));
+  check('the field is invalid and described by its message', await page.evaluate(() => { const i = document.querySelector('input[aria-label="User name"]'); const t = document.getElementById(i.getAttribute('aria-describedby')); return i.getAttribute('aria-invalid') === 'true' && !!t && /at least 3 characters/.test(t.textContent); }));
   await page.getByLabel('User name').fill('ada');
   check('the message goes away when the name is long enough', !/user name has at least|Enter your user name/.test(await body()));
+  check('and the field is valid again: no aria-invalid, no aria-describedby', await page.evaluate(() => { const i = document.querySelector('input[aria-label="User name"]'); return i.getAttribute('aria-invalid') === null && i.getAttribute('aria-describedby') === null; }));
   check('and leaves no stray tone mark behind (an empty message with a tone would still draw its prefix: docs/tickets.md 3.5)', await page.evaluate(() => Array.from(document.querySelectorAll('[role=status]')).filter((e) => !e.textContent.trim()).every((e) => getComputedStyle(e, '::before').content === 'none')));
   await page.getByLabel('Password').fill('short');
   check('a short password says so and Sign in stays disabled', /A password has at least 8 characters\./.test(await body()) && await signIn.isDisabled());

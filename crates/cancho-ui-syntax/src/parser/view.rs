@@ -564,7 +564,9 @@ impl Parser {
                         }))
                     }
                     Token::Ident(s)
-                        if matches!(kind, ElementKind::Named(_)) || key == "disabled" =>
+                        if matches!(kind, ElementKind::Named(_))
+                            || key == "disabled"
+                            || key == "error" =>
                     {
                         // `disabled: sending` names a Bool state field (docs/controls.md section 1).
                         Ok(BindingValue::StateRef(s))

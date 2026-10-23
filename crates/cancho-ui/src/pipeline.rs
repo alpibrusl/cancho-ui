@@ -1701,8 +1701,9 @@ fn block_remediation(code: &str) -> String {
 /// What to change for a refusal about the bindings of a built-in element (docs/controls.md).
 fn control_remediation(code: &str) -> String {
     match code {
-        "binding-unknown" => "Use one of the keys of a built-in element: label, role, on, value, disabled, placeholder, submit, type, autocomplete, inputmode, maxlength, name. `disabled:` is for Button and TextField, `submit:` for TextField.".to_string(),
+        "binding-unknown" => "Use one of the keys of a built-in element: label, role, on, value, disabled, placeholder, submit, type, autocomplete, inputmode, maxlength, name, error. `disabled:` is for Button and TextField, `submit:` for TextField.".to_string(),
         "input-attribute-invalid" => "`autocomplete:` is `on`, `off` or a field name of the HTML autofill list (`\"username\"`, `\"current-password\"`, `\"new-password\"`, `\"one-time-code\"`, `\"email\"`, ..); `inputmode:` one of none, text, decimal, numeric, tel, search, email, url; `maxlength:` an integer literal from 1 to 100000; `name:` a short name of letters, digits, `-`, `_` and `.` (docs/controls.md section 6).".to_string(),
+        "error-binding-invalid" => "Keep the message in a `String` state field and name it: `state user_msg: String = \"\";` and `TextField { label: \"User name\" value: user on: User error: user_msg }`. The field is marked invalid and tied to its message while the field holds text, and valid while it is empty (docs/controls.md section 7).".to_string(),
         "input-type-invalid" => "Write one of text, password, email, search, tel or url as a string literal: `TextField { label: \"Password\" value: pass on: Pass type: \"password\" }` (docs/controls.md section 5).".to_string(),
         "submit-event-invalid" => "Name an event of this component that takes no parameters: `submit: Apply` with `on Apply { ... }`.".to_string(),
         "disabled-not-bool" => "Write `disabled: true`, `disabled: false` or `disabled: sending` where `sending` is a `state sending: Bool`.".to_string(),

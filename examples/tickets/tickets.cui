@@ -140,10 +140,8 @@ component Tickets {
                 when: !signed
                 Column {
                     Text { role: heading "Sign in" }
-                    TextField { label: "User name" value: user on: User autocomplete: "username" name: "username" }
-                    Text { role: status tone: "error" "{user_msg}" }
-                    TextField { label: "Password" value: pass on: Pass submit: SignIn type: "password" autocomplete: "current-password" name: "password" }
-                    Text { role: status tone: "error" "{pass_msg}" }
+                    TextField { label: "User name" value: user on: User autocomplete: "username" name: "username" error: user_msg }
+                    TextField { label: "Password" value: pass on: Pass submit: SignIn type: "password" autocomplete: "current-password" name: "password" error: pass_msg }
                     Button { label: "Sign in" on: SignIn disabled: blocked }
                     Text { role: status "{signin_msg}" }
                 }
@@ -176,8 +174,7 @@ component Tickets {
                         when: len(picked) > 0
                         Column {
                             Text { role: heading "Order {selected}: {title}" }
-                            TextField { label: "Status (open, doing or done)" value: status_edit on: Status }
-                            Text { role: status tone: "error" "{status_msg}" }
+                            TextField { label: "Status (open, doing or done)" value: status_edit on: Status error: status_msg }
                             TextField { label: "Note (at most 200 characters)" value: note_edit on: NoteEdit submit: Save maxlength: 200 }
                             Button { label: "Save" on: Save disabled: edit_blocked }
                             Text { role: status tone: saved_tone "{save_msg}" }

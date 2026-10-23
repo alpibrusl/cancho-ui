@@ -186,11 +186,54 @@ which replay would now refuse. `check-tickets.js` fills 201 characters and finds
 **Not built:** `minlength`, `pattern`, `required` (validation the program already does with `if`), `spellcheck`, `autocapitalize`,
 `enterkeyhint`, and `autocomplete` with a section or several tokens.
 
-## 7. Not done
+## 7. `error:`, a message tied to its field (issue #76, second part)
+
+> **Status: BUILT** for `TextField`. What is left of #76 is in the last section ("Not done").
+
+**Measured before** (Chromium, accessibility tree through the DevTools protocol; a `TextField` with a `Text { role: status
+tone: "error" "{msg}" }` after it, the way `examples/tickets` did): the textbox is `invalid: false` whatever the field holds,
+with no description. The message is a live region on its own and nothing says it is about that field; a screen reader user who
+moves to the field is not told it is wrong or why.
+
+**Options.**
+
+| | Option | Against |
+|---|---|---|
+| A | `invalid: flag` on the field, and an `id:` on the `Text` plus `describedby: id` on the field | three new bindings; an id must be unique in the page, across the rows of a `For`, and the page draws everything again at every render, so a name that does not match, or that two rows share, breaks silently |
+| B | **`error: msg` on the field**: the field draws its own message next to itself and points at it | one binding; the pair cannot be written wrong |
+| C | Do nothing; author writes `aria-*` by hand | there is no way to write them |
+
+**Chosen: B.** `TextField { label: "User name" value: user on: User error: user_msg }`. `error:` names a `String` state field of
+the component (anything else is `error-binding-invalid`; on anything but a `TextField`, `binding-unknown`). The field is invalid
+while that field holds text and valid while it is empty: there is no separate `invalid:` to disagree with the message.
+
+**What the page draws.** A `<span id="cui-err-N" role="status" data-tone="error">` right after the field's `<label>` holding the
+message; while the message has visible characters the field has `aria-invalid="true"` and `aria-describedby="cui-err-N"`; while
+it has none the field has neither and the span has no tone and no mark (the rule of section 3 of `docs/presentation.md`, #94).
+The id comes from a counter on `window` (`__cui_uid`), not from the node number, because a `For` runs the same code once per row.
+
+**Measured after** (`tests/field_error_corpus.json`, `scripts/check-field-error.js`): while invalid, `aria-invalid="true"`, the
+target of `aria-describedby` is the status span holding the message, and the accessibility tree has the textbox `invalid: true`
+with the message as its description; while valid, neither attribute, `invalid` is not true, the description is empty and the span
+is 0 px tall with no mark; typing keeps the focus in the field; two fields in a `For` get two ids and each points at the message
+right after it; the ids are unique. **A finding:** the accessible description is `✗ At least 3 characters.`, because Chromium
+includes the generated content of `::before` (the tone's mark) in the text it computes. The mark is a deliberate second signal
+for sighted users (section 3 of `docs/presentation.md`) and is the only thing that tells a screen reader the tone of a status text
+that is not tied to a field, so it is left as it is; the stylesheet's alternative-text form (`content: ".." / ""`) would hide it
+from assistive technology and is not used.
+
+**Replay** does not draw: it models `error:` as it models `placeholder:`, not at all. The message is a state field, so a trace
+asserts it (`"state": {"msg": "..."}`) and the corpus does. **Not measured:** the announcement itself with a real screen reader
+(alpibrusl/cancho-ui#106).
+
+**Rule tag.** `error-binding-invalid` (`spec/diagnostics/README.md`). **Deliberate breaks:** `scripts/breaks/field-error.json`, eight (never invalid, no describedby, invalid when empty, one shared id, not a status element, an empty message keeping its tone, any field accepted, any element accepted), each caught.
+**`examples/tickets`** uses `error:` on both sign-in fields and on the status field of the edit form; `check-tickets.js` asserts
+`aria-invalid` and `aria-describedby` come and go with the message.
+
+## 8. Not done
 
 `disabled:` on an expression (`disabled: len(q) == 0`: the language has no `&&`, `||` or `!` and no Bool expression binding,
 issue #40), `aria-busy` for an in-flight request, a disabled state for the children of a component instance, the refusal
 `accessibility-keyboard-missing` for a form with no keyboard path, and `submit:` on anything but a `TextField` (a `Button` already
-fires on Enter and Space natively). From #76: `Checkbox` (a `Bool`), `Select` (over a list), `TextArea`, `invalid:` (`aria-invalid`) and
-tying a message to its field (`aria-describedby`); `number`, date and the other input types (section 5). From #91: `autocomplete`,
+fires on Enter and Space natively). From #76: `Checkbox` (a `Bool`), `Select` (over a list), `TextArea`; `number`, date and the other input types (section 5). (`invalid:` and the message tied to its field are section 7.) From #91: `autocomplete`,
 `maxlength`, `inputmode`, `name` (section 6, done).

@@ -1,0 +1,18 @@
+{
+  "program": [
+    "component F {",
+    "    state v: String = \"\";",
+    "    state msg: String = \"Enter a name.\";",
+    "    on V(x) { v = x; msg = if len(x) == 0 { \"Enter a name.\" } else if len(x) < 3 { \"At least 3 characters.\" } else { \"\" }; }",
+    "    view { Column { TextField { label: \"Name\" value: v on: V error: msg } } }",
+    "}"
+  ],
+  "initial": { "message": "Enter a name.", "invalid": true },
+  "steps": [
+    { "why": "two characters are too few", "typed": "ab", "state": { "v": "ab", "msg": "At least 3 characters." }, "message": "At least 3 characters.", "invalid": true },
+    { "why": "three characters are enough: the field is valid and the message is empty", "typed": "abc", "state": { "v": "abc", "msg": "" }, "message": "", "invalid": false },
+    { "why": "emptying the field brings the first message back", "typed": "", "state": { "v": "", "msg": "Enter a name." }, "message": "Enter a name.", "invalid": true },
+    { "why": "one space is a message-worthy value (too short), not a valid one", "typed": " ", "state": { "v": " ", "msg": "At least 3 characters." }, "message": "At least 3 characters.", "invalid": true },
+    { "why": "three spaces pass the length rule", "typed": "   ", "state": { "v": "   ", "msg": "" }, "message": "", "invalid": false }
+  ]
+}
