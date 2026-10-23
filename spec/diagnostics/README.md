@@ -149,6 +149,8 @@ in `examples/refusal/`, and by the evidence report.
 | `error-binding-invalid` | `Component` | `Error` | `Static` | An `error:` on a `TextField` that is not the name of a `String` state field of the component (a literal, a number, an `Int` or `Bool` field, a name that is no field). On anything but a `TextField` it is `binding-unknown`. *(Built 2026-10-23, issue #76, `docs/controls.md` section 7.)* |
 | `checked-binding-invalid` | `Component` | `Error` | `Static` | A `checked:` on a `Checkbox` that is not the name of a `Bool` state field of the component (a literal, a `String` or `Int` field, a name that is no field). On anything but a `Checkbox` it is `binding-unknown`. *(Built 2026-10-23, issue #76, `docs/controls.md` section 9.)* |
 | `checkbox-incomplete` | `Component` | `Error` | `Static` | A `Checkbox` without `checked:` (the page would forget the box at the next redraw) or without `on:` (it would tell the program nothing). *(Built 2026-10-23, issue #76, `docs/controls.md` section 9.)* |
+| `select-incomplete` | `Component` | `Error` | `Static` | A `Select` without `options:` (the list), `value:` (the `String` field holding the choice) or `on:` (the event). *(Built 2026-10-23, issue #76, `docs/controls.md` section 10.)* |
+| `select-binding-invalid` | `Component` | `Error` | `Static` | An `options:` that is not a list of string literals or the name of a `List` state field, or a `value:` of a `Select` that is not the name of a `String` state field. `options:` on anything but a `Select` is `binding-unknown`. *(Built 2026-10-23, issue #76, `docs/controls.md` section 10.)* |
 | `parse-nesting-too-deep` | `Component` | `Error` | `Static` | `if` statements nested more than 32 deep: a parse error, not a stack overflow. Only statements are limited so far; see alpibrusl/cancho-ui#99 for expressions and views. *(Built 2026-10-22, issue #93.)* |
 | `table-child-invalid` | `Component` | `Error` | `Static` | A `Table` child that is not a `Row` or a `For` that makes `Row`s. *(Built 2026-10-21, issue #42, section 4.)* |
 | `capability-missing` | `Capability` | `Error` | `Static` | A component using an effect without `requires Capability` |
@@ -183,7 +185,7 @@ in `examples/refusal/`, and by the evidence report.
 tags: `test-state-mismatch`, `test-expect-mismatch`, `test-fault-missing`, `test-fault-mismatch`, `trace-no-assertions`,
 `trace-malformed`, `trace-credential-unknown`, `trace-schema-unsupported`, `trace-unknown-key`,
 `trace-bad-step`, `trace-bad-value`, `trace-unknown-component`,
-`trace-unknown-event`, `trace-params-arity`, `trace-value-too-long`, `trace-unknown-state-field`,
+`trace-unknown-event`, `trace-params-arity`, `trace-value-too-long`, `trace-value-not-an-option`, `trace-unknown-state-field`,
 `trace-unknown-request`, `trace-request-not-pending`,
 `trace-request-not-scriptable`, `trace-bad-response`,
 `trace-event-after-dispose`, `replay-unsupported`, `replay-tick-limit`, `replay-type-error`,

@@ -304,10 +304,57 @@ not draw. A trace for a checkbox gives a `Bool`; giving it text is a mistake the
 
 **Not built:** an indeterminate state, a group of radio buttons (`Select` is the next part), a switch.
 
-## 10. Not done
+## 10. `Select`, a choice of one string from a list (issue #76, fifth part)
+
+> **Status: BUILT.** With this, every control and binding of #76 except `number` exists (section 11).
+
+**Measured before.** `Select { label: "Status" ... }` was `error[component-kind-unknown]`. `examples/tickets` took the status of an
+order in a text field and refused three words' worth of mistakes with a message after the fact.
+
+**The form.** `Select { label: "Status" options: ["open", "doing", "done"] value: status on: Pick error: msg disabled: busy name: "status" }`.
+`options:` is a list of string literals or the name of a `List` state field (`select-binding-invalid` otherwise, also for a list
+holding anything but string literals); `value:` names the `String` state field that holds the choice; `on:` the event, whose
+handler takes the chosen string. All three are required (`select-incomplete`). A Select takes only `label`, `role`, `on`,
+`value`, `options`, `disabled`, `error`, `name`; any other key is `binding-unknown`, and `options:` on another element is too.
+Only the string is shown and reported: there is no separate display text (the list is the values).
+
+**What the page draws.** `<label class="cui-field">text <select aria-label=".."><option value="..">..</option> ...</select></label>`,
+the options rebuilt from the list at every redraw (so an option added to the state's list appears), `.value = state` after them,
+and `change` reports `e.target.value`.
+
+**Measured** (`tests/select_corpus.json`, `scripts/check-select.js`):
+* **A value that is not in the list selects nothing**: `selectedIndex` is -1 and the box is blank, not the first option. The initial
+  state `""` shows an empty select, and the screen never says what the state does not.
+* Choosing with the mouse API, and **ArrowUp on the focused closed select**, both report the option's string; the focus survives the
+  redraw (ArrowUp twice in a row, no refocus), so a keyboard user can keep going.
+* An option with spaces around it reports exactly itself; with two options of one string the handler gets that string and the
+  redraw selects the first of them (the state holds a string, not a position).
+* `error:` ties its message as in section 7; the accessibility tree has the select named by its label, with the chosen value.
+
+**Replay.** The trace gives the string; replay reads the options from the state as they are when the step runs and **stops with
+`trace-value-not-an-option`** when every control that fires the event is a Select and the string is none of their options (the
+union): `"nope"`, `""`, `"Open"` for `open`, and `"blocked"` before the step that adds it, all in the corpus. A button that fires
+the same event with an argument, or a text field, lifts the check, as for `maxlength` (section 6).
+
+**Rule tags.** `select-incomplete`, `select-binding-invalid`, `trace-value-not-an-option` (`spec/diagnostics/README.md`,
+`docs/replay.md`). **Deliberate breaks:** `scripts/breaks/select.json`, twelve, each caught (the first run missed one: replay reading the options of only the first of two Selects for one event; a test was added). **`examples/tickets`** chooses the status in a Select: three
+words, no message, no way to send a status the service does not know; its invalid-status trace steps are gone (replay would stop on
+them). The gallery's "Rich forms" tile, which probed `Select`, is removed: R5 reported its probe no longer fails.
+
+**Not built:** option groups, a separate display text, multiple selection, a radio group.
+
+## 11. Closing #76, and `number`
+
+The done-when of #76 is a form with a password field, a checkbox, a select and a text area, with a validation message tied to a
+field, that builds, replays a trace and is checked in Chromium (values, focus, `aria-invalid`, the message announced by role), each
+refusal with a rule tag and the design with its measurements here. Sections 5 to 10 are those, one concern each, and
+`examples/tickets` has all of them in one program. **`number` is not offered** (section 5: `1e5` typed key by key ends as `5`);
+that is its own issue (#111), because making a number field safe is a change to how the page redraws a field being typed in.
+
+## 12. Not done
 
 `disabled:` on an expression (`disabled: len(q) == 0`: the language has no `&&`, `||` or `!` and no Bool expression binding,
 issue #40), `aria-busy` for an in-flight request, a disabled state for the children of a component instance, the refusal
 `accessibility-keyboard-missing` for a form with no keyboard path, and `submit:` on anything but a `TextField` (a `Button` already
-fires on Enter and Space natively). From #76: `Select` (over a list); `number`, date and the other input types (section 5). (`invalid:` and the message tied to its field are section 7.) From #91: `autocomplete`,
+fires on Enter and Space natively). From #76: `number`, date and the other input types (section 5). (`invalid:` and the message tied to its field are section 7.) From #91: `autocomplete`,
 `maxlength`, `inputmode`, `name` (section 6, done).

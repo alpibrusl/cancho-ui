@@ -184,26 +184,9 @@
     {
       "event": "Status",
       "params": [
-        "finished"
-      ],
-      "state": {
-        "status_msg": "Use open, doing or done.",
-        "edit_blocked": true
-      }
-    },
-    {
-      "event": "Save",
-      "expect": {
-        "outcome": "disabled"
-      }
-    },
-    {
-      "event": "Status",
-      "params": [
         "done"
       ],
       "state": {
-        "status_msg": "",
         "edit_blocked": false
       }
     },

@@ -1,0 +1,28 @@
+{
+  "program": [
+    "component F {",
+    "    state status: String = \"\";",
+    "    state opts: List[String] = [\"open\", \"doing\", \"done\"];",
+    "    state msg: String = \"Choose a status.\";",
+    "    state log: String = \"\";",
+    "    on Pick(v) { status = v; msg = \"\"; log = log + v + \";\"; }",
+    "    on More { opts = concat(opts, [\"blocked\"]); }",
+    "    view { Column { Select { label: \"Status\" options: opts value: status on: Pick error: msg } Button { label: \"More\" on: More } Text { \"status=[{status}] log={log}\" } } }",
+    "}"
+  ],
+  "initial": { "options": ["open", "doing", "done"], "value": "", "selectedIndex": -1, "invalid": true, "log": "" },
+  "steps": [
+    { "why": "choosing an option reports it, and the error goes", "do": "select", "pick": "doing", "event": "Pick", "params": ["doing"], "state": { "status": "doing", "msg": "", "log": "doing;" }, "value": "doing", "invalid": false, "log": "doing;" },
+    { "why": "another option", "do": "select", "pick": "done", "event": "Pick", "params": ["done"], "state": { "status": "done", "log": "doing;done;" }, "value": "done", "invalid": false, "log": "doing;done;" },
+    { "why": "ArrowUp on the focused select moves to the option before it", "do": "key", "key": "ArrowUp", "event": "Pick", "params": ["doing"], "state": { "status": "doing", "log": "doing;done;doing;" }, "value": "doing", "invalid": false, "log": "doing;done;doing;" },
+    { "why": "and again: the focus survived the redraw", "do": "key", "key": "ArrowUp", "event": "Pick", "params": ["open"], "state": { "status": "open", "log": "doing;done;doing;open;" }, "value": "open", "invalid": false, "log": "doing;done;doing;open;" },
+    { "why": "the options are drawn from the state: a new one appears", "do": "more", "event": "More", "params": [], "state": { "opts": ["open", "doing", "done", "blocked"] }, "value": "open", "options": ["open", "doing", "done", "blocked"], "invalid": false, "log": "doing;done;doing;open;" },
+    { "why": "and can be chosen", "do": "select", "pick": "blocked", "event": "Pick", "params": ["blocked"], "state": { "status": "blocked", "log": "doing;done;doing;open;blocked;" }, "value": "blocked", "invalid": false, "log": "doing;done;doing;open;blocked;" }
+  ],
+  "notOptions": [
+    { "why": "a string that is none of the options", "value": "nope" },
+    { "why": "the empty string", "value": "" },
+    { "why": "an option's name in another case", "value": "Open" },
+    { "why": "an option that is not in the list yet", "value": "blocked" }
+  ]
+}

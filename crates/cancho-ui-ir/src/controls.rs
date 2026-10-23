@@ -27,6 +27,12 @@ pub const ELEMENT_KEYS: &[&str] = &[
     "error",
     "rows",
     "checked",
+    "options",
+];
+
+/// What a `Select` takes (docs/controls.md section 10); every other key is `binding-unknown` on it.
+pub const SELECT_KEYS: &[&str] = &[
+    "label", "role", "on", "value", "options", "disabled", "error", "name",
 ];
 
 /// What a `Checkbox` takes (docs/controls.md section 9); every other key is `binding-unknown` on it.
@@ -68,6 +74,7 @@ fn check_node(c: &IrComponent, node: &IrViewNode) -> Result<(), LowerError> {
                     check_binding(c, kind, b)?;
                 }
                 check_checkbox_complete(kind, bindings, *span)?;
+                check_select_complete(kind, bindings, *span)?;
             }
             for ch in children {
                 check_node(c, ch)?;
@@ -95,6 +102,7 @@ fn element_name(kind: &IrElementKind) -> &'static str {
         IrElementKind::TextField => "TextField",
         IrElementKind::TextArea => "TextArea",
         IrElementKind::Checkbox => "Checkbox",
+        IrElementKind::Select => "Select",
         IrElementKind::Named(_) => "a component",
     }
 }
@@ -136,9 +144,13 @@ fn check_on(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), 
         (Some(n), _) => n,
         // A click gives no arguments; a field gives the value it holds.
         // A field gives the text it holds, a checkbox whether it is checked now.
-        (None, IrElementKind::TextField | IrElementKind::TextArea | IrElementKind::Checkbox) => {
-            event.params.len().min(1)
-        }
+        (
+            None,
+            IrElementKind::TextField
+            | IrElementKind::TextArea
+            | IrElementKind::Checkbox
+            | IrElementKind::Select,
+        ) => event.params.len().min(1),
         (None, _) => 0,
     };
     if event.params.len() != given {
@@ -308,11 +320,11 @@ fn check_rows(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
 /// `error:` is a binding of a control that holds a value (docs/controls.md section 7) and names a `String` state field: the
 /// message that goes with the control, empty while the control is valid.
 fn check_error(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
-    if !kind.is_field() && !matches!(kind, IrElementKind::Checkbox) {
+    if !kind.is_field() && !matches!(kind, IrElementKind::Checkbox | IrElementKind::Select) {
         return Err(LowerError::ControlRefused {
             code: "binding-unknown",
             message: format!(
-                "`error:` is a binding of TextField, TextArea and Checkbox (the message that goes with a control), not of {}",
+                "`error:` is a binding of TextField, TextArea, Checkbox and Select (the message that goes with a control), not of {}",
                 element_name(kind)
             ),
             span: b.span,
@@ -336,7 +348,9 @@ fn check_error(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(
 
 /// `autocomplete:`, `inputmode:`, `maxlength:` and `name:` are bindings of a `TextField` with a checked value.
 fn check_text_attribute(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
-    if !kind.is_field() && !(b.key == "name" && matches!(kind, IrElementKind::Checkbox)) {
+    if !kind.is_field()
+        && !(b.key == "name" && matches!(kind, IrElementKind::Checkbox | IrElementKind::Select))
+    {
         return Err(LowerError::ControlRefused {
             code: "binding-unknown",
             message: format!(
@@ -503,7 +517,111 @@ fn check_checkbox_complete(
     Ok(())
 }
 
+/// `options:` is a binding of a `Select`: a list literal of string literals, or the name of a `List` state field.
+fn check_options(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
+    if !matches!(kind, IrElementKind::Select) {
+        return Err(LowerError::ControlRefused {
+            code: "binding-unknown",
+            message: format!(
+                "`options:` is a binding of Select, not of {}",
+                element_name(kind)
+            ),
+            span: b.span,
+        });
+    }
+    let bad = |message: &str| LowerError::ControlRefused {
+        code: "select-binding-invalid",
+        message: message.to_string(),
+        span: b.span,
+    };
+    match &b.value {
+        IrBindingValue::StateRef(name)
+            if c.state
+                .iter()
+                .any(|f| &f.name == name && matches!(f.ty, IrType::List { .. })) =>
+        {
+            Ok(())
+        }
+        IrBindingValue::Const { expr, .. } => match &**expr {
+            IrExpr::ListLit { items, .. }
+                if items.iter().all(|i| matches!(i, IrExpr::StringLit { .. })) =>
+            {
+                Ok(())
+            }
+            _ => Err(bad(
+                "`options:` takes a list of string literals, e.g. `options: [\"open\", \"doing\", \"done\"]`, or the name of a `List` state field",
+            )),
+        },
+        _ => Err(bad(
+            "`options:` takes a list of string literals, e.g. `options: [\"open\", \"doing\", \"done\"]`, or the name of a `List` state field",
+        )),
+    }
+}
+
+/// The `value:` of a `Select` names the `String` state field that holds the choice.
+fn check_select_value(c: &IrComponent, b: &IrBinding) -> Result<(), LowerError> {
+    match &b.value {
+        IrBindingValue::StateRef(name)
+            if c.state
+                .iter()
+                .any(|f| &f.name == name && f.ty == IrType::String) =>
+        {
+            Ok(())
+        }
+        _ => Err(LowerError::ControlRefused {
+            code: "select-binding-invalid",
+            message: "a Select's `value:` takes the name of a `String` state field of this component, which holds the chosen option"
+                .to_string(),
+            span: b.span,
+        }),
+    }
+}
+
+/// A `Select` needs the list it chooses from, the field that holds the choice and the event it reports to.
+fn check_select_complete(
+    kind: &IrElementKind,
+    bindings: &[IrBinding],
+    span: cancho_ui_syntax::span::Span,
+) -> Result<(), LowerError> {
+    if !matches!(kind, IrElementKind::Select) {
+        return Ok(());
+    }
+    for (key, what) in [
+        ("options", "the list it chooses from"),
+        ("value", "the `String` field that holds the choice"),
+        ("on", "the event it reports to"),
+    ] {
+        if !bindings.iter().any(|b| b.key == key) {
+            return Err(LowerError::ControlRefused {
+                code: "select-incomplete",
+                message: format!(
+                    "a Select needs `{key}:`, {what}: `Select {{ label: \"..\" options: [\"a\", \"b\"] value: choice on: Pick }}`"
+                ),
+                span,
+            });
+        }
+    }
+    Ok(())
+}
+
 fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
+    if matches!(kind, IrElementKind::Select)
+        && !SELECT_KEYS.contains(&b.key.as_str())
+        && ELEMENT_KEYS.contains(&b.key.as_str())
+    {
+        return Err(LowerError::ControlRefused {
+            code: "binding-unknown",
+            message: format!(
+                "`{}:` is not a binding of Select; it takes {}",
+                b.key,
+                SELECT_KEYS.join(", ")
+            ),
+            span: b.span,
+        });
+    }
+    if matches!(kind, IrElementKind::Select) && b.key == "value" {
+        check_select_value(c, b)?;
+    }
     if matches!(kind, IrElementKind::Checkbox)
         && !CHECKBOX_KEYS.contains(&b.key.as_str())
         && ELEMENT_KEYS.contains(&b.key.as_str())
@@ -557,6 +675,9 @@ fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result
     if b.key == "checked" {
         check_checked(c, kind, b)?;
     }
+    if b.key == "options" {
+        check_options(c, kind, b)?;
+    }
     if b.key == "submit" {
         if !matches!(kind, IrElementKind::TextField) {
             return Err(LowerError::ControlRefused {
@@ -607,7 +728,7 @@ fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result
             return Err(LowerError::ControlRefused {
                 code: "binding-unknown",
                 message: format!(
-                    "`disabled:` is a binding of Button, TextField, TextArea and Checkbox, not of {}",
+                    "`disabled:` is a binding of Button, TextField, TextArea, Checkbox and Select, not of {}",
                     element_name(kind)
                 ),
                 span: b.span,

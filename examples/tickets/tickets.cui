@@ -31,7 +31,6 @@ component Tickets {
     state title: String = "";
     state status_edit: String = "";
     state note_edit: String = "";
-    state status_msg: String = "";
     state edit_blocked: Bool = true;
     state save_msg: String = "";
     state saved_tone: String = "";
@@ -89,20 +88,18 @@ component Tickets {
         title = join(map(picked, x => json.get(x, "title", "")), "");
         status_edit = join(map(picked, x => json.get(x, "status", "")), "");
         note_edit = join(map(picked, x => json.get(x, "note", "")), "");
-        status_msg = "";
         save_msg = "";
         edit_blocked = len(picked) == 0;
     }
 
     on Status(v) {
         status_edit = v;
-        status_msg = if v == "open" || v == "doing" || v == "done" { "" } else { "Use open, doing or done." };
-        edit_blocked = len(status_msg) > 0 || len(selected) == 0;
+        edit_blocked = len(selected) == 0;
     }
 
     on NoteEdit(v) {
         note_edit = v;
-        edit_blocked = len(status_msg) > 0 || len(selected) == 0;
+        edit_blocked = len(selected) == 0;
     }
 
     on Save {
@@ -181,7 +178,7 @@ component Tickets {
                         when: len(picked) > 0
                         Column {
                             Text { role: heading "Order {selected}: {title}" }
-                            TextField { label: "Status (open, doing or done)" value: status_edit on: Status error: status_msg }
+                            Select { label: "Status" options: ["open", "doing", "done"] value: status_edit on: Status }
                             TextArea { label: "Note (at most 200 characters)" value: note_edit on: NoteEdit maxlength: 200 rows: 4 }
                             Button { label: "Save" on: Save disabled: edit_blocked }
                             Text { role: status tone: saved_tone "{save_msg}" }

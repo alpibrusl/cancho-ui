@@ -58,16 +58,6 @@
       }
     },
     {
-      "id": "forms",
-      "title": "Rich forms",
-      "issue": 76,
-      "missing": "Validation messages, password, email and other single-line fields (`type:`), a multi-line `TextArea`, a `Checkbox`, and an invalid state tied to its message all exist; there is no select and no number input.",
-      "probe": {
-        "view": "Select { label: \"Pick\" }",
-        "rule": "component-kind-unknown"
-      }
-    },
-    {
       "id": "charts",
       "title": "Charts",
       "issue": 77,
