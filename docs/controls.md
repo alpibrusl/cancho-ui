@@ -266,10 +266,48 @@ button is its only way to send (no Enter), and the check script is unchanged.
 
 **Not built:** `cols`, `wrap`, `resize`, `readonly`, `spellcheck`, a rich-text editor.
 
-## 9. Not done
+## 9. `Checkbox`, a box bound to a `Bool` (issue #76, fourth part)
+
+> **Status: BUILT.**
+
+**Measured before.** `Checkbox { label: "Agree" }` was `error[component-kind-unknown]`. The program could only use a button that
+flips a field, which a screen reader announces as a button and not as a state.
+
+**The form.** `Checkbox { label: "I agree" checked: agreed on: Agree disabled: locked error: msg name: "agree" }`.
+`checked:` names a `Bool` state field (`checked-binding-invalid` otherwise) and `on:` names the event the box reports to; both are
+required (`checkbox-incomplete`: without `checked:` the page would forget the box at the next redraw, and without `on:` it would
+tell the program nothing). The handler takes the new state: `on Agree(v) { agreed = v; }` gets `true` or `false` (it may also
+take none, `on Flip { on_ = !on_; }`, as a field's handler may; two parameters are `event-arity-mismatch`). A Checkbox takes
+only `label`, `role`, `on`, `checked`, `disabled`, `error` and `name`; any other key (`value`, `placeholder`, `type`, `submit`,
+`maxlength`, `rows`, `tone`, ...) is `binding-unknown`, and `checked:` on another element is too.
+
+**What the page draws.** `<label class="cui-check"><input type="checkbox" aria-label=".."> text</label>`: the box first, then the
+text, in one label, so a click on the text toggles the box. The box is `.checked = !!state` at every redraw and reports
+`e.target.checked` on `change`. With `error:` the message and `aria-invalid` / `aria-describedby` work as in section 7.
+
+**Measured** (`tests/checkbox_corpus.json`, `scripts/check-checkbox.js`, 420 px wide): a click on the box, a click on the text of
+the label and Space each turn it and report the new state; **the focus survives the redraw** (Space twice in a row, no refocus
+between); a disabled box reports nothing (replay answers `disabled` for that step); `error:` is invalid and described while
+the box is off in this program, and valid and empty while it is on; the accessibility tree has a `checkbox` named by its label with
+a `checked` property of `false` or `true`; the label is 388 by 44 px, so the touch target is the whole line, at least 44 by 44 px
+(a bare checkbox is 13 px, and the baseline stylesheet's `min-height: 44px` for inputs would have made the box itself huge, so
+`.cui-check input` opts out and the label is the target). The stylesheet is part of `build --pwa`; a page built without it has an
+ordinary checkbox in a label.
+
+**Replay** answers the handler's parameter from the trace (`"params": [true]`), checks `disabled:` as for any control, and does
+not draw. A trace for a checkbox gives a `Bool`; giving it text is a mistake the language does not see (event parameters are untyped:
+#103).
+
+**Rule tags.** `checked-binding-invalid`, `checkbox-incomplete` (`spec/diagnostics/README.md`). **Deliberate breaks:**
+`scripts/breaks/checkbox.json`, ten (not drawn from the `Bool`, the state inverted, not wired, the text outside the label, no label target in the stylesheet, not focusable, `on:` or `checked:` unchecked, any key accepted, replay not refusing a disabled box), each caught. **`examples/tickets`** has a "Hide finished orders" checkbox over the list
+(`filter(orders, x => !hide_done || ..)`); `check-tickets.js` checks the rows come and go.
+
+**Not built:** an indeterminate state, a group of radio buttons (`Select` is the next part), a switch.
+
+## 10. Not done
 
 `disabled:` on an expression (`disabled: len(q) == 0`: the language has no `&&`, `||` or `!` and no Bool expression binding,
 issue #40), `aria-busy` for an in-flight request, a disabled state for the children of a component instance, the refusal
 `accessibility-keyboard-missing` for a form with no keyboard path, and `submit:` on anything but a `TextField` (a `Button` already
-fires on Enter and Space natively). From #76: `Checkbox` (a `Bool`), `Select` (over a list); `number`, date and the other input types (section 5). (`invalid:` and the message tied to its field are section 7.) From #91: `autocomplete`,
+fires on Enter and Space natively). From #76: `Select` (over a list); `number`, date and the other input types (section 5). (`invalid:` and the message tied to its field are section 7.) From #91: `autocomplete`,
 `maxlength`, `inputmode`, `name` (section 6, done).

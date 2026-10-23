@@ -24,6 +24,7 @@ component Tickets {
     // the list and the detail
     state r: Result[String, String] = Ok("");
     state orders: List[String] = [];
+    state hide_done: Bool = false;
     state note: String = "not loaded";
     state selected: String = "";
     state picked: List[String] = [];
@@ -119,10 +120,15 @@ component Tickets {
         run LoadOrders;
     }
 
+    on HideDone(v) {
+        hide_done = v;
+    }
+
     on SignOut {
         out = await(net.post("api/logout", "[]"));
         signed = false;
         orders = [];
+        hide_done = false;
         selected = "";
         picked = [];
         user_msg = "Enter your user name.";
@@ -151,6 +157,7 @@ component Tickets {
                 Column {
                     Text { role: status "orders: {note}" }
                     Button { label: "Sign out" on: SignOut }
+                    Checkbox { label: "Hide finished orders" checked: hide_done on: HideDone }
                     Table {
                         label: "Work orders"
                         Row {
@@ -160,7 +167,7 @@ component Tickets {
                             Text { role: columnheader "open" }
                         }
                         For {
-                            over: orders
+                            over: filter(orders, x => !hide_done || json.get(x, "status", "") != "done")
                             as: o
                             Row {
                                 Text { json.get(o, "id", "?") }

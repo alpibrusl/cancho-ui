@@ -72,6 +72,8 @@ function note(label, detail) { console.log(`note ${label}: ${detail}`); }
   check('the session is a cookie the page cannot read (HttpOnly)', (await page.evaluate(() => document.cookie)) === '' && (await context.cookies()).some((c) => c.name === 'sid' && c.httpOnly));
   check('the sign-in form is gone and the password is not left in the page', (await page.getByLabel('Password').count()) === 0 && !(await page.content()).includes('hunter22!'));
   note('focus after the screen changed', `document.activeElement is ${await page.evaluate(() => document.activeElement.tagName)} (docs/tickets.md 3.4)`);
+  await page.getByRole('checkbox', { name: 'Hide finished orders' }).check();
+  check('the checkbox hides the finished orders and unchecking brings them back', (await page.locator('tbody tr:has(td)').count()) === 3 && !/T-3/.test(await body()) && (await (async () => { await page.getByRole('checkbox', { name: 'Hide finished orders' }).uncheck(); return (await page.locator('tbody tr:has(td)').count()) === 4 && /T-3/.test(await body()); })()));
 
   // 4. the detail and the edit form
   await page.getByRole('button', { name: 'Open T-2' }).click();

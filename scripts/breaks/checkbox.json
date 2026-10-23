@@ -1,0 +1,69 @@
+{
+  "checks": [
+    { "name": "cargo test checkbox", "argv": ["cargo", "test", "--quiet", "-p", "cancho-ui", "--test", "checkbox"] },
+    { "name": "check-checkbox.js", "argv": ["node", "scripts/check-checkbox.js"] },
+    { "name": "check-tickets.js", "argv": ["node", "scripts/check-tickets.js"] }
+  ],
+  "breaks": [
+    {
+      "name": "the box is not drawn from the Bool",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "\"{0}{1}.checked = !!{2}{3};\\n\",",
+      "to": "\"{0}{1}.dataset.checked = !!{2}{3};\\n\","
+    },
+    {
+      "name": "the handler gets the click, not the state",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "function (e) {{ __on_{2}(e.target.checked); }}",
+      "to": "function (e) {{ __on_{2}(!e.target.checked); }}"
+    },
+    {
+      "name": "the change is not wired",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "addEventListener('change', function (e)",
+      "to": "addEventListener('dblclick', function (e)"
+    },
+    {
+      "name": "the text is not inside the label (a click on it does nothing)",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "{0}{1}_field.appendChild({1});\\n{0}{1}_field.appendChild(document.createTextNode({2}));\\n{0}{3}.appendChild({1}_field);\\n",
+      "to": "{0}{1}_field.appendChild({1});\\n{0}{3}.appendChild({1}_field);\\n{0}{3}.appendChild(document.createTextNode({2}));\\n"
+    },
+    {
+      "name": "the stylesheet makes the box itself 44 px (no label target)",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": ".cui-check { display: flex; align-items: center; gap: 0.5rem; min-height: 44px; min-width: 44px; }",
+      "to": ".cui-check { display: flex; align-items: center; gap: 0.5rem; }"
+    },
+    {
+      "name": "a Checkbox is not focusable to the focus helper",
+      "file": "crates/cancho-ui-ir/src/ir.rs",
+      "from": "matches!(self, IrElementKind::Button | IrElementKind::Checkbox) || self.is_field()",
+      "to": "matches!(self, IrElementKind::Button) || self.is_field()"
+    },
+    {
+      "name": "a Checkbox without on: is accepted",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "        if !bindings.iter().any(|b| b.key == key) {",
+      "to": "        if key != \"on\" && !bindings.iter().any(|b| b.key == key) {"
+    },
+    {
+      "name": "checked accepts any state field",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "                .any(|f| &f.name == name && f.ty == IrType::Bool) =>\n        {\n            Ok(())\n        }\n        _ => Err(LowerError::ControlRefused {\n            code: \"checked-binding-invalid\",",
+      "to": "                .any(|f| &f.name == name) =>\n        {\n            Ok(())\n        }\n        _ => Err(LowerError::ControlRefused {\n            code: \"checked-binding-invalid\","
+    },
+    {
+      "name": "a Checkbox takes any key",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "    if matches!(kind, IrElementKind::Checkbox)\n        && !CHECKBOX_KEYS.contains(&b.key.as_str())",
+      "to": "    if false\n        && !CHECKBOX_KEYS.contains(&b.key.as_str())"
+    },
+    {
+      "name": "replay does not refuse a click on a disabled checkbox",
+      "file": "crates/cancho-ui-replay/src/machine.rs",
+      "from": "        if let Some(refused) = self.event_refused(&self.comp.events[handler].name) {",
+      "to": "        if let Some(refused) = self.event_refused(&self.comp.events[handler].name).filter(|r| *r != Outcome::Disabled) {"
+    }
+  ]
+}

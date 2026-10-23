@@ -478,6 +478,9 @@ pub enum IrElementKind {
     TextField,
     /// `TextArea { .. }` (docs/controls.md section 8): a `TextField` that holds several lines, written as a `<textarea>`.
     TextArea,
+    /// `Checkbox { label: .. checked: flag on: Toggle }` (docs/controls.md section 9): a box bound to a `Bool`, an
+    /// `<input type="checkbox">` in a `<label>`.
+    Checkbox,
     /// `Table { .. }` (docs/presentation.md section 4) and what lowering makes of its descendants: a `Row` of a table is
     /// a `TableRow`, a `Text` of that row a `Cell` (a `HeaderCell` with `role: columnheader`), and any other element of
     /// it is wrapped in a `Cell`.
@@ -497,6 +500,7 @@ impl IrElementKind {
             IrElementKind::Button => "button",
             IrElementKind::TextField => "input",
             IrElementKind::TextArea => "textarea",
+            IrElementKind::Checkbox => "input",
             IrElementKind::Table => "table",
             IrElementKind::TableRow => "tr",
             IrElementKind::Cell => "td",
@@ -508,6 +512,11 @@ impl IrElementKind {
     /// The controls that hold a value the user types (`value:`, `on:` with the typed text, `error:`, `maxlength:`, ...).
     pub fn is_field(&self) -> bool {
         matches!(self, IrElementKind::TextField | IrElementKind::TextArea)
+    }
+
+    /// The controls the keyboard can focus.
+    pub fn is_focusable(&self) -> bool {
+        matches!(self, IrElementKind::Button | IrElementKind::Checkbox) || self.is_field()
     }
 
     /// The elements whose children are text parts rather than elements.
