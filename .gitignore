@@ -10,6 +10,8 @@
 *.js
 # the project page serves this one: it is the compiler's output for examples/counter (tested in tests/cli.rs)
 !docs/demo/counter.js
+# the gallery demos are served as they are: each page needs its script (docs/mobile-backend.md section 5.2)
+!docs/demo/*/app.js
 !scripts/*.js
 *.js.map
 *.cui.bak

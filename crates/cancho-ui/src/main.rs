@@ -41,6 +41,7 @@ USAGE:
     cancho-ui check <file.cui>... [--output json]
     cancho-ui build <file.cui>... [-o <path>] [--target web] [--no-auto-mount] [--output json]
     cancho-ui build <file.cui> --pwa -o <dir> [--name <text>]   an installable web app (docs/mobile-backend.md)
+    cancho-ui build <file.cui> --page -o <dir> [--name <text>]  a web page that is not an app: index.html and app.js only
     cancho-ui inspect component <file.cui> <name> [--output json]
     cancho-ui inspect effects   <file.cui> <name> [--output json]
     cancho-ui inspect ir       <file.cui>          [--output json]
@@ -158,9 +159,11 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
             auto_mount: !opts.no_auto_mount,
         };
         match pipeline::compile_to_js(file, opts.target.as_deref(), &emit) {
-            Ok(out) if opts.pwa => {
+            Ok(out) if opts.pwa || opts.page => {
                 let Some(dir) = opts.output.as_ref() else {
-                    return Err(CliError::Usage("`--pwa` needs `-o <dir>`".to_string()));
+                    return Err(CliError::Usage(
+                        "`--pwa` and `--page` need `-o <dir>`".to_string(),
+                    ));
                 };
                 let name = opts.name.clone().unwrap_or_else(|| {
                     file.file_stem()
@@ -168,7 +171,12 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
                         .unwrap_or("app")
                         .to_string()
                 });
-                pwa::write_all(dir, &pwa::generate(&out, &name)).map_err(CliError::Env)?;
+                let files = if opts.pwa {
+                    pwa::generate(&out, &name)
+                } else {
+                    pwa::generate_page(&out, &name)
+                };
+                pwa::write_all(dir, &files).map_err(CliError::Env)?;
             }
             Ok(out) => match &opts.output {
                 Some(path) => {
@@ -340,7 +348,7 @@ fn run_introspect(args: &[String]) -> Result<ExitCode, CliError> {
         "version": "0.1.0",
         "commands": [
             { "name": "check",       "args": ["<file.cui>...", "--output json"] },
-            { "name": "build",       "args": ["<file.cui>...", "-o <path>", "--target web", "--no-auto-mount", "--pwa", "--name <text>", "--output json"] },
+            { "name": "build",       "args": ["<file.cui>...", "-o <path>", "--target web", "--no-auto-mount", "--pwa", "--page", "--name <text>", "--output json"] },
             { "name": "inspect",     "subcommands": ["component <file> <name>", "effects <file> <name>", "ir <file>"], "args": ["--output json"] },
             { "name": "diff",        "args": ["<base.cui>", "<candidate.cui>", "--output json"], "exit_codes": { "0": "no semantic change", "1": "a file was refused", "2": "command line wrong", "3": "environment failed", "5": "the programs differ semantically" } },
             { "name": "test",        "args": ["<file.cui>", "<trace.json>", "--output json", "--full"], "exit_codes": { "0": "the trace passed", "1": "the program did not compile", "2": "command line wrong", "3": "environment failed", "4": "a test failed (expectation, malformed trace, or a construct replay refuses)" } },
@@ -429,6 +437,8 @@ struct BuildOpts {
     target: Option<String>,
     output_format: OutputFormat,
     pwa: bool,
+    /// `--page`: a web page that is not an app (docs/mobile-backend.md section 5.2).
+    page: bool,
     no_auto_mount: bool,
     name: Option<String>,
 }
@@ -450,6 +460,11 @@ impl BuildOpts {
                 }
                 "--pwa" => {
                     out.pwa = true;
+                    i += 1;
+                    continue;
+                }
+                "--page" => {
+                    out.page = true;
                     i += 1;
                     continue;
                 }
@@ -501,23 +516,33 @@ impl BuildOpts {
         if out.files.is_empty() {
             return Err(CliError::Usage("`build` requires at least one file".into()));
         }
-        if out.pwa && out.no_auto_mount {
+        if out.pwa && out.page {
             return Err(CliError::Usage(
-                "`--no-auto-mount` cannot be combined with `--pwa`: the installed page relies on the module mounting itself"
+                "`--pwa` and `--page` are two different outputs: an installable app, or a page that is not one"
                     .into(),
             ));
         }
-        if out.pwa {
+        if (out.pwa || out.page) && out.no_auto_mount {
+            return Err(CliError::Usage(
+                "`--no-auto-mount` cannot be combined with `--pwa` or `--page`: the page relies on the module mounting itself"
+                    .into(),
+            ));
+        }
+        if out.pwa || out.page {
             if out.files.len() != 1 {
                 return Err(CliError::Usage(
-                    "`build --pwa` takes exactly one file".into(),
+                    "`build --pwa` and `build --page` take exactly one file".into(),
                 ));
             }
             if out.output.is_none() {
-                return Err(CliError::Usage("`build --pwa` requires `-o <dir>`".into()));
+                return Err(CliError::Usage(
+                    "`build --pwa` and `build --page` require `-o <dir>`".into(),
+                ));
             }
         } else if out.name.is_some() {
-            return Err(CliError::Usage("`--name` is only for `build --pwa`".into()));
+            return Err(CliError::Usage(
+                "`--name` is only for `build --pwa` and `build --page`".into(),
+            ));
         }
         Ok(out)
     }

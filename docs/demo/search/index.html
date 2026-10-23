@@ -3,11 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1f6feb">
 <title>Search with cancellation</title>
-<link rel="manifest" href="./manifest.webmanifest">
-<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
-<link rel="apple-touch-icon" href="./icon-192.png">
 <style>
 /* A default so a program is usable on a phone; the page owns presentation, replace it freely. */
 :root { color-scheme: light dark; }
@@ -45,10 +41,5 @@ button, input, textarea { min-height: 44px; min-width: 44px; font: inherit; }
 <div id="root"></div>
 <noscript>This app needs JavaScript.</noscript>
 <script type="module" src="./app.js"></script>
-<script>
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function () { navigator.serviceWorker.register('./sw.js'); });
-}
-</script>
 </body>
 </html>
