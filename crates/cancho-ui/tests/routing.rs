@@ -154,7 +154,16 @@ fn a_navlink_needs_a_label_and_a_legal_path() {
     ] {
         assert_eq!(codes(&comp("", view)), ["navlink-incomplete"], "{view}");
     }
-    for bad in ["items", "", "/a b", "/a#b", "/caf\u{e9}"] {
+    for bad in [
+        "items",
+        "",
+        "/a b",
+        "/a#b",
+        "/caf\u{e9}",
+        "/a<b",
+        "/a>b",
+        "/a`b",
+    ] {
         let view = format!("NavLink {{ label: \"x\" to: \"{bad}\" }}");
         assert_eq!(
             codes(&comp("", &view)),
@@ -192,29 +201,34 @@ fn bindings_that_do_not_belong_to_a_navlink_are_refused() {
 }
 
 #[test]
-fn build_says_a_routing_page_is_not_emitted_yet() {
-    for (members, view) in [
-        (OK_MEMBERS, ""),
-        ("", "NavLink { label: \"x\" to: \"/x\" }"),
-        ("    requires Router;", ""),
-    ] {
-        let mut src = comp(members, view);
-        if members == "    requires Router;" {
-            src = src.replace(
-                "on Plain { path = \"/\"; }",
-                "on Plain { path = \"/\"; ok = router.go(\"/x\"); }",
-            );
-            src = src.replace(
-                "state path: String = \"/\";",
-                "state path: String = \"/\";\n    state ok: Bool = false;",
-            );
-        }
-        let file = scratch("b.cui", &src);
+fn the_page_carries_the_router_only_when_the_program_uses_it() {
+    let build = |src: &str| -> String {
+        let file = scratch("b.cui", src);
         let out = scratch("b.js", "");
         let (code, stdout, stderr) = run(&["build", p(&file), "-o", p(&out)]);
-        assert_eq!(code, 1, "{stdout}{stderr}");
-        assert!(stderr.contains("routing-not-emitted"), "{stderr}");
-    }
+        assert_eq!(code, 0, "{stdout}{stderr}");
+        std::fs::read_to_string(&out).expect("the built module")
+    };
+    let plain = build(&comp("", ""));
+    assert!(!plain.contains("__cui_route"), "{plain}");
+    assert!(!plain.contains("hashchange"), "{plain}");
+    // a link alone needs no adapter: it is an anchor
+    let link = build(&comp("", "NavLink { label: \"x\" to: \"/x\" }"));
+    assert!(
+        link.contains("setAttribute('href', '#' + String("),
+        "{link}"
+    );
+    assert!(!link.contains("hashchange"), "{link}");
+    let routed = build(&base());
+    assert!(routed.contains("function __cui_route_of("), "{routed}");
+    assert!(routed.contains("addEventListener('hashchange'"), "{routed}");
+    assert!(
+        routed.contains("removeEventListener('hashchange'"),
+        "{routed}"
+    );
+    assert!(routed.contains("__cui_router_go("), "{routed}");
+    // the page has no way to leave the document: the link writes '#' first, always
+    assert!(!routed.contains("location.href ="), "{routed}");
 }
 
 fn base() -> String {
@@ -273,7 +287,16 @@ fn a_new_entry_drops_the_forward_entries() {
 
 #[test]
 fn a_path_the_fragment_cannot_carry_is_answered_false() {
-    for bad in ["", "no-slash", "/a b", "/a#b", "/caf\u{e9}"] {
+    for bad in [
+        "",
+        "no-slash",
+        "/a b",
+        "/a#b",
+        "/caf\u{e9}",
+        "/a<b",
+        "/a>b",
+        "/a`b",
+    ] {
         let src = base().replace("router.go(\"/p\")", &format!("router.go(\"{bad}\")"));
         let t = trace(
             None,
@@ -385,4 +408,73 @@ fn the_diff_shows_a_route_and_the_new_authority() {
         v["components"]["changed"][0]["schedules"]["added"][0],
         "route Go"
     );
+}
+
+const CORPUS: &str = include_str!("../../../tests/routing_corpus.json");
+
+/// The corpus as a replay trace: each step the page takes becomes the trace steps that model it. A fragment that is not a
+/// route (`replay: false`) is the page's alone; replay has no model of it, and the corpus keeps it from being followed by a
+/// step that would depend on it.
+fn corpus_trace(c: &Value) -> String {
+    let mut steps: Vec<Value> = Vec::new();
+    for s in c["steps"].as_array().expect("steps") {
+        if s["replay"] == Value::Bool(false) {
+            continue;
+        }
+        let mut want = serde_json::json!({"log": s["log"], "path": s["path"]});
+        if let Some(ok) = s.get("ok") {
+            want["ok"] = ok.clone();
+        }
+        let expect = serde_json::json!({"routes": s["heard"]});
+        let arg = s["arg"].as_str().unwrap_or("");
+        match s["do"].as_str().expect("do") {
+            "load" => {
+                steps.push(serde_json::json!({"advance": 0, "state": want, "expect": expect}))
+            }
+            "click" => {
+                let to = c["links"][arg].as_str().expect("a link");
+                steps.push(serde_json::json!({"navigate": to, "state": want, "expect": expect}));
+            }
+            "hash" => steps
+                .push(serde_json::json!({"navigate": &arg[1..], "state": want, "expect": expect})),
+            "go" | "replace" => {
+                steps.push(serde_json::json!({"event": "SetTarget", "params": [arg]}));
+                let event = if s["do"] == "go" { "Go" } else { "Replace" };
+                steps.push(serde_json::json!({"event": event, "state": want, "expect": expect}));
+            }
+            "two" => {
+                steps.push(serde_json::json!({"event": "Two", "state": want, "expect": expect}))
+            }
+            "back" => {
+                steps.push(serde_json::json!({"back": true, "state": want, "expect": expect}))
+            }
+            "forward" => {
+                steps.push(serde_json::json!({"forward": true, "state": want, "expect": expect}))
+            }
+            other => panic!("the corpus has a step this test does not know: {other}"),
+        }
+    }
+    serde_json::json!({
+        "schema": "cancho-ui-trace", "version": "0.1.0", "url": c["load"], "steps": steps
+    })
+    .to_string()
+}
+
+#[test]
+fn replay_agrees_with_every_step_of_the_corpus() {
+    let c: Value = serde_json::from_str(CORPUS).expect("the corpus is JSON");
+    let src = c["program"]
+        .as_array()
+        .expect("lines")
+        .iter()
+        .map(|l| l.as_str().expect("a line"))
+        .collect::<Vec<_>>()
+        .join("\n")
+        + "\n";
+    assert!(
+        c["steps"].as_array().expect("steps").len() >= 30,
+        "the corpus shrank"
+    );
+    let (code, report) = replay(&src, &corpus_trace(&c));
+    assert_eq!(code, 0, "{}", &report[..report.len().min(4000)]);
 }

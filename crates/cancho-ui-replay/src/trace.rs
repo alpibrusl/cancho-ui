@@ -227,7 +227,7 @@ pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {
             return Err(err(
                 "trace-navigate-invalid",
                 "url",
-                "`url` is the path the page loaded at: it starts with `/` and holds no space, `#` or character outside printable ASCII",
+                "`url` is the path the page loaded at: it starts with `/` and holds no space, `#`, `\"`, `<`, `>`, backtick or character outside printable ASCII",
             ));
         }
     };
@@ -421,7 +421,7 @@ fn parse_step(j: &Json, i: usize) -> Result<Step, TraceError> {
                 return Err(err(
                     "trace-navigate-invalid",
                     format!("{at}.navigate"),
-                    "`navigate` is a path: it starts with `/` and holds no space, `#` or character outside printable ASCII (a fragment that is not a route, like `#main`, is not something the page's route event hears)",
+                    "`navigate` is a path: it starts with `/` and holds no space, `#`, `\"`, `<`, `>`, backtick or character outside printable ASCII (a fragment that is not a route, like `#main`, is not something the page's route event hears)",
                 ));
             }
         },

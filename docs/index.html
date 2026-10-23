@@ -178,7 +178,7 @@ footer { border-top: 1px solid var(--line); padding: 1.5rem 0 2rem; color: var(-
         }
     }
 }</code></pre>
-  <p class="fine">Every example is in <a href="https://github.com/alpibrusl/cancho-ui/tree/main/examples">examples/</a> (19 programs): a counter, a stopwatch, a searchable list with cancellation, composed components, cross-file imports, notes in <code>Storage</code>, a machine console and more. Seven of them run live in the <a href="#gallery">gallery</a>.</p>
+  <p class="fine">Every example is in <a href="https://github.com/alpibrusl/cancho-ui/tree/main/examples">examples/</a> (19 programs): a counter, a stopwatch, a searchable list with cancellation, composed components, cross-file imports, notes in <code>Storage</code>, a machine console and more. Eight of them run live in the <a href="#gallery">gallery</a>.</p>
 </div></section>
 
 <!-- gallery:start -->
@@ -215,13 +215,14 @@ footer { border-top: 1px solid var(--line); padding: 1.5rem 0 2rem; color: var(-
       <p>A table with search, sort, paging and a button per row, over 23 sample machines in a static file; the saved list shows offline. Sending a setpoint needs a service, so here it reports an error.</p>
       <iframe class="tall" title="Machine console, built by cancho-ui" src="demo/ops-console/" loading="lazy"></iframe>
       <p class="glinks"><a href="demo/ops-console/">Open on its own</a> <a href="https://github.com/alpibrusl/cancho-ui/blob/main/examples/ops-console/ops-console.cui">Source: ops-console.cui</a></p></li>
+    <li class="gtile"><h4>Screens at their own URLs</h4>
+      <p><code>route</code>, <code>NavLink</code> and <code>router.go</code>: a list and a detail, each at its own URL fragment (<code>#/items/valve</code>). The browser's Back button works, a reload stays on the page, and &quot;Open on its own&quot; gives a link you can share.</p>
+      <iframe class="" title="Screens at their own URLs, built by cancho-ui" src="demo/routes/" loading="lazy"></iframe>
+      <p class="glinks"><a href="demo/routes/">Open on its own</a> <a href="https://github.com/alpibrusl/cancho-ui/blob/main/examples/routes/routes.cui">Source: routes.cui</a></p></li>
   </ul>
   <h3 class="gh">Coming soon</h3>
   <p class="lead">Not built, and not promised for any date. Each tile says what is missing and links the issue that tracks it.</p>
   <ul class="gallery">
-    <li class="gtile soon"><h4>Multi-page routing <span class="badge">Coming soon</span></h4>
-      <p>Missing: Moving between screens and putting state in the URL: <code>check</code> and <code>cancho-ui test</code> accept <code>NavLink</code>, <code>route</code> and <code>router.go</code>, but <code>build</code> writes no page for them yet and refuses it as <code>routing-not-emitted</code>.</p>
-      <p class="glinks"><a href="https://github.com/alpibrusl/cancho-ui/issues/75">Tracked in #75</a></p></li>
     <li class="gtile soon"><h4>Charts <span class="badge">Coming soon</span></h4>
       <p>Missing: Any drawing primitive: <code>Canvas</code> and <code>Image</code> are refused as unknown components.</p>
       <p class="glinks"><a href="https://github.com/alpibrusl/cancho-ui/issues/77">Tracked in #77</a></p></li>

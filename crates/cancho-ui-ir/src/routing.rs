@@ -11,13 +11,15 @@ use crate::lower::LowerError;
 pub const PATH_MAX: usize = 2000;
 
 /// Is `path` something a URL fragment can carry as a route? It starts with `/`, is at most `PATH_MAX` characters, and holds
-/// only printable ASCII other than space and `#` (so the page writes `#` + path and reads the same path back).
+/// only printable ASCII other than space, `#`, `"`, `<`, `>` and the backtick, so the page writes `#` + path and reads the same
+/// path back. (Measured in Chromium: those five are percent-encoded in the fragment, every other printable ASCII
+/// character, `%` included, comes back as written; docs/routing.md section 9.)
 pub fn path_is_legal(path: &str) -> bool {
     path.starts_with('/')
         && path.len() <= PATH_MAX
         && path
             .bytes()
-            .all(|b| (0x21..=0x7e).contains(&b) && b != b'#')
+            .all(|b| (0x21..=0x7e).contains(&b) && !matches!(b, b'#' | b'"' | b'<' | b'>' | b'`'))
 }
 
 fn refused(code: &'static str, message: String, span: Span) -> LowerError {

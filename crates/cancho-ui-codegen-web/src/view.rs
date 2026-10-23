@@ -486,6 +486,16 @@ pub(crate) fn emit_view_node(
                     IrBindingValue::StateRef(name) if b.key == "error" => {
                         field_error = Some(name.clone());
                     }
+                    IrBindingValue::Const { expr, .. } if b.key == "to" => {
+                        // A `NavLink` points at a route of this page: the fragment, always, so it cannot name another
+                        // origin or a `javascript:` URL (docs/routing.md section 4).
+                        out.push_str(&format!(
+                            "{0}{1}.setAttribute('href', '#' + String({2}));\n",
+                            indent,
+                            var,
+                            emit_expr_runtime(expr, params)
+                        ));
+                    }
                     IrBindingValue::Const { expr, .. } if b.key == "options" => {
                         options_expr = Some(emit_expr_runtime(expr, params));
                     }
@@ -677,14 +687,16 @@ pub(crate) fn emit_view_node(
                 // here as the accessibility label (not as a binding), and a button with an `aria-label` and an
                 // empty text node showed nothing.
                 let visible_label = button_label.clone().or_else(|| {
-                    if matches!(kind, IrElementKind::Button) && children.is_empty() {
+                    if matches!(kind, IrElementKind::Button | IrElementKind::NavLink)
+                        && children.is_empty()
+                    {
                         accessibility.label.clone()
                     } else {
                         None
                     }
                 });
                 if accessibility.label_expr.is_some()
-                    && matches!(kind, IrElementKind::Button)
+                    && matches!(kind, IrElementKind::Button | IrElementKind::NavLink)
                     && children.is_empty()
                 {
                     out.push_str(&format!(

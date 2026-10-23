@@ -1,0 +1,68 @@
+{
+  "checks": [
+    { "name": "cargo test routing", "argv": ["cargo", "test", "--quiet", "-p", "cancho-ui", "--test", "routing"] },
+    { "name": "check-routing.js", "argv": ["node", "scripts/check-routing.js"] }
+  ],
+  "breaks": [
+    {
+      "name": "a NavLink's href has no # (it would leave the page)",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "setAttribute('href', '#' + String({2}));",
+      "to": "setAttribute('href', '' + String({2}));"
+    },
+    {
+      "name": "the page does not listen for hashchange",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "        window.addEventListener('hashchange', __cui_hash);\\n",
+      "to": "\\n"
+    },
+    {
+      "name": "the route event is not run at mount",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "        __on_{0}(__cui_route_now());\\n",
+      "to": "\\n"
+    },
+    {
+      "name": "the route event reads the location, not the event's newURL",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "const p = __cui_route_of(e.newURL);",
+      "to": "const p = __cui_route_of(window.location.href);"
+    },
+    {
+      "name": "router.replace adds an entry",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "window.location.replace('#' + p);",
+      "to": "window.location.hash = p;"
+    },
+    {
+      "name": "a fragment that is not a route is heard as /",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "    return __cui_route_ok(f) ? f : null;",
+      "to": "    return __cui_route_ok(f) ? f : '/';"
+    },
+    {
+      "name": "a quote is a legal character of a path",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "/^\\/[\\x21\\x24-",
+      "to": "/^\\/[\\x21\\x22\\x24-"
+    },
+    {
+      "name": "a path may be any length",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "typeof p === 'string' && p.length <= 2000 && ",
+      "to": "typeof p === 'string' && "
+    },
+    {
+      "name": "router.go always answers false",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "    if (__cui_route_of(window.location.href) !== p) { window.location.hash = p; }\n    return true;",
+      "to": "    if (__cui_route_of(window.location.href) !== p) { window.location.hash = p; }\n    return false;"
+    },
+    {
+      "name": "the listener is not removed on disposal",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "removeEventListener('hashchange', __cui_hash);",
+      "to": "removeEventListener('hashchangeX', __cui_hash);"
+    }
+  ]
+}

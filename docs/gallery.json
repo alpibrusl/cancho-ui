@@ -44,19 +44,15 @@
       "tall": true,
       "says": "A table with search, sort, paging and a button per row, over 23 sample machines in a static file; the saved list shows offline. Sending a setpoint needs a service, so here it reports an error.",
       "wide": true
+    },
+    {
+      "id": "routes",
+      "title": "Screens at their own URLs",
+      "source": "examples/routes/routes.cui",
+      "says": "`route`, `NavLink` and `router.go`: a list and a detail, each at its own URL fragment (`#/items/valve`). The browser's Back button works, a reload stays on the page, and \"Open on its own\" gives a link you can share."
     }
   ],
   "soon": [
-    {
-      "id": "routing",
-      "title": "Multi-page routing",
-      "issue": 75,
-      "missing": "Moving between screens and putting state in the URL: `check` and `cancho-ui test` accept `NavLink`, `route` and `router.go`, but `build` writes no page for them yet and refuses it as `routing-not-emitted`.",
-      "probe": {
-        "build": "NavLink { label: \"Next page\" to: \"/next\" }",
-        "rule": "routing-not-emitted"
-      }
-    },
     {
       "id": "charts",
       "title": "Charts",

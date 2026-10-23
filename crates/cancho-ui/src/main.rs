@@ -29,7 +29,6 @@
 mod diff_cmd;
 mod pipeline;
 mod pwa;
-mod routing_gate;
 mod test_cmd;
 
 use std::path::PathBuf;

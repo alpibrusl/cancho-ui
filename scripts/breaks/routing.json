@@ -1,7 +1,26 @@
 {
   "checks": [
-    { "name": "cargo test routing", "argv": ["cargo", "test", "--quiet", "-p", "cancho-ui", "--test", "routing"] },
-    { "name": "the example's trace", "argv": ["target/debug/cancho-ui", "test", "examples/routes/routes.cui", "examples/routes/routes.trace.json"] }
+    {
+      "name": "cargo test routing",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "routing"
+      ]
+    },
+    {
+      "name": "the example's trace",
+      "argv": [
+        "target/debug/cancho-ui",
+        "test",
+        "examples/routes/routes.cui",
+        "examples/routes/routes.trace.json"
+      ]
+    }
   ],
   "breaks": [
     {
@@ -43,8 +62,8 @@
     {
       "name": "a path with a # is legal",
       "file": "crates/cancho-ui-ir/src/routing.rs",
-      "from": "(0x21..=0x7e).contains(&b) && b != b'#'",
-      "to": "(0x21..=0x7e).contains(&b)"
+      "from": "!matches!(b, b'#' | b'\"' | b'<' | b'>' | b'`')",
+      "to": "!matches!(b, b'\"' | b'<' | b'>' | b'`')"
     },
     {
       "name": "a refused path moves the page anyway",
@@ -89,22 +108,22 @@
       "to": "    if !has_label {"
     },
     {
-      "name": "build emits a routing program without saying it has no page",
-      "file": "crates/cancho-ui/src/pipeline.rs",
-      "from": "    crate::routing_gate::refuse_routing(&ir, file)?;\n",
-      "to": ""
-    },
-    {
       "name": "a trace may navigate to a non-route",
       "file": "crates/cancho-ui-replay/src/trace.rs",
-      "from": "            Json::String(p) if cancho_ui_ir::routing::path_is_legal(p) => Action::Navigate(p.clone()),",
-      "to": "            Json::String(p) => Action::Navigate(p.clone()),"
+      "from": "            Json::String(p) if cancho_ui_ir::routing::path_is_legal(p) => {\n                Action::Navigate(p.clone())",
+      "to": "            Json::String(p) => {\n                Action::Navigate(p.clone())"
     },
     {
       "name": "Back with no entry is allowed",
       "file": "crates/cancho-ui-replay/src/lib.rs",
       "from": "            if !possible {",
       "to": "            if !possible && false {"
+    },
+    {
+      "name": "a path with a quote is legal",
+      "file": "crates/cancho-ui-ir/src/routing.rs",
+      "from": "!matches!(b, b'#' | b'\"' | b'<' | b'>' | b'`')",
+      "to": "!matches!(b, b'#' | b'<' | b'>' | b'`')"
     }
   ]
 }
