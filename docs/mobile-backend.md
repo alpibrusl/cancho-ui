@@ -128,6 +128,11 @@ the other:
 | A second tab is opened while the first is open | **version one** too |
 | Every old tab is closed, then a fresh tab is opened | **version two**; the old cache is gone (`activate` deleted it) |
 
+**How the script waits (issue #97).** It waits for `registration.waiting`, a condition, with a 60 s ceiling that only turns a hang into a failure (the whole script has a 3-minute watchdog as well). It used to fail in 4 runs of 10 with the machine loaded (6 busy loops on 4 cores) and in none of 10 unloaded.
+The cause, measured by logging the worker's `statechange` times against the wait: the predicate was `async () => { await getRegistration(); return !!r.waiting }`, which returns a Promise, and Playwright counts a Promise as true at once, so the "8 second wait" returned after 67 to 129 ms; the worker needs about 90 ms to reach `installed` (88, 104, 107, 118 ms in the
+runs where it did), so the check passed or failed on that race. The registration is now kept in the page and the predicate is a plain function. After the change 20 runs of 20 pass at a load average of 18, and the three breaks (a `skipWaiting()` in the worker, a constant cache name, an `activate` that keeps the old cache; `scripts/breaks/update.json`)
+are each caught by the script on its own. No timeout was widened.
+
 So the cost of "a page never runs against two versions" is that an installed app stays on the old build **until every window of it
 is closed**, however long that takes; a reload does not help. This is the policy chosen in section 5 (no `skipWaiting`) and it is kept.
 Reasons, with what each alternative would cost: `skipWaiting()` plus a reload on `controllerchange` would put the new build in the
