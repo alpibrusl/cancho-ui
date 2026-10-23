@@ -421,6 +421,7 @@ Every refusal has a stable tag. Tier **tested** throughout.
 | `trace-unknown-component` | `component` names no component in the file | yes |
 | `trace-unknown-event` | the component has no handler by that name | yes |
 | `trace-params-arity` | `params` length differs from the handler's | yes |
+| `trace-value-not-an-option` | an event fired only by `Select`s is given a string that is none of their options (read from the state when the step runs): the browser never reports one (`docs/controls.md` section 10) | yes |
 | `trace-value-too-long` | an event fired only by `TextField`s with a `maxlength:` is given a string longer than the longest limit (UTF-16 code units): the browser never reports one (`docs/controls.md` section 6) | yes |
 | `trace-unknown-state-field` | a `state` expectation names an undeclared field | yes |
 | `trace-unknown-request` | `resolve` of an id never issued | yes |

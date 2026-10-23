@@ -253,6 +253,7 @@ impl Parser {
             "TextField" => ElementKind::TextField,
             "TextArea" => ElementKind::TextArea,
             "Checkbox" => ElementKind::Checkbox,
+            "Select" => ElementKind::Select,
             other => ElementKind::Named(other.to_string()),
         };
 
@@ -519,6 +520,22 @@ impl Parser {
                         found: other,
                         line: tok.span.start.line,
                         column: tok.span.start.column,
+                    }),
+                }
+            }
+            "options" => {
+                // A list literal (`["open", "doing"]`) or the name of a `List[String]` state field.
+                match self.peek().token.clone() {
+                    Token::LBracket => Ok(BindingValue::Prop(self.parse_list_lit()?)),
+                    Token::Ident(s) => {
+                        self.bump();
+                        Ok(BindingValue::StateRef(s))
+                    }
+                    other => Err(ParseError::Unexpected {
+                        expected: "a list literal or the name of a List state field",
+                        found: other,
+                        line: self.peek().span.start.line,
+                        column: self.peek().span.start.column,
                     }),
                 }
             }

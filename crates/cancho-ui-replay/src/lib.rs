@@ -307,6 +307,25 @@ fn run_step(
                     ),
                 ));
             }
+            // A select reports one of its options, never anything else; a trace that gives another describes a page that does
+            // not exist (docs/controls.md section 10).
+            if let (Some(Value::Str(chosen)), Some(options)) =
+                (params.first(), m.select_options(name))
+                && !options.contains(chosen)
+            {
+                return Err(stop(
+                    "trace-value-not-an-option",
+                    "params",
+                    format!(
+                        "`{name}` is fired only by a Select, and {chosen:?} is not one of its options ({})",
+                        options
+                            .iter()
+                            .map(|o| format!("{o:?}"))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ),
+                ));
+            }
             let detail = serde_json::json!({
                 "name": name,
                 "params": params.iter().map(Value::to_json).collect::<Vec<_>>(),

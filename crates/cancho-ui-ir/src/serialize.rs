@@ -565,6 +565,7 @@ impl Serialize for IrElementKind {
             IrElementKind::TextField => ser.serialize_unit_variant("IrElementKind", 4, "TextField"),
             IrElementKind::TextArea => ser.serialize_unit_variant("IrElementKind", 9, "TextArea"),
             IrElementKind::Checkbox => ser.serialize_unit_variant("IrElementKind", 10, "Checkbox"),
+            IrElementKind::Select => ser.serialize_unit_variant("IrElementKind", 11, "Select"),
             IrElementKind::Table => ser.serialize_unit_variant("IrElementKind", 5, "Table"),
             IrElementKind::TableRow => ser.serialize_unit_variant("IrElementKind", 6, "TableRow"),
             IrElementKind::Cell => ser.serialize_unit_variant("IrElementKind", 7, "Cell"),

@@ -427,6 +427,9 @@ pub(crate) fn emit_view_node(
             // `checked: flag` / `on: Toggle` of a `Checkbox` (docs/controls.md section 9).
             let mut checked_field: Option<String> = None;
             let mut change_handler: Option<String> = None;
+            // `options:` and `value:` of a `Select` (docs/controls.md section 10): the JavaScript list, the state field.
+            let mut options_expr: Option<String> = None;
+            let mut select_handler: Option<String> = None;
             let mut button_label: Option<String> = None;
             // Tier 13: on a component instance, `Const` bindings
             // are *properties* — constant initial values for the
@@ -482,6 +485,12 @@ pub(crate) fn emit_view_node(
                     }
                     IrBindingValue::StateRef(name) if b.key == "error" => {
                         field_error = Some(name.clone());
+                    }
+                    IrBindingValue::Const { expr, .. } if b.key == "options" => {
+                        options_expr = Some(emit_expr_runtime(expr, params));
+                    }
+                    IrBindingValue::StateRef(name) if b.key == "options" => {
+                        options_expr = Some(format!("{STATE_PREFIX}{name}"));
                     }
                     IrBindingValue::StateRef(name) if b.key == "checked" => {
                         checked_field = Some(name.clone());
@@ -556,6 +565,8 @@ pub(crate) fn emit_view_node(
                                 input_handler = Some(name.clone());
                             } else if matches!(kind, IrElementKind::Checkbox) {
                                 change_handler = Some(name.clone());
+                            } else if matches!(kind, IrElementKind::Select) {
+                                select_handler = Some(name.clone());
                             } else {
                                 out.push_str(&format!(
                                     "{0}// on: {1} on a non-button/non-textfield primitive (Phase 2+)\n",
@@ -598,7 +609,7 @@ pub(crate) fn emit_view_node(
                     }
                     IrBindingValue::StateRef(name) => {
                         if b.key == "value" {
-                            if kind.is_field() {
+                            if kind.is_field() || matches!(kind, IrElementKind::Select) {
                                 // One-way binding to a state field;
                                 // re-render reflects the new value.
                                 input_value = Some(format!("{}{}", STATE_PREFIX, name));
@@ -735,6 +746,20 @@ pub(crate) fn emit_view_node(
                 }
             }
 
+            // A select: one `<option>` per string of the list, then the chosen one. A value that is not in the list selects
+            // nothing (the box is blank) rather than the first option, so the screen never says what the state does not.
+            if matches!(kind, IrElementKind::Select) {
+                if let Some(list) = &options_expr {
+                    out.push_str(&format!(
+                        "{0}for (const __o of {1}) {{ const __opt = document.createElement('option'); __opt.value = String(__o); __opt.textContent = String(__o); {2}.appendChild(__opt); }}\n",
+                        indent, list, var
+                    ));
+                }
+                if let Some(v) = &input_value {
+                    out.push_str(&format!("{0}{1}.value = {2};\n", indent, var, v));
+                }
+            }
+
             // A checkbox is an `<input type="checkbox">` drawn from its `Bool`.
             if matches!(kind, IrElementKind::Checkbox) {
                 out.push_str(&format!(
@@ -751,7 +776,7 @@ pub(crate) fn emit_view_node(
 
             // Append to parent. A field with a label is drawn inside a `<label>` that shows it
             // (docs/presentation.md section 1); the field keeps its `aria-label`.
-            let field_label = if kind.is_field() {
+            let field_label = if kind.is_field() || matches!(kind, IrElementKind::Select) {
                 accessibility
                     .label
                     .as_ref()
@@ -822,6 +847,12 @@ pub(crate) fn emit_view_node(
             if let Some(event_name) = submit_handler {
                 out.push_str(&format!(
                     "{0}{1}.addEventListener('keydown', function (e) {{ if (e.key === 'Enter' && !e.isComposing && !e.repeat) {{ e.preventDefault(); if (!(__submit_blocked.{2} && __submit_blocked.{2}())) {{ __on_{2}(); }} }} }});\n",
+                    indent, var, event_name
+                ));
+            }
+            if let Some(event_name) = select_handler {
+                out.push_str(&format!(
+                    "{0}{1}.addEventListener('change', function (e) {{ __on_{2}(e.target.value); }});\n",
                     indent, var, event_name
                 ));
             }

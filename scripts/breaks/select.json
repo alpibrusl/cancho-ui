@@ -1,0 +1,104 @@
+{
+  "checks": [
+    {
+      "name": "cargo test select",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "select"
+      ]
+    },
+    {
+      "name": "check-select.js",
+      "argv": [
+        "node",
+        "scripts/check-select.js"
+      ]
+    },
+    {
+      "name": "check-tickets.js",
+      "argv": [
+        "node",
+        "scripts/check-tickets.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "only the first option is drawn",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "for (const __o of {1}) {{ const __opt",
+      "to": "for (const __o of [].concat({1}).slice(0, 1)) {{ const __opt"
+    },
+    {
+      "name": "a value that is not an option selects the first option (no blank)",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "                    out.push_str(&format!(\"{0}{1}.value = {2};\\n\", indent, var, v));\n                }\n            }\n\n            // A checkbox",
+      "to": "                    out.push_str(&format!(\"{0}{1}.value = {2}; if ({1}.selectedIndex < 0) {{ {1}.selectedIndex = 0; }}\\n\", indent, var, v));\n                }\n            }\n\n            // A checkbox"
+    },
+    {
+      "name": "the choice is not reported",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "\"{0}{1}.addEventListener('change', function (e) {{ __on_{2}(e.target.value); }});\\n\",\n                    indent, var, event_name\n                ));\n            }\n            if let Some(event_name) = change_handler {",
+      "to": "\"{0}{1}.addEventListener('dblclick', function (e) {{ __on_{2}(e.target.value); }});\\n\",\n                    indent, var, event_name\n                ));\n            }\n            if let Some(event_name) = change_handler {"
+    },
+    {
+      "name": "a Select is not focusable to the focus helper",
+      "file": "crates/cancho-ui-ir/src/ir.rs",
+      "from": "            IrElementKind::Button | IrElementKind::Checkbox | IrElementKind::Select\n        ) || self.is_field()",
+      "to": "            IrElementKind::Button | IrElementKind::Checkbox\n        ) || self.is_field()"
+    },
+    {
+      "name": "options may hold anything",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "if items.iter().all(|i| matches!(i, IrExpr::StringLit { .. })) =>",
+      "to": "if items.iter().all(|_i| true) =>"
+    },
+    {
+      "name": "options accepts any state field",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": ".any(|f| &f.name == name && matches!(f.ty, IrType::List { .. })) =>",
+      "to": ".any(|f| &f.name == name) =>"
+    },
+    {
+      "name": "a Select's value may be any field",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "fn check_select_value(c: &IrComponent, b: &IrBinding) -> Result<(), LowerError> {\n    match &b.value {\n        IrBindingValue::StateRef(name)\n            if c.state\n                .iter()\n                .any(|f| &f.name == name && f.ty == IrType::String) =>",
+      "to": "fn check_select_value(c: &IrComponent, b: &IrBinding) -> Result<(), LowerError> {\n    match &b.value {\n        IrBindingValue::StateRef(name)\n            if c.state\n                .iter()\n                .any(|f| &f.name == name) =>"
+    },
+    {
+      "name": "a Select without on: is accepted",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "        (\"on\", \"the event it reports to\"),\n    ] {\n        if !bindings.iter().any(|b| b.key == key) {\n            return Err(LowerError::ControlRefused {\n                code: \"select-incomplete\",",
+      "to": "        (\"on\", \"the event it reports to\"),\n    ] {\n        if key != \"on\" && !bindings.iter().any(|b| b.key == key) {\n            return Err(LowerError::ControlRefused {\n                code: \"select-incomplete\","
+    },
+    {
+      "name": "a Select takes any key",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "    if matches!(kind, IrElementKind::Select)\n        && !SELECT_KEYS.contains(&b.key.as_str())",
+      "to": "    if false\n        && !SELECT_KEYS.contains(&b.key.as_str())"
+    },
+    {
+      "name": "replay accepts a string that is not an option",
+      "file": "crates/cancho-ui-replay/src/lib.rs",
+      "from": "&& !options.contains(chosen)",
+      "to": "&& !options.contains(chosen) && false"
+    },
+    {
+      "name": "replay reads the options of the first Select only",
+      "file": "crates/cancho-ui-replay/src/machine.rs",
+      "from": "                            s.selects += 1;\n                            for b in bindings.iter().filter(|b| b.key == \"options\") {",
+      "to": "                            s.selects += 1;\n                            for b in bindings.iter().filter(|b| b.key == \"options\" && s.selects == 1) {"
+    },
+    {
+      "name": "replay lifts the check never (a button's argument is refused too)",
+      "file": "crates/cancho-ui-replay/src/machine.rs",
+      "from": "        if s.other || s.selects == 0 {",
+      "to": "        if s.selects == 0 {"
+    }
+  ]
+}

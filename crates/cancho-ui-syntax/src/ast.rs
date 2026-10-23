@@ -241,6 +241,8 @@ pub enum ElementKind {
     TextArea,
     /// A box that is on or off, bound to a `Bool` (docs/controls.md section 9).
     Checkbox,
+    /// A choice of one string from a list (docs/controls.md section 10).
+    Select,
     Named(String),
 }
 

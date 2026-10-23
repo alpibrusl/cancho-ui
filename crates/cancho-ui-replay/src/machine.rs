@@ -357,6 +357,89 @@ impl<'a> Machine<'a> {
         !matches!(eval(&mut ctx, cond), Ok(Value::Bool(false)))
     }
 
+    /// The strings a `Select` can report to `event`, when every control in the page that fires it is a `Select` (the union of
+    /// their option lists, read from the state as it is now); `None` when some other control could give it any value, or no
+    /// control fires it (docs/controls.md section 10).
+    pub fn select_options(&self, event: &str) -> Option<Vec<String>> {
+        #[derive(Default)]
+        struct Selects {
+            options: Vec<String>,
+            selects: usize,
+            other: bool,
+        }
+        fn walk(m: &Machine<'_>, node: &IrViewNode, event: &str, s: &mut Selects) {
+            match node {
+                IrViewNode::Element {
+                    kind,
+                    bindings,
+                    children,
+                    ..
+                } => {
+                    let fires = bindings.iter().any(|b| {
+                        b.key == "on"
+                            && match &b.value {
+                                IrBindingValue::EventRef(e) => e == event,
+                                IrBindingValue::EventCall { name, .. } => name == event,
+                                _ => false,
+                            }
+                    });
+                    if fires {
+                        if matches!(kind, cancho_ui_ir::ir::IrElementKind::Select) {
+                            s.selects += 1;
+                            for b in bindings.iter().filter(|b| b.key == "options") {
+                                match &b.value {
+                                    IrBindingValue::StateRef(name) => {
+                                        if let Some(Value::List(items)) = m.state.get(name) {
+                                            for i in items {
+                                                if let Value::Str(t) = i {
+                                                    s.options.push(t.clone());
+                                                }
+                                            }
+                                        }
+                                    }
+                                    IrBindingValue::Const { expr, .. } => {
+                                        if let IrExpr::ListLit { items, .. } = &**expr {
+                                            for i in items {
+                                                if let IrExpr::StringLit { value, .. } = i {
+                                                    s.options.push(value.clone());
+                                                }
+                                            }
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        } else {
+                            s.other = true;
+                        }
+                    }
+                    for c in children {
+                        walk(m, c, event, s);
+                    }
+                }
+                IrViewNode::For { children, .. } => {
+                    for c in children {
+                        walk(m, c, event, s);
+                    }
+                }
+                IrViewNode::If { cond, children, .. } => {
+                    if m.condition_holds(cond) {
+                        for c in children {
+                            walk(m, c, event, s);
+                        }
+                    }
+                }
+                IrViewNode::Text { .. } => {}
+            }
+        }
+        let mut s = Selects::default();
+        walk(self, &self.comp.view.body, event, &mut s);
+        if s.other || s.selects == 0 {
+            return None;
+        }
+        Some(s.options)
+    }
+
     /// The most characters (UTF-16 code units) any way of firing `event` with a typed value allows, when every control in the
     /// page that fires it is a `TextField` with a `maxlength:`; `None` when some control without a limit (or a button) could give
     /// it a value of any length, or no control fires it (docs/controls.md section 6).

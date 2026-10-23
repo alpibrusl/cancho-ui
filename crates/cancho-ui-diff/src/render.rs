@@ -147,6 +147,7 @@ fn kind(k: &IrElementKind) -> String {
         IrElementKind::TextField => "TextField".into(),
         IrElementKind::TextArea => "TextArea".into(),
         IrElementKind::Checkbox => "Checkbox".into(),
+        IrElementKind::Select => "Select".into(),
         IrElementKind::Named(n) => n.clone(),
     }
 }

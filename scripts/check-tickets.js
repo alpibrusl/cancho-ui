@@ -77,11 +77,10 @@ function note(label, detail) { console.log(`note ${label}: ${detail}`); }
 
   // 4. the detail and the edit form
   await page.getByRole('button', { name: 'Open T-2' }).click();
-  check('Open T-2 shows the detail with its values', /Order T-2: Calibrate the furnace probe/.test(await body()) && (await page.getByLabel('Status (open, doing or done)').inputValue()) === 'doing' && (await page.getByLabel('Note').inputValue()) === 'probe ordered');
+  check('Open T-2 shows the detail with its values', /Order T-2: Calibrate the furnace probe/.test(await body()) && (await page.getByLabel('Status').inputValue()) === 'doing' && (await page.getByLabel('Note').inputValue()) === 'probe ordered');
   const save = page.getByRole('button', { name: 'Save' });
-  await page.getByLabel('Status (open, doing or done)').fill('finished');
-  check('an invalid status says so and Save is disabled', /Use open, doing or done\./.test(await body()) && await save.isDisabled());
-  await page.getByLabel('Status (open, doing or done)').fill('done');
+  check('the status can only be one of the three, and is shown chosen', JSON.stringify(await page.getByLabel('Status').evaluate((s) => Array.from(s.options).map((o) => o.value))) === JSON.stringify(['open', 'doing', 'done']));
+  await page.getByLabel('Status').selectOption('done');
   await page.getByLabel('Note').fill('x'.repeat(201));
   check('a note cannot be longer than 200 characters: the field stops there (docs/controls.md section 6)', (await page.getByLabel('Note').inputValue()).length === 200 && await save.isEnabled());
   await page.getByLabel('Note').fill('probe replaced');
