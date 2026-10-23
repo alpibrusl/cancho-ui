@@ -170,6 +170,9 @@ in `examples/refusal/`, and by the evidence report.
 | `message-text-invalid` | `Component` | `Error` | `Static` | A message text with a brace that is not a hole (`{name}`: letters, digits and `_`, not starting with a digit), or a plural form with a hole other than its count. *(Built 2026-10-24, issue #82.)* |
 | `message-key-unknown` | `Component` | `Error` | `Static` | A `t("key")` whose key is in no catalog of the component. *(Built 2026-10-24, issue #82.)* |
 | `message-call-invalid` | `Component` | `Error` | `Static` | A `t`, `fmt.*` or `locale.*` call of the wrong shape: a key that is not a string literal, a number of arguments the message does not take, a `fmt.date` style that is not one of the literals `"short"`, `"medium"`, `"long"`, `"full"`. *(Built 2026-10-24, issue #82.)* |
+| `sortlist-incomplete` | `Component` | `Error` | `Static` | A `SortList` without `label:` (its name), `items:` (the `List` field it shows) or `on:` (the event that hears a move). *(Built 2026-10-24, issue #80, `docs/drag-and-drop.md` section 3.)* |
+| `sortlist-binding-invalid` | `Component` | `Error` | `Static` | An `items:` of a `SortList` that is not the name of a `List` state field of the component. `items:` on anything but a `SortList`, and any key a `SortList` does not take, is `binding-unknown`; an `on:` event that does not take two parameters is `event-arity-mismatch`. *(Built 2026-10-24, issue #80.)* |
+| `sortlist-in-loop` | `Component` | `Error` | `Static` | A `SortList` inside a `For`: one list per place in the source. *(Built 2026-10-24, issue #80.)* |
 | `file-limit-invalid` | `Component` | `Error` | `Static` | A `max_bytes:` of a `FileField` that is not an integer literal from 1 to 1,048,576. On anything else it is `binding-unknown`. *(Built 2026-10-23, issue #79.)* |
 | `file-field-in-loop` | `Component` | `Error` | `Static` | A `FileField` drawn inside a `For`: the page keeps the chosen file by the place of the field in the source, and every row would share one. *(Built 2026-10-23, issue #79.)* |
 | `chart-incomplete` | `Component` | `Error` | `Static` | A `Chart` without `label:`, `kind:` or `values:`. *(Built 2026-10-24, issue #77, `docs/charts.md`.)* |
@@ -216,7 +219,7 @@ tags: `test-state-mismatch`, `test-expect-mismatch`, `test-fault-missing`, `test
 `trace-unknown-event`, `trace-params-arity`, `trace-value-too-long`, `trace-value-not-an-option`, `trace-unknown-state-field`,
 `trace-unknown-request`, `trace-request-not-pending`,
 `trace-request-not-scriptable`, `trace-bad-response`,
-`trace-event-after-dispose`, `trace-navigate-invalid`, `trace-history-empty`, `trace-value-not-a-file`, `trace-stream-state`, `trace-locale-invalid`, `replay-unsupported`, `replay-tick-limit`, `replay-route-limit`, `replay-type-error`,
+`trace-event-after-dispose`, `trace-navigate-invalid`, `trace-history-empty`, `trace-value-not-a-file`, `trace-stream-state`, `trace-locale-invalid`, `trace-move-invalid`, `replay-unsupported`, `replay-tick-limit`, `replay-route-limit`, `replay-type-error`,
 `replay-unknown-identifier`, `replay-no-match-arm`, `replay-non-finite`,
 `replay-number-format`. (`replay-non-finite` is also what the emitted page throws for the same result: `docs/semantics.md`,
 "Arithmetic is finite".) Their meanings are in `docs/replay.md` §7.1. A program that

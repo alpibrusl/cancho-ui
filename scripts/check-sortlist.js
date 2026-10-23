@@ -217,12 +217,13 @@ ${extra}
   // ---- E. a render in the middle of a drag ------------------------------------------------------------------------------------------------
   {
     const { ctx, page } = await open('ticker');
-    const t0 = Number((await status(page)).match(/(\d+) ticks/)[1]);
-    await page.evaluate(() => { window.__li = document.querySelector('ul.cui-sort li'); });
     const a = center(await handleBox(page, 0));
     const b = center(await handleBox(page, 3));
     await page.mouse.move(a.x, a.y);
     await page.mouse.down();
+    // from here the page is not redrawn: what it shows now is what it must still show at the end of the drag (the timer ticks every 100 ms, so
+    // the row and the count are read after the press, not before it)
+    const t0 = await page.evaluate(() => { window.__li = document.querySelector('.cui-dragging'); return Number(document.querySelector('[role=status]').textContent.match(/(\d+) ticks/)[1]); });
     await page.mouse.move(b.x, b.y, { steps: 6 });
     await sleep(700);
     const mid = await page.evaluate(() => ({ same: window.__li.isConnected, ticks: Number(document.querySelector('[role=status]').textContent.match(/(\d+) ticks/)[1]) }));
