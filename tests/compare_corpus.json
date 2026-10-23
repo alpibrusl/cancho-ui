@@ -1,0 +1,321 @@
+{
+ "accepted": [
+  {
+   "why": "a number equals the same number",
+   "expr": "a == 7",
+   "expect": true
+  },
+  {
+   "why": "an integer state equals a float literal of the same value",
+   "expr": "a == 7.0",
+   "expect": true
+  },
+  {
+   "why": "two numbers differ",
+   "expr": "a != 8",
+   "expect": true
+  },
+  {
+   "why": "a float is not an integer",
+   "expr": "f == a",
+   "expect": false
+  },
+  {
+   "why": "zero equals negative zero",
+   "expr": "0 == -0",
+   "expect": true
+  },
+  {
+   "why": "0.1 + 0.2 is not 0.3",
+   "expr": "0.1 + 0.2 == 0.3",
+   "expect": false
+  },
+  {
+   "why": "two equal strings",
+   "expr": "s == \"7\"",
+   "expect": true
+  },
+  {
+   "why": "two different strings",
+   "expr": "s == \"8\"",
+   "expect": false
+  },
+  {
+   "why": "two strings differ",
+   "expr": "s != \"8\"",
+   "expect": true
+  },
+  {
+   "why": "case matters",
+   "expr": "\"A\" == \"a\"",
+   "expect": false
+  },
+  {
+   "why": "two bools",
+   "expr": "t == true",
+   "expect": true
+  },
+  {
+   "why": "two different bools",
+   "expr": "t == false",
+   "expect": false
+  },
+  {
+   "why": "two bools differ",
+   "expr": "t != false",
+   "expect": true
+  },
+  {
+   "why": "a number is less than a larger one",
+   "expr": "a < 8",
+   "expect": true
+  },
+  {
+   "why": "a number is not less than itself",
+   "expr": "a < 7",
+   "expect": false
+  },
+  {
+   "why": "less or equal",
+   "expr": "a <= 7",
+   "expect": true
+  },
+  {
+   "why": "greater",
+   "expr": "a > 6",
+   "expect": true
+  },
+  {
+   "why": "not greater than itself",
+   "expr": "a > 7",
+   "expect": false
+  },
+  {
+   "why": "greater or equal",
+   "expr": "a >= 7",
+   "expect": true
+  },
+  {
+   "why": "a float is ordered with an integer",
+   "expr": "f > a",
+   "expect": true
+  },
+  {
+   "why": "strings are ordered",
+   "expr": "\"a\" < \"b\"",
+   "expect": true
+  },
+  {
+   "why": "the empty string comes first",
+   "expr": "\"\" < \"a\"",
+   "expect": true
+  },
+  {
+   "why": "upper case comes before lower case (code units)",
+   "expr": "\"B\" < \"a\"",
+   "expect": true
+  },
+  {
+   "why": "strings of digits are ordered as text, not as numbers",
+   "expr": "\"10\" < \"9\"",
+   "expect": true
+  },
+  {
+   "why": "a string state is ordered with a literal",
+   "expr": "s < \"8\"",
+   "expect": true
+  },
+  {
+   "why": "strings are ordered by UTF-16 code unit: a surrogate pair is before U+FF5E",
+   "expr": "\"😀\" < \"～\"",
+   "expect": true
+  },
+  {
+   "why": "a prefix comes first",
+   "expr": "\"ab\" < \"abc\"",
+   "expect": true
+  },
+  {
+   "why": "a text turned into a number equals a number",
+   "expr": "num(s, 0) == 7",
+   "expect": true
+  },
+  {
+   "why": "a text that is not a number takes the default",
+   "expr": "num(\"x\", 3) == 3",
+   "expect": true
+  },
+  {
+   "why": "the status of a reply, as a number",
+   "expr": "num(json.get(reply, \"status\", \"\"), 0) == 200",
+   "expect": true
+  },
+  {
+   "why": "the status of a reply, as a string",
+   "expr": "json.get(reply, \"status\", \"\") == \"200\"",
+   "expect": true
+  },
+  {
+   "why": "the status of a reply is not 404",
+   "expr": "num(json.get(reply, \"status\", \"\"), 0) != 404",
+   "expect": true
+  },
+  {
+   "why": "a missing member takes the default",
+   "expr": "num(json.get(reply, \"nope\", \"\"), 5) == 5",
+   "expect": true
+  },
+  {
+   "why": "the length of a list is a number",
+   "expr": "len(l) == 1",
+   "expect": true
+  },
+  {
+   "why": "a list joined is a string",
+   "expr": "join(l, \",\") == \"x\"",
+   "expect": true
+  },
+  {
+   "why": "two lists have the same length",
+   "expr": "len(l) == len([\"a\"])",
+   "expect": true
+  }
+ ],
+ "refused": [
+  {
+   "why": "a text against a number (the probe of #95)",
+   "expr": "json.get(reply, \"status\", \"\") == 200",
+   "rule": "comparison-type-mismatch"
+  },
+  {
+   "why": "a string state against a number",
+   "expr": "s == a",
+   "rule": "comparison-type-mismatch"
+  },
+  {
+   "why": "a number against a string state",
+   "expr": "a == s",
+   "rule": "comparison-type-mismatch"
+  },
+  {
+   "why": "a string against a number, !=",
+   "expr": "s != a",
+   "rule": "comparison-type-mismatch"
+  },
+  {
+   "why": "a number against a string literal",
+   "expr": "a == \"7\"",
+   "rule": "comparison-type-mismatch"
+  },
+  {
+   "why": "a number against a bool",
+   "expr": "a == t",
+   "rule": "comparison-type-mismatch"
+  },
+  {
+   "why": "a bool against a number, !=",
+   "expr": "t != 1",
+   "rule": "comparison-type-mismatch"
+  },
+  {
+   "why": "a string against a bool",
+   "expr": "s == t",
+   "rule": "comparison-type-mismatch"
+  },
+  {
+   "why": "a bool against a string, !=",
+   "expr": "t != \"true\"",
+   "rule": "comparison-type-mismatch"
+  },
+  {
+   "why": "a string ordered against a number",
+   "expr": "s < a",
+   "rule": "comparison-type-mismatch"
+  },
+  {
+   "why": "a number ordered against a string",
+   "expr": "a <= s",
+   "rule": "comparison-type-mismatch"
+  },
+  {
+   "why": "a string ordered against a number, >",
+   "expr": "s > 5",
+   "rule": "comparison-type-mismatch"
+  },
+  {
+   "why": "a number ordered against a bool",
+   "expr": "a >= t",
+   "rule": "comparison-type-mismatch"
+  },
+  {
+   "why": "a string ordered against a bool",
+   "expr": "s < t",
+   "rule": "comparison-type-mismatch"
+  },
+  {
+   "why": "two bools are not ordered",
+   "expr": "t < t",
+   "rule": "comparison-type-mismatch"
+  },
+  {
+   "why": "two bools are not ordered, >=",
+   "expr": "t >= false",
+   "rule": "comparison-type-mismatch"
+  },
+  {
+   "why": "two lists are not equal by ==",
+   "expr": "l == l",
+   "rule": "comparison-type-mismatch"
+  },
+  {
+   "why": "two lists are not different by !=",
+   "expr": "l != [\"x\"]",
+   "rule": "comparison-type-mismatch"
+  },
+  {
+   "why": "a list against a number",
+   "expr": "l == a",
+   "rule": "comparison-type-mismatch"
+  },
+  {
+   "why": "a list against a string",
+   "expr": "s == l",
+   "rule": "comparison-type-mismatch"
+  },
+  {
+   "why": "two lists are not ordered",
+   "expr": "l < l",
+   "rule": "comparison-type-mismatch"
+  },
+  {
+   "why": "a list is not ordered with a number",
+   "expr": "a > l",
+   "rule": "comparison-type-mismatch"
+  },
+  {
+   "why": "a Result against a string",
+   "expr": "r == s",
+   "rule": "comparison-type-mismatch"
+  },
+  {
+   "why": "a Result against a Result",
+   "expr": "r != r",
+   "rule": "comparison-type-mismatch"
+  },
+  {
+   "why": "a Result ordered",
+   "expr": "r < r",
+   "rule": "comparison-type-mismatch"
+  }
+ ],
+ "unknown": [
+  {
+   "why": "an event parameter against a number is not refused (its type is not known here)",
+   "expr": "v == 7"
+  },
+  {
+   "why": "an event parameter ordered against a string is not refused",
+   "expr": "v < \"a\""
+  }
+ ]
+}

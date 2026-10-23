@@ -1679,6 +1679,7 @@ fn condition_remediation(code: &str) -> String {
         "if-else-required" => "Write both sides: `if cond { a } else { b }`; `else if cond2 { c }` chains.".to_string(),
         "if-effect-in-expression" => "Keep the condition (and, in an `if` expression, the branches) pure: compute with state, literals and the pure builtins. To issue a request only sometimes, use the statement form: `if cond { r = await(net.get(url)); }` (docs/handler-sequences.md).".to_string(),
         "condition-not-bool" => "Use a Bool: a comparison (`n > 0`), a Bool state field, or `&&`, `||`, `!` of those. A number or a string is not a condition: write `n != 0` or `len(s) > 0`.".to_string(),
+        "comparison-type-mismatch" => "Compare two numbers, two strings or two bools with `==` and `!=`, and order two numbers or two strings with `<`, `<=`, `>`, `>=`. To compare a text with a number use `num(text, default)`: `num(json.get(reply, \"status\", \"\"), 0) == 200`; or compare the text with a string literal: `json.get(reply, \"status\", \"\") == \"200\"`. Compare lists by `len(a) == len(b)` or `join(a, \",\") == join(b, \",\")`.".to_string(),
         "operand-type-mismatch" => "`+` takes two numbers, or a string and a number, bool or string. To join two lists write `concat(a, b)`; to build text from a list use `join(list, sep)`.".to_string(),
         "if-branch-type-mismatch" => "Both branches of an `if` must have the same type: two numbers, two strings, two lists. Convert one side or restructure.".to_string(),
         _ => "See docs/conditionals.md.".to_string(),

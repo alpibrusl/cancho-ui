@@ -203,6 +203,61 @@ fn node(scope: &mut Scope, n: &IrViewNode) -> Result<(), LowerError> {
     Ok(())
 }
 
+/// `==`, `!=`, `<`, `<=`, `>`, `>=` (docs/comparisons.md): replay defines `==` and `!=` on two numbers, two strings or two
+/// bools (a number against a string is simply not equal, never an error) and refuses a list or a variant; it orders two
+/// numbers or two strings and nothing else. The page does JavaScript's: strict equality (so a comparison across types is
+/// always false), reference equality on lists, and a coercing `<` (`"7" <= 7` is true). So a comparison whose operand types
+/// are both known and are not one of those pairs is refused, whichever evaluator would have been right.
+fn comparison(
+    op: IrBinOp,
+    l: Kind,
+    r: Kind,
+    span: cancho_ui_syntax::span::Span,
+) -> Result<(), LowerError> {
+    if l == Kind::Unknown || r == Kind::Unknown {
+        return Ok(());
+    }
+    let (sym, equality) = match op {
+        IrBinOp::Eq => ("==", true),
+        IrBinOp::Ne => ("!=", true),
+        IrBinOp::Lt => ("<", false),
+        IrBinOp::Le => ("<=", false),
+        IrBinOp::Gt => (">", false),
+        _ => (">=", false),
+    };
+    let scalar = |k: Kind| matches!(k, Kind::Bool | Kind::Num | Kind::Str);
+    let ok = if equality {
+        scalar(l) && l == r
+    } else {
+        l == r && matches!(l, Kind::Num | Kind::Str)
+    };
+    if ok {
+        return Ok(());
+    }
+    let hint = match (l, r) {
+        (Kind::Str, Kind::Num) | (Kind::Num, Kind::Str) => {
+            "; to compare a text with a number, turn the text into a number with `num(text, default)` (`num(json.get(reply, \"status\", \"\"), 0) == 200`), or compare it with a string literal (`json.get(reply, \"status\", \"\") == \"200\"`)"
+        }
+        _ if l == Kind::List || r == Kind::List => {
+            "; lists are not compared with `==`: compare `len(a) == len(b)`, or `join(a, \",\") == join(b, \",\")`"
+        }
+        _ if l == Kind::Other || r == Kind::Other => {
+            "; a `Result`, `Option` or request is taken apart with `match`, not compared"
+        }
+        _ if !equality => "; `<`, `<=`, `>` and `>=` order two numbers or two strings",
+        _ => "",
+    };
+    Err(LowerError::ConditionRefused {
+        code: "comparison-type-mismatch",
+        message: format!(
+            "`{sym}` is not defined on {} and {}{hint}",
+            l.name(),
+            r.name()
+        ),
+        span,
+    })
+}
+
 fn want_bool(scope: &mut Scope, e: &IrExpr, what: &str) -> Result<(), LowerError> {
     let k = kind(scope, e)?;
     if matches!(k, Kind::Num | Kind::Str | Kind::List | Kind::Other) {
@@ -274,6 +329,15 @@ fn kind(scope: &mut Scope, e: &IrExpr) -> Result<Kind, LowerError> {
                         }
                     }
                     IrBinOp::Sub | IrBinOp::Mul | IrBinOp::Div => Kind::Num,
+                    IrBinOp::Eq
+                    | IrBinOp::Ne
+                    | IrBinOp::Lt
+                    | IrBinOp::Le
+                    | IrBinOp::Gt
+                    | IrBinOp::Ge => {
+                        comparison(*op, l, r, e.span())?;
+                        Kind::Bool
+                    }
                     _ => Kind::Bool,
                 }
             }

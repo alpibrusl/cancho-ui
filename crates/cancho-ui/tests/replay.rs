@@ -233,7 +233,7 @@ component Faulty {
     state s: String = "x";
     on Zero { n = 1 / 0; }
     on Bad { n = s - 1; }
-    on Eq { n = [1] == [1]; }
+    on Eq(v) { n = v == v; }
     on Huge { n = 1000000000000000000000000000000.0 * 1000000000000000000000000000000.0; n = n * n; n = n * n; n = n * n; n = n * n; n = n * n; n = n * n; n = n * n; n = n * n; n = n * n; n = n * n; n = n * n; }
     view { Text { "{n}" } }
 }
@@ -247,7 +247,17 @@ fn operators_outside_the_modelled_cases_are_refused_with_a_rule_and_a_span() {
         ("Eq", "replay-type-error"),
         ("Huge", "replay-non-finite"),
     ] {
-        let r = run(FAULTY, json!([{"event": event, "state": {"n": 0}}]));
+        // `Eq` takes a list: the compiler refuses `[1] == [1]` when it can see the types (`comparison-type-mismatch`,
+        // docs/comparisons.md), so the replay refusal is reached through a parameter, whose type it cannot see.
+        let params = if event == "Eq" {
+            json!([[1]])
+        } else {
+            json!([])
+        };
+        let r = run(
+            FAULTY,
+            json!([{"event": event, "params": params, "state": {"n": 0}}]),
+        );
         assert_eq!(rules(&r), [rule], "{event}");
         assert!(r.failures[0].span.is_some(), "{event} is located");
         assert_eq!(r.result, "fail");
