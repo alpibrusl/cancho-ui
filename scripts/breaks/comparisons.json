@@ -1,0 +1,50 @@
+{
+  "checks": [
+    { "name": "cargo test comparisons", "argv": ["cargo", "test", "--quiet", "-p", "cancho-ui", "--test", "comparisons"] },
+    { "name": "check-comparisons.js", "argv": ["node", "scripts/check-comparisons.js"] }
+  ],
+  "breaks": [
+    {
+      "name": "the rule is off",
+      "file": "crates/cancho-ui-ir/src/conditions.rs",
+      "from": "    if l == Kind::Unknown || r == Kind::Unknown {\n        return Ok(());\n    }",
+      "to": "    if true {\n        return Ok(());\n    }"
+    },
+    {
+      "name": "== across scalar types is accepted",
+      "file": "crates/cancho-ui-ir/src/conditions.rs",
+      "from": "scalar(l) && l == r",
+      "to": "scalar(l) && scalar(r)"
+    },
+    {
+      "name": "< on two bools is accepted",
+      "file": "crates/cancho-ui-ir/src/conditions.rs",
+      "from": "l == r && matches!(l, Kind::Num | Kind::Str)",
+      "to": "l == r && matches!(l, Kind::Num | Kind::Str | Kind::Bool)"
+    },
+    {
+      "name": "< across number and string is accepted",
+      "file": "crates/cancho-ui-ir/src/conditions.rs",
+      "from": "l == r && matches!(l, Kind::Num | Kind::Str)",
+      "to": "matches!(l, Kind::Num | Kind::Str) && matches!(r, Kind::Num | Kind::Str)"
+    },
+    {
+      "name": "== on two lists is accepted",
+      "file": "crates/cancho-ui-ir/src/conditions.rs",
+      "from": "let scalar = |k: Kind| matches!(k, Kind::Bool | Kind::Num | Kind::Str);",
+      "to": "let scalar = |k: Kind| matches!(k, Kind::Bool | Kind::Num | Kind::Str | Kind::List);"
+    },
+    {
+      "name": "a comparison with an unknown type is refused",
+      "file": "crates/cancho-ui-ir/src/conditions.rs",
+      "from": "    if l == Kind::Unknown || r == Kind::Unknown {",
+      "to": "    if l == Kind::Unknown && r == Kind::Unknown {"
+    },
+    {
+      "name": "== on a Result is accepted",
+      "file": "crates/cancho-ui-ir/src/conditions.rs",
+      "from": "        scalar(l) && l == r\n    } else {",
+      "to": "        (scalar(l) || l == Kind::Other) && l == r\n    } else {"
+    }
+  ]
+}
