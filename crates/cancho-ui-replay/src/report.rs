@@ -131,6 +131,14 @@ pub struct StepReport {
     /// The `Storage` store after the step; absent when the trace never seeds or writes it.
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     pub storage: BTreeMap<String, String>,
+    /// The paths the route event received in this step, in order (docs/routing.md section 5); absent when none.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub routes: Vec<String>,
+    /// The URL path and the history after the step; absent for a component without `requires Router`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub history: Option<Json>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -238,6 +246,9 @@ fn render_human_bounded(r: &TestReport, bound: Option<usize>) -> String {
             ),
             "hide" => "hide".to_string(),
             "show" => "show".to_string(),
+            "navigate" => format!("navigate {}", compact(&s.detail)),
+            "back" => "back".to_string(),
+            "forward" => "forward".to_string(),
             _ => "dispose".to_string(),
         };
         let mut detail: Vec<String> = Vec::new();
@@ -260,6 +271,12 @@ fn render_human_bounded(r: &TestReport, bound: Option<usize>) -> String {
         }
         for f in &s.fired {
             detail.push(format!("#{} -> {}", f.request, f.delivered));
+        }
+        for p in &s.routes {
+            detail.push(format!("route {}", shown(&Json::String(p.clone()), bound)));
+        }
+        if let (Some(url), true) = (&s.url, !s.routes.is_empty() || s.action == "navigate") {
+            detail.push(format!("url={url}"));
         }
         out.push_str(&format!(
             "  step {:<2} {:<34} {:<10} {}\n",

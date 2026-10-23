@@ -247,6 +247,7 @@ fn lower_component(c: &Component, next_id: &mut u32) -> Result<IrComponent, Lowe
         let (ir_body, _) = lower_stmts_with_effects(body)?;
         crate::conditions::check_block(&state, &ir_body)?;
     }
+    reachable_effects.extend(crate::routing::route_effects(&schedules));
     let (view_body, view_effects) = lower_view_node_with_effects(&c.view.body)?;
     reachable_effects.extend(view_effects);
     let view = IrViewBlock {
@@ -274,9 +275,15 @@ pub const MAX_PERIOD_MS: i64 = 86_400_000;
 fn lower_schedules(c: &Component) -> Result<Vec<IrSchedule>, LowerError> {
     let mut out: Vec<IrSchedule> = Vec::with_capacity(c.schedules.len());
     for s in &c.schedules {
+        if s.kind == ScheduleKind::Route {
+            let route = crate::routing::lower_route(c, s, &out)?;
+            out.push(route);
+            continue;
+        }
         let text = match s.kind {
             ScheduleKind::Start => format!("start {}", s.event),
             ScheduleKind::Every(ms) => format!("every {ms} {}", s.event),
+            ScheduleKind::Route => String::new(),
         };
         let Some(handler) = c.events.iter().find(|e| e.name == s.event) else {
             return Err(LowerError::ScheduleEventUnknown {
@@ -295,7 +302,7 @@ fn lower_schedules(c: &Component) -> Result<Vec<IrSchedule>, LowerError> {
             });
         }
         let kind = match s.kind {
-            ScheduleKind::Start => IrScheduleKind::Start,
+            ScheduleKind::Start | ScheduleKind::Route => IrScheduleKind::Start,
             ScheduleKind::Every(ms) => {
                 if !(MIN_PERIOD_MS..=MAX_PERIOD_MS).contains(&ms) {
                     return Err(LowerError::SchedulePeriodInvalid {
@@ -601,6 +608,9 @@ fn lower_expr_with_effects(e: &Expr) -> Result<(IrExpr, Vec<IrReachableEffect>),
                         span: *span,
                     });
                 }
+            }
+            if path.len() == 2 && path[0] == "router" && (path[1] == "go" || path[1] == "replace") {
+                crate::routing::check_router_call(&path[1], args.len(), *span)?;
             }
             if path.len() == 1 && path[0] == "filter" {
                 if args.len() != 2 {
@@ -973,6 +983,9 @@ fn builtin_capability(path: &[String]) -> Option<&'static str> {
         // docs/adapters.md: `storage.get(key, default)` and `storage.set(key, value)` read and
         // write a persistent key-value store, synchronously. Both need `Storage`.
         Some("Storage")
+    } else if path.len() == 2 && path[0] == "router" && (path[1] == "go" || path[1] == "replace") {
+        // docs/routing.md section 4: `router.go(path)` and `router.replace(path)` write the URL fragment, synchronously.
+        Some("Router")
     } else if path.len() == 1 && path[0] == "sleep" {
         // Tier 7: `sleep(ms)` is a pure-runtime wait. It does
         // not need a user-declared capability; the runtime
@@ -1106,6 +1119,7 @@ fn lower_kind(k: &ElementKind) -> IrElementKind {
         ElementKind::TextArea => IrElementKind::TextArea,
         ElementKind::Checkbox => IrElementKind::Checkbox,
         ElementKind::Select => IrElementKind::Select,
+        ElementKind::NavLink => IrElementKind::NavLink,
         ElementKind::Named(s) => IrElementKind::Named(s.clone()),
     }
 }
@@ -1606,6 +1620,7 @@ fn is_known_call(path: &[String]) -> bool {
             (a.as_str(), b.as_str()),
             ("clock", "now")
                 | ("storage", "get" | "set")
+                | ("router", "go" | "replace")
                 | ("json", "get" | "items" | "quote")
                 | ("location", "current")
                 | (

@@ -681,6 +681,8 @@ fn emit_component(
             IrScheduleKind::Start => {
                 out.push_str(&format!("        __on_{}();\n", s.event));
             }
+            // A `route` has no emission yet: `build` refuses a routing program (docs/routing.md section 11).
+            IrScheduleKind::Route => {}
             IrScheduleKind::Every(ms) => {
                 out.push_str(&format!(
                     "        __cui_every.push({{ ms: {1}, next: Date.now() + {1}, o: null, run: function () {{ if (__cui_busy.{0} === 0) {{ __on_{0}(); }} }} }});\n",

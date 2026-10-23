@@ -34,6 +34,9 @@ pub enum IrScheduleKind {
     Start,
     /// The period in milliseconds, 100 to 86,400,000.
     Every(u32),
+    /// `route Event;` (docs/routing.md): the event, which takes one `String`, runs with the path at mount and at every
+    /// change of the URL fragment to a route.
+    Route,
 }
 
 /// An event that runs without the user (docs/schedules.md): the event exists and takes no parameters.
@@ -484,6 +487,8 @@ pub enum IrElementKind {
     /// `Select { label: .. options: list value: field on: Pick }` (docs/controls.md section 10): a choice of one string from a
     /// list, a `<select>`.
     Select,
+    /// `NavLink { label: .. to: path }` (docs/routing.md section 4): a link to a route of this page, an `<a href="#path">`.
+    NavLink,
     /// `Table { .. }` (docs/presentation.md section 4) and what lowering makes of its descendants: a `Row` of a table is
     /// a `TableRow`, a `Text` of that row a `Cell` (a `HeaderCell` with `role: columnheader`), and any other element of
     /// it is wrapped in a `Cell`.
@@ -505,6 +510,7 @@ impl IrElementKind {
             IrElementKind::TextArea => "textarea",
             IrElementKind::Checkbox => "input",
             IrElementKind::Select => "select",
+            IrElementKind::NavLink => "a",
             IrElementKind::Table => "table",
             IrElementKind::TableRow => "tr",
             IrElementKind::Cell => "td",
@@ -522,7 +528,10 @@ impl IrElementKind {
     pub fn is_focusable(&self) -> bool {
         matches!(
             self,
-            IrElementKind::Button | IrElementKind::Checkbox | IrElementKind::Select
+            IrElementKind::Button
+                | IrElementKind::Checkbox
+                | IrElementKind::Select
+                | IrElementKind::NavLink
         ) || self.is_field()
     }
 

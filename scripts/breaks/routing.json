@@ -1,0 +1,110 @@
+{
+  "checks": [
+    { "name": "cargo test routing", "argv": ["cargo", "test", "--quiet", "-p", "cancho-ui", "--test", "routing"] },
+    { "name": "the example's trace", "argv": ["target/debug/cancho-ui", "test", "examples/routes/routes.cui", "examples/routes/routes.trace.json"] }
+  ],
+  "breaks": [
+    {
+      "name": "the route event is not run at mount",
+      "file": "crates/cancho-ui-replay/src/machine.rs",
+      "from": "                    let path = Value::Str(self.router.current().to_string());\n                    self.routes.push(self.router.current().to_string());\n                    self.dispatch(h, vec![path], fx)?;",
+      "to": "                    let _ = h;"
+    },
+    {
+      "name": "the same path fires the event again",
+      "file": "crates/cancho-ui-replay/src/machine.rs",
+      "from": "        if self.router.current() == path {\n            return Ok(Outcome::Unchanged);\n        }\n        self.router.push(path);",
+      "to": "        self.router.queued.push_back(path.to_string());\n        self.router.push(path);"
+    },
+    {
+      "name": "a new entry keeps the forward entries",
+      "file": "crates/cancho-ui-replay/src/router.rs",
+      "from": "        self.entries.truncate(self.position + 1);\n        self.entries.push(path.to_string());",
+      "to": "        self.entries.push(path.to_string());"
+    },
+    {
+      "name": "replace adds an entry",
+      "file": "crates/cancho-ui-replay/src/router.rs",
+      "from": "        if let Some(entry) = self.entries.get_mut(self.position) {\n            *entry = path.to_string();\n        }",
+      "to": "        self.entries.push(path.to_string());\n        self.position += 1;"
+    },
+    {
+      "name": "Back does not run the event",
+      "file": "crates/cancho-ui-replay/src/router.rs",
+      "from": "            self.position -= 1;\n            if self.current() != left {\n                self.queued.push_back(self.current().to_string());\n            }",
+      "to": "            self.position -= 1;\n            let _ = left;"
+    },
+    {
+      "name": "a path without its leading slash is legal",
+      "file": "crates/cancho-ui-ir/src/routing.rs",
+      "from": "    path.starts_with('/')\n        && path.len() <= PATH_MAX",
+      "to": "    path.len() <= PATH_MAX"
+    },
+    {
+      "name": "a path with a # is legal",
+      "file": "crates/cancho-ui-ir/src/routing.rs",
+      "from": "(0x21..=0x7e).contains(&b) && b != b'#'",
+      "to": "(0x21..=0x7e).contains(&b)"
+    },
+    {
+      "name": "a refused path moves the page anyway",
+      "file": "crates/cancho-ui-replay/src/eval.rs",
+      "from": "            if legal {\n                if name == \"router.go\" {",
+      "to": "            if true {\n                if name == \"router.go\" {"
+    },
+    {
+      "name": "a route is not an effect (no Router needed)",
+      "file": "crates/cancho-ui-ir/src/routing.rs",
+      "from": "        .filter(|s| s.kind == IrScheduleKind::Route)\n        .map(|s| IrReachableEffect {",
+      "to": "        .filter(|s| s.kind == IrScheduleKind::Route && false)\n        .map(|s| IrReachableEffect {"
+    },
+    {
+      "name": "the route event may take any number of parameters",
+      "file": "crates/cancho-ui-ir/src/routing.rs",
+      "from": "    if handler.params.len() != 1 {",
+      "to": "    if handler.params.len() > 1000 {"
+    },
+    {
+      "name": "two routes are allowed",
+      "file": "crates/cancho-ui-ir/src/routing.rs",
+      "from": "    if earlier.iter().any(|o| o.kind == IrScheduleKind::Route) {",
+      "to": "    if earlier.iter().any(|o| o.kind == IrScheduleKind::Route && false) {"
+    },
+    {
+      "name": "a NavLink takes on:",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "pub const NAVLINK_KEYS: &[&str] = &[\"label\", \"role\", \"to\"];",
+      "to": "pub const NAVLINK_KEYS: &[&str] = &[\"label\", \"role\", \"to\", \"on\", \"disabled\"];"
+    },
+    {
+      "name": "a literal to: is not checked",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "        && !crate::routing::path_is_legal(value)\n    {",
+      "to": "        && false && !crate::routing::path_is_legal(value)\n    {"
+    },
+    {
+      "name": "a NavLink without a path is accepted",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "    if !has_label || !bindings.iter().any(|b| b.key == \"to\") {",
+      "to": "    if !has_label {"
+    },
+    {
+      "name": "build emits a routing program without saying it has no page",
+      "file": "crates/cancho-ui/src/pipeline.rs",
+      "from": "    crate::routing_gate::refuse_routing(&ir, file)?;\n",
+      "to": ""
+    },
+    {
+      "name": "a trace may navigate to a non-route",
+      "file": "crates/cancho-ui-replay/src/trace.rs",
+      "from": "            Json::String(p) if cancho_ui_ir::routing::path_is_legal(p) => Action::Navigate(p.clone()),",
+      "to": "            Json::String(p) => Action::Navigate(p.clone()),"
+    },
+    {
+      "name": "Back with no entry is allowed",
+      "file": "crates/cancho-ui-replay/src/lib.rs",
+      "from": "            if !possible {",
+      "to": "            if !possible && false {"
+    }
+  ]
+}

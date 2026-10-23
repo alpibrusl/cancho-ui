@@ -915,6 +915,7 @@ pub fn compile_to_js(
             notes: Vec::new(),
         })));
     }
+    crate::routing_gate::refuse_routing(&ir, file)?;
     Ok(emit_module_with(
         &ir,
         Some(file.to_string_lossy().as_ref()),

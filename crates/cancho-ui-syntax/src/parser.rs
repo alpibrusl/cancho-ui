@@ -392,7 +392,7 @@ impl Parser {
             match &self.peek().token {
                 Token::RBrace => break,
                 // `start` and `every` are keywords only here, at the start of a member (docs/schedules.md section 3).
-                Token::Ident(word) if word == "start" || word == "every" => {
+                Token::Ident(word) if word == "start" || word == "every" || word == "route" => {
                     schedules.push(self.parse_schedule_decl()?)
                 }
                 // `block` is a keyword only here, followed by a name and `{` (docs/handler-sequences.md section 4).
@@ -537,7 +537,7 @@ impl Parser {
         })
     }
 
-    /// `start Event;` or `every <ms> Event;` (docs/schedules.md section 3).
+    /// `start Event;`, `every <ms> Event;` or `route Event;` (docs/schedules.md section 3, docs/routing.md section 4).
     fn parse_schedule_decl(&mut self) -> Result<Schedule, ParseError> {
         let kw = self.bump();
         let every = matches!(&kw.token, Token::Ident(w) if w == "every");
@@ -554,6 +554,8 @@ impl Parser {
                     });
                 }
             }
+        } else if matches!(&kw.token, Token::Ident(w) if w == "route") {
+            ScheduleKind::Route
         } else {
             ScheduleKind::Start
         };

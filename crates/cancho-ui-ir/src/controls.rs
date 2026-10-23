@@ -28,7 +28,11 @@ pub const ELEMENT_KEYS: &[&str] = &[
     "rows",
     "checked",
     "options",
+    "to",
 ];
+
+/// What a `NavLink` takes (docs/routing.md section 4); every other key is `binding-unknown` on it.
+pub const NAVLINK_KEYS: &[&str] = &["label", "role", "to"];
 
 /// What a `Select` takes (docs/controls.md section 10); every other key is `binding-unknown` on it.
 pub const SELECT_KEYS: &[&str] = &[
@@ -64,15 +68,16 @@ fn check_node(c: &IrComponent, node: &IrViewNode) -> Result<(), LowerError> {
     match node {
         IrViewNode::Element {
             kind,
+            accessibility,
             bindings,
             children,
             span,
-            ..
         } => {
             if !matches!(kind, IrElementKind::Named(_)) {
                 for b in bindings {
                     check_binding(c, kind, b)?;
                 }
+                check_navlink_complete(kind, accessibility, bindings, *span)?;
                 check_checkbox_complete(kind, bindings, *span)?;
                 check_select_complete(kind, bindings, *span)?;
             }
@@ -103,6 +108,7 @@ fn element_name(kind: &IrElementKind) -> &'static str {
         IrElementKind::TextArea => "TextArea",
         IrElementKind::Checkbox => "Checkbox",
         IrElementKind::Select => "Select",
+        IrElementKind::NavLink => "NavLink",
         IrElementKind::Named(_) => "a component",
     }
 }
@@ -604,7 +610,73 @@ fn check_select_complete(
     Ok(())
 }
 
+/// A `NavLink` has a name to read and a path to point at (docs/routing.md section 4).
+fn check_navlink_complete(
+    kind: &IrElementKind,
+    accessibility: &IrAccessibility,
+    bindings: &[IrBinding],
+    span: cancho_ui_syntax::span::Span,
+) -> Result<(), LowerError> {
+    if !matches!(kind, IrElementKind::NavLink) {
+        return Ok(());
+    }
+    let has_label = accessibility.label.is_some() || accessibility.label_expr.is_some();
+    if !has_label || !bindings.iter().any(|b| b.key == "to") {
+        return Err(LowerError::ControlRefused {
+            code: "navlink-incomplete",
+            message: "a NavLink needs `label:`, the text of the link, and `to:`, the path it points at: `NavLink { label: \"Item 3\" to: \"/items/3\" }`".to_string(),
+            span,
+        });
+    }
+    Ok(())
+}
+
+/// `to:` is a binding of NavLink, and a literal one is a path the URL fragment can carry.
+fn check_to(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
+    if !matches!(kind, IrElementKind::NavLink) {
+        return Err(LowerError::ControlRefused {
+            code: "binding-unknown",
+            message: format!(
+                "`to:` is a binding of NavLink (the path it points at), not of {}",
+                element_name(kind)
+            ),
+            span: b.span,
+        });
+    }
+    if let IrBindingValue::Const { expr, .. } = &b.value
+        && let IrExpr::StringLit { value, .. } = expr.as_ref()
+        && !crate::routing::path_is_legal(value)
+    {
+        return Err(LowerError::ControlRefused {
+            code: "navlink-target-invalid",
+            message: format!(
+                "`to: {value:?}` is not a path: it starts with `/` and holds no space, `#` or character outside printable ASCII, at most {} characters",
+                crate::routing::PATH_MAX
+            ),
+            span: b.span,
+        });
+    }
+    Ok(())
+}
+
 fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
+    if matches!(kind, IrElementKind::NavLink)
+        && !NAVLINK_KEYS.contains(&b.key.as_str())
+        && ELEMENT_KEYS.contains(&b.key.as_str())
+    {
+        return Err(LowerError::ControlRefused {
+            code: "binding-unknown",
+            message: format!(
+                "`{}:` is not a binding of NavLink; it takes {}",
+                b.key,
+                NAVLINK_KEYS.join(", ")
+            ),
+            span: b.span,
+        });
+    }
+    if b.key == "to" {
+        check_to(kind, b)?;
+    }
     if matches!(kind, IrElementKind::Select)
         && !SELECT_KEYS.contains(&b.key.as_str())
         && ELEMENT_KEYS.contains(&b.key.as_str())

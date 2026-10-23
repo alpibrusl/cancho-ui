@@ -159,6 +159,15 @@ function r5(ctx) {
       let codes = [];
       try { codes = JSON.parse(r.stdout).map((d) => d.code); } catch (e) { /* not JSON: the program passed */ }
       if (!codes.includes(p.rule)) { problems.push(`${t.title}: \`${p.view}\` is no longer refused with ${p.rule} (got ${JSON.stringify(codes)}); the tile claims it is missing`); }
+    } else if (p.build) {
+      // `build` of a program that checks: the page for the feature is not written yet (a rule tag on the refusal).
+      const src = `component P {\n    state s: String = "";\n    view {\n        Column {\n            ${p.build}\n        }\n    }\n}\n`;
+      const f = path.join(os.tmpdir(), `gallery-probe-${process.pid}-${t.id}.cui`);
+      fs.writeFileSync(f, src);
+      const c = spawnSync(CANCHO, ['check', f], { encoding: 'utf8' });
+      const b = spawnSync(CANCHO, ['build', f, '-o', f.replace(/\.cui$/, '.js')], { encoding: 'utf8' });
+      if (c.status !== 0) { problems.push(`${t.title}: \`${p.build}\` does not even check: ${c.stdout}${c.stderr}`.trim()); }
+      else if (!`${b.stdout}${b.stderr}`.includes(p.rule)) { problems.push(`${t.title}: \`${p.build}\` is no longer refused by build with ${p.rule}; the tile claims the page is missing`); }
     } else if (p.absent) {
       for (const needle of p.absent) {
         if (sources.some((s) => s.includes(needle))) { problems.push(`${t.title}: "${needle}" now appears in crates/; the tile claims it is missing`); }
@@ -280,12 +289,13 @@ const BREAKS = [
   ['R4 soon is tracked', 'a coming-soon tile loses its issue link', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace(/<p class="glinks"><a href="[^"]*\/issues\/75">Tracked in #75<\/a><\/p>/, '<p class="glinks"></p>')), 'r4'],
   ['R4 soon is tracked', 'a coming-soon tile promises a date', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('Any drawing primitive:', 'Any drawing primitive, arriving in Q4 2027:')), 'r4'],
   ['R5 soon is true', 'a probe that now passes (the feature exists)', (c) => { c.manifest.soon[0].probe = { view: 'Text { "x" }', rule: 'component-kind-unknown' }; }, 'r5'],
+  ['R5 soon is true', 'a build probe that now builds (the page exists)', (c) => { c.manifest.soon[0].probe = { build: 'Text { "x" }', rule: 'routing-not-emitted' }; }, 'r5'],
   ['R6 no overflow at 420 px', 'a tile wider than the screen', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('</style>', '.gtile { min-width: 34rem !important; }\n</style>')), 'r6'],
   ['R7 accessible', 'an iframe without a title', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('title="Counter, built by cancho-ui" ', '')), 'r7'],
   ['R7 accessible', 'low contrast text', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('</style>', '.gtile p { color: #c8c8c8 !important; }\n</style>')), 'r7'],
   ['R7 accessible', 'no focus ring', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('</style>', '.gallery a:focus, .gallery a:focus-visible { outline: none !important; }\n</style>')), 'r7'],
   ['R7 accessible', 'headings skip a level', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('<h3 class="gh">Built with cancho-ui</h3>', '<h5 class="gh">Built with cancho-ui</h5>')), 'r7'],
-  ['R8 counts are true', 'the page says 17 programs', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('(18 programs)', '(17 programs)')), 'r8'],
+  ['R8 counts are true', 'the page says 17 programs', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('(19 programs)', '(17 programs)')), 'r8'],
 ];
 
 async function runRule(name, ctx) {

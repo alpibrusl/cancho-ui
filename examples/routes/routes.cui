@@ -1,0 +1,54 @@
+// examples/routes/routes.cui: a list and a detail, each at its own URL (docs/routing.md).
+//
+// The route is the fragment of the URL (`#/items/valve`). `route Navigated;` runs `on Navigated` with the path when the page loads and
+// whenever the fragment changes: a NavLink, the browser's Back and Forward, a typed URL, `router.go`. The program keeps the path and
+// draws the screen that goes with it; it parses the path with the text builtins and has no route table.
+
+component Routes {
+    requires Router;
+
+    state path: String = "/";
+    state item: String = "";
+    state items: List[String] = ["pump", "valve", "gauge"];
+    state jumped: Bool = true;
+
+    route Navigated;
+
+    on Navigated(p) {
+        path = p;
+        item = join(skip(split(p, "/"), 2), "/");
+    }
+
+    // a program can also move the page: this pushes an entry, as a link does
+    on Jump {
+        jumped = router.go("/items/valve");
+    }
+
+    // a path the fragment cannot carry is answered `false`, not thrown
+    on Refused {
+        jumped = router.go("items/valve");
+    }
+
+    view {
+        Column {
+            If { when: path == "/"
+                Text { role: heading "Machines" }
+                For { over: items as: name
+                    NavLink { label: name to: "/items/" + name }
+                }
+                Button { label: "Jump to the valve" on: Jump }
+                Button { label: "Try a bad path" on: Refused }
+            }
+            If { when: starts_with(path, "/items/") && len(filter(items, i => i == item)) > 0
+                Text { role: heading "Machine {item}" }
+                NavLink { label: "All machines" to: "/" }
+            }
+            If { when: path != "/" && !(starts_with(path, "/items/") && len(filter(items, i => i == item)) > 0)
+                Text { role: heading "Not found" }
+                Text { "No page at {path}." }
+                NavLink { label: "All machines" to: "/" }
+            }
+            Text { role: status "jumped: {jumped}" }
+        }
+    }
+}

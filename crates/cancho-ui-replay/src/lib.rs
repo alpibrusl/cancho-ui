@@ -8,6 +8,7 @@
 mod eval;
 mod machine;
 mod report;
+mod router;
 mod trace;
 mod value;
 
@@ -130,6 +131,11 @@ fn credential_name(comp: &IrComponent) -> Option<&str> {
         .map(String::as_str)
 }
 
+/// Does the component use the URL? Only then do the reports carry it.
+fn routes_used(comp: &IrComponent) -> bool {
+    comp.requires.iter().any(|r| r.name == "Router")
+}
+
 fn state_json(m: &Machine) -> BTreeMap<String, Json> {
     m.state
         .iter()
@@ -155,6 +161,7 @@ fn run_trace(comp: &IrComponent, trace: &Trace, file: &str, trace_name: &str) ->
             return report;
         }
     };
+    machine.router = router::Router::new(&trace.url);
     machine.storage = trace.storage.clone();
     machine.storage_quota = trace.storage_quota;
     // docs/adapters.md section 18: a trace lists only credentials the component declares.
@@ -380,6 +387,49 @@ fn run_step(
             let out = m.advance(*ms, &mut fx);
             ("advance", num_json(*ms), out)
         }
+        Action::Navigate(path) => {
+            if m.disposed {
+                return Err(stop(
+                    "trace-event-after-dispose",
+                    "navigate",
+                    "`navigate` after `dispose`: no mounted page is left to hear it".to_string(),
+                ));
+            }
+            (
+                "navigate",
+                Json::String(path.clone()),
+                m.navigate(path, &mut fx),
+            )
+        }
+        Action::Back | Action::Forward => {
+            let forward = matches!(step.action, Action::Forward);
+            let key = if forward { "forward" } else { "back" };
+            if m.disposed {
+                return Err(stop(
+                    "trace-event-after-dispose",
+                    key,
+                    format!("`{key}` after `dispose`: no mounted page is left to hear it"),
+                ));
+            }
+            let possible = if forward {
+                m.router.can_forward()
+            } else {
+                m.router.can_back()
+            };
+            if !possible {
+                return Err(stop(
+                    "trace-history-empty",
+                    key,
+                    format!(
+                        "the history has no entry to go {} to: the page is at entry {} of {}",
+                        if forward { "forward" } else { "back" },
+                        m.router.position + 1,
+                        m.router.entries.len()
+                    ),
+                ));
+            }
+            (key, Json::Null, m.travel(forward, &mut fx))
+        }
         Action::Dispose => ("dispose", Json::Null, Ok(m.dispose())),
         Action::Hide => {
             if !m.visible {
@@ -507,6 +557,14 @@ fn run_step(
             .collect(),
         clock: num_json(m.clock),
         storage: m.storage.clone(),
+        routes: std::mem::take(&mut m.routes),
+        url: routes_used(comp).then(|| m.router.current().to_string()),
+        history: routes_used(comp).then(|| {
+            serde_json::json!({
+                "entries": m.router.entries,
+                "position": m.router.position,
+            })
+        }),
     };
     check_expectations(m, comp, step, &step_report, &fx, i, file, report);
     report.steps.push(step_report);
@@ -553,8 +611,8 @@ fn check_expectations(
     let actual_step = serde_json::to_value(sr).unwrap_or(Json::Null);
     for (key, expected) in &step.expect {
         report.checks += 1;
-        // `ticks` is absent from a step in which none fell due: that is the empty list.
-        let absent = if key == "ticks" {
+        // `ticks` and `routes` are absent from a step in which none fell due or none was heard: that is the empty list.
+        let absent = if key == "ticks" || key == "routes" {
             Json::Array(Vec::new())
         } else {
             Json::Null

@@ -48,7 +48,7 @@ pub struct Component {
     pub name: String,
     pub state: Vec<StateField>,
     pub requires: Vec<CapabilityRef>,
-    /// `start Event;` and `every <ms> Event;` (docs/schedules.md), in the order written.
+    /// `start Event;`, `every <ms> Event;` and `route Event;` (docs/schedules.md, docs/routing.md), in the order written.
     pub schedules: Vec<Schedule>,
     pub events: Vec<EventHandler>,
     /// `block Name { .. }` (docs/handler-sequences.md): a named sequence of statements that handlers `run`.
@@ -63,6 +63,9 @@ pub enum ScheduleKind {
     Start,
     /// The period in milliseconds, as written (its range is checked in lowering).
     Every(i64),
+    /// `route Event;` (docs/routing.md section 4): the event runs with the path at mount and at every change of the
+    /// fragment.
+    Route,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -243,6 +246,8 @@ pub enum ElementKind {
     Checkbox,
     /// A choice of one string from a list (docs/controls.md section 10).
     Select,
+    /// A link to another route of this page: `NavLink { label: "Item" to: "/items/3" }` (docs/routing.md section 4).
+    NavLink,
     Named(String),
 }
 
