@@ -49,7 +49,7 @@ fn a_function_the_language_does_not_have_is_refused_with_its_tag_and_a_span() {
         "s = lowercase(s);",
         "s = contians(s, \"a\");",
         "n = math.max(n, 1);",
-        "n = net.delete(\"a\");",
+        "n = net.patch(\"a\");",
         "n = a.b.c(n);",
     ]
     .iter()

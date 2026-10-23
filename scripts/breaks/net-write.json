@@ -1,0 +1,151 @@
+{
+  "checks": [
+    {
+      "name": "cargo test net_write",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "net_write"
+      ]
+    },
+    {
+      "name": "check-write.js",
+      "argv": [
+        "node",
+        "scripts/check-write.js"
+      ]
+    },
+    {
+      "name": "cargo test net_post",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "net_post"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "the put adapter sends a POST",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "method: \\\"PUT\\\"",
+      "to": "method: \\\"POST\\\""
+    },
+    {
+      "name": "the delete adapter sends a POST",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "method: \\\"DELETE\\\"",
+      "to": "method: \\\"POST\\\""
+    },
+    {
+      "name": "the put adapter follows redirects",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "method: \\\"PUT\\\", credentials: \\\"same-origin\\\", redirect: \\\"manual\\\"",
+      "to": "method: \\\"PUT\\\", credentials: \\\"same-origin\\\", redirect: \\\"follow\\\""
+    },
+    {
+      "name": "the delete adapter omits the cookie",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "method: \\\"DELETE\\\", credentials: \\\"same-origin\\\"",
+      "to": "method: \\\"DELETE\\\", credentials: \\\"omit\\\""
+    },
+    {
+      "name": "the delete adapter sends a body and a content type",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "headers: {} };",
+      "to": "headers: { \\\"Content-Type\\\": \\\"application/json\\\" }, body: \\\"x\\\" };"
+    },
+    {
+      "name": "the put adapter drops the content type",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "method: \\\"PUT\\\", credentials: \\\"same-origin\\\", redirect: \\\"manual\\\", headers: { \\\"Content-Type\\\": \\\"application/json\\\" }",
+      "to": "method: \\\"PUT\\\", credentials: \\\"same-origin\\\", redirect: \\\"manual\\\", headers: {}"
+    },
+    {
+      "name": "the put adapter does not check the origin",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "function __cui_net_put(url, body, cred) {\n    var err = function (reason) { return {__cui_tag: \\\"Err\\\", reason: reason}; };\n    return new Promise(function (resolve) {\n        var auth = __cui_credential_check(cred, resolve);\n        if (auth === false) { return; }\n        var target;\n        try {\n            target = new URL(String(url), window.location.href);\n        } catch (e) {\n            resolve(err(\\\"blocked: not a URL\\\"));\n            return;\n        }\n        if (target.protocol !== \\\"http:\\\" && target.protocol !== \\\"https:\\\") {\n            resolve(err(\\\"blocked: not an http(s) URL\\\"));\n            return;\n        }\n        if (target.origin !== window.location.origin) {",
+      "to": "function __cui_net_put(url, body, cred) {\n    var err = function (reason) { return {__cui_tag: \\\"Err\\\", reason: reason}; };\n    return new Promise(function (resolve) {\n        var auth = __cui_credential_check(cred, resolve);\n        if (auth === false) { return; }\n        var target;\n        try {\n            target = new URL(String(url), window.location.href);\n        } catch (e) {\n            resolve(err(\\\"blocked: not a URL\\\"));\n            return;\n        }\n        if (target.protocol !== \\\"http:\\\" && target.protocol !== \\\"https:\\\") {\n            resolve(err(\\\"blocked: not an http(s) URL\\\"));\n            return;\n        }\n        if (false) {"
+    },
+    {
+      "name": "the delete adapter does not check the origin",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "function __cui_net_delete(url, cred) {\n    var err = function (reason) { return {__cui_tag: \\\"Err\\\", reason: reason}; };\n    return new Promise(function (resolve) {\n        var auth = __cui_credential_check(cred, resolve);\n        if (auth === false) { return; }\n        var target;\n        try {\n            target = new URL(String(url), window.location.href);\n        } catch (e) {\n            resolve(err(\\\"blocked: not a URL\\\"));\n            return;\n        }\n        if (target.protocol !== \\\"http:\\\" && target.protocol !== \\\"https:\\\") {\n            resolve(err(\\\"blocked: not an http(s) URL\\\"));\n            return;\n        }\n        if (target.origin !== window.location.origin) {",
+      "to": "function __cui_net_delete(url, cred) {\n    var err = function (reason) { return {__cui_tag: \\\"Err\\\", reason: reason}; };\n    return new Promise(function (resolve) {\n        var auth = __cui_credential_check(cred, resolve);\n        if (auth === false) { return; }\n        var target;\n        try {\n            target = new URL(String(url), window.location.href);\n        } catch (e) {\n            resolve(err(\\\"blocked: not a URL\\\"));\n            return;\n        }\n        if (target.protocol !== \\\"http:\\\" && target.protocol !== \\\"https:\\\") {\n            resolve(err(\\\"blocked: not an http(s) URL\\\"));\n            return;\n        }\n        if (false) {"
+    },
+    {
+      "name": "the put adapter does not check the credential",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "function __cui_net_put(url, body, cred) {\n    var err = function (reason) { return {__cui_tag: \\\"Err\\\", reason: reason}; };\n    return new Promise(function (resolve) {\n        var auth = __cui_credential_check(cred, resolve);",
+      "to": "function __cui_net_put(url, body, cred) {\n    var err = function (reason) { return {__cui_tag: \\\"Err\\\", reason: reason}; };\n    return new Promise(function (resolve) {\n        var auth = null;"
+    },
+    {
+      "name": "the delete adapter does not check the credential",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "function __cui_net_delete(url, cred) {\n    var err = function (reason) { return {__cui_tag: \\\"Err\\\", reason: reason}; };\n    return new Promise(function (resolve) {\n        var auth = __cui_credential_check(cred, resolve);",
+      "to": "function __cui_net_delete(url, cred) {\n    var err = function (reason) { return {__cui_tag: \\\"Err\\\", reason: reason}; };\n    return new Promise(function (resolve) {\n        var auth = null;"
+    },
+    {
+      "name": "delete performs no capability",
+      "file": "crates/cancho-ui-ir/src/lower.rs",
+      "from": "(path[1] == \"post\" || path[1] == \"put\" || path[1] == \"delete\")",
+      "to": "(path[1] == \"post\" || path[1] == \"put\")"
+    },
+    {
+      "name": "put accepts a missing body",
+      "file": "crates/cancho-ui-ir/src/lower.rs",
+      "from": "path[1] == \"put\" && args.len() != 2",
+      "to": "path[1] == \"put\" && args.len() > 2"
+    },
+    {
+      "name": "delete accepts a body",
+      "file": "crates/cancho-ui-ir/src/lower.rs",
+      "from": "path[1] == \"delete\" && args.len() != 1",
+      "to": "path[1] == \"delete\" && args.len() > 2"
+    },
+    {
+      "name": "a write to another host is allowed unless it is a post",
+      "file": "crates/cancho-ui-ir/src/lower.rs",
+      "from": "let is_post = eff.capability == \"NetworkWrite\";",
+      "to": "let is_post = eff.path == [\"net\", \"post\"];"
+    },
+    {
+      "name": "a credential is not used by a delete",
+      "file": "crates/cancho-ui-ir/src/lower.rs",
+      "from": "e.path[1].as_str(),\n                            \"get\" | \"fetch\" | \"post\" | \"put\" | \"delete\"",
+      "to": "e.path[1].as_str(),\n                            \"get\" | \"fetch\" | \"post\" | \"put\""
+    },
+    {
+      "name": "delete is not a known call",
+      "file": "crates/cancho-ui-ir/src/lower.rs",
+      "from": "\"search\" | \"get\" | \"fetch\" | \"post\" | \"put\" | \"delete\"\n",
+      "to": "\"search\" | \"get\" | \"fetch\" | \"post\" | \"put\"\n"
+    },
+    {
+      "name": "a delete shares the put group",
+      "file": "crates/cancho-ui-replay/src/value.rs",
+      "from": "Effect::NetDelete => \"net_delete\",",
+      "to": "Effect::NetDelete => \"net_put\","
+    },
+    {
+      "name": "a delete emits no adapter",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "Some(\"delete\") => any_net_delete = true,",
+      "to": "Some(\"delete\") => any_net_put = true,"
+    },
+    {
+      "name": "replay lets a delete take a non-String URL",
+      "file": "crates/cancho-ui-replay/src/eval.rs",
+      "from": "url @ Value::Str(_) => Ok(Value::Request(Req {\n                effect: Effect::NetDelete,",
+      "to": "url => Ok(Value::Request(Req {\n                effect: Effect::NetDelete,"
+    }
+  ]
+}

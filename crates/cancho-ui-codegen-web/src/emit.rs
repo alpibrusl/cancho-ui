@@ -80,6 +80,8 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
     let mut any_network = false;
     let mut any_net_get = false;
     let mut any_net_post = false;
+    let mut any_net_put = false;
+    let mut any_net_delete = false;
     let mut any_location = false;
     let mut any_storage = false;
     let mut any_cancel = false;
@@ -96,7 +98,11 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
                 any_network = true;
             }
             if e.capability == "NetworkWrite" {
-                any_net_post = true;
+                match e.path.last().map(String::as_str) {
+                    Some("put") => any_net_put = true,
+                    Some("delete") => any_net_delete = true,
+                    _ => any_net_post = true,
+                }
             }
             if e.capability == "Storage" {
                 any_storage = true;
@@ -143,7 +149,7 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
         .components
         .iter()
         .any(|c| c.requires.iter().any(|r| r.name == "Credential"));
-    if any_net_get || any_net_post {
+    if any_net_get || any_net_post || any_net_put || any_net_delete {
         out.push_str(CREDENTIAL_ADAPTER_JS);
         out.push('\n');
     }
@@ -157,6 +163,14 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
     }
     if any_net_post {
         out.push_str(NET_POST_ADAPTER_JS);
+        out.push('\n');
+    }
+    if any_net_put {
+        out.push_str(NET_PUT_ADAPTER_JS);
+        out.push('\n');
+    }
+    if any_net_delete {
+        out.push_str(NET_DELETE_ADAPTER_JS);
         out.push('\n');
     }
     if any_location {

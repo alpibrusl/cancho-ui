@@ -318,6 +318,104 @@ function __cui_net_post(url, body, cred) {
 }
 ";
 
+/// The `net.put` adapter (docs/adapters.md section 21): a same-origin PUT of a JSON text, answered like `net.post`.
+pub(crate) const NET_PUT_ADAPTER_JS: &str = "\
+// Platform adapter: NetworkWrite capability, `net.put(url, body)` (docs/adapters.md section 21).
+// A PUT to this page's own origin and no other, with `body` as the request body (Content-Type: application/json) and
+// the cookies of this origin. Answered like `net.fetch`: Ok with {\"status\":N,\"body\":\"...\"} for any HTTP status, Err for
+// what produced no answer. A redirect is refused, a reply over 1 MiB is `too large`, a reply later than 10 s is `timeout`.
+// It is not aborted when superseded or disposed: a write cut off half way is in an unknown state (section 17.1).
+function __cui_net_put(url, body, cred) {
+    var err = function (reason) { return {__cui_tag: \"Err\", reason: reason}; };
+    return new Promise(function (resolve) {
+        var auth = __cui_credential_check(cred, resolve);
+        if (auth === false) { return; }
+        var target;
+        try {
+            target = new URL(String(url), window.location.href);
+        } catch (e) {
+            resolve(err(\"blocked: not a URL\"));
+            return;
+        }
+        if (target.protocol !== \"http:\" && target.protocol !== \"https:\") {
+            resolve(err(\"blocked: not an http(s) URL\"));
+            return;
+        }
+        if (target.origin !== window.location.origin) {
+            resolve(err(\"blocked: a write reaches only this site's own origin\"));
+            return;
+        }
+        var timer = null;
+        var controller = typeof AbortController === \"function\" ? new AbortController() : null;
+        if (controller) { timer = setTimeout(function () { controller.abort(); }, 10000); }
+        var init = { method: \"PUT\", credentials: \"same-origin\", redirect: \"manual\", headers: { \"Content-Type\": \"application/json\" }, body: String(body) };
+        if (auth !== null) { init.headers.Authorization = auth; }
+        if (controller) { init.signal = controller.signal; }
+        fetch(target.href, init).then(function (response) {
+            if (response.type === \"opaqueredirect\") { return err(\"blocked: redirect\"); }
+            return response.text().then(function (text) {
+                if (text.length > 1048576) { return err(\"too large\"); }
+                return {__cui_tag: \"Ok\", value: JSON.stringify({status: response.status, body: text})};
+            });
+        }).catch(function (e) {
+            return err(e && e.name === \"AbortError\" ? \"timeout\" : \"network error\");
+        }).then(function (result) {
+            if (timer !== null) { clearTimeout(timer); }
+            resolve(result);
+        });
+    });
+}
+";
+
+/// The `net.delete` adapter (docs/adapters.md section 21): a same-origin DELETE with no body, answered like `net.post`.
+pub(crate) const NET_DELETE_ADAPTER_JS: &str = "\
+// Platform adapter: NetworkWrite capability, `net.delete(url)` (docs/adapters.md section 21).
+// A DELETE to this page's own origin and no other, with no body and no Content-Type, and
+// the cookies of this origin. Answered like `net.fetch`: Ok with {\"status\":N,\"body\":\"...\"} for any HTTP status, Err for
+// what produced no answer. A redirect is refused, a reply over 1 MiB is `too large`, a reply later than 10 s is `timeout`.
+// It is not aborted when superseded or disposed: a write cut off half way is in an unknown state (section 17.1).
+function __cui_net_delete(url, cred) {
+    var err = function (reason) { return {__cui_tag: \"Err\", reason: reason}; };
+    return new Promise(function (resolve) {
+        var auth = __cui_credential_check(cred, resolve);
+        if (auth === false) { return; }
+        var target;
+        try {
+            target = new URL(String(url), window.location.href);
+        } catch (e) {
+            resolve(err(\"blocked: not a URL\"));
+            return;
+        }
+        if (target.protocol !== \"http:\" && target.protocol !== \"https:\") {
+            resolve(err(\"blocked: not an http(s) URL\"));
+            return;
+        }
+        if (target.origin !== window.location.origin) {
+            resolve(err(\"blocked: a write reaches only this site's own origin\"));
+            return;
+        }
+        var timer = null;
+        var controller = typeof AbortController === \"function\" ? new AbortController() : null;
+        if (controller) { timer = setTimeout(function () { controller.abort(); }, 10000); }
+        var init = { method: \"DELETE\", credentials: \"same-origin\", redirect: \"manual\", headers: {} };
+        if (auth !== null) { init.headers.Authorization = auth; }
+        if (controller) { init.signal = controller.signal; }
+        fetch(target.href, init).then(function (response) {
+            if (response.type === \"opaqueredirect\") { return err(\"blocked: redirect\"); }
+            return response.text().then(function (text) {
+                if (text.length > 1048576) { return err(\"too large\"); }
+                return {__cui_tag: \"Ok\", value: JSON.stringify({status: response.status, body: text})};
+            });
+        }).catch(function (e) {
+            return err(e && e.name === \"AbortError\" ? \"timeout\" : \"network error\");
+        }).then(function (result) {
+            if (timer !== null) { clearTimeout(timer); }
+            resolve(result);
+        });
+    });
+}
+";
+
 /// The `location.current` adapter (docs/adapters.md section 11): the browser's Geolocation, rounded in the adapter.
 pub(crate) const LOCATION_ADAPTER_JS: &str = "\
 // Platform adapter: Location capability, `location.current()` (docs/adapters.md section 11).

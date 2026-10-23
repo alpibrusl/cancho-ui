@@ -704,6 +704,36 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                 )),
             }
         }
+        ("net.put", 2) => {
+            let url = eval(ctx, &args[0])?;
+            let body = eval(ctx, &args[1])?;
+            match (&url, &body) {
+                (Value::Str(_), Value::Str(_)) => Ok(Value::Request(Req {
+                    effect: Effect::NetPut,
+                    args: vec![url, body],
+                })),
+                _ => Err(fault(
+                    "replay-type-error",
+                    format!(
+                        "`net.put` needs a String URL and a String body, got {} and {}",
+                        describe(&url),
+                        describe(&body)
+                    ),
+                    span,
+                )),
+            }
+        }
+        ("net.delete", 1) => match eval(ctx, &args[0])? {
+            url @ Value::Str(_) => Ok(Value::Request(Req {
+                effect: Effect::NetDelete,
+                args: vec![url],
+            })),
+            other => Err(fault(
+                "replay-type-error",
+                format!("`net.delete` needs a String URL, got {}", describe(&other)),
+                span,
+            )),
+        },
         ("net.search", 1) => {
             let q = eval(ctx, &args[0])?;
             Ok(Value::Request(Req {
@@ -726,11 +756,11 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
             )),
         },
         (
-            "clock.now" | "net.search" | "net.get" | "net.fetch" | "net.post" | "location.current"
-            | "sleep" | "storage.get" | "storage.set" | "json.get" | "json.items" | "json.quote"
-            | "reverse" | "contains" | "lower" | "fold" | "num" | "take" | "skip" | "concat"
-            | "min" | "max" | "abs" | "floor" | "ceil" | "round" | "lines" | "split" | "join"
-            | "trim" | "upper" | "starts_with" | "ends_with",
+            "clock.now" | "net.search" | "net.get" | "net.fetch" | "net.post" | "net.put"
+            | "net.delete" | "location.current" | "sleep" | "storage.get" | "storage.set"
+            | "json.get" | "json.items" | "json.quote" | "reverse" | "contains" | "lower" | "fold"
+            | "num" | "take" | "skip" | "concat" | "min" | "max" | "abs" | "floor" | "ceil"
+            | "round" | "lines" | "split" | "join" | "trim" | "upper" | "starts_with" | "ends_with",
             n,
         ) => Err(fault(
             "replay-type-error",
@@ -742,7 +772,7 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
         _ => Err(fault(
             "replay-unsupported",
             format!(
-                "call to `{name}`: replay models `clock.now`, `net.search`, `net.get`, `net.fetch`, `net.post`, `location.current`, `sleep`, `storage.get`, `storage.set`, `json.get` and `json.items` only"
+                "call to `{name}`: replay models `clock.now`, `net.search`, `net.get`, `net.fetch`, `net.post`, `net.put`, `net.delete`, `location.current`, `sleep`, `storage.get`, `storage.set`, `json.get` and `json.items` only"
             ),
             span,
         )),
