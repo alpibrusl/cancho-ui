@@ -139,7 +139,7 @@ fn replay(src: &str, trace: &str) -> (i32, Value) {
     let (code, stdout, stderr) = run(&["test", p(&file), p(&trace), "--output", "json"]);
     (
         code,
-        serde_json::from_str(&stdout).unwrap_or_else(|_| Value::String(stderr)),
+        serde_json::from_str(&stdout).unwrap_or(Value::String(stderr)),
     )
 }
 
