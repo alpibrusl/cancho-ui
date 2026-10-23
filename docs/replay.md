@@ -89,7 +89,7 @@ A step has **exactly one action key**, plus optional `state`, `expect` and
 | `{"advance": ms}` | the fake clock moves forward `ms` milliseconds; every `sleep` that falls due fires, in order (§5) |
 | `{"dispose": true}` | the host unmounts the component: its pending requests are marked disposed (§6) |
 | `{"hide": true}` / `{"show": true}` | the page becomes hidden / visible again: no `every` tick runs while it is hidden, and `show` runs one catch-up tick for each that fell due (`schedules.md` section 11). Repeating the state the page is in is `trace-bad-step` |
-| `{"navigate": "/path"}` | the user follows a link or types a URL: the fragment becomes this path, a new history entry is added and the component's `route` event runs with it. The path the page is already at fires nothing (`outcome: "unchanged"`). `/` first, no space, `#` or non-ASCII (`trace-navigate-invalid`) (`routing.md` section 5) |
+| `{"navigate": "/path"}` | the user follows a link or types a URL: the fragment becomes this path, a new history entry is added and the component's `route` event runs with it. The path the page is already at fires nothing (`outcome: "unchanged"`). `/` first, no space, `#`, `"`, `<`, `>`, backtick or non-ASCII (`trace-navigate-invalid`) (`routing.md` section 5) |
 | `{"back": true}` / `{"forward": true}` | the browser's Back and Forward: one entry along the history, the route event runs with the path reached. No entry to go to is `trace-history-empty` |
 
 `params` defaults to `[]` and must match the handler's parameter count.
@@ -434,7 +434,7 @@ Every refusal has a stable tag. Tier **tested** throughout.
 | `replay-unsupported` | a construct outside the replayed subset (§9) | yes |
 | `replay-tick-limit` | one `advance` would fire more than 10,000 ticks | yes |
 | `replay-route-limit` | one step would run more than 1,000 route events (a handler navigates to a new path every time it runs) | yes |
-| `trace-navigate-invalid` | a `navigate` step, or the trace's `url`, that is not a path: it starts with `/` and holds no space, `#` or character outside printable ASCII | yes |
+| `trace-navigate-invalid` | a `navigate` step, or the trace's `url`, that is not a path: it starts with `/` and holds no space, `#`, `"`, `<`, `>`, backtick or character outside printable ASCII | yes |
 | `trace-history-empty` | `back` or `forward` with no entry to go to | yes |
 | `replay-type-error` | an operator or builtin applied to values it is not defined on | yes |
 | `replay-unknown-identifier` | an identifier that is neither a local nor a state field | yes |

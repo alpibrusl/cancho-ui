@@ -365,6 +365,12 @@ fn emit_call_runtime(path: &[String], args: &[IrExpr], params: &[&str]) -> Strin
             args.iter().map(|a| emit_expr_runtime(a, params)).collect();
         return format!("__cui_sleep_ms({})", rendered_args.join(", "));
     }
+    if path.len() == 2 && path[0] == "router" && (path[1] == "go" || path[1] == "replace") {
+        // docs/routing.md section 4: synchronous, a Bool.
+        let rendered_args: Vec<String> =
+            args.iter().map(|a| emit_expr_runtime(a, params)).collect();
+        return format!("__cui_router_{}({})", path[1], rendered_args.join(", "));
+    }
     if path.len() == 2 && path[0] == "storage" && (path[1] == "get" || path[1] == "set") {
         // docs/adapters.md: synchronous; `get(key, default)` answers a String, `set(key, value)` a Bool.
         let rendered_args: Vec<String> =

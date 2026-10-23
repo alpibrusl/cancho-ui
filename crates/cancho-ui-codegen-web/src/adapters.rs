@@ -485,3 +485,30 @@ function __cui_call(group, start, inflight) {
     });
 }
 ";
+
+/// The `Router` adapter (docs/routing.md): the URL fragment as the route. The page reads it at mount and on `hashchange`
+/// (from the event's `newURL`, so two changes in one task are heard as two paths), and writes it for `router.go`
+/// (`location.hash`, a new entry) and `router.replace` (`location.replace`, no new entry). Its model is
+/// `cancho_ui_replay`'s `Router`; `tests/routing_corpus.json` is checked against both.
+pub(crate) const ROUTER_ADAPTER_JS: &str = r#"// Platform adapter: Router capability (docs/routing.md). The route is the fragment of the URL: `#/items/3` is "/items/3".
+// A path starts with "/" and holds printable ASCII other than space and # " < > ` (those five are percent-encoded in the
+// fragment, so the page could not read them back), at most 2000 characters.
+function __cui_route_ok(p) { return typeof p === 'string' && p.length <= 2000 && /^\/[\x21\x24-\x3b\x3d\x3f-\x5f\x61-\x7e]*$/.test(p); }
+// The route in a URL: the fragment without its '#', "/" when there is none, null when the fragment is not a route (`#main`).
+function __cui_route_of(url) {
+    var u = String(url), i = u.indexOf('#'), f = i < 0 ? '' : u.slice(i + 1);
+    if (f === '') { return '/'; }
+    return __cui_route_ok(f) ? f : null;
+}
+function __cui_route_now() { var p = __cui_route_of(window.location.href); return p === null ? '/' : p; }
+function __cui_router_go(p) {
+    if (typeof window === 'undefined' || !__cui_route_ok(p)) { return false; }
+    if (__cui_route_of(window.location.href) !== p) { window.location.hash = p; }
+    return true;
+}
+function __cui_router_replace(p) {
+    if (typeof window === 'undefined' || !__cui_route_ok(p)) { return false; }
+    if (__cui_route_of(window.location.href) !== p) { window.location.replace('#' + p); }
+    return true;
+}
+"#;

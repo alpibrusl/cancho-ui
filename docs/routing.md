@@ -1,6 +1,6 @@
 # Routing: `NavLink`, the URL as state, and the back button
 
-> **Status: step 1 BUILT (language, IR, replay; section 12), the page is step 2** (issue #75). Written 2026-10-23 before any code ([`CONTRIBUTING.md`](../CONTRIBUTING.md) section 1). The numbers in
+> **Status: BUILT (issue #75): language, IR and replay in step 1 (section 12), the page, the Chromium checks and the gallery demo in step 2 (section 13).** Written 2026-10-23 before any code ([`CONTRIBUTING.md`](../CONTRIBUTING.md) section 1). The numbers in
 > section 2 were measured in Chromium (Playwright, `Pixel 7` profile, a stand-in for a static host that answers an unknown path with 404
 > as GitHub Pages does) on main at 02f6763. A claim found false while building is corrected here, in place, and listed in section 9.
 > Guarantee tier of the replay semantics: **tested** once built; of the browser behaviour: **observed in Chromium**, not guaranteed.
@@ -87,7 +87,7 @@ component Shell {
   apply (the same rule as a schedule, [`schedules.md`](schedules.md) section 1).
 * **`NavLink`** takes `label:` (drawn as the text and the accessible name) and `to:`, a `String` expression that is the path. The page
   writes `href="#" + to`, always: a `NavLink` cannot name another origin or a `javascript:` URL, which is why it needs no capability.
-  A literal `to:` that does not start with `/`, or holds a space or `#`, is refused. It has the baseline's 44 px target
+  A literal `to:` that does not start with `/`, or holds a space, `#`, `"`, `<`, `>` or a backtick, is refused. It has the baseline's 44 px target
   ([`mobile-backend.md`](mobile-backend.md) section 4). An external link is **not** this (section 8).
 * **`router.go(path)`** pushes an entry, **`router.replace(path)`** replaces the current one. Both answer `true` when the URL is now
   `path`, `false` when the path is refused (it does not start with `/`, is over 2,000 characters, or holds a character outside printable
@@ -152,8 +152,15 @@ example will use it when it lands. Until then the routing example says, in its t
 * **2026-10-23.** Section 5 wrote `{ "back": 1 }`. Like `hide` and `show` the steps are `{ "back": true }` and `{ "forward": true }`, one entry each;
   corrected above.
 * **2026-10-23.** Section 4 says `router.replace` fires the route event when the path changes. Measure 5 found that `history.replaceState` fires **nothing**,
-  so the page cannot use it for `replace`; step 2 must implement it with `location.replace("#" + path)` (which does fire `hashchange` and adds no entry) and
-  measure that before relying on it. Replay models the event and the single entry; it is the page's job to agree.
+  so the page cannot use it for `replace`. Measured in step 2 before building it: `location.replace("#/r")` fires `hashchange` (`/q` to `/r`), adds no entry
+  (`history.length` unchanged) and fires nothing when the fragment is already `#/r`. The page uses it; replay's single entry and queued event agree
+  (the corpus checks both).
+* **2026-10-23, found building step 2: five more characters are not legal in a path.** Sections 4 and 5 and the step-1 code allowed every printable ASCII
+  character except space and `#`. Measured: assigning `location.hash` a path with `"`, `<`, `>` or a backtick makes `location.href` and `location.hash` read it back
+  **percent-encoded** (`/a%22b`), so the route event would hear a path other than the one `router.go` was given. Every other printable ASCII character,
+  `%` included, reads back as written (the other 89 of the 93 tried, one at a time; `#` was not tried). The legal set is now printable ASCII other than space, `#`, `"`, `<`, `>` and the
+  backtick (`crates/cancho-ui-ir/src/routing.rs`, the adapter, the corpus, a deliberate break each). A path with a quote or an angle bracket is answered
+  `false` by `router.go`, refused by a literal `to:` (`navlink-target-invalid`) and by a trace (`trace-navigate-invalid`).
 
 ## 10. Rule tags this adds (each to be documented in `spec/diagnostics/README.md` with its test)
 
@@ -161,7 +168,7 @@ example will use it when it lands. Until then the routing example says, in its t
 `navlink-incomplete` (no `label:` or no `to:`), `navlink-target-invalid` (a literal that is not a path), `binding-unknown` (`to:` off a
 `NavLink`), `capability-missing` (`Router` not required), `trace-navigate-invalid` (a `navigate` step or the trace's `url` that is not a path), `trace-history-empty`, `replay-route-limit` (a step that runs
 more than 1,000 route events, because a handler navigates to a new path every time), and `builtin-shape-mismatch` for a wrong `router.go` call.
-`routing-not-emitted` is **temporary**: `build` of a routing program until step 2.
+`routing-not-emitted` existed in step 1 only (`build` refused a routing program until the page was written); it is gone.
 
 ## 11. Order of the build, in separate PRs
 
@@ -188,3 +195,29 @@ more than 1,000 route events, because a handler navigates to a new path every ti
 * **Not in this step.** The page: nothing is emitted for a routing program (`build` says `routing-not-emitted`), so the Chromium corpus, the `replace`
   measurement above, the reload and offline checks and the gallery demo are step 2. The gallery tile now says so and its probe is a `build` that must
   still be refused (`check-gallery` R5).
+
+## 13. Step 2, built: the page (2026-10-23)
+
+* **The page.** `NavLink` is an `<a href="#" + to>` with its label as text (the `#` is written by the page, so a link cannot name another origin or a `javascript:`
+  URL). A component with `route E;` registers one `hashchange` listener, reads the path from the event's `newURL` (two changes in one task are heard as two paths,
+  in order), calls `E` once after the first render with the fragment it loaded at (`/` when there is none or it is not a route), and removes the listener when the
+  component is disposed. `router.go` assigns `location.hash` (a new entry), `router.replace` calls `location.replace('#' + path)` (measured above); both answer
+  `false` for an illegal path and `true` without touching the URL when the fragment is already the path. The adapter (`ROUTER_ADAPTER_JS`) is in the module only
+  when something uses `Router`; a link alone needs none. `routing-not-emitted` and its test skip are gone.
+* **Checked in Chromium** (`scripts/check-routing.js`, Pixel 7 profile, a stand-in static host that serves under `/app/` and answers 404 to anything else):
+  the shared corpus `tests/routing_corpus.json` (34 steps; `cargo test` replays the same file), checking per step the paths the route event heard, the state, the
+  fragment and how many history entries the step added (a link: 1, Back/Forward/replace: 0, a repeated link: 0); then the visitor's path (a deep link mounts the detail, a
+  reload stays on it, a link, Back and Forward, Enter on a focused link, a path with no page); then the `--pwa` build with its service worker: a deep link and a reload on
+  the detail work **with the server stopped**, and `/app/items/gauge` is a 404 online. 49 checks. The corpus covers ten illegal paths (empty, no slash, space, `#`,
+  `"`, `<`, `>`, backtick, non-ASCII, 2,001 characters), five legal odd ones (`%20`, a query, `//`, every symbol that is legal, 2,000 characters), a redirect
+  (the event for `/old` replaces the entry with `/new` and hears it), two changes in one handler, a typed URL and a fragment that is not a route.
+* **Deliberate breaks.** `scripts/breaks/routing-page.json`: href without `#`, no listener, no mount event, location read instead of `newURL`, `replace` that
+  pushes, a non-route heard as `/`, a quote allowed, no length limit, `go` always `false`, the listener never removed; each caught (two by `cargo test`, the rest in
+  the browser).
+* **Gallery.** `examples/routes` is the eighth live demo ("Screens at their own URLs"), built with `--page`, and the "Multi-page routing" tile is gone from the
+  coming-soon list (its probe, `build` refused as `routing-not-emitted`, is false now: `check-gallery` R5 said so). R8 compares the sentence "N of them run live" with the
+  manifest by number word. `check-mobile-demos.js` loads it embedded and on its own in the mobile profile.
+* **Not verified.** A real phone and iOS Safari (the events are standard, the evidence is Chromium emulation). Back inside the gallery's iframe: the iframe's fragment
+  changes join the page's session history, which this check does not exercise. Focus and the page title after a route change are still #92 (focus goes to the top of
+  the page when the link that was followed disappears with its screen). The service worker's cache is keyed without the fragment, so one precached `index.html`
+  serves every route; the 404 of the path form is the host's, not the worker's.

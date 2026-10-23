@@ -83,6 +83,7 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
     let mut any_net_put = false;
     let mut any_net_delete = false;
     let mut any_location = false;
+    let mut any_router = false;
     let mut any_storage = false;
     let mut any_cancel = false;
     for c in &ir.components {
@@ -109,6 +110,9 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
             }
             if e.capability == "Location" {
                 any_location = true;
+            }
+            if e.capability == "Router" {
+                any_router = true;
             }
         }
         for arm in c.events.iter().flat_map(|e| e.body.iter()) {
@@ -175,6 +179,10 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
     }
     if any_location {
         out.push_str(LOCATION_ADAPTER_JS);
+        out.push('\n');
+    }
+    if any_router {
+        out.push_str(ROUTER_ADAPTER_JS);
         out.push('\n');
     }
     if any_cancel {
@@ -681,8 +689,14 @@ fn emit_component(
             IrScheduleKind::Start => {
                 out.push_str(&format!("        __on_{}();\n", s.event));
             }
-            // A `route` has no emission yet: `build` refuses a routing program (docs/routing.md section 11).
-            IrScheduleKind::Route => {}
+            // docs/routing.md section 4: the route event hears the path the page loaded at, and every later change of the
+            // fragment to a route (from the event's `newURL`, so two changes in one task are two paths).
+            IrScheduleKind::Route => {
+                out.push_str(&format!(
+                    "        function __cui_hash(e) {{ const p = __cui_route_of(e.newURL); if (p !== null) {{ __on_{0}(p); }} }}\n        window.addEventListener('hashchange', __cui_hash);\n        __on_{0}(__cui_route_now());\n",
+                    s.event
+                ));
+            }
             IrScheduleKind::Every(ms) => {
                 out.push_str(&format!(
                     "        __cui_every.push({{ ms: {1}, next: Date.now() + {1}, o: null, run: function () {{ if (__cui_busy.{0} === 0) {{ __on_{0}(); }} }} }});\n",
@@ -756,6 +770,11 @@ fn emit_component(
                 fields.push_str("                        __ds.inst.__cui_dispose();\n");
                 fields.push_str("                    }\n");
                 fields.push_str("                }\n");
+            }
+            if c.schedules.iter().any(|s| s.kind == IrScheduleKind::Route) {
+                fields.push_str(
+                    "                window.removeEventListener('hashchange', __cui_hash);\n",
+                );
             }
             if !ticked.is_empty() {
                 for line in [
