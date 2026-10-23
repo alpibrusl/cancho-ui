@@ -391,7 +391,10 @@ pub(crate) fn emit_view_node(
                     js_string(r)
                 ));
             }
-            if let Some(label) = &accessibility.label {
+            // A chart's name is its SVG's `aria-label` (label and summary), not the figure's.
+            if let (Some(label), false) =
+                (&accessibility.label, matches!(kind, IrElementKind::Chart))
+            {
                 out.push_str(&format!(
                     "{0}{1}.setAttribute('aria-label', {2});\n",
                     indent,
@@ -423,12 +426,17 @@ pub(crate) fn emit_view_node(
             let label_var = format!("{var}_label");
             if let Some(e) = &accessibility.label_expr {
                 out.push_str(&format!(
-                    "{0}const {1} = String({2});\n{0}{3}.setAttribute('aria-label', {1});\n",
+                    "{0}const {1} = String({2});\n",
                     indent,
                     label_var,
-                    emit_expr_runtime(e, params),
-                    var
+                    emit_expr_runtime(e, params)
                 ));
+                if !matches!(kind, IrElementKind::Chart) {
+                    out.push_str(&format!(
+                        "{0}{1}.setAttribute('aria-label', {2});\n",
+                        indent, var, label_var
+                    ));
+                }
             }
 
             // Apply bindings.
@@ -453,6 +461,11 @@ pub(crate) fn emit_view_node(
             let mut file_accept: Option<String> = None;
             let mut file_max: i64 = cancho_ui_ir::file_field::MAX_BYTES;
             let mut file_handler: Option<String> = None;
+            // `kind:`, `values:`, `labels:` and `unit:` of a `Chart` (docs/charts.md): what the page draws.
+            let mut chart_kind = String::from("line");
+            let mut chart_unit = String::new();
+            let mut chart_values: Option<String> = None;
+            let mut chart_labels: Option<String> = None;
             // Tier 13: on a component instance, `Const` bindings
             // are *properties* — constant initial values for the
             // child's state fields. They go into the mount call's
@@ -507,6 +520,38 @@ pub(crate) fn emit_view_node(
                     }
                     IrBindingValue::StateRef(name) if b.key == "error" => {
                         field_error = Some(name.clone());
+                    }
+                    IrBindingValue::String(s)
+                        if b.key == "kind" && matches!(kind, IrElementKind::Chart) =>
+                    {
+                        chart_kind = s.clone();
+                    }
+                    IrBindingValue::String(s)
+                        if b.key == "unit" && matches!(kind, IrElementKind::Chart) =>
+                    {
+                        chart_unit = s.clone();
+                    }
+                    IrBindingValue::StateRef(name)
+                        if matches!(b.key.as_str(), "values" | "labels")
+                            && matches!(kind, IrElementKind::Chart) =>
+                    {
+                        let list = format!("{STATE_PREFIX}{name}");
+                        if b.key == "values" {
+                            chart_values = Some(list);
+                        } else {
+                            chart_labels = Some(list);
+                        }
+                    }
+                    IrBindingValue::Const { expr, .. }
+                        if matches!(b.key.as_str(), "values" | "labels")
+                            && matches!(kind, IrElementKind::Chart) =>
+                    {
+                        let list = emit_expr_runtime(expr, params);
+                        if b.key == "values" {
+                            chart_values = Some(list);
+                        } else {
+                            chart_labels = Some(list);
+                        }
                     }
                     IrBindingValue::Const { expr, .. } if b.key == "max_bytes" => {
                         if let IrExpr::IntLit { value, .. } = **expr {
@@ -808,6 +853,26 @@ pub(crate) fn emit_view_node(
                 if let Some(v) = &input_value {
                     out.push_str(&format!("{0}{1}.value = {2};\n", indent, var, v));
                 }
+            }
+
+            // A chart: the page draws the SVG, the caption and the data table into the figure (docs/charts.md section 3).
+            if matches!(kind, IrElementKind::Chart) {
+                let label = accessibility
+                    .label
+                    .as_ref()
+                    .map(|l| js_string(l))
+                    .or_else(|| accessibility.label_expr.as_ref().map(|_| label_var.clone()))
+                    .unwrap_or_else(|| "\"\"".to_string());
+                out.push_str(&format!(
+                    "{0}{1}.classList.add('cui-chart');\n{0}__cui_chart({1}, {2}, {3}, {4}, {5}, {6});\n",
+                    indent,
+                    var,
+                    label,
+                    js_string(&chart_kind),
+                    chart_values.as_deref().unwrap_or("[]"),
+                    chart_labels.as_deref().unwrap_or("null"),
+                    js_string(&chart_unit)
+                ));
             }
 
             // A file field is an `<input type="file">`. The page draws itself again from nothing at every render, which empties a file input

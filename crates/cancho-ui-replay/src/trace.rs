@@ -95,6 +95,7 @@ const EXPECT_KEYS: &[&str] = &[
     "history",
     "routes",
     "credentials",
+    "charts",
 ];
 
 pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {

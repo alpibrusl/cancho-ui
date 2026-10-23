@@ -1,0 +1,43 @@
+// examples/charts/charts.cui: a line chart and a bar chart of one list of numbers (docs/charts.md, issue #77).
+//
+// A Chart is drawn by the page as an SVG from the numbers the program holds; its text alternative (what a screen reader hears) and a
+// collapsed data table come from the same list. At most the last 1,000 values are drawn and the last 200 listed. Nothing here is an
+// image: the numbers, the labels and the unit are the program's, and replay can assert the text alternative (see the trace).
+
+component Charts {
+    state readings: List[Float] = [18.5, 19.2, 21, 22.4, 21.8, 20.1];
+    state hours: List[String] = ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00"];
+    state count: Int = 6;
+
+    // a new reading, between 14 and 22, from the number of readings so far
+    on Add {
+        readings = concat(readings, [18 + abs((count * 7) - (floor((count * 7) / 9) * 9) - 4)]);
+        count = count + 1;
+    }
+
+    // twice as many readings: the chart draws the last 1,000, and the table lists the last 200
+    on Double {
+        readings = concat(readings, readings);
+        count = count * 2;
+    }
+
+    on Reset {
+        readings = [];
+        hours = [];
+        count = 0;
+    }
+
+    view {
+        Column {
+            Text { role: heading "Temperature" }
+            Chart { label: "Temperature over the day" kind: "line" values: readings labels: hours unit: "°C" }
+            Chart { label: "The same readings as bars" kind: "bar" values: readings labels: hours unit: "°C" }
+            Text { role: status "{count} readings" }
+            Row {
+                Button { label: "Add a reading" on: Add }
+                Button { label: "Double them" on: Double }
+                Button { label: "Reset" on: Reset }
+            }
+        }
+    }
+}

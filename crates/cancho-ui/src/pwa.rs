@@ -85,12 +85,18 @@ body {
 .cui-table { border-collapse: collapse; width: 100%; }
 .cui-table th, .cui-table td { text-align: left; padding: 0.25rem 0.5rem; border-bottom: 1px solid color-mix(in srgb, currentColor 25%, transparent); }
 .cui-table th { font-weight: 600; }
+/* Chart (docs/charts.md): the series colour is 7.59:1 on white and 9.63:1 on the dark page (WCAG 1.4.11 asks 3:1) */
+:root { --cui-chart: #0550ae; }
+.cui-chart { margin: 0; }
+.cui-chart figcaption { font-weight: 600; }
+.cui-chart summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
 /* tone: a status text says what kind it is by a prefix as well as by colour, so colour is never the only signal */
 [data-tone] { font-weight: 600; }
 [data-tone="ok"] { color: #1a7f37; } [data-tone="ok"]::before { content: "\2713  "; }
 [data-tone="warn"] { color: #9a6700; } [data-tone="warn"]::before { content: "\26A0  "; }
 [data-tone="error"] { color: #cf222e; } [data-tone="error"]::before { content: "\2717  "; }
 @media (prefers-color-scheme: dark) {
+    :root { --cui-chart: #79c0ff; }
     [data-tone="ok"] { color: #3fb950; } [data-tone="warn"] { color: #d29922; } [data-tone="error"] { color: #ff7b72; }
 }
 button, input, textarea { min-height: 44px; min-width: 44px; font: inherit; }

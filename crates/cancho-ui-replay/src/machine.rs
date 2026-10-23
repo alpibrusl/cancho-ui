@@ -458,6 +458,109 @@ impl<'a> Machine<'a> {
         !matches!(eval(&mut ctx, cond), Ok(Value::Bool(false)))
     }
 
+    /// Evaluate a pure expression of the view against the state as it is now (a `Chart`'s `values:` and `labels:`); `None` when it
+    /// cannot be evaluated.
+    fn eval_view(&self, expr: &IrExpr) -> Option<Value> {
+        let mut journal = Journal::default();
+        let mut no_storage = BTreeMap::new();
+        let mut no_memory = BTreeMap::new();
+        let mut no_router = Router::new("/");
+        let mut no_credentials: Vec<String> = Vec::new();
+        let mut ctx = Ctx {
+            state: &self.state,
+            clock: self.clock,
+            storage: &mut no_storage,
+            storage_ns: "",
+            storage_quota: None,
+            storage_memory: &mut no_memory,
+            router: &mut no_router,
+            credentials: &mut no_credentials,
+            journal: &mut journal,
+            locals: Vec::new(),
+            init: false,
+        };
+        eval(&mut ctx, expr).ok()
+    }
+
+    /// The charts in the page now, in document order, with the text alternative each would carry (docs/charts.md section 4). A chart
+    /// under an `If` whose condition is false is not in the page; a chart is never inside a `For` (`chart-in-loop`).
+    pub fn charts(&self) -> Vec<serde_json::Value> {
+        fn walk(m: &Machine<'_>, node: &IrViewNode, out: &mut Vec<serde_json::Value>) {
+            match node {
+                IrViewNode::Element {
+                    kind,
+                    accessibility,
+                    bindings,
+                    children,
+                    ..
+                } => {
+                    if matches!(kind, cancho_ui_ir::ir::IrElementKind::Chart) {
+                        let text = |key: &str| {
+                            bindings
+                                .iter()
+                                .find_map(|b| match (&*b.key == key, &b.value) {
+                                    (true, IrBindingValue::String(s)) => Some(s.clone()),
+                                    _ => None,
+                                })
+                        };
+                        let list = |key: &str| -> Option<Vec<Value>> {
+                            let b = bindings.iter().find(|b| b.key == key)?;
+                            let v = match &b.value {
+                                IrBindingValue::StateRef(n) => m.state.get(n).cloned(),
+                                IrBindingValue::Const { expr, .. } => m.eval_view(expr),
+                                _ => None,
+                            }?;
+                            match v {
+                                Value::List(items) => Some(items),
+                                _ => None,
+                            }
+                        };
+                        let label = match (&accessibility.label, &accessibility.label_expr) {
+                            (Some(l), _) => l.clone(),
+                            (None, Some(e)) => match m.eval_view(e) {
+                                Some(Value::Str(s)) => s,
+                                Some(Value::Num(n)) => crate::chart::number_text(n),
+                                _ => String::new(),
+                            },
+                            _ => String::new(),
+                        };
+                        let kind_word = text("kind").unwrap_or_default();
+                        let values: Vec<f64> = list("values")
+                            .unwrap_or_default()
+                            .iter()
+                            .filter_map(|v| match v {
+                                Value::Num(n) => Some(*n),
+                                _ => None,
+                            })
+                            .collect();
+                        let unit = text("unit").unwrap_or_default();
+                        out.push(serde_json::json!({
+                            "label": label,
+                            "kind": kind_word,
+                            "count": values.len().min(crate::chart::MAX_POINTS),
+                            "total": values.len(),
+                            "summary": crate::chart::summary(&kind_word, &values, &unit),
+                        }));
+                    }
+                    for c in children {
+                        walk(m, c, out);
+                    }
+                }
+                IrViewNode::If { cond, children, .. } => {
+                    if m.condition_holds(cond) {
+                        for c in children {
+                            walk(m, c, out);
+                        }
+                    }
+                }
+                IrViewNode::For { .. } | IrViewNode::Text { .. } => {}
+            }
+        }
+        let mut out = Vec::new();
+        walk(self, &self.comp.view.body, &mut out);
+        out
+    }
+
     /// The strings a `Select` can report to `event`, when every control in the page that fires it is a `Select` (the union of
     /// their option lists, read from the state as it is now); `None` when some other control could give it any value, or no
     /// control fires it (docs/controls.md section 10).

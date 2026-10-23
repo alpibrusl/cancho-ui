@@ -56,19 +56,15 @@
       "title": "Choosing a file",
       "source": "examples/upload/upload.cui",
       "says": "`FileField`: a native file picker. The page reads a text file (UTF-8 only, at most 100,000 bytes, `.txt` or `.csv`), shows its name, size and first line, and sends it with `net.post`. On this static site there is no service to send to, so Send reports the refusal."
-    }
-  ],
-  "soon": [
+    },
     {
       "id": "charts",
       "title": "Charts",
-      "issue": 77,
-      "missing": "Any drawing primitive: `Canvas` and `Image` are refused as unknown components.",
-      "probe": {
-        "view": "Canvas { label: \"Chart\" }",
-        "rule": "component-kind-unknown"
-      }
-    },
+      "source": "examples/charts/charts.cui",
+      "says": "`Chart`: a line and a bar chart drawn as SVG from one list of numbers, with a text alternative a screen reader reads and a collapsed data table. The chart draws the last 1,000 values and the table lists the last 200; \"Double them\" shows the limit."
+    }
+  ],
+  "soon": [
     {
       "id": "realtime",
       "title": "Real-time updates",

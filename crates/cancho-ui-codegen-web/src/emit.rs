@@ -185,6 +185,10 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
         out.push_str(ROUTER_ADAPTER_JS);
         out.push('\n');
     }
+    if ir.components.iter().any(|c| view_has_chart(&c.view.body)) {
+        out.push_str(CHART_ADAPTER_JS);
+        out.push('\n');
+    }
     if ir.components.iter().any(|c| view_has_file(&c.view.body)) {
         out.push_str(FILE_ADAPTER_JS);
         out.push('\n');
@@ -281,6 +285,18 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
 }
 
 /// Does a view hold a control the user can focus (a `Button` or a `TextField`), directly or in a `For`?
+fn view_has_chart(node: &IrViewNode) -> bool {
+    match node {
+        IrViewNode::Element { kind, children, .. } => {
+            matches!(kind, IrElementKind::Chart) || children.iter().any(view_has_chart)
+        }
+        IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
+            children.iter().any(view_has_chart)
+        }
+        IrViewNode::Text { .. } => false,
+    }
+}
+
 fn view_has_file(node: &IrViewNode) -> bool {
     match node {
         IrViewNode::Element { kind, children, .. } => {

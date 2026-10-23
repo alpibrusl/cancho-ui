@@ -1,0 +1,78 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "note": "The text alternative of two charts of one list: the starting readings, a new one, twice as many (the chart draws the last 1000 only when there are more), and none.",
+  "steps": [
+    {
+      "advance": 0,
+      "expect": {
+        "charts": [
+          {
+            "label": "Temperature over the day",
+            "kind": "line",
+            "count": 6,
+            "summary": "line chart of 6 values: minimum 18.5 °C, maximum 22.4 °C, last 20.1 °C"
+          },
+          {
+            "label": "The same readings as bars",
+            "kind": "bar",
+            "count": 6,
+            "summary": "bar chart of 6 values: minimum 18.5 °C, maximum 22.4 °C, last 20.1 °C"
+          }
+        ]
+      }
+    },
+    {
+      "event": "Add",
+      "state": {
+        "count": 7
+      },
+      "expect": {
+        "charts": [
+          {
+            "count": 7
+          },
+          {
+            "count": 7
+          }
+        ]
+      }
+    },
+    {
+      "event": "Double",
+      "state": {
+        "count": 14
+      },
+      "expect": {
+        "charts": [
+          {
+            "count": 14,
+            "total": 14
+          },
+          {
+            "count": 14
+          }
+        ]
+      }
+    },
+    {
+      "event": "Reset",
+      "state": {
+        "count": 0,
+        "readings": []
+      },
+      "expect": {
+        "charts": [
+          {
+            "summary": "line chart with no values",
+            "count": 0
+          },
+          {
+            "summary": "bar chart with no values",
+            "count": 0
+          }
+        ]
+      }
+    }
+  ]
+}

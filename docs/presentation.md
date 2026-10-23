@@ -94,6 +94,10 @@ Measured: `getByRole('table', { name: 'Machines' })` finds it; five `columnheade
 a `row` for the header and one per machine on the page, five `cell`s each; every cell starts where its column header starts
 (< 1 px) on every page of the list; the accessibility snapshot reads `table "Machines"`, `columnheader "id"`, ...
 
+## 4a. Charts
+
+`Chart` is drawn from data with a text alternative: [`charts.md`](charts.md). The stylesheet defines its colour, `--cui-chart`, for both schemes.
+
 ## 5. Refusals
 
 | tag | when |

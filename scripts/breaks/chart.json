@@ -1,0 +1,28 @@
+{
+  "checks": [
+    { "name": "cargo test chart", "argv": ["cargo", "test", "--quiet", "-p", "cancho-ui", "--test", "chart"] },
+    { "name": "cargo test chart (replay unit)", "argv": ["cargo", "test", "--quiet", "-p", "cancho-ui-replay", "chart"] },
+    { "name": "the example's trace", "argv": ["target/debug/cancho-ui", "test", "examples/charts/charts.cui", "examples/charts/charts.trace.json"] },
+    { "name": "check-chart.js", "argv": ["node", "scripts/check-chart.js"] }
+  ],
+  "breaks": [
+    { "name": "a wrong vertical scale", "file": "crates/cancho-ui-codegen-web/src/adapters.rs", "from": "return B - (v - lo) / (hi - lo) * H;", "to": "return B - (v - lo) / (hi - lo) * H * 0.9;" },
+    { "name": "the first 1000 values are drawn, not the last", "file": "crates/cancho-ui-codegen-web/src/adapters.rs", "from": "start = Math.max(0, total - 1000), drawn = nums.slice(start)", "to": "start = 0, drawn = nums.slice(start, 1000)" },
+    { "name": "the accessible name has no summary", "file": "crates/cancho-ui-codegen-web/src/adapters.rs", "from": "'aria-label': label + ': ' + __cui_chart_summary(kind, nums, unit)", "to": "'aria-label': label" },
+    { "name": "the caption is parsed as markup", "file": "crates/cancho-ui-codegen-web/src/adapters.rs", "from": "cap2.textContent = label;", "to": "cap2.innerHTML = label;" },
+    { "name": "the series colour has no dark value", "file": "crates/cancho-ui-codegen-web/src/adapters.rs", "from": "const colour = 'var(--cui-chart, #0550ae)';", "to": "const colour = '#0550ae';" },
+    { "name": "the data table is not capped", "file": "crates/cancho-ui-codegen-web/src/adapters.rs", "from": "var rows = Math.min(n, 200);", "to": "var rows = n;" },
+    { "name": "the data table is open by default", "file": "crates/cancho-ui-codegen-web/src/adapters.rs", "from": "var details = document.createElement('details');", "to": "var details = document.createElement('details'); details.open = true;" },
+    { "name": "numbers in the alternative are rounded to one decimal", "file": "crates/cancho-ui-codegen-web/src/adapters.rs", "from": "const r = Math.round(x * 100) / 100; return Math.abs(r) >= 1e21", "to": "const r = Math.round(x * 10) / 10; return Math.abs(r) >= 1e21" },
+    { "name": "the axis text is read separately", "file": "crates/cancho-ui-codegen-web/src/adapters.rs", "from": ", fill: 'currentColor', 'aria-hidden': 'true' });", "to": ", fill: 'currentColor' });" },
+    { "name": "bars do not start at zero", "file": "crates/cancho-ui-codegen-web/src/adapters.rs", "from": "if (kind === 'bar') { lo = Math.min(0, mn); hi = Math.max(0, mx);", "to": "if (kind === 'bar') { lo = mn; hi = mx;" },
+    { "name": "a single value is not plural-aware in the page", "file": "crates/cancho-ui-codegen-web/src/adapters.rs", "from": "' value' + (n === 1 ? '' : 's')", "to": "' value' + 's'" },
+    { "name": "replay writes 1 values", "file": "crates/cancho-ui-replay/src/chart.rs", "from": "if n == 1 { \"\" } else { \"s\" },", "to": "\"s\"," },
+    { "name": "replay counts more than the chart draws", "file": "crates/cancho-ui-replay/src/machine.rs", "from": "values.len().min(crate::chart::MAX_POINTS)", "to": "values.len()" },
+    { "name": "replay reports a chart in a hidden If", "file": "crates/cancho-ui-replay/src/machine.rs", "from": "                IrViewNode::If { cond, children, .. } => {\n                    if m.condition_holds(cond) {\n                        for c in children {\n                            walk(m, c, out);", "to": "                IrViewNode::If { cond, children, .. } => {\n                    if m.condition_holds(cond) || true {\n                        for c in children {\n                            walk(m, c, out);" },
+    { "name": "a Chart may be drawn in a For", "file": "crates/cancho-ui-ir/src/controls.rs", "from": "    if in_for {\n        return Err(LowerError::ControlRefused {\n            code: \"chart-in-loop\",", "to": "    if in_for && false {\n        return Err(LowerError::ControlRefused {\n            code: \"chart-in-loop\"," },
+    { "name": "any kind is accepted", "file": "crates/cancho-ui-ir/src/controls.rs", "from": "(\"kind\", IrBindingValue::String(k)) if k == \"line\" || k == \"bar\" => Ok(()),", "to": "(\"kind\", IrBindingValue::String(_)) => Ok(())," },
+    { "name": "a unit may be any length", "file": "crates/cancho-ui-ir/src/controls.rs", "from": "u.chars().count() <= 12", "to": "u.chars().count() <= 1200" },
+    { "name": "a list of text is accepted as values", "file": "crates/cancho-ui-ir/src/controls.rs", "from": "IrType::Int | IrType::Float));", "to": "IrType::Int | IrType::Float | IrType::String));" }
+  ]
+}
