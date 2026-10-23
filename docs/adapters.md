@@ -573,7 +573,7 @@ await(net.post(url: String, body: String))  ->  Ok(envelope: String) | Err(reaso
   for what produced no HTTP answer: `blocked: ...`, `network error`, `timeout`, `too large`. `json.get(reply,
   "status", "0")` takes it apart.
 * **The body is a String sent as `application/json`** with `credentials: "same-origin"` (this origin's cookies);
-  no other header, no method but POST. The program builds the JSON text; a body that is not JSON is the server's
+  no other header, no method but POST *(corrected: `net.put` and `net.delete` add PUT and DELETE in section 21)*. The program builds the JSON text; a body that is not JSON is the server's
   to refuse (a `4xx` is an answer). Redirects are refused (`blocked: redirect`), a reply over 1 MiB is `too large`,
   and a reply later than 10 s is `timeout`.
 * **A write is not aborted when it is superseded or disposed.** Section 16 aborts a read that nobody will look at.
@@ -615,7 +615,7 @@ setting is observable here, because the check looks at the cookie the server rec
 
 ### 17.4 Not done
 
-Cross-origin writes, other methods (`PUT`, `DELETE`, `PATCH`), headers (a CSRF token, an `Authorization`), a body that
+Cross-origin writes, other methods (`PUT` and `DELETE` are built since, section 21; `PATCH` is not), headers (a CSRF token, an `Authorization`), a body that
 is not text, a timeout the program chooses, an idempotency key, and a way to say "this write must not be superseded"
 (today: a state flag). A server that relies on cookies alone for authority is open to a cross-site form post whatever
 this adapter does; the `Content-Type: application/json` is not a defence, only a convention a server can check. iOS
@@ -792,6 +792,110 @@ accounting by other engines may differ from "UTF-16 units of key plus value". An
 
 ---
 
+## 21. `net.put(url, body)` and `net.delete(url)`: the other two writes a console needs
+
+> **Status: designed first (this section), then built; 21.4 records what was measured.** Asked for by the plant-floor
+> console in `alpibrusl/cancho-industrial` (`docs/console.md`): a REST API sets a quota with `PUT` and revokes a device,
+> an agent or a token with `DELETE`, and a page that can only `POST` cannot offer either button.
+
+### 21.1 The decision
+
+```
+requires NetworkWrite;
+await(net.put(url: String, body: String))  ->  Ok(envelope: String) | Err(reason: String) | Cancelled
+await(net.delete(url: String))             ->  Ok(envelope: String) | Err(reason: String) | Cancelled
+```
+
+* **No new capability.** Both are writes and perform `NetworkWrite`, the capability of section 17. A program that
+  declares `NetworkWrite` may now `POST`, `PUT` and `DELETE` to its own origin; `cancho-ui diff` shows the capability
+  and not the method, so the review line "this release can now change things" is unchanged by this section. (A reviewer
+  who needs the method reads the builtin in the source or the trace; a per-method capability is rejected here because
+  it would make every existing `NetworkWrite` program a breaking change for no reduction in what a same-origin write
+  can do.) A program that declares only `Network` and calls either is `capability-missing`; one that declares
+  `NetworkWrite` and calls no write is `capability-unused`.
+* **Same origin only, no bound.** `NetworkWrite("host")` stays `capability-narrowing-illegal`, a literal URL naming a
+  host is `capability-bound-violated` for `net.put` and `net.delete` as for `net.post`, and at run time any other
+  origin is `Err("blocked: a write reaches only this site's own origin")` before a request is made.
+* **The answer is `net.fetch`'s envelope**, exactly as for `net.post` (17.1): `Ok` of `{"status":N,"body":"..."}` for
+  any HTTP status, `Err` for `blocked: ...`, `network error`, `timeout`, `too large`. A `204` is `Ok` with status 204
+  and an empty body.
+* **Wire form.** `net.put` sends the body as `application/json` like `net.post`. `net.delete` has no body and sends no
+  `Content-Type`. Both send this origin's cookies, the `Authorization: Bearer` header of a declared `Credential`
+  (section 18) and no other header; redirects are refused, a reply over 1 MiB is `too large`, a reply later than 10 s is
+  `timeout`.
+* **As for `net.post`**: never retried, not aborted when superseded or disposed (a cut-off write is in an unknown
+  state), and each has its own cancellation group (`net_put`, `net_delete`) so a newer `net.put` supersedes only the
+  answer of the previous `net.put`.
+* **Arity.** `net.put` has exactly two arguments and `net.delete` exactly one; anything else is
+  `builtin-shape-mismatch`.
+
+### 21.2 What it touches
+
+* **Lowering:** `net.put`/`net.delete` perform `NetworkWrite`; the literal-URL host check applies with an empty
+  allow-list; a `Credential` is used by them (so `capability-unused` does not fire for a credential whose only user is a
+  `PUT`); both are known calls (`call-unknown` otherwise).
+* **Emit:** `__cui_net_put(url, body, cred)` and `__cui_net_delete(url, cred)`, each emitted only into a program that
+  calls it and each a **separate function** from `__cui_net_post` and from each other, for the reason in 17.2: the
+  guards of one write are not shared code that a change to another can loosen. A program that only posts carries no
+  `method: "PUT"` or `method: "DELETE"`.
+* **Replay:** effects `net.put` and `net.delete` with their own groups, scripted by a trace like `net.post`; the step
+  report shows `issued #n net.put("/api/q", "{}")` and `issued #n net.delete("/api/d/1")`. A URL or a body that is not a
+  String is `replay-type-error`.
+
+### 21.3 Claims to measure (each gets a check that can fail)
+
+1. The adapters are emitted only for a program that uses them, and carry the same-origin guard, `redirect: "manual"`,
+   `credentials: "same-origin"`, and no abort wiring.
+2. `net.delete` sends no body and no `Content-Type`; `net.put` sends the JSON content type.
+3. A program without `NetworkWrite` is `capability-missing` (also with only `Network`); an unused `NetworkWrite` is
+   `capability-unused`; a bound is `capability-narrowing-illegal`; a literal on another host is
+   `capability-bound-violated`; wrong arity is `builtin-shape-mismatch`.
+4. A credential is sent by both and counts as used by both.
+5. A trace scripts both, with the newer answer of the same call winning; a non-String argument is `replay-type-error`.
+6. In Chromium against real servers: the method, the body, the content type, the cookie and the `Authorization` header
+   arrive as stated; `204`, `404` and `409` are answers; another origin is blocked and that server sees 0 requests; a
+   redirect is refused; two writes in a row both reach the server.
+7. No input reaches a panic (`panic_sites.rs`, `no_panic.rs` run over the examples; the new tests add the cases).
+8. Each claim fails against a deliberate break (21.4).
+
+### 21.4 Measured
+
+* `cargo test` (`crates/cancho-ui/tests/net_write.rs`, 10 tests) covers claims 1 to 5 and 7: each adapter is emitted only for
+  a program that uses it; both carry the guards of `net.post` and no abort wiring; `net.delete` carries no `Content-Type`
+  and no body, `net.put` the JSON one; `capability-missing` (none, and `Network` only), `capability-unused`,
+  `capability-narrowing-illegal`, `capability-bound-violated` (three literals each), `builtin-shape-mismatch` (arity 0, 1,
+  3 for `put`; 0 and 2 for `delete`); a credential alone with a `PUT` or a `DELETE` is accepted and handed to the
+  adapter; a trace scripts both and a put and a delete do not supersede each other; a non-String argument is
+  `replay-type-error`. The workspace gate (`cargo fmt --all --check`, `cargo clippy --all-targets -- -D warnings`, `cargo
+  test --workspace`, which includes `panic_sites.rs` and `no_panic.rs`) passes. One existing test, `call_unknown.rs`, used
+  `net.delete` as its example of a call the language does not have; it now uses `net.patch` (correct in place: `PATCH` is
+  still unknown).
+* `scripts/check-write.js` (Chromium, real servers, outside the gate; 24 checks) covers claim 6: the PUT arrives as a PUT
+  with the body, `application/json`, the cookie and `Authorization: Bearer`; the DELETE arrives with no body and no content
+  type, with the cookie and the bearer; `204`, `404`, `409`, `503` are answers; another origin is blocked **and that server
+  receives 0 requests** for both; a redirect is refused and not followed; a 2 MiB reply is `too large`; two PUTs in a row
+  both reach the server; without the credential both are `blocked: no credential api` and the server sees 0 requests; with
+  the server stopped the answer is `network error`. `check-post.js` and `check-credential.js` still pass.
+
+**The checks can fail.** `scripts/breaks/net-write.json`, run with `node scripts/deliberate-breaks.js` (a green baseline of
+three checks first): 19 deliberate breaks, **all caught**. Browser-visible: the put adapter sending a POST, the delete
+adapter sending a POST, redirects followed, the cookie omitted, a body and content type on a DELETE, the content type
+dropped from a PUT, the origin check removed from each, the credential check removed from each. Compiler-side: `delete`
+performing no capability, `put` accepting a missing body, `delete` accepting a body, a write to another host allowed
+unless it is a `post`, a credential not counted as used by a `delete`, `delete` an unknown call, a `delete` sharing the
+`put` cancellation group, no adapter emitted for a `delete`, and replay accepting a non-String `delete` URL. The first run
+reported one real miss, **a delete sharing the put group**: the trace only checked the pending list, which does not change
+when a group is shared. The trace now asserts the state after each answer (`a` is `200` while `b` is still `-`) and the
+break is caught. Two of the breaks had anchors that occurred twice or not at all and were corrected; they are not
+"caught" until the runner reports them.
+
+### 21.5 Not done
+
+`PATCH`, headers other than `Authorization`, a body for `DELETE`, cross-origin writes, a per-method capability, and the
+other limits of 17.4. iOS Safari is not tested.
+
+---
+
 ## 12. Where the adapters stand
 
 | Capability | Calls | Bound | Real in the browser |
@@ -799,8 +903,8 @@ accounting by other engines may differ from "UTF-16 units of key plus value". An
 | `Clock` | `clock.now()`, `sleep(ms)` | none | `Date.now`, `setTimeout` |
 | `Storage` | `storage.get(k, d)`, `storage.set(k, v)` | `Storage("ns")` keeps keys under `cui:ns:` | `localStorage`, with a page-lifetime fallback |
 | `Network` | `net.get(url)`, `net.fetch(url)` (keeps an error status); `net.search(q)` is the simulated demo | `Network("host", ..)` adds hosts | `fetch`, same-origin plus the allow-list |
-| `Credential` | none of its own: `Authorization: Bearer` on `net.get`, `net.fetch`, `net.post` | `Credential("name", "host"..)` | header added in the adapter, this origin and the named hosts only |
-| `NetworkWrite` | `net.post(url, body)` (the envelope of `net.fetch`) | none: this origin only | `fetch` POST, same-origin, not aborted |
+| `Credential` | none of its own: `Authorization: Bearer` on `net.get`, `net.fetch`, `net.post`, `net.put`, `net.delete` | `Credential("name", "host"..)` | header added in the adapter, this origin and the named hosts only |
+| `NetworkWrite` | `net.post(url, body)`, `net.put(url, body)`, `net.delete(url)` (the envelope of `net.fetch`) | none: this origin only | `fetch` POST, PUT, DELETE, same-origin, not aborted |
 | `Location` | `location.current()` | `Location("coarse" \| "fine")` | Geolocation, rounded in the adapter |
 
 Not built anywhere: wildcard or per-path `Network` bounds, `watchPosition`, a typed position,

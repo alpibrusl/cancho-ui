@@ -125,8 +125,14 @@ site only (no host bound; a literal URL naming a host is `capability-bound-viola
 envelope `{"status":N,"body":"..."}` for any HTTP status, never retried and not aborted when superseded (`docs/adapters.md`
 section 17).
 
+`net.put(url, body)` and `net.delete(url)` perform the same `NetworkWrite` (no new capability, no host bound, same origin only): a PUT
+of a JSON text, and a DELETE with no body, answered like `net.post` with the envelope `{"status":N,"body":"..."}` (a `204` is
+`Ok` with status 204), never retried, not aborted when superseded, each in its own cancellation group. `net.put` takes exactly
+two arguments and `net.delete` one (`builtin-shape-mismatch`); a declared `Credential` is sent by both (`docs/adapters.md`
+section 21). There is no `PATCH`.
+
 A component that sends a secret declares `requires Credential("api", "host"..)` (with `Network` for any host it names): `net.get`,
-`net.fetch` and `net.post` then add `Authorization: Bearer <token>`, to this site and the named hosts only. Build with
+`net.fetch`, `net.post`, `net.put` and `net.delete` then add `Authorization: Bearer <token>`, to this site and the named hosts only. Build with
 `--no-auto-mount` and hand the token to `mount_X(root, { credentials: { "api": token } })`; auto-mount is refused
 (`credential-needs-mount-options`). A trace lists `"credentials": ["api"]`; a missing one answers `Err("blocked: no credential api")`
 (`docs/adapters.md` section 18).

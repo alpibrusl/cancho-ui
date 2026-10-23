@@ -341,13 +341,15 @@ fn run_step(
                     | value::Effect::NetGet
                     | value::Effect::NetFetch
                     | value::Effect::NetPost
+                    | value::Effect::NetPut
+                    | value::Effect::NetDelete
                     | value::Effect::LocationCurrent
             ) {
                 return Err(stop(
                     "trace-request-not-scriptable",
                     "resolve",
                     format!(
-                        "request #{id} is a `{}`; timers resolve by advancing the clock, only `net.search`, `net.get`, `net.fetch`, `net.post` and `location.current` are scripted",
+                        "request #{id} is a `{}`; timers resolve by advancing the clock, only `net.search`, `net.get`, `net.fetch`, `net.post`, `net.put`, `net.delete` and `location.current` are scripted",
                         effect.name()
                     ),
                 ));
@@ -442,7 +444,11 @@ fn run_step(
                 credential: match (credential_name(comp), r.effect) {
                     (
                         Some(name),
-                        value::Effect::NetGet | value::Effect::NetFetch | value::Effect::NetPost,
+                        value::Effect::NetGet
+                        | value::Effect::NetFetch
+                        | value::Effect::NetPost
+                        | value::Effect::NetPut
+                        | value::Effect::NetDelete,
                     ) => Some(if m.credentials.iter().any(|c| c == name) {
                         name.to_string()
                     } else {

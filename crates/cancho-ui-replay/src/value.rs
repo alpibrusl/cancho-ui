@@ -9,6 +9,8 @@ pub enum Effect {
     NetGet,
     NetFetch,
     NetPost,
+    NetPut,
+    NetDelete,
     LocationCurrent,
     Sleep,
 }
@@ -20,6 +22,8 @@ impl Effect {
             Effect::NetGet => "net.get",
             Effect::NetFetch => "net.fetch",
             Effect::NetPost => "net.post",
+            Effect::NetPut => "net.put",
+            Effect::NetDelete => "net.delete",
             Effect::LocationCurrent => "location.current",
             Effect::Sleep => "sleep",
         }
@@ -32,6 +36,8 @@ impl Effect {
             Effect::NetGet => "net_get",
             Effect::NetFetch => "net_fetch",
             Effect::NetPost => "net_post",
+            Effect::NetPut => "net_put",
+            Effect::NetDelete => "net_delete",
             Effect::LocationCurrent => "location_current",
             Effect::Sleep => "sleep",
         }

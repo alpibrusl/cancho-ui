@@ -165,7 +165,7 @@ pub enum LowerError {
     },
 
     #[error(
-        "`{name}` is misused here (expected {detail}); see the builtin call forms: `filter(list, x => cond)`, `map(list, x => body)`, `sort(list, x => key)`, `reverse(list)`, `contains(text, needle)`, `lower(text)`, `fold(text)`, `num(text, default)`, `take(list, n)`, `skip(list, n)`, `concat(a, b)`, `lines(text)`, `split(text, sep)`, `join(list, sep)`, `trim(text)`, `upper(text)`, `starts_with(text, prefix)`, `ends_with(text, suffix)`, `len(value)`, `storage.get(key, default)`, `storage.set(key, value)`, `net.get(url)`, `net.fetch(url)`, `net.post(url, body)`, `json.get(text, path, default)`, `json.items(text, path)`, `json.quote(text)`"
+        "`{name}` is misused here (expected {detail}); see the builtin call forms: `filter(list, x => cond)`, `map(list, x => body)`, `sort(list, x => key)`, `reverse(list)`, `contains(text, needle)`, `lower(text)`, `fold(text)`, `num(text, default)`, `take(list, n)`, `skip(list, n)`, `concat(a, b)`, `lines(text)`, `split(text, sep)`, `join(list, sep)`, `trim(text)`, `upper(text)`, `starts_with(text, prefix)`, `ends_with(text, suffix)`, `len(value)`, `storage.get(key, default)`, `storage.set(key, value)`, `net.get(url)`, `net.fetch(url)`, `net.post(url, body)`, `net.put(url, body)`, `net.delete(url)`, `json.get(text, path, default)`, `json.items(text, path)`, `json.quote(text)`"
     )]
     BuiltinMisuse {
         name: String,
@@ -536,6 +536,22 @@ fn lower_expr_with_effects(e: &Expr) -> Result<(IrExpr, Vec<IrReachableEffect>),
                 return Err(LowerError::BuiltinMisuse {
                     name: "net.post".to_string(),
                     detail: "exactly two arguments: net.post(url, body)".to_string(),
+                    span: *span,
+                });
+            }
+            if path.len() == 2 && path[0] == "net" && path[1] == "put" && args.len() != 2 {
+                // docs/adapters.md section 21: the URL and the body.
+                return Err(LowerError::BuiltinMisuse {
+                    name: "net.put".to_string(),
+                    detail: "exactly two arguments: net.put(url, body)".to_string(),
+                    span: *span,
+                });
+            }
+            if path.len() == 2 && path[0] == "net" && path[1] == "delete" && args.len() != 1 {
+                // docs/adapters.md section 21: the URL only.
+                return Err(LowerError::BuiltinMisuse {
+                    name: "net.delete".to_string(),
+                    detail: "exactly one argument: net.delete(url)".to_string(),
                     span: *span,
                 });
             }
@@ -943,8 +959,12 @@ fn builtin_capability(path: &[String]) -> Option<&'static str> {
         // effect. `await(net.search(q))` resolves to Ok | Err |
         // Cancelled with an Ok payload of `List[String]`.
         Some("Network")
-    } else if path.len() == 2 && path[0] == "net" && path[1] == "post" {
-        // docs/adapters.md section 17: a write is a stronger authority than a read, so it is its own capability.
+    } else if path.len() == 2
+        && path[0] == "net"
+        && (path[1] == "post" || path[1] == "put" || path[1] == "delete")
+    {
+        // docs/adapters.md sections 17 and 21: a write is a stronger authority than a read, so it is its own capability,
+        // and `PUT` and `DELETE` are writes of the same kind as `POST`.
         Some("NetworkWrite")
     } else if path.len() == 2 && path[0] == "location" && path[1] == "current" {
         // docs/adapters.md section 11: `await(location.current())` resolves to Ok("lat,lon") | Err | Cancelled.
@@ -1379,8 +1399,8 @@ fn check_capabilities(ir: &IrFile) -> Result<(), LowerError> {
                     span: eff.span,
                 });
             }
-            // `net.post` reaches this page's own origin only (section 17): no host is ever allowed for it.
-            let is_post = eff.path == ["net", "post"];
+            // A write reaches this page's own origin only (sections 17 and 21): no host is ever allowed for it.
+            let is_post = eff.capability == "NetworkWrite";
             if (eff.path == ["net", "get"] || eff.path == ["net", "fetch"] || is_post)
                 && let Some(url) = &eff.literal_arg
                 && let Some(host) = literal_host(url)
@@ -1427,12 +1447,16 @@ fn check_capabilities(ir: &IrFile) -> Result<(), LowerError> {
             }
         }
         for req in &c.requires {
-            // A credential is used by any request the component can make (`net.get`, `net.fetch`, `net.post`).
+            // A credential is used by any request the component can make (`net.get`, `net.fetch`, `net.post`, `net.put`,
+            // `net.delete`).
             let used = if req.name == "Credential" {
                 c.reachable_effects.iter().any(|e| {
                     e.path.len() == 2
                         && e.path[0] == "net"
-                        && matches!(e.path[1].as_str(), "get" | "fetch" | "post")
+                        && matches!(
+                            e.path[1].as_str(),
+                            "get" | "fetch" | "post" | "put" | "delete"
+                        )
                 })
             } else {
                 c.reachable_effects.iter().any(|e| e.capability == req.name)
@@ -1583,7 +1607,10 @@ fn is_known_call(path: &[String]) -> bool {
                 | ("storage", "get" | "set")
                 | ("json", "get" | "items" | "quote")
                 | ("location", "current")
-                | ("net", "search" | "get" | "fetch" | "post")
+                | (
+                    "net",
+                    "search" | "get" | "fetch" | "post" | "put" | "delete"
+                )
         ),
         _ => false,
     }
