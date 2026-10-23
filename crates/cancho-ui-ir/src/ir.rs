@@ -37,6 +37,9 @@ pub enum IrScheduleKind {
     /// `route Event;` (docs/routing.md): the event, which takes one `String`, runs with the path at mount and at every
     /// change of the URL fragment to a route.
     Route,
+    /// `subscribe Event "url";` (docs/streams.md): the event, which takes one `String`, runs for each message the server
+    /// pushes.
+    Subscribe,
 }
 
 /// An event that runs without the user (docs/schedules.md): the event exists and takes no parameters.
@@ -44,7 +47,17 @@ pub enum IrScheduleKind {
 pub struct IrSchedule {
     pub kind: IrScheduleKind,
     pub event: String,
+    /// The address and status event of a `subscribe`; `None` for the other kinds.
+    pub stream: Option<IrStream>,
     pub span: Span,
+}
+
+/// What a `subscribe` listens to (docs/streams.md section 3).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IrStream {
+    pub url: String,
+    /// The event that hears `connecting`, `open`, `retrying`, `paused` and `failed`; it takes one `String`.
+    pub status: Option<String>,
 }
 
 /// An effect that is reachable from this component's expressions.

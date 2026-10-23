@@ -1,0 +1,295 @@
+{
+  "checks": [
+    {
+      "name": "cargo test stream",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "stream"
+      ]
+    },
+    {
+      "name": "check-stream.js",
+      "argv": [
+        "node",
+        "scripts/check-stream.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "the wait never grows (always the first)",
+      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
+      "from": "if (step < BACKOFF.length - 1) { step++; }",
+      "to": "if (step < 0) { step++; }"
+    },
+    {
+      "name": "an open connection does not start the list again",
+      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
+      "from": "            step = 0;\n            emit('open');",
+      "to": "            emit('open');"
+    },
+    {
+      "name": "a hidden page keeps its connection",
+      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
+      "from": "if (!ended && (status === 'connecting' || status === 'open' || status === 'retrying')) { halt(); emit('paused'); }",
+      "to": "if (false) { halt(); emit('paused'); }"
+    },
+    {
+      "name": "a shown page does not connect",
+      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
+      "from": "resume: function () { if (!ended && status === 'paused') { connect(); } },",
+      "to": "resume: function () { },"
+    },
+    {
+      "name": "the id of the last message is not sent",
+      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
+      "from": "if (lastId !== null) { headers['Last-Event-ID'] = lastId; }",
+      "to": "if (false) { headers['Last-Event-ID'] = lastId; }"
+    },
+    {
+      "name": "the size limit is removed",
+      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
+      "from": "if (dataLen + v.length > /*MESSAGE_MAX*/) { oversize(); return; }",
+      "to": "if (false) { oversize(); return; }"
+    },
+    {
+      "name": "the limit on a line is removed",
+      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
+      "from": "            if (partialLen > /*LINE_MAX*/) { oversize(); }",
+      "to": "            if (false) { oversize(); }"
+    },
+    {
+      "name": "a redirect is followed",
+      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
+      "from": "redirect: 'manual'",
+      "to": "redirect: 'follow'"
+    },
+    {
+      "name": "the content type is not checked",
+      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
+      "from": "if (type !== 'text/event-stream') { fail(); return; }",
+      "to": "if (false) { fail(); return; }"
+    },
+    {
+      "name": "the status is not checked",
+      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
+      "from": "response.status !== 200",
+      "to": "false"
+    },
+    {
+      "name": "the server closing the stream is a failure, not a drop",
+      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
+      "from": "if (r.done) { drop(g); return; }",
+      "to": "if (r.done) { fail(); return; }"
+    },
+    {
+      "name": "a network error is a failure, not a drop",
+      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
+      "from": "}).catch(function () { drop(g); });\n    }\n    return {",
+      "to": "}).catch(function () { fail(); });\n    }\n    return {"
+    },
+    {
+      "name": "Authorization goes to every host",
+      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
+      "from": "if (auth !== null && __cui_credential_applies(cfg.cred, target)) { headers.Authorization = auth; }",
+      "to": "if (auth !== null) { headers.Authorization = auth; }"
+    },
+    {
+      "name": "the host is not checked at run time",
+      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
+      "from": "if (target.origin !== window.location.origin && cfg.hosts.indexOf(target.host.toLowerCase()) === -1) { fail(); return; }",
+      "to": "if (false) { fail(); return; }"
+    },
+    {
+      "name": "a credential that was not supplied is not required",
+      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
+      "from": "if (auth === false) { fail(); return; }",
+      "to": "if (false) { fail(); return; }"
+    },
+    {
+      "name": "disposal does not close the connection",
+      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
+      "from": "dispose: function () { ended = true; halt(); }",
+      "to": "dispose: function () { ended = true; }"
+    },
+    {
+      "name": "a CR is not the end of a line",
+      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
+      "from": "if (ch !== 10 && ch !== 13) { i++; continue; }",
+      "to": "if (ch !== 10) { i++; continue; }"
+    },
+    {
+      "name": "a CR at the end of a chunk does not swallow the LF that follows",
+      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
+      "from": "else { skipLF = true; }",
+      "to": "else { skipLF = false; }"
+    },
+    {
+      "name": "the space after the colon is kept",
+      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
+      "from": "if (v.charCodeAt(0) === 32) { v = v.slice(1); }",
+      "to": ""
+    },
+    {
+      "name": "an id with a NUL is kept",
+      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
+      "from": "if (v.indexOf('\\u0000') === -1) { idBuf = v; }",
+      "to": "idBuf = v;"
+    },
+    {
+      "name": "an id with no data is forgotten",
+      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
+      "from": "        if (idBuf !== null) { on.id(idBuf); }\n        if (dataLen === 0) { return; }",
+      "to": "        if (dataLen === 0) { return; }\n        if (idBuf !== null) { on.id(idBuf); }"
+    },
+    {
+      "name": "an empty id does not forget the id",
+      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
+      "from": "id: function (v) { lastId = v === '' ? null : v; },",
+      "to": "id: function (v) { lastId = v; },"
+    },
+    {
+      "name": "a BOM is read as text",
+      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
+      "from": "var dec = new TextDecoder('utf-8');",
+      "to": "var dec = new TextDecoder('utf-8', { ignoreBOM: true });"
+    },
+    {
+      "name": "the decoder is not told more is coming",
+      "file": "crates/cancho-ui-codegen-web/src/stream.rs",
+      "from": "parser.feed(dec.decode(r.value, { stream: true }));",
+      "to": "parser.feed(dec.decode(r.value));"
+    },
+    {
+      "name": "a message is skipped while another handler waits",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "onMessage: function (t) {{ __on_{}(t); }}",
+      "to": "onMessage: function (t) {{ if (window.__cui_sb) {{ return; }} window.__cui_sb = true; __on_{}(t).finally(function () {{ window.__cui_sb = false; }}); }}"
+    },
+    {
+      "name": "disposal does not end the stream",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "\"__cui_stream.dispose();\",",
+      "to": "\"\","
+    },
+    {
+      "name": "the page does not listen for the page being hidden",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "\"document.addEventListener('visibilitychange', __cui_stream_vis);\",",
+      "to": "\"\","
+    },
+    {
+      "name": "a stream is read as net.search (its stub is emitted and the adapter is not)",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "if e.capability == \"Network\" && e.path == [\"subscribe\"] {\n                any_stream = true;",
+      "to": "if e.capability == \"Network\" && e.path == [\"subscribe\"] {\n                any_network = true;"
+    },
+    {
+      "name": "the longest wait is 32 seconds",
+      "file": "crates/cancho-ui-ir/src/stream.rs",
+      "from": "[1000, 2000, 4000, 8000, 16000, 30000]",
+      "to": "[1000, 2000, 4000, 8000, 16000, 32000]"
+    },
+    {
+      "name": "the bound on a message is 65,537",
+      "file": "crates/cancho-ui-ir/src/stream.rs",
+      "from": "pub const MESSAGE_MAX: usize = 65_536;",
+      "to": "pub const MESSAGE_MAX: usize = 65_537;"
+    },
+    {
+      "name": "replay: an open does not start the list again",
+      "file": "crates/cancho-ui-replay/src/stream.rs",
+      "from": "            s.step = 0;\n            s.attempt = 0;",
+      "to": "            s.attempt = 0;"
+    },
+    {
+      "name": "replay: a hidden page keeps its stream",
+      "file": "crates/cancho-ui-replay/src/stream.rs",
+      "from": "        if !live {\n            return Ok(());\n        }",
+      "to": "        if !live || true {\n            return Ok(());\n        }"
+    },
+    {
+      "name": "replay: a shown page stays paused",
+      "file": "crates/cancho-ui-replay/src/machine.rs",
+      "from": "        self.stream_show(fx)?;\n",
+      "to": "        "
+    },
+    {
+      "name": "replay: the bound counts bytes, not characters",
+      "file": "crates/cancho-ui-replay/src/stream.rs",
+      "from": "    text.encode_utf16().count()",
+      "to": "    text.len()"
+    },
+    {
+      "name": "replay: an empty id keeps the old id",
+      "file": "crates/cancho-ui-replay/src/stream.rs",
+      "from": "s.last_event_id = (!id.is_empty()).then(|| id.to_string());",
+      "to": "s.last_event_id = Some(id.to_string());"
+    },
+    {
+      "name": "replay: a retry runs before a tick due with it",
+      "file": "crates/cancho-ui-replay/src/machine.rs",
+      "from": "if due < others {",
+      "to": "if due <= others {"
+    },
+    {
+      "name": "replay: a message is skipped while another handler waits",
+      "file": "crates/cancho-ui-replay/src/stream.rs",
+      "from": "        let h = s.message;\n        self.dispatch(h, vec![Value::Str(text.to_string())], fx)",
+      "to": "        let h = s.message;\n        if self.in_flight(h) {\n            return Ok(Outcome::Ok);\n        }\n        self.dispatch(h, vec![Value::Str(text.to_string())], fx)"
+    },
+    {
+      "name": "replay: a message on a stream that is not open is accepted",
+      "file": "crates/cancho-ui-replay/src/lib.rs",
+      "from": "                Some(stream::StreamStatus::Open) => {}",
+      "to": "                Some(_) => {}"
+    },
+    {
+      "name": "a stream's address may have a fragment",
+      "file": "crates/cancho-ui-ir/src/stream.rs",
+      "from": "    if url.contains('#') {",
+      "to": "    if url.contains('#') && false {"
+    },
+    {
+      "name": "a protocol-relative address is allowed",
+      "file": "crates/cancho-ui-ir/src/stream.rs",
+      "from": "    if url.starts_with(\"//\") {",
+      "to": "    if url.starts_with(\"//\") && false {"
+    },
+    {
+      "name": "two streams are allowed",
+      "file": "crates/cancho-ui-ir/src/stream.rs",
+      "from": "    if earlier.iter().any(|o| o.kind == IrScheduleKind::Subscribe) {",
+      "to": "    if earlier.iter().any(|o| o.kind == IrScheduleKind::Subscribe) && false {"
+    },
+    {
+      "name": "a stream's host is not checked at build time",
+      "file": "crates/cancho-ui-ir/src/lower.rs",
+      "from": "                || eff.path == [\"subscribe\"]\n                || is_post)",
+      "to": "                || is_post)"
+    },
+    {
+      "name": "a stream is not an effect of Network",
+      "file": "crates/cancho-ui-ir/src/stream.rs",
+      "from": "        .filter_map(|s| {\n            let stream = s.stream.as_ref()?;",
+      "to": "        .filter_map(|s| {\n            let stream = s.stream.as_ref()?;\n            if true { return None; }"
+    },
+    {
+      "name": "a status event may take two parameters",
+      "file": "crates/cancho-ui-ir/src/stream.rs",
+      "from": "    if handler.params.len() != 1 {",
+      "to": "    if handler.params.len() > 2 {"
+    },
+    {
+      "name": "the diff does not show the address",
+      "file": "crates/cancho-ui-diff/src/lib.rs",
+      "from": "                    Some(t) => match &t.status {",
+      "to": "                    Some(_t) if true => format!(\"subscribe {}\", s.event),\n                    Some(t) => match &t.status {"
+    }
+  ]
+}

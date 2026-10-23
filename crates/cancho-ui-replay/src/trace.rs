@@ -54,6 +54,33 @@ pub enum Action {
     /// The browser's Back and Forward buttons.
     Back,
     Forward,
+    /// The server answers the stream the page is waiting for (docs/streams.md section 4).
+    Stream(StreamAct),
+    /// A message arrives on the open stream; `id` is the event id the server sent with it, if any.
+    Message {
+        text: String,
+        id: Option<String>,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StreamAct {
+    /// The connection is accepted as `text/event-stream`.
+    Open,
+    /// The connection ends (or could not be made): the page waits, then connects again.
+    Drop,
+    /// The answer is not a stream: a status other than 200, another content type, a redirect.
+    Refuse,
+}
+
+impl StreamAct {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            StreamAct::Open => "open",
+            StreamAct::Drop => "drop",
+            StreamAct::Refuse => "refuse",
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -96,6 +123,7 @@ const EXPECT_KEYS: &[&str] = &[
     "routes",
     "credentials",
     "charts",
+    "stream",
 ];
 
 pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {
@@ -333,12 +361,13 @@ fn parse_step(j: &Json, i: usize) -> Result<Step, TraceError> {
         obj,
         &[
             "event", "params", "resolve", "with", "advance", "dispose", "hide", "show", "navigate",
-            "back", "forward", "state", "expect", "note", "fault",
+            "back", "forward", "stream", "message", "id", "state", "expect", "note", "fault",
         ],
         &at,
     )?;
     let actions: Vec<&str> = [
         "event", "resolve", "advance", "dispose", "hide", "show", "navigate", "back", "forward",
+        "stream", "message",
     ]
     .into_iter()
     .filter(|k| obj.contains_key(*k))
@@ -348,7 +377,7 @@ fn parse_step(j: &Json, i: usize) -> Result<Step, TraceError> {
             "trace-bad-step",
             &at,
             format!(
-                "a step has exactly one of `event`, `resolve`, `advance`, `dispose`, `hide`, `show`, `navigate`, `back`, `forward`; this one has {}",
+                "a step has exactly one of `event`, `resolve`, `advance`, `dispose`, `hide`, `show`, `navigate`, `back`, `forward`, `stream`, `message`; this one has {}",
                 actions.len()
             ),
         ));
@@ -368,7 +397,50 @@ fn parse_step(j: &Json, i: usize) -> Result<Step, TraceError> {
             "`with` goes with `resolve`",
         ));
     }
+    if obj.contains_key("id") && actions[0] != "message" {
+        return Err(err(
+            "trace-bad-step",
+            format!("{at}.id"),
+            "`id` goes with `message`",
+        ));
+    }
     let action = match actions[0] {
+        "stream" => match obj["stream"].as_str() {
+            Some("open") => Action::Stream(StreamAct::Open),
+            Some("drop") => Action::Stream(StreamAct::Drop),
+            Some("refuse") => Action::Stream(StreamAct::Refuse),
+            _ => {
+                return Err(err(
+                    "trace-bad-step",
+                    format!("{at}.stream"),
+                    "`stream` is what the server does: \"open\", \"drop\" or \"refuse\"",
+                ));
+            }
+        },
+        "message" => {
+            let text = obj["message"].as_str().ok_or_else(|| {
+                err(
+                    "trace-bad-step",
+                    format!("{at}.message"),
+                    "`message` is the text of the message (a string)",
+                )
+            })?;
+            let id = match obj.get("id") {
+                None => None,
+                Some(Json::String(i)) if !i.contains(['\0', '\n', '\r']) => Some(i.clone()),
+                Some(_) => {
+                    return Err(err(
+                        "trace-bad-value",
+                        format!("{at}.id"),
+                        "`id` is a string with no NUL, newline or carriage return, as the event stream format allows",
+                    ));
+                }
+            };
+            Action::Message {
+                text: text.to_string(),
+                id,
+            }
+        }
         "event" => {
             let name = obj["event"].as_str().ok_or_else(|| {
                 err(

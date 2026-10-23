@@ -1,0 +1,916 @@
+{
+ "program": [
+  "component Feed {",
+  "    requires Network;",
+  "    state link: String = \"\";",
+  "    state log: String = \"\";",
+  "    subscribe Got \"/stream\" status Link;",
+  "    on Got(text) { log = log + text + \"|\"; }",
+  "    on Link(word) { link = word; }",
+  "    view { Column { Text { \"link={link} log={log}\" } } }",
+  "}",
+  "",
+  "component Page {",
+  "    state items: List[String] = [\"feed\"];",
+  "    on Remove { items = []; }",
+  "    view {",
+  "        Column {",
+  "            For { over: items as: i Feed { } }",
+  "            Button { label: \"Remove\" on: Remove }",
+  "        }",
+  "    }",
+  "}"
+ ],
+ "wire": [
+  {
+   "why": "lines end in LF",
+   "raw": "data: a\n\ndata: b\n\n",
+   "messages": [
+    "a",
+    "b"
+   ],
+   "last_id": null
+  },
+  {
+   "why": "lines end in CRLF",
+   "raw": "data: a\r\n\r\ndata: b\r\n\r\n",
+   "messages": [
+    "a",
+    "b"
+   ],
+   "last_id": null
+  },
+  {
+   "why": "lines end in CR alone",
+   "raw": "data: a\r\rdata: b\r\r",
+   "messages": [
+    "a",
+    "b"
+   ],
+   "last_id": null
+  },
+  {
+   "why": "the three line ends inside one message",
+   "raw": "data: a\r\ndata: b\ndata: c\rdata: d\n\n",
+   "messages": [
+    "a\nb\nc\nd"
+   ],
+   "last_id": null
+  },
+  {
+   "why": "lines end in CRLF and LF mixed",
+   "raw": "data: a\r\n\ndata: b\n\r\n",
+   "messages": [
+    "a",
+    "b"
+   ],
+   "last_id": null
+  },
+  {
+   "why": "a byte order mark at the start is dropped",
+   "raw": "﻿data: a\n\n",
+   "messages": [
+    "a"
+   ],
+   "last_id": null
+  },
+  {
+   "why": "a comment line is ignored, with or without a message around it",
+   "raw": ": hi\ndata: a\n\n: only a comment\n\n",
+   "messages": [
+    "a"
+   ],
+   "last_id": null
+  },
+  {
+   "why": "several data lines are joined with a newline; an empty data line adds an empty line",
+   "raw": "data: a\ndata: b\ndata:\ndata: c\n\n",
+   "messages": [
+    "a\nb\n\nc"
+   ],
+   "last_id": null
+  },
+  {
+   "why": "one space after the colon is dropped, no more, and none is needed",
+   "raw": "data:a\n\ndata:  two\n\ndata:\ttab\n\n",
+   "messages": [
+    "a",
+    " two",
+    "\ttab"
+   ],
+   "last_id": null
+  },
+  {
+   "why": "a line with no colon is a field with an empty value",
+   "raw": "data\n\n",
+   "messages": [
+    ""
+   ],
+   "last_id": null
+  },
+  {
+   "why": "the value may hold colons",
+   "raw": "data: a:b:c\n\n",
+   "messages": [
+    "a:b:c"
+   ],
+   "last_id": null
+  },
+  {
+   "why": "event and retry lines are read and ignored",
+   "raw": "event: tick\nretry: 10\ndata: a\n\n",
+   "messages": [
+    "a"
+   ],
+   "last_id": null
+  },
+  {
+   "why": "an unknown field is ignored",
+   "raw": "x-other: 1\ndata: a\n\n",
+   "messages": [
+    "a"
+   ],
+   "last_id": null
+  },
+  {
+   "why": "an incomplete event at the end of the stream is not delivered",
+   "raw": "data: a\n\ndata: b",
+   "messages": [
+    "a"
+   ],
+   "last_id": null
+  },
+  {
+   "why": "blank lines with no data are not messages",
+   "raw": "\n\n\ndata: a\n\n\n\n",
+   "messages": [
+    "a"
+   ],
+   "last_id": null
+  },
+  {
+   "why": "an id is remembered, with or without data in its event",
+   "raw": "id: 9\ndata: a\n\nid: 10\n\n",
+   "messages": [
+    "a"
+   ],
+   "last_id": "10"
+  },
+  {
+   "why": "an id with a NUL is ignored",
+   "raw": "id: 5\u0000\ndata: a\n\n",
+   "messages": [
+    "a"
+   ],
+   "last_id": null
+  },
+  {
+   "why": "an empty id forgets the id",
+   "raw": "id: 3\ndata: a\n\nid:\ndata: b\n\n",
+   "messages": [
+    "a",
+    "b"
+   ],
+   "last_id": null
+  },
+  {
+   "why": "the last id wins",
+   "raw": "id: 1\ndata: a\n\nid: 2\ndata: b\n\n",
+   "messages": [
+    "a",
+    "b"
+   ],
+   "last_id": "2"
+  },
+  {
+   "why": "non-ASCII text arrives whole, however the bytes were split",
+   "raw": "data: héllo 世界 😀\n\n",
+   "messages": [
+    "héllo 世界 😀"
+   ],
+   "last_id": null
+  },
+  {
+   "why": "a field name is case-sensitive",
+   "raw": "DATA: a\ndata: b\n\n",
+   "messages": [
+    "b"
+   ],
+   "last_id": null
+  },
+  {
+   "why": "a colon first makes the whole line a comment, whatever it says",
+   "raw": ":data: a\ndata: b\n\n",
+   "messages": [
+    "b"
+   ],
+   "last_id": null
+  }
+ ],
+ "cases": [
+  {
+   "why": "the page connects at mount and each message runs the message event with its data; several data lines are joined with a newline, an empty one is a message, an id is remembered and an empty id forgets it",
+   "steps": [
+    {
+     "do": "mount",
+     "link": "connecting",
+     "log": "",
+     "last_event_id": null
+    },
+    {
+     "do": "open",
+     "link": "open"
+    },
+    {
+     "do": "message",
+     "arg": "hello",
+     "link": "open",
+     "log": "hello|"
+    },
+    {
+     "do": "message",
+     "arg": "a\nb",
+     "id": "42",
+     "log": "hello|a\nb|",
+     "last_event_id": "42"
+    },
+    {
+     "do": "message",
+     "arg": "",
+     "log": "hello|a\nb||",
+     "last_event_id": "42"
+    },
+    {
+     "do": "message",
+     "arg": "x",
+     "id": "",
+     "log": "hello|a\nb||x|",
+     "last_event_id": null
+    }
+   ]
+  },
+  {
+   "why": "after a drop the page waits 1, 2, 4, 8, 16 and then 30 seconds for every later try; a connection that reached open starts the list again",
+   "steps": [
+    {
+     "do": "mount",
+     "link": "connecting"
+    },
+    {
+     "do": "drop",
+     "link": "retrying",
+     "retry_in_ms": 1000,
+     "attempt": 1
+    },
+    {
+     "do": "advance",
+     "ms": 999,
+     "link": "retrying",
+     "retry_in_ms": 1
+    },
+    {
+     "do": "advance",
+     "ms": 1,
+     "link": "connecting",
+     "retry_in_ms": null
+    },
+    {
+     "do": "drop",
+     "link": "retrying",
+     "retry_in_ms": 2000,
+     "attempt": 2
+    },
+    {
+     "do": "advance",
+     "ms": 1999,
+     "link": "retrying",
+     "retry_in_ms": 1
+    },
+    {
+     "do": "advance",
+     "ms": 1,
+     "link": "connecting",
+     "retry_in_ms": null
+    },
+    {
+     "do": "drop",
+     "link": "retrying",
+     "retry_in_ms": 4000,
+     "attempt": 3
+    },
+    {
+     "do": "advance",
+     "ms": 3999,
+     "link": "retrying",
+     "retry_in_ms": 1
+    },
+    {
+     "do": "advance",
+     "ms": 1,
+     "link": "connecting",
+     "retry_in_ms": null
+    },
+    {
+     "do": "drop",
+     "link": "retrying",
+     "retry_in_ms": 8000,
+     "attempt": 4
+    },
+    {
+     "do": "advance",
+     "ms": 7999,
+     "link": "retrying",
+     "retry_in_ms": 1
+    },
+    {
+     "do": "advance",
+     "ms": 1,
+     "link": "connecting",
+     "retry_in_ms": null
+    },
+    {
+     "do": "drop",
+     "link": "retrying",
+     "retry_in_ms": 16000,
+     "attempt": 5
+    },
+    {
+     "do": "advance",
+     "ms": 15999,
+     "link": "retrying",
+     "retry_in_ms": 1
+    },
+    {
+     "do": "advance",
+     "ms": 1,
+     "link": "connecting",
+     "retry_in_ms": null
+    },
+    {
+     "do": "drop",
+     "link": "retrying",
+     "retry_in_ms": 30000,
+     "attempt": 6
+    },
+    {
+     "do": "advance",
+     "ms": 29999,
+     "link": "retrying",
+     "retry_in_ms": 1
+    },
+    {
+     "do": "advance",
+     "ms": 1,
+     "link": "connecting",
+     "retry_in_ms": null
+    },
+    {
+     "do": "drop",
+     "link": "retrying",
+     "retry_in_ms": 30000,
+     "attempt": 7
+    },
+    {
+     "do": "advance",
+     "ms": 29999,
+     "link": "retrying",
+     "retry_in_ms": 1
+    },
+    {
+     "do": "advance",
+     "ms": 1,
+     "link": "connecting",
+     "retry_in_ms": null
+    },
+    {
+     "do": "open",
+     "link": "open",
+     "attempt": 0
+    },
+    {
+     "do": "drop",
+     "link": "retrying",
+     "retry_in_ms": 1000,
+     "attempt": 1
+    },
+    {
+     "do": "advance",
+     "ms": 999,
+     "link": "retrying",
+     "retry_in_ms": 1
+    },
+    {
+     "do": "advance",
+     "ms": 1,
+     "link": "connecting"
+    }
+   ]
+  },
+  {
+   "why": "an open connection that drops costs the first wait whatever happened before; a wait that is not over is not skipped by a later step",
+   "steps": [
+    {
+     "do": "mount",
+     "link": "connecting"
+    },
+    {
+     "do": "open",
+     "link": "open"
+    },
+    {
+     "do": "drop",
+     "link": "retrying",
+     "retry_in_ms": 1000
+    },
+    {
+     "do": "advance",
+     "ms": 400,
+     "link": "retrying",
+     "retry_in_ms": 600
+    },
+    {
+     "do": "advance",
+     "ms": 600,
+     "link": "connecting"
+    },
+    {
+     "do": "open",
+     "link": "open"
+    },
+    {
+     "do": "drop",
+     "link": "retrying",
+     "retry_in_ms": 1000,
+     "how": "reset"
+    }
+   ]
+  },
+  {
+   "why": "the id of the last message is sent as Last-Event-ID on the next connection; a message without an id leaves it; an empty id forgets it",
+   "steps": [
+    {
+     "do": "mount",
+     "link": "connecting",
+     "request_id": null
+    },
+    {
+     "do": "open",
+     "link": "open"
+    },
+    {
+     "do": "message",
+     "arg": "a",
+     "id": "7",
+     "log": "a|",
+     "last_event_id": "7"
+    },
+    {
+     "do": "drop",
+     "link": "retrying",
+     "last_event_id": "7"
+    },
+    {
+     "do": "advance",
+     "ms": 1000,
+     "link": "connecting",
+     "request_id": "7"
+    },
+    {
+     "do": "open",
+     "link": "open"
+    },
+    {
+     "do": "message",
+     "arg": "b",
+     "log": "a|b|",
+     "last_event_id": "7"
+    },
+    {
+     "do": "message",
+     "arg": "c",
+     "id": "8",
+     "log": "a|b|c|",
+     "last_event_id": "8"
+    },
+    {
+     "do": "drop",
+     "link": "retrying"
+    },
+    {
+     "do": "advance",
+     "ms": 1000,
+     "link": "connecting",
+     "request_id": "8"
+    },
+    {
+     "do": "open",
+     "link": "open"
+    },
+    {
+     "do": "message",
+     "arg": "d",
+     "id": "",
+     "log": "a|b|c|d|",
+     "last_event_id": null
+    },
+    {
+     "do": "drop",
+     "link": "retrying"
+    },
+    {
+     "do": "advance",
+     "ms": 1000,
+     "link": "connecting",
+     "request_id": null
+    }
+   ]
+  },
+  {
+   "why": "a status other than 200 ends the stream for good: failed, no retry, and neither hiding nor showing nor the clock changes it",
+   "steps": [
+    {
+     "do": "mount",
+     "link": "connecting",
+     "requests": 1
+    },
+    {
+     "do": "refuse",
+     "how": "500",
+     "link": "failed",
+     "requests": 1
+    },
+    {
+     "do": "advance",
+     "ms": 120000,
+     "link": "failed",
+     "requests": 1
+    },
+    {
+     "do": "hide",
+     "link": "failed"
+    },
+    {
+     "do": "show",
+     "link": "failed",
+     "requests": 1
+    },
+    {
+     "do": "advance",
+     "ms": 120000,
+     "link": "failed",
+     "requests": 1
+    }
+   ]
+  },
+  {
+   "why": "a content type other than text/event-stream ends the stream for good: failed, no retry, and neither hiding nor showing nor the clock changes it",
+   "steps": [
+    {
+     "do": "mount",
+     "link": "connecting",
+     "requests": 1
+    },
+    {
+     "do": "refuse",
+     "how": "type",
+     "link": "failed",
+     "requests": 1
+    },
+    {
+     "do": "advance",
+     "ms": 120000,
+     "link": "failed",
+     "requests": 1
+    },
+    {
+     "do": "hide",
+     "link": "failed"
+    },
+    {
+     "do": "show",
+     "link": "failed",
+     "requests": 1
+    },
+    {
+     "do": "advance",
+     "ms": 120000,
+     "link": "failed",
+     "requests": 1
+    }
+   ]
+  },
+  {
+   "why": "a redirect ends the stream for good: failed, no retry, and neither hiding nor showing nor the clock changes it",
+   "steps": [
+    {
+     "do": "mount",
+     "link": "connecting",
+     "requests": 1
+    },
+    {
+     "do": "refuse",
+     "how": "redirect",
+     "link": "failed",
+     "requests": 1
+    },
+    {
+     "do": "advance",
+     "ms": 120000,
+     "link": "failed",
+     "requests": 1
+    },
+    {
+     "do": "hide",
+     "link": "failed"
+    },
+    {
+     "do": "show",
+     "link": "failed",
+     "requests": 1
+    },
+    {
+     "do": "advance",
+     "ms": 120000,
+     "link": "failed",
+     "requests": 1
+    }
+   ]
+  },
+  {
+   "why": "a message of 65,536 characters is delivered; one of 65,537 fails the stream and is not delivered",
+   "steps": [
+    {
+     "do": "mount",
+     "link": "connecting"
+    },
+    {
+     "do": "open",
+     "link": "open"
+    },
+    {
+     "do": "message",
+     "arg": [
+      [
+       "a",
+       65536
+      ]
+     ],
+     "link": "open",
+     "log_len": 65537
+    },
+    {
+     "do": "message",
+     "arg": [
+      [
+       "a",
+       65537
+      ]
+     ],
+     "link": "failed",
+     "log_len": 65537,
+     "requests": 1
+    },
+    {
+     "do": "advance",
+     "ms": 120000,
+     "link": "failed",
+     "requests": 1
+    }
+   ]
+  },
+  {
+   "why": "the bound counts characters (UTF-16 units) of the joined data lines, newlines included",
+   "steps": [
+    {
+     "do": "mount",
+     "link": "connecting"
+    },
+    {
+     "do": "open",
+     "link": "open"
+    },
+    {
+     "do": "message",
+     "arg": [
+      [
+       "😀",
+       32768
+      ]
+     ],
+     "link": "open",
+     "log_len": 65537
+    },
+    {
+     "do": "message",
+     "arg": [
+      [
+       "😀",
+       32769
+      ]
+     ],
+     "link": "failed",
+     "log_len": 65537
+    }
+   ]
+  },
+  {
+   "why": "two lines that together pass the bound fail the stream like one long line",
+   "steps": [
+    {
+     "do": "mount",
+     "link": "connecting"
+    },
+    {
+     "do": "open",
+     "link": "open"
+    },
+    {
+     "do": "message",
+     "arg": [
+      [
+       "a",
+       40000
+      ],
+      [
+       "\n",
+       1
+      ],
+      [
+       "b",
+       25535
+      ]
+     ],
+     "link": "open",
+     "log_len": 65537
+    },
+    {
+     "do": "message",
+     "arg": [
+      [
+       "a",
+       40000
+      ],
+      [
+       "\n",
+       1
+      ],
+      [
+       "b",
+       25536
+      ]
+     ],
+     "link": "failed",
+     "log_len": 65537
+    }
+   ]
+  },
+  {
+   "why": "a hidden page closes the connection (paused) and a visible one connects at once, with the last id; nothing is lost that the server kept",
+   "steps": [
+    {
+     "do": "mount",
+     "link": "connecting"
+    },
+    {
+     "do": "open",
+     "link": "open"
+    },
+    {
+     "do": "message",
+     "arg": "a",
+     "id": "1",
+     "log": "a|",
+     "last_event_id": "1"
+    },
+    {
+     "do": "hide",
+     "link": "paused",
+     "closed": true
+    },
+    {
+     "do": "advance",
+     "ms": 60000,
+     "link": "paused",
+     "requests": 1
+    },
+    {
+     "do": "show",
+     "link": "connecting",
+     "request_id": "1",
+     "requests": 2
+    },
+    {
+     "do": "open",
+     "link": "open"
+    },
+    {
+     "do": "message",
+     "arg": "b",
+     "id": "2",
+     "log": "a|b|",
+     "last_event_id": "2"
+    }
+   ]
+  },
+  {
+   "why": "hidden while a retry is waiting: the retry is cancelled; shown, the page connects at once, and a wait that was cut short is not owed",
+   "steps": [
+    {
+     "do": "mount",
+     "link": "connecting"
+    },
+    {
+     "do": "open",
+     "link": "open"
+    },
+    {
+     "do": "drop",
+     "link": "retrying",
+     "retry_in_ms": 1000
+    },
+    {
+     "do": "advance",
+     "ms": 500,
+     "link": "retrying",
+     "retry_in_ms": 500
+    },
+    {
+     "do": "hide",
+     "link": "paused"
+    },
+    {
+     "do": "advance",
+     "ms": 5000,
+     "link": "paused",
+     "requests": 1
+    },
+    {
+     "do": "show",
+     "link": "connecting",
+     "requests": 2
+    },
+    {
+     "do": "drop",
+     "link": "retrying",
+     "retry_in_ms": 2000
+    }
+   ]
+  },
+  {
+   "why": "hidden while the connection is being made: the request is abandoned; shown, it is made again",
+   "steps": [
+    {
+     "do": "mount",
+     "link": "connecting",
+     "requests": 1
+    },
+    {
+     "do": "hide",
+     "link": "paused",
+     "closed": true
+    },
+    {
+     "do": "show",
+     "link": "connecting",
+     "requests": 2
+    },
+    {
+     "do": "open",
+     "link": "open"
+    },
+    {
+     "do": "message",
+     "arg": "m",
+     "log": "m|"
+    }
+   ]
+  },
+  {
+   "why": "disposal ends the connection, and the clock starts nothing afterwards",
+   "steps": [
+    {
+     "do": "mount",
+     "link": "connecting"
+    },
+    {
+     "do": "open",
+     "link": "open"
+    },
+    {
+     "do": "message",
+     "arg": "a",
+     "log": "a|"
+    },
+    {
+     "do": "dispose",
+     "closed": true
+    },
+    {
+     "do": "advance",
+     "ms": 120000,
+     "requests": 1
+    }
+   ]
+  }
+ ]
+}

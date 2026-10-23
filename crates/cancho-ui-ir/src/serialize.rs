@@ -94,16 +94,30 @@ impl Serialize for IrSchedule {
     fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
         let every = matches!(self.kind, IrScheduleKind::Every(_));
-        let mut s = ser.serialize_struct("IrSchedule", if every { 4 } else { 3 })?;
+        let extra = if every {
+            1
+        } else {
+            self.stream
+                .as_ref()
+                .map_or(0, |t| 1 + usize::from(t.status.is_some()))
+        };
+        let mut s = ser.serialize_struct("IrSchedule", 3 + extra)?;
         s.serialize_field(
             "kind",
             match self.kind {
                 IrScheduleKind::Start => "start",
                 IrScheduleKind::Every(_) => "every",
                 IrScheduleKind::Route => "route",
+                IrScheduleKind::Subscribe => "subscribe",
             },
         )?;
         s.serialize_field("event", &self.event)?;
+        if let Some(t) = &self.stream {
+            s.serialize_field("url", &t.url)?;
+            if let Some(status) = &t.status {
+                s.serialize_field("status", status)?;
+            }
+        }
         if let IrScheduleKind::Every(ms) = self.kind {
             s.serialize_field("period_ms", &ms)?;
         }

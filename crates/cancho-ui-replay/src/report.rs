@@ -146,6 +146,10 @@ pub struct StepReport {
     /// The charts in the page after the step, each with its text alternative (docs/charts.md section 4); absent when there are none.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub charts: Vec<Json>,
+    /// The stream after the step (docs/streams.md section 4): `status`, `attempt`, `retry_in_ms` and `last_event_id`; absent for a
+    /// component that does not `subscribe`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stream: Option<Json>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -254,6 +258,8 @@ fn render_human_bounded(r: &TestReport, bound: Option<usize>) -> String {
             "hide" => "hide".to_string(),
             "show" => "show".to_string(),
             "navigate" => format!("navigate {}", compact(&s.detail)),
+            "stream" => format!("stream {}", compact(&s.detail)),
+            "message" => format!("message {}", shown(&s.detail, bound)),
             "back" => "back".to_string(),
             "forward" => "forward".to_string(),
             _ => "dispose".to_string(),
@@ -281,6 +287,17 @@ fn render_human_bounded(r: &TestReport, bound: Option<usize>) -> String {
         }
         for p in &s.routes {
             detail.push(format!("route {}", shown(&Json::String(p.clone()), bound)));
+        }
+        if let Some(st) = &s.stream {
+            let status = st.get("status").and_then(Json::as_str).unwrap_or("?");
+            if s.action == "stream"
+                || s.action == "message"
+                || s.action == "hide"
+                || s.action == "show"
+                || s.action == "advance"
+            {
+                detail.push(format!("stream={status}"));
+            }
         }
         if let (Some(url), true) = (&s.url, !s.routes.is_empty() || s.action == "navigate") {
             detail.push(format!("url={url}"));

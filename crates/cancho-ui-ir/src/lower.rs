@@ -248,6 +248,7 @@ fn lower_component(c: &Component, next_id: &mut u32) -> Result<IrComponent, Lowe
         crate::conditions::check_block(&state, &ir_body)?;
     }
     reachable_effects.extend(crate::routing::route_effects(&schedules));
+    reachable_effects.extend(crate::stream::stream_effects(&schedules));
     let (view_body, view_effects) = lower_view_node_with_effects(&c.view.body)?;
     reachable_effects.extend(view_effects);
     let view = IrViewBlock {
@@ -280,10 +281,15 @@ fn lower_schedules(c: &Component) -> Result<Vec<IrSchedule>, LowerError> {
             out.push(route);
             continue;
         }
+        if s.kind == ScheduleKind::Subscribe {
+            let stream = crate::stream::lower_subscribe(c, s, &out)?;
+            out.push(stream);
+            continue;
+        }
         let text = match s.kind {
             ScheduleKind::Start => format!("start {}", s.event),
             ScheduleKind::Every(ms) => format!("every {ms} {}", s.event),
-            ScheduleKind::Route => String::new(),
+            ScheduleKind::Route | ScheduleKind::Subscribe => String::new(),
         };
         let Some(handler) = c.events.iter().find(|e| e.name == s.event) else {
             return Err(LowerError::ScheduleEventUnknown {
@@ -302,7 +308,9 @@ fn lower_schedules(c: &Component) -> Result<Vec<IrSchedule>, LowerError> {
             });
         }
         let kind = match s.kind {
-            ScheduleKind::Start | ScheduleKind::Route => IrScheduleKind::Start,
+            ScheduleKind::Start | ScheduleKind::Route | ScheduleKind::Subscribe => {
+                IrScheduleKind::Start
+            }
             ScheduleKind::Every(ms) => {
                 if !(MIN_PERIOD_MS..=MAX_PERIOD_MS).contains(&ms) {
                     return Err(LowerError::SchedulePeriodInvalid {
@@ -332,6 +340,7 @@ fn lower_schedules(c: &Component) -> Result<Vec<IrSchedule>, LowerError> {
         out.push(IrSchedule {
             kind,
             event: s.event.clone(),
+            stream: None,
             span: s.span,
         });
     }
@@ -1422,7 +1431,10 @@ fn check_capabilities(ir: &IrFile) -> Result<(), LowerError> {
             }
             // A write reaches this page's own origin only (sections 17 and 21): no host is ever allowed for it.
             let is_post = eff.capability == "NetworkWrite";
-            if (eff.path == ["net", "get"] || eff.path == ["net", "fetch"] || is_post)
+            if (eff.path == ["net", "get"]
+                || eff.path == ["net", "fetch"]
+                || eff.path == ["subscribe"]
+                || is_post)
                 && let Some(url) = &eff.literal_arg
                 && let Some(host) = literal_host(url)
                 && (is_post || !allowed.contains(&host))
@@ -1471,15 +1483,16 @@ fn check_capabilities(ir: &IrFile) -> Result<(), LowerError> {
         }
         for req in &c.requires {
             // A credential is used by any request the component can make (`net.get`, `net.fetch`, `net.post`, `net.put`,
-            // `net.delete`).
+            // `net.delete`, and the connection of a `subscribe`).
             let used = if req.name == "Credential" {
                 c.reachable_effects.iter().any(|e| {
-                    e.path.len() == 2
-                        && e.path[0] == "net"
-                        && matches!(
-                            e.path[1].as_str(),
-                            "get" | "fetch" | "post" | "put" | "delete"
-                        )
+                    e.path == ["subscribe"]
+                        || e.path.len() == 2
+                            && e.path[0] == "net"
+                            && matches!(
+                                e.path[1].as_str(),
+                                "get" | "fetch" | "post" | "put" | "delete"
+                            )
                 })
             } else {
                 c.reachable_effects.iter().any(|e| e.capability == req.name)

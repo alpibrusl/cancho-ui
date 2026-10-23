@@ -11,6 +11,7 @@ use cancho_ui_syntax::span::Span;
 
 use crate::eval::{Ctx, Fault, Journal, Stop, eval, span_of};
 use crate::router::{MAX_ROUTE_EVENTS_PER_STEP, Router};
+use crate::stream::StreamState;
 use crate::value::{Effect, Req, Value};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -207,6 +208,8 @@ pub struct Machine<'a> {
     started: bool,
     /// Is the page visible? While it is not, no `every` tick runs (docs/schedules.md section 11).
     pub visible: bool,
+    /// The connection of `subscribe` (docs/streams.md), when the component declares one.
+    pub(crate) stream: Option<StreamState>,
 }
 
 impl<'a> Machine<'a> {
@@ -275,11 +278,26 @@ impl<'a> Machine<'a> {
                             next: clock + f64::from(ms),
                             span: s.span,
                         }),
-                    IrScheduleKind::Start | IrScheduleKind::Route => None,
+                    IrScheduleKind::Start | IrScheduleKind::Route | IrScheduleKind::Subscribe => {
+                        None
+                    }
                 })
                 .collect(),
             started: false,
             visible: true,
+            stream: comp
+                .schedules
+                .iter()
+                .find(|s| s.kind == IrScheduleKind::Subscribe)
+                .and_then(|s| {
+                    let message = comp.events.iter().position(|e| e.name == s.event)?;
+                    let status = s
+                        .stream
+                        .as_ref()
+                        .and_then(|t| t.status.as_ref())
+                        .and_then(|name| comp.events.iter().position(|e| &e.name == name));
+                    Some(StreamState::new(message, status))
+                }),
         })
     }
 
@@ -304,6 +322,7 @@ impl<'a> Machine<'a> {
                     self.routes.push(self.router.current().to_string());
                     self.dispatch(h, vec![path], fx)?;
                 }
+                IrScheduleKind::Subscribe => self.stream_start(fx)?,
                 IrScheduleKind::Every(_) => {}
             }
         }
@@ -383,7 +402,7 @@ impl<'a> Machine<'a> {
 
     /// Is a run of handler `h` suspended on a request that is still current? A tick is skipped then
     /// (docs/schedules.md section 4, rule 3).
-    fn in_flight(&self, h: usize) -> bool {
+    pub(crate) fn in_flight(&self, h: usize) -> bool {
         self.requests.iter().any(|r| {
             r.status == Status::Pending
                 && !r.superseded
@@ -927,6 +946,21 @@ impl<'a> Machine<'a> {
                     .min_by(|a, b| a.1.next.total_cmp(&b.1.next).then(a.0.cmp(&b.0)))
                     .map(|(i, t)| (t.next, i))
             };
+            // A stream's retry that falls due strictly before every sleep and tick goes first; at the same instant they run
+            // first (docs/streams.md section 4).
+            if let Some(due) = self.stream_retry_due().filter(|d| *d <= target) {
+                let others = [sleep.map(|s| s.0), tick.map(|t| t.0)]
+                    .into_iter()
+                    .flatten()
+                    .fold(f64::INFINITY, f64::min);
+                if due < others {
+                    if due > self.clock {
+                        self.clock = due;
+                    }
+                    self.stream_retry(fx)?;
+                    continue;
+                }
+            }
             // A sleep goes first when no tick is due, or when it is due strictly before the next tick. Choosing it here, then
             // matching on the tick alone, leaves no combination of (sleep, tick) without an arm.
             let first_sleep = match (sleep, tick) {
@@ -976,10 +1010,14 @@ impl<'a> Machine<'a> {
         Ok(Outcome::Ok)
     }
 
-    /// The page is hidden: no tick runs until it is shown again (docs/schedules.md section 11, rule 8).
-    pub fn hide(&mut self) -> Outcome {
+    /// The page is hidden: no tick runs until it is shown again (docs/schedules.md section 11, rule 8), and a stream closes its
+    /// connection (docs/streams.md section 3).
+    pub fn hide(&mut self, fx: &mut StepEffects) -> Result<Outcome, Fault> {
         self.visible = false;
-        Outcome::Ok
+        if !self.disposed {
+            self.stream_hide(fx)?;
+        }
+        Ok(Outcome::Ok)
     }
 
     /// The page is visible again: each `every` whose tick fell due while it was hidden runs once now, in the order
@@ -1006,6 +1044,8 @@ impl<'a> Machine<'a> {
                 }
             }
         }
+        // A paused stream connects at once, after the ticks (docs/streams.md section 3).
+        self.stream_show(fx)?;
         Ok(Outcome::Ok)
     }
 

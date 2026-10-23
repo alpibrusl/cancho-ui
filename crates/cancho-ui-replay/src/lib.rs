@@ -10,6 +10,7 @@ mod eval;
 mod machine;
 mod report;
 mod router;
+mod stream;
 mod trace;
 mod value;
 
@@ -20,7 +21,7 @@ use cancho_ui_syntax::span::Span;
 use serde_json::Value as Json;
 
 use machine::{Machine, Status, StepEffects};
-use trace::{Action, Step, Trace, TraceError, parse_trace};
+use trace::{Action, Step, StreamAct, Trace, TraceError, parse_trace};
 use value::{Value, num_json, subset};
 
 pub use eval::{
@@ -451,6 +452,88 @@ fn run_step(
             }
             (key, Json::Null, m.travel(forward, &mut fx))
         }
+        Action::Stream(act) => {
+            if m.disposed {
+                return Err(stop(
+                    "trace-event-after-dispose",
+                    "stream",
+                    "`stream` after `dispose`: the connection is closed".to_string(),
+                ));
+            }
+            let Some(status) = m.stream_status() else {
+                return Err(stop(
+                    "trace-stream-state",
+                    "stream",
+                    format!(
+                        "component `{}` declares no `subscribe`, so no server answers it",
+                        comp.name
+                    ),
+                ));
+            };
+            use stream::StreamStatus as S;
+            let allowed = match act {
+                StreamAct::Open | StreamAct::Refuse => status == S::Connecting,
+                StreamAct::Drop => matches!(status, S::Connecting | S::Open),
+            };
+            if !allowed {
+                return Err(stop(
+                    "trace-stream-state",
+                    "stream",
+                    format!(
+                        "`stream: \"{}\"` while the stream is {}: {}",
+                        act.as_str(),
+                        status.as_str(),
+                        match act {
+                            StreamAct::Open | StreamAct::Refuse =>
+                                "the page is not waiting for an answer (it is `connecting` only after mount, a retry or a `show`)",
+                            StreamAct::Drop =>
+                                "there is no connection to end (a connection being made or open can drop)",
+                        }
+                    ),
+                ));
+            }
+            let out = match act {
+                StreamAct::Open => m.stream_open(&mut fx),
+                StreamAct::Drop => m.stream_drop(&mut fx),
+                StreamAct::Refuse => m.stream_refuse(&mut fx),
+            };
+            ("stream", Json::String(act.as_str().to_string()), out)
+        }
+        Action::Message { text, id } => {
+            if m.disposed {
+                return Err(stop(
+                    "trace-event-after-dispose",
+                    "message",
+                    "`message` after `dispose`: the connection is closed".to_string(),
+                ));
+            }
+            match m.stream_status() {
+                None => {
+                    return Err(stop(
+                        "trace-stream-state",
+                        "message",
+                        format!(
+                            "component `{}` declares no `subscribe`, so no message can arrive",
+                            comp.name
+                        ),
+                    ));
+                }
+                Some(stream::StreamStatus::Open) => {}
+                Some(other) => {
+                    return Err(stop(
+                        "trace-stream-state",
+                        "message",
+                        format!(
+                            "a message while the stream is {}: only an open stream receives one",
+                            other.as_str()
+                        ),
+                    ));
+                }
+            }
+            let detail = Json::String(text.clone());
+            let out = m.stream_message(text, id.as_deref(), &mut fx);
+            ("message", detail, out)
+        }
         Action::Dispose => ("dispose", Json::Null, Ok(m.dispose())),
         Action::Hide => {
             if !m.visible {
@@ -460,7 +543,7 @@ fn run_step(
                     "the page is already hidden; the browser fires `visibilitychange` only when the state changes".to_string(),
                 ));
             }
-            ("hide", Json::Null, Ok(m.hide()))
+            ("hide", Json::Null, m.hide(&mut fx))
         }
         Action::Show => {
             if m.visible {
@@ -587,6 +670,7 @@ fn run_step(
         url: routes_used(comp).then(|| m.router.current().to_string()),
         credentials: credential_name(comp).map(|_| m.credentials.clone()),
         charts: m.charts(),
+        stream: m.stream_report(),
         history: routes_used(comp).then(|| {
             serde_json::json!({
                 "entries": m.router.entries,

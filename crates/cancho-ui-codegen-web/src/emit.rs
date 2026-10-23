@@ -84,6 +84,7 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
     let mut any_net_delete = false;
     let mut any_location = false;
     let mut any_router = false;
+    let mut any_stream = false;
     let mut any_storage = false;
     let mut any_cancel = false;
     for c in &ir.components {
@@ -91,7 +92,9 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
             if e.capability == "Clock" {
                 any_clock = true;
             }
-            if e.capability == "Network"
+            if e.capability == "Network" && e.path == ["subscribe"] {
+                any_stream = true;
+            } else if e.capability == "Network"
                 && e.path.last().is_some_and(|f| f == "get" || f == "fetch")
             {
                 any_net_get = true;
@@ -153,12 +156,17 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
         .components
         .iter()
         .any(|c| c.requires.iter().any(|r| r.name == "Credential"));
-    if any_net_get || any_net_post || any_net_put || any_net_delete || any_credential {
+    if any_net_get || any_net_post || any_net_put || any_net_delete || any_credential || any_stream
+    {
         out.push_str(CREDENTIAL_ADAPTER_JS);
         out.push('\n');
     }
     if any_credential {
         out.push_str("let __cui_cur_creds = null;\n");
+        out.push('\n');
+    }
+    if any_stream {
+        out.push_str(&crate::stream::adapter_js());
         out.push('\n');
     }
     if any_net_get {
@@ -749,6 +757,21 @@ fn emit_component(
                     s.event
                 ));
             }
+            // docs/streams.md: the connection starts after the first render, in the order written; its status events and
+            // its messages run the handlers.
+            IrScheduleKind::Subscribe => {
+                if let Some(t) = &s.stream {
+                    let status = match &t.status {
+                        Some(h) => format!("function (w) {{ __on_{h}(w); }}"),
+                        None => "null".to_string(),
+                    };
+                    out.push_str(&format!(
+                        "        const __cui_stream = __cui_stream_new({{ url: {}, hosts: __cui_net_hosts, cred: __cui_cred, onMessage: function (t) {{ __on_{}(t); }}, onStatus: {status} }});\n        __cui_stream.start();\n",
+                        js_string(&t.url),
+                        s.event
+                    ));
+                }
+            }
             IrScheduleKind::Every(ms) => {
                 out.push_str(&format!(
                     "        __cui_every.push({{ ms: {1}, next: Date.now() + {1}, o: null, run: function () {{ if (__cui_busy.{0} === 0) {{ __on_{0}(); }} }} }});\n",
@@ -771,6 +794,25 @@ fn emit_component(
             "window.addEventListener('pagehide', __cui_pagehide);",
             "window.addEventListener('pageshow', __cui_pageshow);",
             "if (__cui_active) { __cui_every.forEach(__cui_arm); }",
+        ] {
+            out.push_str("        ");
+            out.push_str(line);
+            out.push('\n');
+        }
+    }
+
+    // docs/streams.md: a hidden page closes the connection and a visible one opens it at once, after the `every` handlers above.
+    if c.schedules
+        .iter()
+        .any(|s| s.kind == IrScheduleKind::Subscribe)
+    {
+        for line in [
+            "function __cui_stream_vis() { if (document.visibilityState === 'hidden') { __cui_stream.pause(); } else { __cui_stream.resume(); } }",
+            "function __cui_stream_pagehide() { __cui_stream.pause(); }",
+            "function __cui_stream_pageshow(e) { if (e.persisted) { __cui_stream_vis(); } }",
+            "document.addEventListener('visibilitychange', __cui_stream_vis);",
+            "window.addEventListener('pagehide', __cui_stream_pagehide);",
+            "window.addEventListener('pageshow', __cui_stream_pageshow);",
         ] {
             out.push_str("        ");
             out.push_str(line);
@@ -827,6 +869,21 @@ fn emit_component(
                 fields.push_str(
                     "                window.removeEventListener('hashchange', __cui_hash);\n",
                 );
+            }
+            if c.schedules
+                .iter()
+                .any(|s| s.kind == IrScheduleKind::Subscribe)
+            {
+                for line in [
+                    "__cui_stream.dispose();",
+                    "document.removeEventListener('visibilitychange', __cui_stream_vis);",
+                    "window.removeEventListener('pagehide', __cui_stream_pagehide);",
+                    "window.removeEventListener('pageshow', __cui_stream_pageshow);",
+                ] {
+                    fields.push_str("                ");
+                    fields.push_str(line);
+                    fields.push('\n');
+                }
             }
             if !ticked.is_empty() {
                 for line in [

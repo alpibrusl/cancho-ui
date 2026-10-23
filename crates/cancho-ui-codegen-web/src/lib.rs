@@ -18,6 +18,7 @@ mod controls;
 pub mod emit;
 mod expr;
 mod lists;
+mod stream;
 mod view;
 
 pub use emit::{EmitOptions, emit_module, emit_module_with, module_for_file};
