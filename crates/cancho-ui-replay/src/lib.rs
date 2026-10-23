@@ -340,6 +340,19 @@ fn run_step(
                     ),
                 ));
             }
+            // A file field gives its event the text of a file it read, or the reason it did not; a trace that gives another describes a
+            // page that does not exist (docs/file-upload.md section 3).
+            if let (Some(Value::Str(given)), Some(specs)) = (params.first(), m.file_specs(name))
+                && let Err(why) = cancho_ui_ir::file_field::check_value(given, &specs)
+            {
+                return Err(stop(
+                    "trace-value-not-a-file",
+                    "params",
+                    format!(
+                        "`{name}` is fired only by a FileField, and the step's value is not one it gives: {why}"
+                    ),
+                ));
+            }
             let detail = serde_json::json!({
                 "name": name,
                 "params": params.iter().map(Value::to_json).collect::<Vec<_>>(),

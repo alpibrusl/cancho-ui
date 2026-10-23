@@ -268,7 +268,7 @@ pub(crate) fn emit_view_node(
             accessibility,
             bindings,
             children,
-            span: _,
+            span,
         } => {
             let id = *next_id;
             *next_id += 1;
@@ -448,6 +448,11 @@ pub(crate) fn emit_view_node(
             let mut options_expr: Option<String> = None;
             let mut select_handler: Option<String> = None;
             let mut button_label: Option<String> = None;
+            // `accept:`, `max_bytes:` and `on:` of a `FileField` (docs/file-upload.md): the list the page enforces, the size it reads at
+            // most, the event told the chosen file.
+            let mut file_accept: Option<String> = None;
+            let mut file_max: i64 = cancho_ui_ir::file_field::MAX_BYTES;
+            let mut file_handler: Option<String> = None;
             // Tier 13: on a component instance, `Const` bindings
             // are *properties* — constant initial values for the
             // child's state fields. They go into the mount call's
@@ -502,6 +507,20 @@ pub(crate) fn emit_view_node(
                     }
                     IrBindingValue::StateRef(name) if b.key == "error" => {
                         field_error = Some(name.clone());
+                    }
+                    IrBindingValue::Const { expr, .. } if b.key == "max_bytes" => {
+                        if let IrExpr::IntLit { value, .. } = **expr {
+                            file_max = value;
+                        }
+                    }
+                    IrBindingValue::String(s) if b.key == "accept" => {
+                        file_accept = Some(s.clone());
+                        out.push_str(&format!(
+                            "{0}{1}.setAttribute('accept', {2});\n",
+                            indent,
+                            var,
+                            js_string(s)
+                        ));
                     }
                     IrBindingValue::Const { expr, .. } if b.key == "to" => {
                         // A `NavLink` points at a route of this page: the fragment, always, so it cannot name another
@@ -594,6 +613,8 @@ pub(crate) fn emit_view_node(
                                 change_handler = Some(name.clone());
                             } else if matches!(kind, IrElementKind::Select) {
                                 select_handler = Some(name.clone());
+                            } else if matches!(kind, IrElementKind::FileField) {
+                                file_handler = Some(name.clone());
                             } else {
                                 out.push_str(&format!(
                                     "{0}// on: {1} on a non-button/non-textfield primitive (Phase 2+)\n",
@@ -789,6 +810,23 @@ pub(crate) fn emit_view_node(
                 }
             }
 
+            // A file field is an `<input type="file">`. The page draws itself again from nothing at every render, which empties a file input
+            // (measured), so the chosen files are kept by the place of the field in the source and put back (docs/file-upload.md section 2).
+            if matches!(kind, IrElementKind::FileField) {
+                let key = format!("{}:{}", span.start.line, span.start.column);
+                out.push_str(&format!(
+                    "{0}{1}.setAttribute('type', 'file');\n{0}__cui_file_restore(root, \"{2}\", {1});\n",
+                    indent, var, key
+                ));
+                if let Some(event) = &file_handler {
+                    let accept = file_accept.as_deref().map_or("null".to_string(), js_string);
+                    out.push_str(&format!(
+                        "{0}{1}.addEventListener('change', function (e) {{ __cui_file_pick(root, \"{2}\", e.target, {3}, {4}, function (v) {{ __on_{5}(v); }}); }});\n",
+                        indent, var, key, file_max, accept, event
+                    ));
+                }
+            }
+
             // A checkbox is an `<input type="checkbox">` drawn from its `Bool`.
             if matches!(kind, IrElementKind::Checkbox) {
                 out.push_str(&format!(
@@ -805,7 +843,9 @@ pub(crate) fn emit_view_node(
 
             // Append to parent. A field with a label is drawn inside a `<label>` that shows it
             // (docs/presentation.md section 1); the field keeps its `aria-label`.
-            let field_label = if kind.is_field() || matches!(kind, IrElementKind::Select) {
+            let field_label = if kind.is_field()
+                || matches!(kind, IrElementKind::Select | IrElementKind::FileField)
+            {
                 accessibility
                     .label
                     .as_ref()

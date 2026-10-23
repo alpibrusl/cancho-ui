@@ -246,6 +246,8 @@ pub enum ElementKind {
     Checkbox,
     /// A choice of one string from a list (docs/controls.md section 10).
     Select,
+    /// A file picker whose chosen file reaches the program as one JSON `String` (docs/file-upload.md).
+    FileField,
     /// A link to another route of this page: `NavLink { label: "Item" to: "/items/3" }` (docs/routing.md section 4).
     NavLink,
     Named(String),

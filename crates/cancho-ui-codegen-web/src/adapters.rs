@@ -574,3 +574,44 @@ function __cui_router_replace(p) {
     return true;
 }
 "#;
+
+/// The `FileField` adapter (docs/file-upload.md): the chosen file as one JSON text. `accept_matches` is the page's copy of
+/// `cancho_ui_ir::file_field::accept_matches`; `tests/file_corpus.json` is run against both.
+pub(crate) const FILE_ADAPTER_JS: &str = r#"// Platform adapter: FileField (docs/file-upload.md). The page is redrawn from nothing at every render, which empties a file input,
+// so the chosen FileList is kept on the component's root by the place of the field in the source and put back into the new input.
+function __cui_file_restore(root, key, input) {
+    const kept = root.__cui_files && root.__cui_files[key];
+    if (kept && kept.length) { try { input.files = kept; } catch (e) { /* the browser refused: the field shows no file */ } }
+}
+function __cui_file_matches(accept, name, type) {
+    const n = String(name).toLowerCase(), t = String(type).toLowerCase();
+    return accept.split(',').some(function (tok) {
+        tok = tok.toLowerCase();
+        if (tok.charAt(0) === '.') { return n.length >= tok.length && n.slice(n.length - tok.length) === tok; }
+        if (tok.slice(-2) === '/*') { return t.indexOf('/') !== -1 && t.split('/')[0] === tok.slice(0, -2); }
+        return t === tok;
+    });
+}
+// Tell `deliver` the chosen file: {"name","size","type","text"} for a file the page could read, {"name","size","type","error"} for one it
+// would not (too large: not read; not text: the bytes are not UTF-8; not an accepted type; unreadable). Choosing nothing (cancelling the
+// chooser) tells nothing and keeps the earlier choice.
+function __cui_file_pick(root, key, input, max, accept, deliver) {
+    const f = input.files && input.files[0];
+    if (!f) { return; }
+    (root.__cui_files = root.__cui_files || {})[key] = input.files;
+    const seq = ((root.__cui_file_seq = root.__cui_file_seq || {})[key] = (root.__cui_file_seq[key] || 0) + 1);
+    const tell = function (extra) {
+        if (root.__cui_file_seq[key] !== seq) { return; } // a newer choice has replaced this one
+        const v = { name: f.name, size: f.size, type: f.type };
+        for (const k in extra) { v[k] = extra[k]; }
+        deliver(JSON.stringify(v));
+    };
+    if (accept !== null && !__cui_file_matches(accept, f.name, f.type)) { tell({ error: 'not an accepted type' }); return; }
+    if (f.size > max) { tell({ error: 'too large' }); return; }
+    f.arrayBuffer().then(function (buf) {
+        let text;
+        try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch (e) { tell({ error: 'not text' }); return; }
+        tell({ text: text });
+    }, function () { tell({ error: 'unreadable' }); });
+}
+"#;

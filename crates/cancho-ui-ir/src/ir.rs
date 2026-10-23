@@ -487,6 +487,9 @@ pub enum IrElementKind {
     /// `Select { label: .. options: list value: field on: Pick }` (docs/controls.md section 10): a choice of one string from a
     /// list, a `<select>`.
     Select,
+    /// `FileField { label: .. accept: ".txt" max_bytes: 1000 on: Picked }` (docs/file-upload.md): a file picker, an
+    /// `<input type="file">`; the chosen file reaches the handler as one JSON `String`.
+    FileField,
     /// `NavLink { label: .. to: path }` (docs/routing.md section 4): a link to a route of this page, an `<a href="#path">`.
     NavLink,
     /// `Table { .. }` (docs/presentation.md section 4) and what lowering makes of its descendants: a `Row` of a table is
@@ -510,6 +513,7 @@ impl IrElementKind {
             IrElementKind::TextArea => "textarea",
             IrElementKind::Checkbox => "input",
             IrElementKind::Select => "select",
+            IrElementKind::FileField => "input",
             IrElementKind::NavLink => "a",
             IrElementKind::Table => "table",
             IrElementKind::TableRow => "tr",
@@ -531,6 +535,7 @@ impl IrElementKind {
             IrElementKind::Button
                 | IrElementKind::Checkbox
                 | IrElementKind::Select
+                | IrElementKind::FileField
                 | IrElementKind::NavLink
         ) || self.is_field()
     }

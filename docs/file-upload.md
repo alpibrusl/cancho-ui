@@ -1,6 +1,6 @@
 # Choosing a file and sending it: `FileField` (issue #79)
 
-> **Status: DESIGN** (this PR is the note alone; the build follows). Written 2026-10-23 before the code ([`CONTRIBUTING.md`](../CONTRIBUTING.md)
+> **Status: BUILT** (design in #123; section 7 says what the build found and corrected). Written 2026-10-23 before the code ([`CONTRIBUTING.md`](../CONTRIBUTING.md)
 > section 1). Numbers measured in Chromium (Playwright, `Pixel 7` profile, files set through the browser's file chooser) on main at 30df5cc.
 
 ## 1. What exists
@@ -61,3 +61,21 @@ check, no `accept` check, the selection lost at a redraw, the path given, the na
 
 Binary files and multipart (option B above); several files; drag and drop (#80); camera capture; progress and cancellation of a big upload; files over 1 MiB; reading a file as anything but UTF-8 text; a `FileField` in
 a `For`; re-choosing the same file by a real chooser (`change` does not fire when the selection is unchanged; the harness's chooser always fires it, so this is not measured); a screen reader; iOS and a real phone.
+
+## 7. Built (2026-10-23), and what the build found
+
+* **Built.** `FileField` in the language, IR (`IrElementKind::FileField`, JSON name `FileField`), replay and the page; `crates/cancho-ui-ir/src/file_field.rs` (the limits, `accept` validation and matching, and
+  `check_value`, which replay uses and whose rules the page's adapter mirrors); the adapter `FILE_ADAPTER_JS` (emitted only for a program with a `FileField`); `examples/upload` and its trace; the shared corpus
+  `tests/file_corpus.json` (16 files, 15 refused values); `crates/cancho-ui/tests/file.rs` (13 tests) and 3 unit tests; `scripts/check-file.js` (Chromium); sixteen deliberate breaks (`scripts/breaks/file.json`), each caught.
+  The tags of section 5 are in `spec/diagnostics/README.md`; a gallery demo ("Choosing a file", with Send reporting the refusal a static site gives).
+* **Checked in Chromium.** The handler is told exactly the corpus' JSON for each file (a plain file, an empty one, a BOM dropped, exactly `max_bytes`, one byte over, bytes that are not UTF-8, a PNG, `text/csv` by type
+  and by an extension in capitals, a name with quotes and spaces, a non-ASCII name, a name with no extension judged by its type, an unknown type, the type judged before the size and the size before the bytes);
+  the chosen file is in the rebuilt input after a redraw and the redraw tells the handler nothing; clearing the chooser tells nothing and the earlier choice is back at the next redraw; `examples/upload` posts a body that
+  is byte for byte `JSON.stringify([name, text])` with `Content-Type: application/json`; the default cap reads 1,048,576 bytes and refuses 1,048,577; the control is a `button` named by its label, the label is drawn above it,
+  it is at least 44 px high, the keyboard reaches it, and `disabled:` disables it.
+* **Found while building.**
+  * **A file's `type` is the browser's guess, not the test's.** The corpus first asked for an empty type for `a.xyz` and `a.qqq`; the chooser reported `chemical/x-xyz` and `application/octet-stream` (Chromium maps the extension,
+    and an unknown one is the generic type). The corpus says what the browser reports; the page and replay judge `type` only against `accept`, so the program never needs it to be non-empty.
+  * **An event that takes no parameter is allowed**, as for every field: the check is "at most one" (`event-arity-mismatch` for two); the note had said "one".
+  * **`type/*` needs a slash in the file's type**, so a file the browser could not type is never accepted by `image/*`.
+* **Still not done:** section 6.

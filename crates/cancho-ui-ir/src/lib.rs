@@ -17,6 +17,7 @@ pub mod casefold;
 pub mod conditions;
 pub mod controls;
 pub mod credential;
+pub mod file_field;
 pub mod ir;
 pub mod lower;
 pub mod routing;

@@ -106,7 +106,8 @@ async function r3(ctx) {
     if (t.id === 'ops-console') {
       await page.waitForFunction(() => /of 23 machines/.test(document.body.innerText), null, { timeout: 8000 }).catch(() => errs.push('the console never listed its 23 machines'));
     }
-    const button = page.locator('button').first();
+    // the first button that can be pressed (the upload demo's Send is disabled until a file is chosen)
+    const button = page.locator('button:enabled').first();
     if (await button.count()) { await button.click().catch((e) => errs.push(`click: ${e.message}`)); }
     await page.waitForTimeout(250);
     if (errs.length) { problems.push(`${t.id}: ${errs.slice(0, 3).join(' | ')}`); }
@@ -286,7 +287,7 @@ const BREAKS = [
   ['R7 accessible', 'low contrast text', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('</style>', '.gtile p { color: #c8c8c8 !important; }\n</style>')), 'r7'],
   ['R7 accessible', 'no focus ring', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('</style>', '.gallery a:focus, .gallery a:focus-visible { outline: none !important; }\n</style>')), 'r7'],
   ['R7 accessible', 'headings skip a level', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('<h3 class="gh">Built with cancho-ui</h3>', '<h5 class="gh">Built with cancho-ui</h5>')), 'r7'],
-  ['R8 counts are true', 'the page says 17 programs', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('(20 programs)', '(17 programs)')), 'r8'],
+  ['R8 counts are true', 'the page says 17 programs', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('(21 programs)', '(17 programs)')), 'r8'],
 ];
 
 async function runRule(name, ctx) {

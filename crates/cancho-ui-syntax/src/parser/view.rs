@@ -254,6 +254,7 @@ impl Parser {
             "TextArea" => ElementKind::TextArea,
             "Checkbox" => ElementKind::Checkbox,
             "Select" => ElementKind::Select,
+            "FileField" => ElementKind::FileField,
             "NavLink" => ElementKind::NavLink,
             other => ElementKind::Named(other.to_string()),
         };

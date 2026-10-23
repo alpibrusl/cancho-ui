@@ -1,0 +1,141 @@
+{
+  "checks": [
+    {
+      "name": "cargo test file",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "file"
+      ]
+    },
+    {
+      "name": "cargo test file_field (unit)",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui-ir",
+        "file_field"
+      ]
+    },
+    {
+      "name": "the example's trace",
+      "argv": [
+        "target/debug/cancho-ui",
+        "test",
+        "examples/upload/upload.cui",
+        "examples/upload/upload.trace.json"
+      ]
+    },
+    {
+      "name": "check-file.js",
+      "argv": [
+        "node",
+        "scripts/check-file.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "lenient decoding (garbage instead of 'not text')",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "new TextDecoder('utf-8', { fatal: true })",
+      "to": "new TextDecoder('utf-8', { fatal: false })"
+    },
+    {
+      "name": "no size check",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "if (f.size > max) {",
+      "to": "if (f.size > max && false) {"
+    },
+    {
+      "name": "accept is not enforced by the page",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "if (accept !== null && !__cui_file_matches(",
+      "to": "if (false && accept !== null && !__cui_file_matches("
+    },
+    {
+      "name": "the choice is lost at a redraw",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "if (kept && kept.length) {",
+      "to": "if (false && kept && kept.length) {"
+    },
+    {
+      "name": "an extension is compared with its case",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "const n = String(name).toLowerCase(), t",
+      "to": "const n = String(name), t"
+    },
+    {
+      "name": "the path is given too",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "const v = { name: f.name, size: f.size, type: f.type };",
+      "to": "const v = { name: f.name, size: f.size, type: f.type, path: input.value };"
+    },
+    {
+      "name": "clearing the chooser tells the handler",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "    if (!f) { return; }\n    (root.__cui_files",
+      "to": "    if (!f) { deliver('{}'); return; }\n    (root.__cui_files"
+    },
+    {
+      "name": "the input is not a file input",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": ".setAttribute('type', 'file');",
+      "to": ".setAttribute('type', 'text');"
+    },
+    {
+      "name": "accept is not written to the input",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "{1}.setAttribute('accept', {2});",
+      "to": "{1}.setAttribute('data-accept', {2});"
+    },
+    {
+      "name": "the file adapter is never emitted",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "matches!(kind, IrElementKind::FileField) || children.iter().any(view_has_file)",
+      "to": "false && children.iter().any(view_has_file)"
+    },
+    {
+      "name": "replay does not check a file value",
+      "file": "crates/cancho-ui-replay/src/lib.rs",
+      "from": "(params.first(), m.file_specs(name))",
+      "to": "(params.first(), None::<Vec<cancho_ui_ir::file_field::FileSpec>>)"
+    },
+    {
+      "name": "replay lets text of an unaccepted file through",
+      "file": "crates/cancho-ui-ir/src/file_field.rs",
+      "from": "            .is_none_or(|a| accept_matches(a, name, ty))",
+      "to": "            .is_none_or(|_a| true)"
+    },
+    {
+      "name": "a FileField may be drawn in a For",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "    if in_for {\n        return Err(LowerError::ControlRefused {\n            code: \"file-field-in-loop\",",
+      "to": "    if in_for && false {\n        return Err(LowerError::ControlRefused {\n            code: \"file-field-in-loop\","
+    },
+    {
+      "name": "an extension may hold any character",
+      "file": "crates/cancho-ui-ir/src/file_field.rs",
+      "from": "ext.bytes().all(|b| b.is_ascii_alphanumeric())",
+      "to": "ext.bytes().all(|_b| true)"
+    },
+    {
+      "name": "max_bytes may be any size",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "(1..=crate::file_field::MAX_BYTES).contains(&value)",
+      "to": "(1..=i64::MAX).contains(&value)"
+    },
+    {
+      "name": "a FileField without an event is accepted",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "if !has_label || !bindings.iter().any(|b| b.key == \"on\") {\n        return Err(LowerError::ControlRefused {\n            code: \"file-field-incomplete\"",
+      "to": "if !has_label {\n        return Err(LowerError::ControlRefused {\n            code: \"file-field-incomplete\""
+    }
+  ]
+}

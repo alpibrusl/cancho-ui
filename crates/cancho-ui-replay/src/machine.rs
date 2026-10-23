@@ -541,6 +541,83 @@ impl<'a> Machine<'a> {
         Some(s.options)
     }
 
+    /// What the `FileField`s that fire `event` promise about the value they give it, when every control in the page that fires it is a
+    /// `FileField` that is in the page now; `None` when some other control could give it any value, or none fires it
+    /// (docs/file-upload.md section 3).
+    pub fn file_specs(&self, event: &str) -> Option<Vec<cancho_ui_ir::file_field::FileSpec>> {
+        use cancho_ui_ir::file_field::{FileSpec, MAX_BYTES};
+        #[derive(Default)]
+        struct Files {
+            specs: Vec<FileSpec>,
+            other: bool,
+        }
+        fn walk(m: &Machine<'_>, node: &IrViewNode, event: &str, f: &mut Files) {
+            match node {
+                IrViewNode::Element {
+                    kind,
+                    bindings,
+                    children,
+                    ..
+                } => {
+                    let fires = bindings.iter().any(|b| {
+                        b.key == "on"
+                            && match &b.value {
+                                IrBindingValue::EventRef(e) => e == event,
+                                IrBindingValue::EventCall { name, .. } => name == event,
+                                _ => false,
+                            }
+                    });
+                    if fires {
+                        if matches!(kind, cancho_ui_ir::ir::IrElementKind::FileField) {
+                            let mut spec = FileSpec {
+                                max_bytes: MAX_BYTES,
+                                accept: None,
+                            };
+                            for b in bindings {
+                                match (b.key.as_str(), &b.value) {
+                                    ("accept", IrBindingValue::String(a)) => {
+                                        spec.accept = Some(a.clone());
+                                    }
+                                    ("max_bytes", IrBindingValue::Const { expr, .. }) => {
+                                        if let IrExpr::IntLit { value, .. } = &**expr {
+                                            spec.max_bytes = *value;
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            f.specs.push(spec);
+                        } else {
+                            f.other = true;
+                        }
+                    }
+                    for c in children {
+                        walk(m, c, event, f);
+                    }
+                }
+                IrViewNode::For { children, .. } => {
+                    for c in children {
+                        walk(m, c, event, f);
+                    }
+                }
+                IrViewNode::If { cond, children, .. } => {
+                    if m.condition_holds(cond) {
+                        for c in children {
+                            walk(m, c, event, f);
+                        }
+                    }
+                }
+                IrViewNode::Text { .. } => {}
+            }
+        }
+        let mut f = Files::default();
+        walk(self, &self.comp.view.body, event, &mut f);
+        if f.other || f.specs.is_empty() {
+            return None;
+        }
+        Some(f.specs)
+    }
+
     /// The most characters (UTF-16 code units) any way of firing `event` with a typed value allows, when every control in the
     /// page that fires it is a `TextField` with a `maxlength:`; `None` when some control without a limit (or a button) could give
     /// it a value of any length, or no control fires it (docs/controls.md section 6).
