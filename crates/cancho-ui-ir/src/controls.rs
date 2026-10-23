@@ -24,6 +24,7 @@ pub const ELEMENT_KEYS: &[&str] = &[
     "inputmode",
     "maxlength",
     "name",
+    "error",
 ];
 
 /// The `type:` of a `TextField` (docs/controls.md section 5): the HTML input types that hold one line of text and give the
@@ -260,6 +261,35 @@ pub const MAXLENGTH_RANGE: (i64, i64) = (1, 100_000);
 /// The longest `name:` of a field, and the characters it may hold.
 pub const NAME_MAX: usize = 64;
 
+/// `error:` is a binding of a control that holds a value (docs/controls.md section 7) and names a `String` state field: the
+/// message that goes with the control, empty while the control is valid.
+fn check_error(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
+    if !matches!(kind, IrElementKind::TextField) {
+        return Err(LowerError::ControlRefused {
+            code: "binding-unknown",
+            message: format!(
+                "`error:` is a binding of TextField (the message that goes with a field), not of {}",
+                element_name(kind)
+            ),
+            span: b.span,
+        });
+    }
+    match &b.value {
+        IrBindingValue::StateRef(name)
+            if c.state
+                .iter()
+                .any(|f| &f.name == name && f.ty == IrType::String) =>
+        {
+            Ok(())
+        }
+        _ => Err(LowerError::ControlRefused {
+            code: "error-binding-invalid",
+            message: "`error:` takes the name of a `String` state field of this component, e.g. `error: user_msg`; the field is invalid while it holds text and valid while it is empty".to_string(),
+            span: b.span,
+        }),
+    }
+}
+
 /// `autocomplete:`, `inputmode:`, `maxlength:` and `name:` are bindings of a `TextField` with a checked value.
 fn check_text_attribute(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
     if !matches!(kind, IrElementKind::TextField) {
@@ -404,6 +434,9 @@ fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result
         "autocomplete" | "inputmode" | "maxlength" | "name"
     ) {
         check_text_attribute(kind, b)?;
+    }
+    if b.key == "error" {
+        check_error(c, kind, b)?;
     }
     if b.key == "submit" {
         if !matches!(kind, IrElementKind::TextField) {

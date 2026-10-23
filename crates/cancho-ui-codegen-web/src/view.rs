@@ -422,6 +422,8 @@ pub(crate) fn emit_view_node(
             let mut submit_handler: Option<String> = None;
             let mut input_value: Option<String> = None;
             let mut input_type: Option<String> = None;
+            // `error: msg` (docs/controls.md section 7): the state field holding the message of this control.
+            let mut field_error: Option<String> = None;
             let mut button_label: Option<String> = None;
             // Tier 13: on a component instance, `Const` bindings
             // are *properties* — constant initial values for the
@@ -474,6 +476,9 @@ pub(crate) fn emit_view_node(
                             var,
                             js_string(s)
                         ));
+                    }
+                    IrBindingValue::StateRef(name) if b.key == "error" => {
+                        field_error = Some(name.clone());
                     }
                     IrBindingValue::StateRef(name) if b.key == "tone" => {
                         out.push_str(&format!(
@@ -737,6 +742,22 @@ pub(crate) fn emit_view_node(
                 out.push_str(&format!(
                     "{0}{2}.appendChild({1});\n",
                     indent, var, parent_var
+                ));
+            }
+
+            // The message that goes with the control: a status element next to it, with an id the control points at while it
+            // holds text (docs/controls.md section 7). The control is marked invalid only then. The id is unique across the page
+            // even in a `For`, so it comes from a counter, not from the node number.
+            if let Some(name) = &field_error {
+                out.push_str(&format!(
+                    "{0}const {1}_err = document.createElement('span');\n\
+{0}{1}_err.id = 'cui-err-' + (window.__cui_uid = (window.__cui_uid || 0) + 1);\n\
+{0}{1}_err.setAttribute('role', 'status');\n\
+{0}{1}_err.setAttribute('data-tone', 'error');\n\
+{0}{1}_err.appendChild(document.createTextNode(String({4}{2})));\n\
+{0}if ({1}_err.textContent.trim()) {{ {1}.setAttribute('aria-invalid', 'true'); {1}.setAttribute('aria-describedby', {1}_err.id); }} else {{ {1}_err.removeAttribute('data-tone'); }}\n\
+{0}{3}.appendChild({1}_err);\n",
+                    indent, var, name, parent_var, STATE_PREFIX
                 ));
             }
 

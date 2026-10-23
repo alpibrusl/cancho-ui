@@ -1,0 +1,57 @@
+{
+  "checks": [
+    { "name": "cargo test field_error", "argv": ["cargo", "test", "--quiet", "-p", "cancho-ui", "--test", "field_error"] },
+    { "name": "check-field-error.js", "argv": ["node", "scripts/check-field-error.js"] },
+    { "name": "check-tickets.js", "argv": ["node", "scripts/check-tickets.js"] }
+  ],
+  "breaks": [
+    {
+      "name": "the field is never marked invalid",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "{1}.setAttribute('aria-invalid', 'true'); {1}.setAttribute('aria-describedby', {1}_err.id); }}",
+      "to": "{1}.setAttribute('aria-describedby', {1}_err.id); }}"
+    },
+    {
+      "name": "the field does not point at its message",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "{1}.setAttribute('aria-invalid', 'true'); {1}.setAttribute('aria-describedby', {1}_err.id); }}",
+      "to": "{1}.setAttribute('aria-invalid', 'true'); }}"
+    },
+    {
+      "name": "the field stays invalid when the message is empty",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "if ({1}_err.textContent.trim()) {{",
+      "to": "if (true) {{"
+    },
+    {
+      "name": "every message has the same id (a For shares one)",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "{0}{1}_err.id = 'cui-err-' + (window.__cui_uid = (window.__cui_uid || 0) + 1);",
+      "to": "{0}{1}_err.id = 'cui-err-1';"
+    },
+    {
+      "name": "the message is not a status element",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "{0}{1}_err.setAttribute('role', 'status');",
+      "to": "{0}{1}_err.setAttribute('data-role', 'status');"
+    },
+    {
+      "name": "an empty message keeps its tone and mark",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": " else {{ {1}_err.removeAttribute('data-tone'); }}",
+      "to": ""
+    },
+    {
+      "name": "error: accepts any state field",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "                .any(|f| &f.name == name && f.ty == IrType::String) =>\n        {\n            Ok(())",
+      "to": "                .any(|f| &f.name == name) =>\n        {\n            Ok(())"
+    },
+    {
+      "name": "error: is accepted on every element",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "fn check_error(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {\n    if !matches!(kind, IrElementKind::TextField) {",
+      "to": "fn check_error(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {\n    if false && !matches!(kind, IrElementKind::TextField) {"
+    }
+  ]
+}
