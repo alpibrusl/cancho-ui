@@ -16,6 +16,13 @@ impl Parser {
     }
 
     fn parse_view_node(&mut self) -> Result<ViewNode, ParseError> {
+        self.enter_nest()?;
+        let result = self.parse_view_node_inner();
+        self.nest -= 1;
+        result
+    }
+
+    fn parse_view_node_inner(&mut self) -> Result<ViewNode, ParseError> {
         match &self.peek().token {
             Token::StringLit(_) => self.parse_text_node(),
             Token::Ident(_) => {
@@ -211,7 +218,7 @@ impl Parser {
         );
         if matches!(self.peek().token, Token::StringLit(_)) && !concatenation {
             let (value, tok_span) = self.bump_string_lit("string literal")?;
-            let parts = interpolation_parts(&value, tok_span)?;
+            let parts = interpolation_parts(&value, tok_span, self.nest)?;
             Ok(ViewNode::Text {
                 value: TextValue::Interpolated(parts),
                 span: tok_span,
@@ -233,6 +240,13 @@ impl Parser {
     }
 
     fn parse_element_node(&mut self) -> Result<ViewNode, ParseError> {
+        self.enter_nest()?;
+        let result = self.parse_element_node_inner();
+        self.nest -= 1;
+        result
+    }
+
+    fn parse_element_node_inner(&mut self) -> Result<ViewNode, ParseError> {
         let (name, name_span) = self.bump_ident("element name")?;
         // `For { ... }` can appear anywhere a normal element can
         // (including as a child of another element). Route it to

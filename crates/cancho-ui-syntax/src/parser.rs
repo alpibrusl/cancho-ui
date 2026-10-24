@@ -53,13 +53,24 @@ pub enum ParseError {
     InvalidNumber { raw: String, line: u32, column: u32 },
 
     #[error(
-        "statements are nested more than {max} deep at line {line} column {column}; split the handler into blocks"
+        "{what} are nested more than {max} deep at line {line} column {column}; split them up (docs/nesting.md)"
     )]
-    TooDeep { max: usize, line: u32, column: u32 },
+    TooDeep {
+        what: &'static str,
+        max: usize,
+        line: u32,
+        column: u32,
+    },
 }
 
 /// How deep `if` statements may nest (a handler, a block and each branch each count one).
 pub const MAX_STMT_DEPTH: usize = 32;
+
+/// How deep expressions, view nodes and types may nest, counted together (docs/nesting.md): an operand of a parenthesis, a unary
+/// operator, a call, a list literal, a `match` arm, an `if` expression, a lambda or an interpolation; a view node inside a view node;
+/// a type argument. A chain of binary operators (`a + b + c + ..`) counts one for each operator. A deeper input is
+/// `parse-nesting-too-deep`, not a stack overflow in a later pass.
+pub const MAX_NEST_DEPTH: usize = 32;
 
 /// The span of a statement.
 pub fn stmt_span(s: &Stmt) -> Span {
@@ -86,6 +97,7 @@ pub fn parse(tokens: Vec<SpannedToken>) -> Result<File, ParseError> {
         tokens,
         pos: 0,
         depth: 0,
+        nest: 0,
     };
     let file = parser.parse_file()?;
     parser.expect(Token::Eof)?;
@@ -97,6 +109,8 @@ struct Parser {
     pos: usize,
     /// How many statement blocks are open (`MAX_STMT_DEPTH`).
     depth: usize,
+    /// How many expressions, view nodes and types are open (`MAX_NEST_DEPTH`).
+    nest: usize,
 }
 
 /// A string that is static text (a label, an attribute, a property): a `{` in it would be shown as a brace and
@@ -129,7 +143,7 @@ fn unescape_braces(s: &str) -> String {
 /// Split the text of a string literal into literal runs and `{expr}` interpolations. A `{` always starts an
 /// interpolation, in a `Text` body and in a string expression alike; `\{` and `\}` write a literal brace, and anything left
 /// in the interpolation after the expression (`"{\"a\":1}"`) is a parse error, not silently dropped.
-fn interpolation_parts(value: &str, span: Span) -> Result<Vec<TextPart>, ParseError> {
+fn interpolation_parts(value: &str, span: Span, nest: usize) -> Result<Vec<TextPart>, ParseError> {
     let mut parts = Vec::new();
     let mut buf = String::new();
     let current_line = span.start.line;
@@ -177,11 +191,16 @@ fn interpolation_parts(value: &str, span: Span) -> Result<Vec<TextPart>, ParseEr
                 tokens: interp_tokens,
                 pos: 0,
                 depth: 0,
+                nest,
             };
-            let expr = sub.parse_expr().map_err(|e| ParseError::InvalidNumber {
-                raw: format!("{:?}", e),
-                line: current_line,
-                column: 0,
+            let expr = sub.parse_expr().map_err(|e| match e {
+                // the depth is counted through the interpolations (`"{"{..}"}"`), and stays what it is
+                too_deep @ ParseError::TooDeep { .. } => too_deep,
+                e => ParseError::InvalidNumber {
+                    raw: format!("{:?}", e),
+                    line: current_line,
+                    column: 0,
+                },
             })?;
             if !sub.at_eof() {
                 let left = sub.peek().clone();
@@ -208,6 +227,21 @@ fn interpolation_parts(value: &str, span: Span) -> Result<Vec<TextPart>, ParseEr
 }
 
 impl Parser {
+    /// One more open expression, view node or type (`MAX_NEST_DEPTH`); the caller leaves with `self.nest -= 1`.
+    fn enter_nest(&mut self) -> Result<(), ParseError> {
+        if self.nest >= MAX_NEST_DEPTH {
+            let at = self.peek().span.start;
+            return Err(ParseError::TooDeep {
+                what: "expressions, view nodes and types",
+                max: MAX_NEST_DEPTH,
+                line: at.line,
+                column: at.column,
+            });
+        }
+        self.nest += 1;
+        Ok(())
+    }
+
     fn peek(&self) -> &SpannedToken {
         &self.tokens[self.pos]
     }
@@ -496,6 +530,13 @@ impl Parser {
     /// identifiers (`Int`, `Float`, `Bool`, `String`) and the
     /// generic `Result[T, E]`. Tier 7 adds `Request[T]`.
     fn parse_type(&mut self) -> Result<Type, ParseError> {
+        self.enter_nest()?;
+        let result = self.parse_type_inner();
+        self.nest -= 1;
+        result
+    }
+
+    fn parse_type_inner(&mut self) -> Result<Type, ParseError> {
         let start = self.peek().span;
         let name_tok = self.bump();
         let name = match name_tok.token {
@@ -748,6 +789,7 @@ impl Parser {
         if self.depth >= MAX_STMT_DEPTH {
             let at = self.peek().span.start;
             return Err(ParseError::TooDeep {
+                what: "statements",
                 max: MAX_STMT_DEPTH,
                 line: at.line,
                 column: at.column,
@@ -849,6 +891,7 @@ impl Parser {
                 if self.depth >= MAX_STMT_DEPTH {
                     let at = self.peek().span.start;
                     return Err(ParseError::TooDeep {
+                        what: "statements",
                         max: MAX_STMT_DEPTH,
                         line: at.line,
                         column: at.column,
@@ -953,6 +996,8 @@ impl Parser {
 
     fn parse_binary_expr(&mut self, min_prec: u8) -> Result<Expr, ParseError> {
         let mut left = self.parse_unary()?;
+        // each operator folded onto `left` is one more level of the tree: a chain of 100,000 `+` is as deep as 100,000 parentheses
+        let mut links = 0;
         loop {
             let (op, prec) = match &self.peek().token {
                 Token::PipePipe => (BinOp::Or, 2),
@@ -972,6 +1017,16 @@ impl Parser {
             if prec < min_prec {
                 break;
             }
+            links += 1;
+            if self.nest + links > MAX_NEST_DEPTH {
+                let at = self.peek().span.start;
+                return Err(ParseError::TooDeep {
+                    what: "expressions, view nodes and types",
+                    max: MAX_NEST_DEPTH,
+                    line: at.line,
+                    column: at.column,
+                });
+            }
             self.bump();
             let right = self.parse_binary_expr(prec + 1)?;
             let span = Span::new(left.span().start, right.span().end);
@@ -986,6 +1041,13 @@ impl Parser {
     }
 
     fn parse_unary(&mut self) -> Result<Expr, ParseError> {
+        self.enter_nest()?;
+        let result = self.parse_unary_inner();
+        self.nest -= 1;
+        result
+    }
+
+    fn parse_unary_inner(&mut self) -> Result<Expr, ParseError> {
         if matches!(self.peek().token, Token::Match) {
             return self.parse_match();
         }
@@ -1039,7 +1101,11 @@ impl Parser {
         let else_ = if matches!(self.peek().token, Token::Else) {
             self.bump();
             if matches!(self.peek().token, Token::If) {
-                let nested = self.parse_if()?;
+                // `else if` chains recurse here and not through `parse_unary`: they count as nesting too
+                self.enter_nest()?;
+                let nested = self.parse_if();
+                self.nest -= 1;
+                let nested = nested?;
                 end = nested.span().end;
                 Some(Box::new(nested))
             } else {
@@ -1215,7 +1281,7 @@ impl Parser {
             }
             Token::StringLit(s) => {
                 self.bump();
-                let parts = interpolation_parts(&s, tok.span)?;
+                let parts = interpolation_parts(&s, tok.span, self.nest)?;
                 if !parts.iter().any(|p| matches!(p, TextPart::Expr { .. })) {
                     // No interpolation: the literal text, with `\{` and `\}` already braces.
                     let value: String = parts
@@ -1567,6 +1633,7 @@ mod tests {
     fn parser_over(src: &str) -> Parser {
         Parser {
             depth: 0,
+            nest: 0,
             tokens: lex(src).expect("lex"),
             pos: 0,
         }

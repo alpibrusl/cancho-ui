@@ -6,12 +6,28 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use cancho_ui_syntax::ast::{Component, Stmt};
+use cancho_ui_syntax::parser::MAX_STMT_DEPTH;
 use cancho_ui_syntax::span::Span;
 
 use crate::lower::LowerError;
 
 /// The most statements one handler or block may have after its `run`s are replaced (the nested ones counted).
 pub const MAX_EXPANDED_STMTS: usize = 10_000;
+
+/// How deep the expansion may go (docs/nesting.md section 5): blocks that run blocks, and `if`s inside what they run, counted together. The
+/// expansion happens after parsing, so the parser's bound on statements does not cover a chain of blocks (2,000 blocks that each run the next
+/// overflowed the stack of a 2 MiB thread).
+pub const MAX_EXPANSION_DEPTH: usize = MAX_STMT_DEPTH;
+
+fn too_deep(span: Span) -> LowerError {
+    refuse(
+        "block-expansion-too-deep",
+        format!(
+            "after its `run`s are replaced, blocks run blocks and statements nest more than {MAX_EXPANSION_DEPTH} deep; flatten the chain of blocks"
+        ),
+        span,
+    )
+}
 
 fn refuse(code: &'static str, message: String, span: Span) -> LowerError {
     LowerError::BlockRefused {
@@ -91,12 +107,12 @@ pub fn expand(c: &Component) -> Result<Expanded, LowerError> {
     let mut handlers = Vec::with_capacity(c.events.len());
     for e in &c.events {
         let mut budget = MAX_EXPANDED_STMTS;
-        handlers.push(replace(&e.body.stmts, &by_name, &mut budget, e.span)?);
+        handlers.push(replace(&e.body.stmts, &by_name, &mut budget, e.span, 0)?);
     }
     let mut blocks = Vec::with_capacity(c.blocks.len());
     for b in &c.blocks {
         let mut budget = MAX_EXPANDED_STMTS;
-        blocks.push(replace(&b.body.stmts, &by_name, &mut budget, b.span)?);
+        blocks.push(replace(&b.body.stmts, &by_name, &mut budget, b.span, 0)?);
     }
     Ok(Expanded { handlers, blocks })
 }
@@ -116,6 +132,9 @@ fn cycle<'a>(
     let mut direct = Vec::new();
     runs(body, &mut direct);
     for (next, span) in &direct {
+        if path.len() >= MAX_EXPANSION_DEPTH {
+            return Err(too_deep(*span));
+        }
         if path.contains(&next.as_str()) {
             return Err(refuse(
                 "block-cycle",
@@ -138,13 +157,17 @@ fn cycle<'a>(
 }
 
 /// `stmts` with each `run` replaced by the statements of its block (themselves replaced). `budget` is what is left of the
-/// statements this expansion may still produce.
+/// statements this expansion may still produce; `depth` is how many `run`s and `if`s are open around `stmts`.
 fn replace(
     stmts: &[Stmt],
     by_name: &BTreeMap<&str, &[Stmt]>,
     budget: &mut usize,
     owner: Span,
+    depth: usize,
 ) -> Result<Vec<Stmt>, LowerError> {
+    if depth > MAX_EXPANSION_DEPTH {
+        return Err(too_deep(owner));
+    }
     let mut out = Vec::new();
     for s in stmts {
         match s {
@@ -152,7 +175,7 @@ fn replace(
                 // A `run` counts too, so blocks that run empty blocks many times cannot make the expansion slow.
                 take(budget, owner)?;
                 let body = by_name.get(name.as_str()).copied().unwrap_or(&[]);
-                out.extend(replace(body, by_name, budget, owner)?);
+                out.extend(replace(body, by_name, budget, owner, depth + 1)?);
             }
             Stmt::If {
                 cond,
@@ -163,8 +186,8 @@ fn replace(
                 take(budget, owner)?;
                 out.push(Stmt::If {
                     cond: cond.clone(),
-                    then: replace(then, by_name, budget, owner)?,
-                    else_: replace(else_, by_name, budget, owner)?,
+                    then: replace(then, by_name, budget, owner, depth + 1)?,
+                    else_: replace(else_, by_name, budget, owner, depth + 1)?,
                     span: *span,
                 });
             }
