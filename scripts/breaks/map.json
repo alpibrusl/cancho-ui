@@ -1,0 +1,145 @@
+{
+  "checks": [
+    {
+      "name": "cargo test map",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "map"
+      ]
+    },
+    {
+      "name": "check-map.js",
+      "argv": [
+        "node",
+        "scripts/check-map.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "a host that is not declared is accepted",
+      "file": "crates/cancho-ui-ir/src/map.rs",
+      "from": "        if !declared {",
+      "to": "        if false && !declared {"
+    },
+    {
+      "name": "a coarse position may be drawn at any zoom",
+      "file": "crates/cancho-ui-ir/src/map.rs",
+      "from": "    if coarse { COARSE_MAX_ZOOM } else { MAX_ZOOM }",
+      "to": "    if coarse { MAX_ZOOM } else { MAX_ZOOM }"
+    },
+    {
+      "name": "http is accepted for any host",
+      "file": "crates/cancho-ui-ir/src/map.rs",
+      "from": "if scheme == \"http\" && name != \"localhost\" && name != \"127.0.0.1\" {",
+      "to": "if false {"
+    },
+    {
+      "name": "a map needs no attribution",
+      "file": "crates/cancho-ui-ir/src/map.rs",
+      "from": "        (\n            \"attribution\",\n            \"the credit the tile provider asks for, shown under the map\",\n        ),\n",
+      "to": ""
+    },
+    {
+      "name": "a map is not a use of Network",
+      "file": "crates/cancho-ui-ir/src/lower.rs",
+      "from": "                    || (req.name == \"Network\" && crate::map::view_has_map(&c.view.body))\n",
+      "to": ""
+    },
+    {
+      "name": "the tiles are asked for with a referrer",
+      "file": "crates/cancho-ui-codegen-web/src/map.rs",
+      "from": "img.setAttribute('referrerpolicy', 'no-referrer');",
+      "to": "img.setAttribute('referrerpolicy', 'origin');"
+    },
+    {
+      "name": "the picture is not centred on the tile",
+      "file": "crates/cancho-ui-codegen-web/src/map.rs",
+      "from": "for (let dx = -1; dx <= 1; dx++) {\n            const x = ((t[0] + dx)",
+      "to": "for (let dx = 0; dx <= 2; dx++) {\n            const x = ((t[0] + dx)"
+    },
+    {
+      "name": "the figure is built again at every render",
+      "file": "crates/cancho-ui-codegen-web/src/map.rs",
+      "from": "    if (kept[key] && kept[key].sig === sig) { return kept[key].el; }\n",
+      "to": ""
+    },
+    {
+      "name": "a coarse position is drawn at the zoom written",
+      "file": "crates/cancho-ui-codegen-web/src/map.rs",
+      "from": "const z = coarse ? Math.min(zoom, __cui_map_zoom_cap(lat)) : zoom;",
+      "to": "const z = zoom;"
+    },
+    {
+      "name": "a tile has a text alternative",
+      "file": "crates/cancho-ui-codegen-web/src/map.rs",
+      "from": "        img.alt = '';",
+      "to": "        img.alt = 'tile';"
+    },
+    {
+      "name": "the picture is not named",
+      "file": "crates/cancho-ui-codegen-web/src/map.rs",
+      "from": "    pic.setAttribute('role', 'img');\n",
+      "to": ""
+    },
+    {
+      "name": "the picture does not say it is not available",
+      "file": "crates/cancho-ui-codegen-web/src/map.rs",
+      "from": "note.textContent = 'The map is not available offline.'; note.hidden = false;",
+      "to": "note.hidden = true;"
+    },
+    {
+      "name": "the list is not written",
+      "file": "crates/cancho-ui-codegen-web/src/map.rs",
+      "from": "        ol.appendChild(li);\n",
+      "to": "        void li;\n"
+    },
+    {
+      "name": "the attribution is not written",
+      "file": "crates/cancho-ui-codegen-web/src/map.rs",
+      "from": "    cap.textContent = attribution;\n",
+      "to": "    cap.textContent = '';\n"
+    },
+    {
+      "name": "every place is pinned",
+      "file": "crates/cancho-ui-codegen-web/src/map.rs",
+      "from": "const __CUI_MAP_MAX_PINS = 50;",
+      "to": "const __CUI_MAP_MAX_PINS = 5000;"
+    },
+    {
+      "name": "the page carries no policy",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "html.replace(\"@CSP@\", &csp)",
+      "to": "html.replace(\"@CSP@\", \"\")"
+    },
+    {
+      "name": "replay asks for a tile twice",
+      "file": "crates/cancho-ui-replay/src/map.rs",
+      "from": "            if !tiles.contains(&url) {",
+      "to": "            if true {"
+    },
+    {
+      "name": "replay draws a coarse position at the zoom written",
+      "file": "crates/cancho-ui-replay/src/map.rs",
+      "from": "    let z = if coarse {\n        zoom.min(coarse_zoom(lat))\n    } else {\n        zoom\n    };",
+      "to": "    let z = zoom;"
+    },
+    {
+      "name": "replay lists every place",
+      "file": "crates/cancho-ui-replay/src/map.rs",
+      "from": "pub const MAX_LISTED: usize = 200;",
+      "to": "pub const MAX_LISTED: usize = 20000;"
+    },
+    {
+      "name": "replay's zoom cap changes at 80",
+      "file": "crates/cancho-ui-replay/src/map.rs",
+      "from": "    if a <= 76.0 {",
+      "to": "    if a <= 80.0 {"
+    }
+  ]
+}

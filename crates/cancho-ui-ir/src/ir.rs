@@ -535,6 +535,9 @@ pub enum IrElementKind {
     /// `SortList { label: .. items: list on: Moved }` (docs/drag-and-drop.md): a list the user can reorder, a `<ul>` of rows each with a drag
     /// handle and buttons to move it up and down; the event gets the two indexes.
     SortList,
+    /// `Map { label: .. center: pos places: rows zoom: 13 tiles: ".." attribution: ".." }` (docs/maps.md): a static map of tiles with the list of
+    /// places beside it, in a `<figure>`.
+    Map,
     /// `NavLink { label: .. to: path }` (docs/routing.md section 4): a link to a route of this page, an `<a href="#path">`.
     NavLink,
     /// `Table { .. }` (docs/presentation.md section 4) and what lowering makes of its descendants: a `Row` of a table is
@@ -562,6 +565,7 @@ impl IrElementKind {
             IrElementKind::Chart => "figure",
             IrElementKind::NavLink => "a",
             IrElementKind::SortList => "ul",
+            IrElementKind::Map => "figure",
             IrElementKind::Table => "table",
             IrElementKind::TableRow => "tr",
             IrElementKind::Cell => "td",

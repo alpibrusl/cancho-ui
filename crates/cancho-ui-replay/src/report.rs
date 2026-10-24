@@ -153,6 +153,9 @@ pub struct StepReport {
     /// The `SortList`s in the page after the step: label, count and the rows in order (docs/drag-and-drop.md); absent when there are none.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub sortlists: Vec<Json>,
+    /// The `Map`s in the page after the step: the zoom used, the exact tile addresses, the list and the pins (docs/maps.md); absent when there are none.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub maps: Vec<Json>,
     /// The `lang` and `dir` the page gives its document after the step (docs/i18n.md section 3); absent for a component without `requires Locale`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub document: Option<Json>,

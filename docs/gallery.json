@@ -74,19 +74,18 @@
       "title": "Reordering a list",
       "source": "examples/reorder/reorder.cui",
       "says": "`SortList`: drag a row by its handle (mouse, pen or finger), or move it with its up and down buttons from the keyboard; the focus follows the row, a live region says where it went, and the page is not redrawn under a drag. The program owns the list and accepts a move with one line, `move(tasks, from, to)`."
+    },
+    {
+      "id": "map",
+      "title": "A map with its list",
+      "source": "examples/map/map.cui",
+      "copy": {
+        "tiles": "examples/map/tiles"
+      },
+      "says": "`Map`: the tiles of an address the program writes (here a folder of stand-in tiles beside this page; the compiler has no default tile host and this page asks nobody else for anything), the places pinned over them, the same places as a list nearest first (the list is what a screen reader reads), and the credit under the map. The map is centred on the middle of the tile, so a tile server learns the tile and no more."
     }
   ],
   "soon": [
-    {
-      "id": "maps",
-      "title": "Maps",
-      "issue": 81,
-      "missing": "A map or image primitive and a typed position; `location.current()` answers rounded text.",
-      "probe": {
-        "view": "Image { label: \"Map\" }",
-        "rule": "component-kind-unknown"
-      }
-    },
     {
       "id": "native",
       "title": "Native shell and push on mobile",

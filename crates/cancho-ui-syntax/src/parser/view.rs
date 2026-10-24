@@ -272,6 +272,7 @@ impl Parser {
             "Chart" => ElementKind::Chart,
             "NavLink" => ElementKind::NavLink,
             "SortList" => ElementKind::SortList,
+            "Map" => ElementKind::Map,
             other => ElementKind::Named(other.to_string()),
         };
 
@@ -554,6 +555,40 @@ impl Parser {
                         found: other,
                         line: self.peek().span.start.line,
                         column: self.peek().span.start.column,
+                    }),
+                }
+            }
+            "zoom" if matches!(kind, ElementKind::Map) => {
+                // an expression, so that `zoom: -1` and `zoom: "13"` reach the check that says what a zoom is
+                Ok(BindingValue::Prop(self.parse_expr()?))
+            }
+            "tiles" if matches!(kind, ElementKind::Map) => {
+                // A tile address holds `{z}`, `{x}` and `{y}`, which a label may not hold (a brace in static text is refused): the address is the one
+                // place where they are the point (docs/maps.md). `\{` and `\}` still stand for a brace that is not a placeholder.
+                let tok = self.bump();
+                match tok.token {
+                    Token::StringLit(s) => Ok(BindingValue::String(super::unescape_braces(&s))),
+                    // the checks refuse a name with `map-tiles-invalid` and say why: the address is a literal
+                    Token::Ident(s) => Ok(BindingValue::StateRef(s)),
+                    other => Err(ParseError::Unexpected {
+                        expected: "a text literal, the tile address",
+                        found: other,
+                        line: tok.span.start.line,
+                        column: tok.span.start.column,
+                    }),
+                }
+            }
+            "center" | "places" if matches!(kind, ElementKind::Map) => {
+                // `center: pos` and `places: rows` name state fields; `center` may also be a text literal (docs/maps.md).
+                let tok = self.bump();
+                match tok.token {
+                    Token::Ident(s) => Ok(BindingValue::StateRef(s)),
+                    Token::StringLit(s) if key == "center" => Ok(BindingValue::String(s)),
+                    other => Err(ParseError::Unexpected {
+                        expected: "the name of a state field (or, for `center`, a text)",
+                        found: other,
+                        line: tok.span.start.line,
+                        column: tok.span.start.column,
                     }),
                 }
             }

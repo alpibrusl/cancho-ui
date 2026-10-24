@@ -19,6 +19,7 @@ pub mod emit;
 mod expr;
 mod i18n;
 mod lists;
+mod map;
 mod number;
 mod sortlist;
 mod stream;

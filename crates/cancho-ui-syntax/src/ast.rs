@@ -286,6 +286,8 @@ pub enum ElementKind {
     FileField,
     /// A list the user can reorder, by dragging a handle or with buttons (docs/drag-and-drop.md).
     SortList,
+    /// A static map of tiles with a list of places beside it (docs/maps.md).
+    Map,
     /// A link to another route of this page: `NavLink { label: "Item" to: "/items/3" }` (docs/routing.md section 4).
     NavLink,
     Named(String),

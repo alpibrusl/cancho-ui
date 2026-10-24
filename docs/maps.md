@@ -1,6 +1,6 @@
 # Maps: a nearest-places list first, then a tile map behind a declared host (issue #81)
 
-> **Status: step one (3.1) BUILT; step two (3.2) is design, not built.** Written 2026-10-24 before the code ([`CONTRIBUTING.md`](../CONTRIBUTING.md) section 1). Numbers measured
+> **Status: BUILT** (step one: `distance` and `examples/near`, section 9; step two: `Map` and `examples/map`, section 10). Written 2026-10-24 before the code ([`CONTRIBUTING.md`](../CONTRIBUTING.md) section 1). Numbers measured
 > by `scripts/measure-maps.js` (Chromium of the Playwright install, `Pixel 7` profile, 412 px; the tile hosts and the page are local
 > servers) on main at 7c16153. Anything not measured says **assumption**. Section 8 lists what is not known.
 
@@ -166,3 +166,49 @@ gate. The probe `scripts/measure-maps/near.cui` and its trace pass under `cancho
   the grammar of `num` (`lists.md` section 1). `location.current()` never answers any of those; a program that builds the text itself `trim`s first.
 * **The order of equal and unreadable places:** the default takes part in the sort like any other number (`sort` is stable), so `20000` puts unreadable places
   last and `-1` first. `examples/near` filters them out with `>= 0` instead and says so in its header.
+
+## 10. Step two, built (`Map`, `examples/map`)
+
+**The host is the program's, and nothing in this repository asks a public tile server for anything.** The compiler has no default tile address and names no
+provider (a test scans the compiler's sources for the usual provider names and finds none); `tiles:` is a text literal the program writes, and its host must be
+in the component's `requires Network("host")`. The example `examples/map` takes its tiles from a folder of **stand-in tiles** beside the page
+(`scripts/tile-png.js` draws them, `scripts/gen-map-tiles.js` writes the 18 it needs, `scripts/stand-in-tiles.js` serves any `/{z}/{x}/{y}.png` for trying a map by hand). Every
+browser check routes the page's requests itself and **refuses and records any request to a host that is not one of its own servers**: `scripts/check-map.js` fails if one
+was attempted, and none was.
+
+* **Built as designed** (3.2): `Map { label center places zoom tiles attribution }`; `map-incomplete`, `map-tiles-invalid`, `map-host-undeclared`, `map-zoom-invalid`,
+  `map-binding-invalid` (tags in `spec/diagnostics/README.md`, each reached by `crates/cancho-ui/tests/map.rs`); a `<meta http-equiv="Content-Security-Policy">` as the first thing in
+  the head of `--page` and `--pwa` output; the picture centred on the middle of the position's tile; zoom bounded by the precision (static bound 13 for a bare
+  `requires Location`, lowered at run time by latitude: 13 up to 76, 12 up to 83, 11 beyond, tiles stop at 85.05); `referrerpolicy="no-referrer"` on every tile; no tile kept by
+  the app; the list as the accessible form; required attribution; replay's `maps` report with the exact tile addresses.
+* **Changed from 3.2 (corrected in place here):**
+  * **`tiles:` may be a path on the page's own origin** (`./tiles/{z}/{x}/{y}.png`, `/tiles/..`), which needs only a bare `requires Network;`. The design allowed absolute addresses only. A
+    self-hosted tile folder asks no third party, it is how the example and the gallery demo run without a provider, and the authority stays visible (a map with no `Network` is
+    `map-host-undeclared`).
+  * **The policy is written for every page with a map**, `img-src 'self' data:` plus the origins of the declared tile hosts (scheme and port included, so `http://localhost:8099` is
+    not `https://localhost:8099`), also when the only map is same-origin. A build that is only a module (`build x.cui -o x.js`) has no HTML: there the static check is the
+    only bound, and the note says so here.
+  * **`{z}`, `{x}` and `{y}` are written as they are** in `tiles:`; a brace in other static text is still refused, so the parser reads `tiles:` itself.
+  * **The figure is kept across renders** while its inputs are the same (the page is rebuilt at every state change): a render that changes nothing about the map asks the tile host
+    for **no** tile (measured: 0 requests; without it, nine per render). The design did not have this.
+  * **A `Map` is the use of `Network`** that `capability-unused` looks for.
+  * `zoom:` is read as an expression so that `-1`, `"13"` and `13 + 1` are `map-zoom-invalid` and not a parse error; `tiles:` and `center:` accept a name so that `map-tiles-invalid` and
+    `map-binding-invalid` say what is wrong.
+  * **A place with no readable `pos` is neither listed nor pinned** (it has no distance); `total` counts the readable ones.
+  * **The gallery tile** is built (stand-in tiles, 13 demos); the "Maps" coming-soon tile is gone. Landing counts: 27 programs, 23 replaying a trace.
+* **Measured** (`scripts/check-map.js`, Chromium, `Pixel 7`): replay's plan equals the page's for 29 cases of `tests/map_corpus.json` (values computed outside the program); the shipped example asks its own
+  folder for exactly the nine tiles replay reports and no Referer; another centre asks for its nine; a render that changes nothing asks for none; the keyboard visits the two buttons and the map adds no
+  stop; no overflow at 412 px; with the tiles on another declared host the page carries the policy, the host sees the nine requests with no Referer and no cookie, an image from a host the program did not
+  declare is **never requested** (the other server saw 0) and the page hears the violation; with the tile host gone the picture says "The map is not available offline." while the list and the credit stay, and one missing tile says
+  nothing; at latitude 80 a coarse map asks for zoom 12.
+* **Breaks:** 20 breaks in `scripts/breaks/map.json` (a host not declared accepted; a coarse position at any zoom; http for any host; no attribution needed; a map that is not a use of `Network`; a referrer sent; the picture not centred on the tile; the figure rebuilt at every render; no run-time zoom cap; a text alternative on a tile; the picture not named; no offline message; the list not written; the attribution not written; every place pinned; no policy in the page; in replay a tile asked for twice, no zoom cap, every place listed, the cap changing at 80), **all caught by `cargo test` or `check-map.js` themselves** (no kill, `HUNG` or `BUILD`). **Two more were not caught and are not in the file**: a placeholder allowed twice and a user name in the address. They are equivalent mutants, not a gap in a check: the brace count (exactly six braces) refuses every address the per-placeholder count would, and the host validation refuses `user:pw@host` (its port is not digits) before the `@` test is reached. The tests for both inputs pass either way
+
+### Not measured: assumptions
+
+* **A real tile provider.** Its tile imagery, CORS headers, terms, rate limits and attribution wording. The pins use the standard Web Mercator tile formula (the one slippy maps use), and the stand-in tiles cannot show that
+  a real provider's imagery lines up with them: **assumption**.
+* **Screen reader speech** for the figure and the list; Firefox and Safari (the policy, the referrer policy and `object-fit`); a phone.
+* **The picture across the date line** in Chromium (the corpus covers the arithmetic and the wrap of the columns); places near a pole.
+* **Text is English.** The list's `km`, "The map is not available offline." and "There is no position to show." are not catalogs; a `Map` in a component with `requires Locale` does not translate them or write the
+  distance with the language's decimal separator. That is a gap, not a decision.
+* **No panning, no zoom control, no pins you can press**, as designed (3.2).

@@ -152,6 +152,7 @@ fn kind(k: &IrElementKind) -> String {
         IrElementKind::Chart => "Chart".into(),
         IrElementKind::NavLink => "NavLink".into(),
         IrElementKind::SortList => "SortList".into(),
+        IrElementKind::Map => "Map".into(),
         IrElementKind::Named(n) => n.clone(),
     }
 }
