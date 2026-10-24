@@ -30,6 +30,7 @@ mod diff_cmd;
 mod pipeline;
 mod pwa;
 mod test_cmd;
+mod theme;
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -172,13 +173,25 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
                         .to_string()
                 });
                 // a program with a map gets a Content-Security-Policy listing the hosts it declared (docs/maps.md)
-                let img_src = pipeline::compile_to_ir(file)
-                    .ok()
-                    .and_then(|ir| cancho_ui_ir::map::csp_img_sources(&ir));
+                let ir = pipeline::compile_to_ir(file).ok();
+                let img_src = ir.as_ref().and_then(cancho_ui_ir::map::csp_img_sources);
+                // a theme (docs/theme.md): its stylesheet, and its font files copied into the build
+                let theme = match ir.as_ref().and_then(|i| i.theme.as_ref()) {
+                    Some(t) => {
+                        let dir = file.parent().unwrap_or_else(|| std::path::Path::new(""));
+                        let fonts = theme::load_fonts(t, dir, file)
+                            .map_err(|d| CliError::Env(d.message.clone()))?;
+                        Some(pwa::ThemeAssets {
+                            css: theme::css(t),
+                            fonts,
+                        })
+                    }
+                    None => None,
+                };
                 let files = if opts.pwa {
-                    pwa::generate(&out, &name, img_src.as_deref())
+                    pwa::generate(&out, &name, img_src.as_deref(), theme.as_ref())
                 } else {
-                    pwa::generate_page(&out, &name, img_src.as_deref())
+                    pwa::generate_page(&out, &name, img_src.as_deref(), theme.as_ref())
                 };
                 pwa::write_all(dir, &files).map_err(CliError::Env)?;
             }

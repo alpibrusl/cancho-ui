@@ -1,0 +1,200 @@
+{
+  "checks": [
+    {
+      "name": "cargo test theme (cancho-ui integration)",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "theme"
+      ]
+    },
+    {
+      "name": "cargo test theme (the binary: sha256)",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--bins",
+        "theme"
+      ]
+    },
+    {
+      "name": "cargo test theme (the IR: contrast arithmetic)",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui-ir",
+        "--lib",
+        "theme"
+      ]
+    },
+    {
+      "name": "theme-oracle.js",
+      "argv": [
+        "node",
+        "scripts/theme-oracle.js"
+      ]
+    },
+    {
+      "name": "check-theme.js",
+      "argv": [
+        "node",
+        "scripts/check-theme.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "the contrast limit is 4.0 and not 4.5",
+      "file": "crates/cancho-ui-ir/src/theme.rs",
+      "from": "pub const MIN_RATIO: f64 = 4.5;",
+      "to": "pub const MIN_RATIO: f64 = 4.0;"
+    },
+    {
+      "name": "the green channel is weighted 0.7252",
+      "file": "crates/cancho-ui-ir/src/theme.rs",
+      "from": "0.2126 * lin(c[0]) + 0.7152 * lin(c[1])",
+      "to": "0.2126 * lin(c[0]) + 0.7252 * lin(c[1])"
+    },
+    {
+      "name": "the luminance knee is the wrong number",
+      "file": "crates/cancho-ui-ir/src/theme.rs",
+      "from": "if s <= 0.04045 {",
+      "to": "if s <= 0.4045 {"
+    },
+    {
+      "name": "a pair is dropped for another",
+      "file": "crates/cancho-ui-ir/src/theme.rs",
+      "from": "(\"bad\", \"bg\"),\n];",
+      "to": "(\"bad\", \"surface\"),\n];"
+    },
+    {
+      "name": "the dark scheme is not checked",
+      "file": "crates/cancho-ui-ir/src/theme.rs",
+      "from": "for want in SCHEMES {\n        let Some(scheme)",
+      "to": "for want in [\"light\"] {\n        let Some(scheme)"
+    },
+    {
+      "name": "a ratio is rounded and not cut",
+      "file": "crates/cancho-ui-ir/src/theme.rs",
+      "from": "(r * 100.0).floor() / 100.0",
+      "to": "(r * 100.0).round() / 100.0"
+    },
+    {
+      "name": "a missing token is not noticed",
+      "file": "crates/cancho-ui-ir/src/theme.rs",
+      "from": "if !missing.is_empty() {",
+      "to": "if false && !missing.is_empty() {"
+    },
+    {
+      "name": "a colour may have an alpha",
+      "file": "crates/cancho-ui-ir/src/theme.rs",
+      "from": "digits.len() != 6 ||",
+      "to": "digits.len() != 6 && digits.len() != 8 ||"
+    },
+    {
+      "name": "an address is not remote",
+      "file": "crates/cancho-ui-ir/src/theme.rs",
+      "from": "f.contains(\"://\") || f.starts_with(\"//\") || f.starts_with(\"data:\") || f.starts_with(\"http\")",
+      "to": "false"
+    },
+    {
+      "name": "a family may hold a quote",
+      "file": "crates/cancho-ui-ir/src/theme.rs",
+      "from": "matches!(b, b' ' | b'_' | b'-'))\n}\n\n/// `400` or",
+      "to": "matches!(b, b' ' | b'_' | b'-' | b'\"'))\n}\n\n/// `400` or"
+    },
+    {
+      "name": "a font with no licence is accepted",
+      "file": "crates/cancho-ui-ir/src/theme.rs",
+      "from": "let licence = entry(&f.entries, \"licence\").filter(|l| usable_licence(&l.value));",
+      "to": "let licence = entry(&f.entries, \"licence\").or(entry(&f.entries, \"file\"));"
+    },
+    {
+      "name": "a second theme is not noticed",
+      "file": "crates/cancho-ui-ir/src/lower.rs",
+      "from": "if let Some(second) = file.themes.get(1) {",
+      "to": "if let Some(second) = file.themes.get(9) {"
+    },
+    {
+      "name": "the hash of a font is not compared",
+      "file": "crates/cancho-ui/src/theme.rs",
+      "from": "if got != f.sha256 {",
+      "to": "if false && got != f.sha256 {"
+    },
+    {
+      "name": "the hash has a wrong constant",
+      "file": "crates/cancho-ui/src/theme.rs",
+      "from": "0x428a2f98, 0x71374491,",
+      "to": "0x428a2f99, 0x71374491,"
+    },
+    {
+      "name": "the dark block repeats the light scheme",
+      "file": "crates/cancho-ui/src/theme.rs",
+      "from": "\"@media (prefers-color-scheme: dark) {{ :root {{ {} }} }}\",\n        set(\"dark\")",
+      "to": "\"@media (prefers-color-scheme: dark) {{ :root {{ {} }} }}\",\n        set(\"light\")"
+    },
+    {
+      "name": "the theme sets a height on controls",
+      "file": "crates/cancho-ui/src/theme.rs",
+      "from": "s.push_str(\"a { color: var(--cui-accent); }\\n\");",
+      "to": "s.push_str(\"a { color: var(--cui-accent); }\\nbutton { min-height: 20px; }\\n\");"
+    },
+    {
+      "name": "the focus ring is removed",
+      "file": "crates/cancho-ui/src/theme.rs",
+      "from": ":focus-visible { outline: 3px solid var(--cui-accent); outline-offset: 2px; }",
+      "to": ":focus-visible { outline: none; }"
+    },
+    {
+      "name": "the focus ring takes the text colour",
+      "file": "crates/cancho-ui/src/theme.rs",
+      "from": ":focus-visible { outline: 3px solid var(--cui-accent); outline-offset: 2px; }",
+      "to": ":focus-visible { outline: 3px solid var(--cui-fg); outline-offset: 2px; }"
+    },
+    {
+      "name": "the font is not swapped",
+      "file": "crates/cancho-ui/src/theme.rs",
+      "from": "font-style: normal; font-display: swap;",
+      "to": "font-style: normal;"
+    },
+    {
+      "name": "a stylesheet imports a remote font",
+      "file": "crates/cancho-ui/src/theme.rs",
+      "from": "s.push_str(\"a { color: var(--cui-accent); }\\n\");",
+      "to": "s.push_str(\"a { color: var(--cui-accent); }\\n@import url(https://fonts.example/x.css);\\n\");"
+    },
+    {
+      "name": "the font is not copied into a page",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "        ),\n    ];\n    files.extend(theme.iter().flat_map(|t| t.fonts.iter().cloned()));\n    files\n}",
+      "to": "        ),\n    ];\n    files\n}"
+    },
+    {
+      "name": "the font is not precached by an app",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "    files.extend(theme.iter().flat_map(|t| t.fonts.iter().cloned()));\n    let sw",
+      "to": "    let sw"
+    },
+    {
+      "name": "a theme change is not counted by diff",
+      "file": "crates/cancho-ui-diff/src/lib.rs",
+      "from": "        + theme.len();",
+      "to": "        + 0;"
+    },
+    {
+      "name": "a theme change widens authority",
+      "file": "crates/cancho-ui-diff/src/lib.rs",
+      "from": "    let authority = if expanded {",
+      "to": "    let authority = if expanded || !diff_theme(base, candidate).is_empty() {"
+    }
+  ]
+}

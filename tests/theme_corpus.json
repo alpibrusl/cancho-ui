@@ -1,0 +1,327 @@
+{
+ "source": "alpibrusl/cancho-www at commit 0579a80, assets/site.css: the `:root` block (light) and its `prefers-color-scheme: dark` override. A vendored fixture: nothing reads the network or that repository.",
+ "min_ratio": 4.5,
+ "tokens": [
+  "bg",
+  "fg",
+  "muted",
+  "line",
+  "surface",
+  "soft",
+  "ink",
+  "accent",
+  "accent_fg",
+  "accent_soft",
+  "good",
+  "warn",
+  "warn_bg",
+  "warn_line",
+  "bad",
+  "bad_bg"
+ ],
+ "pairs": [
+  [
+   "fg",
+   "bg"
+  ],
+  [
+   "fg",
+   "surface"
+  ],
+  [
+   "muted",
+   "bg"
+  ],
+  [
+   "muted",
+   "surface"
+  ],
+  [
+   "muted",
+   "soft"
+  ],
+  [
+   "accent",
+   "bg"
+  ],
+  [
+   "accent",
+   "surface"
+  ],
+  [
+   "accent",
+   "accent_soft"
+  ],
+  [
+   "accent_fg",
+   "accent"
+  ],
+  [
+   "good",
+   "bg"
+  ],
+  [
+   "warn",
+   "warn_bg"
+  ],
+  [
+   "bad",
+   "bad_bg"
+  ],
+  [
+   "bad",
+   "bg"
+  ]
+ ],
+ "palette": {
+  "light": {
+   "bg": "#f7f4eb",
+   "fg": "#121417",
+   "muted": "#4f545b",
+   "line": "#e2ddd0",
+   "surface": "#ffffff",
+   "soft": "#efece1",
+   "ink": "#16283b",
+   "accent": "#185fa5",
+   "accent_fg": "#ffffff",
+   "accent_soft": "#ebf3fc",
+   "good": "#0f7b5f",
+   "warn": "#8a4b0a",
+   "warn_bg": "#f9efd9",
+   "warn_line": "#d9a441",
+   "bad": "#b91c1c",
+   "bad_bg": "#fdeceb"
+  },
+  "dark": {
+   "bg": "#0b1016",
+   "fg": "#e9ecf1",
+   "muted": "#9aa5b4",
+   "line": "#222b36",
+   "surface": "#121922",
+   "soft": "#172029",
+   "ink": "#0a121a",
+   "accent": "#6ea3ee",
+   "accent_fg": "#0a1220",
+   "accent_soft": "#14233a",
+   "good": "#4fd1a5",
+   "warn": "#f1c577",
+   "warn_bg": "#1c1810",
+   "warn_line": "#7e6126",
+   "bad": "#ff7a72",
+   "bad_bg": "#2a1413"
+  }
+ },
+ "cases": [
+  {
+   "name": "the muted text of the light scheme at #9a9a9a",
+   "set": {
+    "light.muted": "#9a9a9a"
+   },
+   "code": "theme-contrast",
+   "expect_fails": [
+    "light: muted on bg is 2.55:1",
+    "light: muted on surface is 2.81:1",
+    "light: muted on soft is 2.37:1"
+   ]
+  },
+  {
+   "name": "the accent of the dark scheme at #333333",
+   "set": {
+    "dark.accent": "#333333"
+   },
+   "code": "theme-contrast",
+   "expect_fails": [
+    "dark: accent on bg is 1.51:1",
+    "dark: accent on surface is 1.39:1",
+    "dark: accent on accent_soft is 1.24:1",
+    "dark: accent_fg on accent is 1.48:1"
+   ]
+  },
+  {
+   "name": "white text on a white accent",
+   "set": {
+    "light.accent_fg": "#ffffff",
+    "light.accent": "#ffffff"
+   },
+   "code": "theme-contrast",
+   "expect_fails": [
+    "light: accent on bg is 1.09:1",
+    "light: accent on surface is 1.00:1",
+    "light: accent on accent_soft is 1.11:1",
+    "light: accent_fg on accent is 1.00:1"
+   ]
+  },
+  {
+   "name": "warn on its own background in the dark scheme",
+   "set": {
+    "dark.warn": "#1c1810"
+   },
+   "code": "theme-contrast",
+   "expect_fails": [
+    "dark: warn on warn_bg is 1.00:1"
+   ]
+  },
+  {
+   "name": "the first grey that passes on white (#767676)",
+   "set": {
+    "light.bg": "#ffffff",
+    "light.surface": "#ffffff",
+    "light.fg": "#767676"
+   },
+   "code": null
+  },
+  {
+   "name": "the last grey that fails on white (#777777)",
+   "set": {
+    "light.bg": "#ffffff",
+    "light.surface": "#ffffff",
+    "light.fg": "#777777"
+   },
+   "code": "theme-contrast",
+   "expect_fails": [
+    "light: fg on bg is 4.47:1",
+    "light: fg on surface is 4.47:1"
+   ]
+  },
+  {
+   "name": "upper case digits are a colour",
+   "set": {
+    "light.bg": "#F7F4EB"
+   },
+   "code": null
+  },
+  {
+   "name": "a name is not a colour",
+   "set": {
+    "light.bg": "red"
+   },
+   "code": "theme-colour-invalid"
+  },
+  {
+   "name": "three digits are not a colour",
+   "set": {
+    "light.bg": "#fff"
+   },
+   "code": "theme-colour-invalid"
+  },
+  {
+   "name": "alpha is not a colour",
+   "set": {
+    "light.bg": "#f7f4eb80"
+   },
+   "code": "theme-colour-invalid"
+  },
+  {
+   "name": "a function is not a colour",
+   "set": {
+    "dark.bg": "rgb(0,0,0)"
+   },
+   "code": "theme-colour-invalid"
+  },
+  {
+   "name": "a non-hex digit",
+   "set": {
+    "dark.fg": "#12345g"
+   },
+   "code": "theme-colour-invalid"
+  },
+  {
+   "name": "an empty string",
+   "set": {
+    "dark.fg": ""
+   },
+   "code": "theme-colour-invalid"
+  },
+  {
+   "name": "a CSS injection",
+   "set": {
+    "light.bg": "#fff;}body{display:none"
+   },
+   "code": "theme-colour-invalid"
+  },
+  {
+   "name": "a token that does not exist",
+   "add": {
+    "light.sparkle": "#ff00ff"
+   },
+   "code": "theme-token-unknown"
+  },
+  {
+   "name": "a token written with a dash is two tokens and a minus",
+   "add": {
+    "dark.accent-fg": "#ffffff"
+   },
+   "code": "parse-unexpected-token"
+  },
+  {
+   "name": "a scheme that does not exist",
+   "rename": {
+    "dark": "night"
+   },
+   "code": "theme-token-unknown"
+  },
+  {
+   "name": "a token given twice",
+   "dup": {
+    "light.fg": "#000000"
+   },
+   "code": "theme-token-unknown"
+  },
+  {
+   "name": "a token missing from the light scheme",
+   "drop": [
+    "light.ink"
+   ],
+   "code": "theme-scheme-missing"
+  },
+  {
+   "name": "a token missing from the dark scheme",
+   "drop": [
+    "dark.warn_line"
+   ],
+   "code": "theme-scheme-missing"
+  },
+  {
+   "name": "no dark scheme",
+   "drop_scheme": "dark",
+   "code": "theme-scheme-missing"
+  },
+  {
+   "name": "no light scheme",
+   "drop_scheme": "light",
+   "code": "theme-scheme-missing"
+  }
+ ],
+ "ratios": {
+  "light": {
+   "fg/bg": 16.7769,
+   "fg/surface": 18.4509,
+   "muted/bg": 6.9394,
+   "muted/surface": 7.6318,
+   "muted/soft": 6.4527,
+   "accent/bg": 5.9318,
+   "accent/surface": 6.5237,
+   "accent/accent_soft": 5.8273,
+   "accent_fg/accent": 6.5237,
+   "good/bg": 4.7514,
+   "warn/warn_bg": 5.9443,
+   "bad/bad_bg": 5.6611,
+   "bad/bg": 5.883
+  },
+  "dark": {
+   "fg/bg": 16.122,
+   "fg/surface": 14.9285,
+   "muted/bg": 7.6506,
+   "muted/surface": 7.0842,
+   "muted/soft": 6.5998,
+   "accent/bg": 7.3973,
+   "accent/surface": 6.8496,
+   "accent/accent_soft": 6.1119,
+   "accent_fg/accent": 7.2629,
+   "good/bg": 9.997,
+   "warn/warn_bg": 10.9414,
+   "bad/bad_bg": 6.8538,
+   "bad/bg": 7.5266
+  }
+ }
+}

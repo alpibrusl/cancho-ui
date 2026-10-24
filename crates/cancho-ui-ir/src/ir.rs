@@ -13,6 +13,34 @@ pub struct IrFile {
     pub version: String,
     pub module: Option<String>,
     pub components: Vec<IrComponent>,
+    /// `theme { .. }` (docs/theme.md): the colours of the two schemes and the fonts, checked.
+    pub theme: Option<IrTheme>,
+}
+
+/// A checked theme: both schemes with all sixteen tokens as `#rrggbb`, the fonts by role.
+#[derive(Debug, Clone, PartialEq)]
+pub struct IrTheme {
+    pub schemes: Vec<IrScheme>,
+    pub fonts: Vec<IrFont>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct IrScheme {
+    pub name: String,
+    /// `(token, "#rrggbb")` in the order of `theme::TOKENS`.
+    pub tokens: Vec<(String, String)>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct IrFont {
+    pub role: String,
+    pub family: String,
+    pub file: String,
+    pub sha256: String,
+    pub licence: String,
+    pub weight: Option<String>,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq)]

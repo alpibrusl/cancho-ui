@@ -1,0 +1,33 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "steps": [
+    {
+      "event": "Click",
+      "state": {
+        "clicks": 1,
+        "name": ""
+      },
+      "expect": {
+        "outcome": "completed"
+      }
+    },
+    {
+      "event": "Name",
+      "params": [
+        "Ada"
+      ],
+      "state": {
+        "clicks": 1,
+        "name": "Ada"
+      }
+    },
+    {
+      "event": "Click",
+      "state": {
+        "clicks": 2,
+        "name": "Ada"
+      }
+    }
+  ]
+}

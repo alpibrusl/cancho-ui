@@ -158,5 +158,13 @@ pub fn render_human(r: &DiffReport) -> String {
     for d in &r.components.changed {
         component(&mut out, d);
     }
+    for t in &r.theme {
+        let _ = match (&t.base, &t.candidate) {
+            (Some(b), Some(c)) => writeln!(out, "~ theme {}: {b} -> {c}", t.setting),
+            (None, Some(c)) => writeln!(out, "+ theme {} = {c}", t.setting),
+            (Some(b), None) => writeln!(out, "- theme {} = {b}", t.setting),
+            (None, None) => Ok(()),
+        };
+    }
     out
 }
