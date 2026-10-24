@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f6feb">
+<title>cancho-ui device probe</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<style>
+:root { color-scheme: light dark; --ok: #1a7f37; --no: #cf222e; --tap: #9a6700; --info: #57606a; }
+@media (prefers-color-scheme: dark) { :root { --ok: #3fb950; --no: #ff7b72; --tap: #d29922; --info: #8b949e; } }
+body { margin: 0; padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 44rem; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin: 0 0 0.5rem; }
+h2 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; }
+button, input, textarea { min-height: 44px; min-width: 44px; font: inherit; }
+button { margin: 0 0.5rem 0.5rem 0; }
+.row { display: grid; grid-template-columns: 7.5rem 1fr; gap: 0.25rem 0.75rem; padding: 0.5rem 0; border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent); }
+.name { font-weight: 600; overflow-wrap: anywhere; }
+.badge { font-weight: 700; }
+.badge::before { content: attr(data-mark) " "; }
+.yes { color: var(--ok); } .no { color: var(--no); } .tap, .manual { color: var(--tap); } .unsupported, .unknown { color: var(--info); }
+.detail { grid-column: 1 / -1; overflow-wrap: anywhere; }
+textarea#json { width: 100%; box-sizing: border-box; height: 14rem; font: 12px/1.4 ui-monospace, Menlo, monospace; }
+iframe { width: 100%; height: 26rem; border: 1px solid color-mix(in srgb, currentColor 30%, transparent); }
+.zoomfield { display: block; margin: 0 0 0.75rem; width: 100%; box-sizing: border-box; }
+ol li, ul li { margin-bottom: 0.4rem; }
+.fine { font-size: 0.875rem; color: var(--info); }
+</style>
+</head>
+<body>
+<main>
+<h1>cancho-ui device probe</h1>
+<p>Open on a phone, this page asks the browser it runs in the questions of issues <a href="https://github.com/alpibrusl/cancho-ui/issues/65">#65</a> and <a href="https://github.com/alpibrusl/cancho-ui/issues/68">#68</a> and shows the answers below, and as one block of JSON to copy.
+<strong>It sends nothing anywhere</strong>: no request to any other site, no analytics. It asks for no permission by itself; the buttons that do are marked, and the page writes down what each tap did.
+What it reports is what <em>this</em> browser says, on <em>this</em> phone: nothing here is a result until it has been run on the device.</p>
+
+<h2>What to do (about five minutes)</h2>
+<ol>
+<li>Tap <b>Re-measure</b> once the page has loaded. Read the lines marked <span class="badge tap" data-mark="?">needs a tap</span>.</li>
+<li>Tap the two text fields below, one after the other (tap away, and pinch back to normal size, in between).</li>
+<li>Tap <b>Ask for notification permission</b>, then <b>Show a test notification</b>, then <b>Ask for persistent storage</b>. Install: on <b>iPhone</b> Safari, Share, <i>Add to Home Screen</i>; on <b>Android</b> Chrome, the <b>Install</b> button below (or menu, <i>Install app</i>).</li>
+<li>Open the page <b>from the home screen</b>. Do steps 1 to 3 again there: an installed page can answer differently from a tab, and that difference is the point.</li>
+<li>Turn on airplane mode, close the app completely, open it again. The line <i>Offline start</i> says whether it opened.</li>
+<li>Switch to another app for 30 seconds and come back; rotate the phone to landscape and back.</li>
+<li>Tap <b>Copy JSON</b> and paste it into the issue, with the phone model and the steps you skipped.</li>
+</ol>
+
+<p>
+<button id="measure">Re-measure</button>
+<button id="copy">Copy JSON</button>
+<button id="install" hidden>Install</button>
+<button id="notify">Ask for notification permission</button>
+<button id="shownotif">Show a test notification</button>
+<button id="persist">Ask for persistent storage</button>
+</p>
+<p id="copied" class="fine" role="status"></p>
+
+<h2>Does tapping a text field zoom the page?</h2>
+<label for="f16">First field (16 px text, like cancho-ui's baseline)</label>
+<input id="f16" class="zoomfield" type="text" style="font-size:16px" autocomplete="off" value="">
+<label for="f14">Second field (14 px text, a control)</label>
+<input id="f14" class="zoomfield" type="text" style="font-size:14px" autocomplete="off" value="">
+
+<h2>Results</h2>
+<div id="results" aria-live="off"></div>
+
+<h2>The ops console, measured</h2>
+<p class="fine">The gallery's ops console, in a frame as wide as this page, is what the touch-target line measures. Use it by hand too: tap the rows and buttons.</p>
+<iframe id="oc" title="the ops console demo" src="../demo/ops-console/"></iframe>
+
+<h2>Steps only a person can do</h2>
+<ul id="manual"></ul>
+
+<h2>JSON</h2>
+<textarea id="json" readonly aria-label="the probe's result as JSON"></textarea>
+<p class="fine">Probe version 1. Source: docs/probe/ in the cancho-ui repository.</p>
+</main>
+<script src="./probe.js"></script>
+<script>
+(function () {
+    'use strict';
+    var P = window.CanchoProbe;
+    var state = { lifecycle: {}, touchTargetsByOrientation: {} };
+    var $ = function (id) { return document.getElementById(id); };
+
+    // a 1 s timer, to see whether timers keep running while the page is hidden
+    var hb = { ticks: 0, start: Date.now(), last: Date.now(), maxGap: 0, hiddenTicks: 0, hiddenMs: 0, hiddenSince: null };
+    setInterval(function () {
+        var now = Date.now();
+        hb.ticks++;
+        if (now - hb.last > hb.maxGap) { hb.maxGap = now - hb.last; }
+        hb.last = now;
+        if (document.visibilityState === 'hidden') { hb.hiddenTicks++; }
+    }, 1000);
+    state.heartbeat = function () { return { ticks: hb.ticks, seconds: Math.round((Date.now() - hb.start) / 1000), maxGapMs: hb.maxGap, hiddenTicks: hb.hiddenTicks, hiddenMs: hb.hiddenMs }; };
+    function count(name) { state.lifecycle[name] = (state.lifecycle[name] || 0) + 1; }
+    document.addEventListener('visibilitychange', function () {
+        count('visibilitychange:' + document.visibilityState);
+        if (document.visibilityState === 'hidden') { hb.hiddenSince = Date.now(); } else if (hb.hiddenSince) { hb.hiddenMs += Date.now() - hb.hiddenSince; hb.hiddenSince = null; render(); }
+    });
+    document.addEventListener('freeze', function () { count('freeze'); });
+    document.addEventListener('resume', function () { count('resume'); });
+    window.addEventListener('pagehide', function (e) { count('pagehide' + (e.persisted ? ':persisted' : '')); });
+    window.addEventListener('pageshow', function (e) { count('pageshow' + (e.persisted ? ':persisted' : '')); });
+
+    window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        state.beforeInstallPrompt = e;
+        $('install').hidden = false;
+        render();
+    });
+    $('install').addEventListener('click', function () {
+        var e = state.beforeInstallPrompt;
+        if (!e) { return; }
+        e.prompt();
+        e.userChoice.then(function (c) { state.installTap = { outcome: c.outcome }; render(); });
+    });
+
+    $('notify').addEventListener('click', function () {
+        var before = 'Notification' in window ? Notification.permission : null;
+        var tap = { before: before, result: null, error: null, after: null };
+        if (!('Notification' in window)) { tap.error = 'Notification is absent here'; state.notificationTap = tap; render(); return; }
+        new Promise(function (ok, no) {
+            var p = Notification.requestPermission(ok);
+            if (p && p.then) { p.then(ok, no); }
+        }).then(function (r) { tap.result = r; }, function (e) { tap.error = String(e && e.message || e); }).then(function () {
+            tap.after = Notification.permission;
+            state.notificationTap = tap;
+            render();
+        });
+    });
+    $('shownotif').addEventListener('click', function () {
+        if (!navigator.serviceWorker) { state.notificationShown = { ok: false, error: 'no service worker API' }; render(); return; }
+        navigator.serviceWorker.ready.then(function (reg) { return reg.showNotification('cancho-ui device probe', { body: 'A test notification from this page. Nothing was sent from anywhere.', tag: 'cancho-probe' }); })
+            .then(function () { state.notificationShown = { ok: true }; }, function (e) { state.notificationShown = { ok: false, error: String(e && e.message || e) }; })
+            .then(render);
+    });
+    $('persist').addEventListener('click', function () {
+        var tap = { result: null, error: null };
+        if (!(navigator.storage && navigator.storage.persist)) { tap.error = 'navigator.storage.persist is absent'; state.persistTap = tap; render(); return; }
+        navigator.storage.persist().then(function (r) { tap.result = r; }, function (e) { tap.error = String(e && e.message || e); }).then(function () { state.persistTap = tap; render(); });
+    });
+
+    // the zoom: the scale of the visual viewport when the finger goes down, and a moment after the field has the focus
+    ['f16', 'f14'].forEach(function (id) {
+        var el = $(id);
+        var before = null;
+        var scale = function () { return window.visualViewport ? window.visualViewport.scale : null; };
+        ['pointerdown', 'touchstart', 'mousedown'].forEach(function (ev) { el.addEventListener(ev, function () { if (before === null) { before = scale(); } }); });
+        el.addEventListener('focus', function () {
+            if (before === null) { before = scale(); }
+            var b = before;
+            before = null;
+            setTimeout(function () {
+                state.focusZoom = state.focusZoom || {};
+                state.focusZoom[id === 'f16' ? 'field16' : 'field14'] = { before: b, after: scale(), fontSize: window.getComputedStyle(el).fontSize, at: new Date().toISOString() };
+                render();
+            }, 700);
+        });
+    });
+
+    // the touch targets of the ops console, read from its frame (same origin)
+    function measureTargets() {
+        var frame = $('oc');
+        try {
+            var doc = frame.contentDocument;
+            var rects = [];
+            Array.prototype.forEach.call(doc.querySelectorAll('button, a[href], input, select, textarea, summary, [role="button"], [role="link"]'), function (el) {
+                var r = el.getBoundingClientRect();
+                if (r.width === 0 || r.height === 0) { return; }
+                rects.push({ tag: el.tagName.toLowerCase(), label: (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 24), width: Math.round(r.width * 10) / 10, height: Math.round(r.height * 10) / 10 });
+            });
+            var fonts = Array.prototype.map.call(doc.querySelectorAll('input, textarea, select'), function (el) { return doc.defaultView.getComputedStyle(el).fontSize; });
+            var t = { rects: rects, viewportWidth: frame.clientWidth, overflowX: doc.documentElement.scrollWidth > doc.documentElement.clientWidth + 1, fieldFontSizes: fonts, orientation: window.innerWidth > window.innerHeight ? 'landscape' : 'portrait' };
+            state.touchTargets = t;
+            state.touchTargetsByOrientation[t.orientation] = { count: rects.length, viewportWidth: t.viewportWidth, overflowX: t.overflowX, smallest: P.targetVerdict(rects, 44).smallest, below44: P.targetVerdict(rects, 44).below };
+        } catch (e) {
+            state.touchTargets = { error: String(e && e.message || e) };
+        }
+    }
+    $('oc').addEventListener('load', function () { setTimeout(function () { measureTargets(); render(); }, 1500); });
+    var resizing = null;
+    window.addEventListener('resize', function () { clearTimeout(resizing); resizing = setTimeout(function () { measureTargets(); render(); }, 600); });
+
+    // drawing
+    var MARK = { yes: 'yes', no: 'NO', unsupported: 'absent', 'needs a tap': 'tap', 'manual step': 'manual', 'not measured': '-' };
+    var SECTIONS = [['display', 'Display'], ['install', 'Install'], ['serviceWorker', 'Service worker'], ['offlineStart', 'Offline start'], ['notifications', 'Notifications and push'], ['background', 'Background work'], ['storage', 'Storage'], ['focusZoom', 'Zoom on focus'], ['touchTargets', 'Ops console targets']];
+    function isRow(v) { return v && typeof v.status === 'string' && typeof v.detail === 'string'; }
+    function rowEl(name, v) {
+        var d = document.createElement('div');
+        d.className = 'row';
+        var n = document.createElement('div'); n.className = 'name'; n.textContent = name;
+        var cls = { yes: 'yes', no: 'no', 'needs a tap': 'tap', 'manual step': 'manual', unsupported: 'unsupported', 'not measured': 'unknown' }[v.status] || 'unknown';
+        var b = document.createElement('div'); b.className = 'badge ' + cls; b.setAttribute('data-mark', MARK[v.status] || v.status); b.textContent = v.status;
+        var t = document.createElement('div'); t.className = 'detail'; t.textContent = v.detail;
+        d.appendChild(n); d.appendChild(b); d.appendChild(t);
+        return d;
+    }
+    var rendering = false;
+    function render() {
+        if (rendering) { return; }
+        rendering = true;
+        P.collect(window, state).then(function (facts) {
+            var rep = P.report(facts);
+            var out = $('results');
+            out.textContent = '';
+            var ua = document.createElement('p');
+            var u = rep.userAgent.parsed;
+            ua.textContent = u.os + ' ' + u.osVersion + ', ' + u.browser + ' ' + u.browserVersion + ' (' + u.engine + ')' + (u.mobile ? ', mobile' : ', not mobile') + '. ' + rep.userAgent.string;
+            ua.className = 'fine';
+            out.appendChild(ua);
+            SECTIONS.forEach(function (s) {
+                var h = document.createElement('h3'); h.textContent = s[1]; out.appendChild(h);
+                var v = rep[s[0]];
+                if (isRow(v)) { out.appendChild(rowEl(s[1], v)); return; }
+                Object.keys(v).forEach(function (k) { if (isRow(v[k])) { out.appendChild(rowEl(k, v[k])); } });
+            });
+            var ul = $('manual'); ul.textContent = '';
+            rep.manualSteps.forEach(function (m) { var li = document.createElement('li'); li.textContent = m; ul.appendChild(li); });
+            $('json').value = JSON.stringify(rep, null, 2);
+            window.__probeReport = rep;
+            rendering = false;
+        }, function () { rendering = false; });
+    }
+    $('measure').addEventListener('click', function () { measureTargets(); render(); });
+    $('copy').addEventListener('click', function () {
+        var text = $('json').value;
+        var done = function (ok) { $('copied').textContent = ok ? 'Copied ' + text.length + ' characters. Paste them into the issue.' : 'Could not copy: select the JSON block and copy it by hand.'; };
+        if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); }); return; }
+        var ta = $('json'); ta.select(); try { done(document.execCommand('copy')); } catch (e) { done(false); }
+    });
+
+    // start: register the worker (same origin, its own files), record this load, draw
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').then(function () { render(); }, function (e) { state.registerError = String(e && e.message || e); render(); });
+    }
+    state.history = P.loadHistory(window, navigator.serviceWorker && navigator.serviceWorker.controller);
+    render();
+})();
+</script>
+</body>
+</html>

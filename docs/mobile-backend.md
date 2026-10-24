@@ -34,7 +34,9 @@ Read from the code generator (`crates/cancho-ui-codegen-web/src/`, `emit.rs` and
 from compiled output (`examples/search`):
 
 - The emitted JavaScript contains no `import`, no `fetch`, no `localStorage`,
-  no geolocation call and no `visibilitychange` or `pagehide` handler.
+  no geolocation call. *(Corrected 2026-10-24: this said "and no `visibilitychange` or `pagehide` handler". A program that has an `every` schedule or a
+  `subscribe` now gets those handlers, because a hidden page pauses its timers and closes its stream: `schedules.md` section 11, `streams.md`. A program
+  with neither has none.)*
 - **The platform adapters are stubs.** `Network` is `net.search(q)`: a promise
   that resolves after a simulated delay (60 ms plus 45 ms per query character)
   against a fixed six-name corpus, so the demo runs offline. `Clock` and the
@@ -44,8 +46,10 @@ from compiled output (`examples/search`):
   documents name `Network`, `Storage`, `Clock` and `Location`
   ([`platform-model.md`](platform-model.md) §1); two of the four are not
   written, and the one called `Network` is not a network.
-- A component keeps running when the page is hidden. A browser may throttle or
-  freeze timers of a background tab; the runtime does not react to that.
+- *(Corrected 2026-10-24.)* A component with no `every` schedule and no `subscribe` keeps running when the page is hidden, and the runtime does
+  not react to a browser throttling or freezing its timers. One with a schedule or a subscription pauses while the page is hidden
+  (`schedules.md` section 11). What a phone browser really does to a hidden page is not measured here; the probe (section 8.1) counts the
+  ticks of a 1 s timer across a hidden interval so that a device can say.
 
 So an app built today is, honestly, a **self-contained interactive page**. Making
 it a PWA gives it install, offline start and a phone-sized layout. It does not
@@ -96,7 +100,8 @@ program is usable on a phone, and an author replaces it freely:
 - `button`, `input` and `textarea` have `min-height: 44px` (a touch target of
   at least 44 CSS pixels) and `font: inherit` at a 16 px base; 16 px inputs are
   what stops iOS Safari from zooming a page on focus (**not verified here**: no
-  iOS device).
+  iOS device. The probe, section 8.1, taps a 16 px and a 14 px field and reads `visualViewport.scale` before and after; on
+  desktop Chromium it reads 1 and 1 for both, which says nothing about iOS, section 8.2).
 - `padding` uses `env(safe-area-inset-*)` so content clears notches.
 - `color-scheme: light dark`.
 
@@ -276,6 +281,89 @@ path's length; the script's own totals (43,580 and 49,989) are that, 21 bytes mo
   and the mutants re-run.
 - **Not measured:** iOS Safari, Lighthouse (a real phone was first reported on in §5.2: Chrome for Android, by screenshot description, not measured), update behaviour (a new version
   taking over after the old tabs close), and what any browser does with the install prompt.
+
+### 8.1 The device probe: one page-load per phone (issue #65, issue #68)
+
+> **Status: built; no device has run it.** Nothing in this subsection is a device result. It is what to open and what to send back.
+
+`docs/probe/` is a **plain static page**, not a cancho-ui program, and it is written that way on purpose: it has to read
+browser APIs the language does not expose (`Notification`, `PushManager`, `registration.periodicSync`, `navigator.storage`,
+`visualViewport`, `getComputedStyle`), and a probe that went through the compiler would measure the compiler's output as well
+as the phone. It is built the way the gallery demos are served (no build step, same-origin files, a manifest, a service worker
+of its own that precaches its five files and answers same-origin GETs from the cache), and it embeds the gallery's ops console
+in a frame to measure the console's touch targets. **It sends nothing anywhere**: there is no `Network` host, no analytics, no
+beacon; its one `fetch` is for its own manifest; the only addresses in the page are links to this repository, followed only by a
+tap. `scripts/check-probe.js` checks that (part A) and `scripts/breaks/probe.json` spoils it on purpose.
+
+**On an iPhone (Safari)**
+1. Open `https://alpibrusl.github.io/cancho-ui/probe/` in **Safari** (not an in-app browser). Wait for the lines to appear.
+2. Tap Share, then **Add to Home Screen**, then Add.
+3. Open it **from the Home Screen icon** (that is the only way iOS lets a web app ask for notifications). Read the line "running installed".
+4. Tap **Ask for notification permission** once, then **Show a test notification**, then **Ask for persistent storage**. Tap the 16 px field and the 14 px field.
+5. Turn on airplane mode, close the app completely (swipe it away), open it again from the icon. The line "offline start" should say "Proven".
+6. Optional: switch to another app for 30 seconds and come back; the "timers" line says whether a 1 s timer kept ticking.
+7. Tap **Copy JSON** and paste it into the comment on issue #65 (or send it to whoever asked). Say which iPhone model and iOS version it was if the page could not tell.
+
+**On Android (Chrome)**
+1. Open the same address in Chrome. Wait for the lines to appear.
+2. Tap the **Install** button the page shows (it appears only if Chrome offers installation), or the menu, then **Install app**. Open it from the launcher icon.
+3. Do steps 4 to 7 above (tap the two fields, the notification button, the test notification and the storage button; airplane mode and reopen; copy the JSON).
+
+The page asks for **no permission by itself**: a permission prompt appears only when its button is tapped, and the report says what the tap did
+(before, result, after). Run it **twice** if you can, once in a browser tab and once installed; the "visit" counter and the history show which was which.
+
+What the probe reports, each with `yes`, `no`, `unsupported`, `needs a tap`, `manual step` or `not measured`: display mode and `navigator.standalone`;
+the manifest; the service worker (registered, state, controlling this page, cache names); offline start after one visit (**proven only** if a
+later visit has `navigator.onLine` false and the worker in control); `Notification` and `PushManager` present, `Notification.permission`,
+`pushManager.permissionState`; `periodicSync`, background sync and background fetch **present** (present is not working: the probe does not
+register one, and a push from a server is not testable without a push server and the browser vendor's push service, so it is listed as a manual step);
+`navigator.storage.estimate()` and `persisted()`; viewport, `visualViewport`, `devicePixelRatio`, safe-area insets; the zoom taps; the touch
+targets of the ops console in the orientation the phone is in (rotate and tap Re-measure for the other); the user agent string and a parse of
+it (iPadOS in desktop mode is recognised by the touch points, not the string).
+
+**Manual steps the probe lists and does not fake**: VoiceOver and TalkBack reading the ops console (does the table announce its name, its headers and
+the row; does the search field announce its label); Lighthouse; a real push from a server; distribution through an app store; installing the cancho-ui
+PWA from `build --pwa`, which this page's own manifest is not.
+
+### 8.2 What the probe measured on DESKTOP CHROMIUM (not a device)
+
+`node scripts/check-probe.js [--out report.json]`, Playwright Chromium 141 on Linux with the `Pixel 7` profile (touch, 412 px, an Android
+Chrome user agent string), served from `http://localhost` by a server the script owns, 2026-10-24. **This is not a phone**: it has no soft
+keyboard, no pinch zoom, no screen reader, no push service, no installed app and no OS permission UI; what it shows is that the probe runs, asks
+only what it should, and does what it says. It cannot show what any claim in this document about iOS or Android is.
+
+| Measured in DESKTOP CHROMIUM | Result |
+|---|---|
+| the page asked for a permission or for persistence by itself | no (0 calls before a tap) |
+| `Notification.permission` | `"denied"` before and after a tap on the button (headless: no prompt can be shown; the tap was recorded, the answer was not a user's) |
+| a test notification | refused: no permission |
+| `navigator.storage.persist()` after a tap | `false` |
+| `registration.periodicSync`, `.sync`, `.backgroundFetch` | **present** in this Chromium; `periodic-background-sync` permission `"denied"`. Presence says nothing about it working on Android |
+| tap in a 16 px and a 14 px field | `visualViewport.scale` 1 before and 1 after, both. Desktop Chromium does not zoom on focus; this says nothing about iOS Safari |
+| a 1 s timer in a visible page | 4 ticks in 4 s, longest gap 1001 ms. Not measured: a hidden page |
+| offline start | **proven** on visit 3 with the server stopped, `setOffline(true)` and the worker in control (`onLine` false) |
+| requests that left the check's own server | none (the check refuses and records any other host; it asked for none) |
+| the ops console's interactive elements in a frame 380 px wide | 13, the smallest 63.2 x 44 CSS px, none below 44 |
+| the ops console at a width under 412 px | **a horizontal overflow, found by this run** (below) |
+
+**A finding, not in any earlier claim: the ops console scrolls sideways under 412 px.** The probe reported `horizontal overflow: YES` for the console in
+a 380 px frame. Measured standalone, in desktop Chromium with the Pixel 7 profile and the viewport width changed (the page's scroll width minus its
+client width, over 10 s): **412 px: 0; 380 px: 3 px; 375 px: 7 px; 360 px: 22 px; 320 px: 62 px.** The console's table has a minimum width of about
+382 px. `scripts/check-mobile-demos.js` runs at 412 px only (its profile is one phone), so it could not see this, and nothing in this document claimed
+"no sideways scroll" (the 44 px claim above is about size and still holds). It is a defect of the demo on a narrow phone, filed as #144; the
+probe reports the overflow with the viewport width so that a device run shows it too. It was **not** fixed here.
+
+**The probe's own logic can fail.** `scripts/breaks/probe.json`: 18 deliberate breaks (iPad detection, the zoom threshold twice, the target rule, the 44 px
+default and the 44 px used by the console line, installed read wrongly two ways, offline start proven too early three ways, the manual steps dropped, a beacon, a
+second fetch to another host, a permission asked at load, persistence asked at load, the worker answering cross-origin requests, the page's script left out of the precache),
+each caught by `check-probe.js` failing on its own. The first run left two uncaught (the console line judged against 40 survived because the demo's smallest control is
+exactly 44, so a 42 px control was added to the check; one `from` string was not unique); both were fixed and re-run. The harness's first two baselines failed when the
+run was started detached from the shell and passed when started by the tool in the background; the cause was not found. The check itself passed 15 of 15 runs in the foreground
+(one further run was killed by an outer 200 s timeout, unexplained; the check's own watchdog is 4 minutes).
+
+**Not measured, by this or any run so far**: any iPhone or iPad, any real Android phone, soft-keyboard zoom, VoiceOver, TalkBack, Lighthouse, a real
+push, a hidden page on a phone, background sync, periodic sync and background fetch **working** (rather than present), storage eviction, an installed app.
+`docs/gallery.json` keeps "Native shell and push on mobile" as **coming soon** and issue #68 stays open until a device report exists.
 
 ---
 

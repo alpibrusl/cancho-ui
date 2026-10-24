@@ -12,6 +12,8 @@
 !docs/demo/counter.js
 # the gallery demos are served as they are: each page needs its script (docs/mobile-backend.md section 5.2)
 !docs/demo/*/app.js
+# the device probe is a hand-written static page: its scripts are the page (docs/mobile-backend.md section 8.1)
+!docs/probe/*.js
 !scripts/*.js
 *.js.map
 *.cui.bak
