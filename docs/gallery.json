@@ -68,19 +68,15 @@
       "title": "Languages and right to left",
       "source": "examples/i18n/i18n.cui",
       "says": "One screen in English, Arabic and Russian. The texts are catalogs the compiler checks (a missing key or a plural form a language lacks is refused); numbers, percent, dates and times are written from tables, not `Intl`. The page starts in the browser's language, switches with a button, and turns right to left for Arabic."
+    },
+    {
+      "id": "reorder",
+      "title": "Reordering a list",
+      "source": "examples/reorder/reorder.cui",
+      "says": "`SortList`: drag a row by its handle (mouse, pen or finger), or move it with its up and down buttons from the keyboard; the focus follows the row, a live region says where it went, and the page is not redrawn under a drag. The program owns the list and accepts a move with one line, `move(tasks, from, to)`."
     }
   ],
   "soon": [
-    {
-      "id": "dnd",
-      "title": "Drag and drop",
-      "issue": 80,
-      "missing": "Drag events and a keyboard alternative; the only events are a button press and text input.",
-      "probe": {
-        "view": "Button { label: \"Drag\" ondrop: Go }",
-        "rule": "parse-unexpected-token"
-      }
-    },
     {
       "id": "maps",
       "title": "Maps",

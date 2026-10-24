@@ -60,7 +60,9 @@ fn kind_of_call(path: &[String]) -> Kind {
         | "storage.get" | "t" | "fmt.number" | "fmt.percent" | "fmt.date" | "fmt.time"
         | "locale.current" => Kind::Str,
         "locale.set" => Kind::Bool,
-        "lines" | "split" | "take" | "skip" | "reverse" | "concat" | "json.items" => Kind::List,
+        "lines" | "split" | "take" | "skip" | "reverse" | "concat" | "move" | "json.items" => {
+            Kind::List
+        }
         _ => Kind::Unknown,
     }
 }

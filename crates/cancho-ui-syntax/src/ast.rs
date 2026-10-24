@@ -284,6 +284,8 @@ pub enum ElementKind {
     Chart,
     /// A file picker whose chosen file reaches the program as one JSON `String` (docs/file-upload.md).
     FileField,
+    /// A list the user can reorder, by dragging a handle or with buttons (docs/drag-and-drop.md).
+    SortList,
     /// A link to another route of this page: `NavLink { label: "Item" to: "/items/3" }` (docs/routing.md section 4).
     NavLink,
     Named(String),

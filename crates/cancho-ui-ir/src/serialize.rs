@@ -618,6 +618,7 @@ impl Serialize for IrElementKind {
             }
             IrElementKind::Chart => ser.serialize_unit_variant("IrElementKind", 14, "Chart"),
             IrElementKind::NavLink => ser.serialize_unit_variant("IrElementKind", 12, "NavLink"),
+            IrElementKind::SortList => ser.serialize_unit_variant("IrElementKind", 15, "SortList"),
             IrElementKind::Table => ser.serialize_unit_variant("IrElementKind", 5, "Table"),
             IrElementKind::TableRow => ser.serialize_unit_variant("IrElementKind", 6, "TableRow"),
             IrElementKind::Cell => ser.serialize_unit_variant("IrElementKind", 7, "Cell"),

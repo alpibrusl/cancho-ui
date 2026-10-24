@@ -370,6 +370,16 @@ pub(crate) fn emit_view_node(
                 ));
                 return out;
             }
+            if matches!(kind, IrElementKind::SortList) {
+                return crate::sortlist::emit(
+                    indent,
+                    &var,
+                    parent_var,
+                    accessibility,
+                    bindings,
+                    params,
+                );
+            }
             let mut out = format!(
                 "{0}const {1} = document.createElement('{2}');\n",
                 indent, var, tag

@@ -11,6 +11,7 @@ mod locale;
 mod machine;
 mod report;
 mod router;
+mod sortlist;
 mod stream;
 mod trace;
 mod value;
@@ -26,8 +27,8 @@ use trace::{Action, Step, StreamAct, Trace, TraceError, parse_trace};
 use value::{Value, num_json, subset};
 
 pub use eval::{
-    JSON_ITEMS_MAX, arith, json_get, json_items, json_quote, math_builtin, num_of_text, page_count,
-    sort_key_order_json, text_builtin_json,
+    JSON_ITEMS_MAX, arith, json_get, json_items, json_quote, math_builtin, move_item, num_of_text,
+    page_count, sort_key_order_json, text_builtin_json,
 };
 pub use report::{
     Failure, FiredJson, HUMAN_VALUE_BOUND, IssuedJson, NOT_CLAIMED, REPORT_SCHEMA, REPORT_VERSION,
@@ -362,6 +363,38 @@ fn run_step(
                     ),
                 ));
             }
+            // A move reported by a SortList is two different whole numbers inside the list as it is now; a trace that gives another describes a
+            // page that does not exist (docs/drag-and-drop.md section 3).
+            if let Some(lens) = m.move_bounds(name) {
+                let legal = match params.as_slice() {
+                    [Value::Num(f), Value::Num(t)] => {
+                        f != t
+                            && lens.iter().any(|n| {
+                                [f, t]
+                                    .iter()
+                                    .all(|x| x.fract() == 0.0 && **x >= 0.0 && **x < *n as f64)
+                            })
+                    }
+                    _ => false,
+                };
+                if !legal {
+                    return Err(stop(
+                        "trace-move-invalid",
+                        "params",
+                        format!(
+                            "`{name}` is fired only by a SortList, which reports a move as two different whole numbers (from, to) inside the list as it is now (it has {} row(s)); the step gives {}",
+                            lens.iter()
+                                .map(usize::to_string)
+                                .collect::<Vec<_>>()
+                                .join(" or "),
+                            serde_json::to_string(
+                                &params.iter().map(Value::to_json).collect::<Vec<_>>()
+                            )
+                            .unwrap_or_default()
+                        ),
+                    ));
+                }
+            }
             let detail = serde_json::json!({
                 "name": name,
                 "params": params.iter().map(Value::to_json).collect::<Vec<_>>(),
@@ -678,6 +711,7 @@ fn run_step(
         credentials: credential_name(comp).map(|_| m.credentials.clone()),
         charts: m.charts(),
         stream: m.stream_report(),
+        sortlists: m.sortlists_report(),
         document: locale_used(comp)
             .then(|| serde_json::json!({"lang": m.locale.lang, "dir": m.locale.dir()})),
         history: routes_used(comp).then(|| {
@@ -733,7 +767,7 @@ fn check_expectations(
     for (key, expected) in &step.expect {
         report.checks += 1;
         // `ticks`, `routes` and `charts` are absent from a step in which none fell due, none was heard or none is in the page: that is the empty list.
-        let absent = if key == "ticks" || key == "routes" || key == "charts" {
+        let absent = if key == "ticks" || key == "routes" || key == "charts" || key == "sortlists" {
             Json::Array(Vec::new())
         } else {
             Json::Null

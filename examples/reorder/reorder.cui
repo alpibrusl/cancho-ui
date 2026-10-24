@@ -1,0 +1,31 @@
+// examples/reorder/reorder.cui: a list the user reorders (docs/drag-and-drop.md, issue #80).
+//
+// `SortList` shows the `List` named by `items:` and tells `Moved(from, to)` the two indexes when a row is dragged by its handle or moved with
+// its "up" and "down" buttons (the buttons are the keyboard and screen-reader path; the page keeps the focus on the row that moved).
+// The program owns the list: `move(tasks, from, to)` is the one line that accepts a move, and a program that wants to refuse one just does
+// not change the list. A render that arrives while a row is being dragged waits for the drop.
+
+component Reorder {
+    state tasks: List[String] = ["Write the note", "Build it", "Check it", "Ship it"];
+    state moves: Int = 0;
+
+    on Moved(from, to) {
+        tasks = move(tasks, from, to);
+        moves = moves + 1;
+    }
+
+    on Reset {
+        tasks = ["Write the note", "Build it", "Check it", "Ship it"];
+        moves = 0;
+    }
+
+    view {
+        Column {
+            Text { role: heading "Today" }
+            SortList { label: "Tasks, in the order to do them" items: tasks on: Moved }
+            Text { role: status "{moves} moves" }
+            Text { "First: " + join(take(tasks, 1), "") }
+            Button { label: "Reset" on: Reset }
+        }
+    }
+}

@@ -1144,6 +1144,7 @@ fn lower_kind(k: &ElementKind) -> IrElementKind {
         ElementKind::FileField => IrElementKind::FileField,
         ElementKind::Chart => IrElementKind::Chart,
         ElementKind::NavLink => IrElementKind::NavLink,
+        ElementKind::SortList => IrElementKind::SortList,
         ElementKind::Named(s) => IrElementKind::Named(s.clone()),
     }
 }
@@ -1681,6 +1682,7 @@ const PURE_BUILTINS: &[(&str, usize, &str)] = &[
     ("take", 2, "exactly two arguments: take(list, n)"),
     ("skip", 2, "exactly two arguments: skip(list, n)"),
     ("concat", 2, "exactly two arguments: concat(a, b)"),
+    ("move", 3, "exactly three arguments: move(list, from, to)"),
     ("min", 2, "exactly two arguments: min(a, b)"),
     ("max", 2, "exactly two arguments: max(a, b)"),
     ("abs", 1, "exactly one argument: abs(n)"),

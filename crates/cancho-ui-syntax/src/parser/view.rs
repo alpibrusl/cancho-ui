@@ -257,6 +257,7 @@ impl Parser {
             "FileField" => ElementKind::FileField,
             "Chart" => ElementKind::Chart,
             "NavLink" => ElementKind::NavLink,
+            "SortList" => ElementKind::SortList,
             other => ElementKind::Named(other.to_string()),
         };
 
@@ -539,6 +540,19 @@ impl Parser {
                         found: other,
                         line: self.peek().span.start.line,
                         column: self.peek().span.start.column,
+                    }),
+                }
+            }
+            "items" if matches!(kind, ElementKind::SortList) => {
+                // The name of the `List` state field a `SortList` shows (docs/drag-and-drop.md).
+                let tok = self.bump();
+                match tok.token {
+                    Token::Ident(s) => Ok(BindingValue::StateRef(s)),
+                    other => Err(ParseError::Unexpected {
+                        expected: "the name of a List state field",
+                        found: other,
+                        line: tok.span.start.line,
+                        column: tok.span.start.column,
                     }),
                 }
             }

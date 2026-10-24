@@ -428,6 +428,7 @@ fn emit_call_runtime(path: &[String], args: &[IrExpr], params: &[&str]) -> Strin
                 | "take"
                 | "skip"
                 | "concat"
+                | "move"
                 | "min"
                 | "max"
                 | "abs"

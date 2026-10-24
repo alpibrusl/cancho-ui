@@ -532,6 +532,9 @@ pub enum IrElementKind {
     FileField,
     /// `Chart { label: .. kind: "line" values: xs }` (docs/charts.md): an SVG line or bar chart of a list of numbers in a `<figure>`.
     Chart,
+    /// `SortList { label: .. items: list on: Moved }` (docs/drag-and-drop.md): a list the user can reorder, a `<ul>` of rows each with a drag
+    /// handle and buttons to move it up and down; the event gets the two indexes.
+    SortList,
     /// `NavLink { label: .. to: path }` (docs/routing.md section 4): a link to a route of this page, an `<a href="#path">`.
     NavLink,
     /// `Table { .. }` (docs/presentation.md section 4) and what lowering makes of its descendants: a `Row` of a table is
@@ -558,6 +561,7 @@ impl IrElementKind {
             IrElementKind::FileField => "input",
             IrElementKind::Chart => "figure",
             IrElementKind::NavLink => "a",
+            IrElementKind::SortList => "ul",
             IrElementKind::Table => "table",
             IrElementKind::TableRow => "tr",
             IrElementKind::Cell => "td",

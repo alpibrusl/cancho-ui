@@ -186,7 +186,7 @@ fn storage_ns(comp: &IrComponent) -> &str {
 }
 
 pub struct Machine<'a> {
-    comp: &'a IrComponent,
+    pub(crate) comp: &'a IrComponent,
     pub state: BTreeMap<String, Value>,
     pub clock: f64,
     /// The `Storage` store (docs/adapters.md): key to value, seeded by the trace, written by `storage.set`.
@@ -486,7 +486,7 @@ impl<'a> Machine<'a> {
 
     /// Evaluate a pure expression of the view against the state as it is now (a `Chart`'s `values:` and `labels:`); `None` when it
     /// cannot be evaluated.
-    fn eval_view(&self, expr: &IrExpr) -> Option<Value> {
+    pub(crate) fn eval_view(&self, expr: &IrExpr) -> Option<Value> {
         let mut journal = Journal::default();
         let mut no_storage = BTreeMap::new();
         let mut no_memory = BTreeMap::new();
