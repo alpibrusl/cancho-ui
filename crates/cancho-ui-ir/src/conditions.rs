@@ -103,6 +103,23 @@ impl Scope<'_> {
     }
 }
 
+/// What an expression is, when it is evident from the source: `Some('n')` a number, `Some('s')` a string, `Some('b')` a bool, and `None` for
+/// everything else (a list, a `Result`, and any value whose type the pass cannot see: an event parameter, a `For` or lambda binding, a `match`
+/// binding). `locals` are the names in scope that are not state fields. The page uses it to put a strict comparison only where an operand is not
+/// known (docs/comparisons.md section 6).
+pub fn scalar_kind(state: &[IrStateField], locals: &[&str], e: &IrExpr) -> Option<char> {
+    let mut scope = Scope {
+        state,
+        locals: locals.iter().map(|s| (*s).to_string()).collect(),
+    };
+    match kind(&mut scope, e) {
+        Ok(Kind::Num) => Some('n'),
+        Ok(Kind::Str) => Some('s'),
+        Ok(Kind::Bool) => Some('b'),
+        _ => None,
+    }
+}
+
 pub fn check_conditions(ir: &IrFile) -> Result<(), LowerError> {
     for c in &ir.components {
         let mut scope = Scope {

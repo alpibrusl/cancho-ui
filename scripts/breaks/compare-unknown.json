@@ -1,0 +1,73 @@
+{
+  "checks": [
+    {
+      "name": "cargo test compare_unknown",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "compare_unknown"
+      ]
+    },
+    {
+      "name": "check-compare-unknown.js",
+      "argv": [
+        "node",
+        "scripts/check-compare-unknown.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "the page is never strict",
+      "file": "crates/cancho-ui-codegen-web/src/expr.rs",
+      "from": "    if !unknown {\n        return binary_js(op, l, r);",
+      "to": "    if true || !unknown {\n        return binary_js(op, l, r);"
+    },
+    {
+      "name": "the page is strict where it knows the types too",
+      "file": "crates/cancho-ui-codegen-web/src/expr.rs",
+      "from": ".is_none()\n            || cancho_ui_ir::conditions::scalar_kind(&s, params, rhs).is_none()",
+      "to": ".is_none()\n            || true || cancho_ui_ir::conditions::scalar_kind(&s, params, rhs).is_none()"
+    },
+    {
+      "name": "the helper orders two bools",
+      "file": "crates/cancho-ui-codegen-web/src/lists.rs",
+      "from": "|| (typeof a === \\\"string\\\" && typeof b === \\\"string\\\"))) {",
+      "to": "|| (typeof a === \\\"boolean\\\" && typeof b === \\\"boolean\\\"))) {"
+    },
+    {
+      "name": "the helper never refuses an ordering",
+      "file": "crates/cancho-ui-codegen-web/src/lists.rs",
+      "from": "|| (typeof a === \\\"string\\\" && typeof b === \\\"string\\\"))) {",
+      "to": ") && false) {"
+    },
+    {
+      "name": "the helper compares lists by identity",
+      "file": "crates/cancho-ui-codegen-web/src/lists.rs",
+      "from": "    if (typeof a === \\\"object\\\" || typeof b === \\\"object\\\" || typeof a === \\\"function\\\" || typeof b === \\\"function\\\" || a === undefined || b === undefined) {",
+      "to": "    if (false) {"
+    },
+    {
+      "name": "!= is the same as ==",
+      "file": "crates/cancho-ui-codegen-web/src/expr.rs",
+      "from": "        _ => format!(\"(!__cui_eq({l}, {r}))\"),",
+      "to": "        _ => format!(\"(__cui_eq({l}, {r}))\"),"
+    },
+    {
+      "name": "replay orders two bools",
+      "file": "crates/cancho-ui-replay/src/eval.rs",
+      "from": "                (Value::Str(a), Value::Str(b)) => Some(a.encode_utf16().cmp(b.encode_utf16())),\n                _ => return Err(operands(\"<\", &l, &r, span)),",
+      "to": "                (Value::Str(a), Value::Str(b)) => Some(a.encode_utf16().cmp(b.encode_utf16())),\n                (Value::Bool(a), Value::Bool(b)) => Some(a.cmp(b)),\n                _ => return Err(operands(\"<\", &l, &r, span)),"
+    },
+    {
+      "name": "replay faults on == across scalar types",
+      "file": "crates/cancho-ui-replay/src/eval.rs",
+      "from": "                (a, b) if scalar(a) && scalar(b) => false,\n",
+      "to": ""
+    }
+  ]
+}

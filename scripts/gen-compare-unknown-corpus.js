@@ -1,0 +1,94 @@
+#!/usr/bin/env node
+// Writes tests/compare_unknown_corpus.json (docs/comparisons.md section 6): comparisons whose operand the compiler cannot type, in the three places
+// that has no type (an event parameter, a lambda or `For` binding, a `match` binding), as one program per place with one handler per case, and
+// the answer the language gives: replay's own rules (`<`, `<=`, `>`, `>=` order two numbers or two strings; `==` and `!=` take numbers, strings
+// and bools and are false/true across types; a list is refused) written here once, independently of both evaluators. `cargo test` replays the
+// cases; `scripts/check-compare-unknown.js` runs them in Chromium.
+//   node scripts/gen-compare-unknown-corpus.js
+'use strict';
+const fs = require('fs');
+const path = require('path');
+
+const OPS = [['<', 'lt'], ['<=', 'le'], ['>', 'gt'], ['>=', 'ge'], ['==', 'eq'], ['!=', 'ne']];
+const lit = (v) => (typeof v === 'string' ? JSON.stringify(v) : String(v));
+const kind = (v) => (typeof v);
+
+// the language's answer for two scalar values: "true", "false", or "fault"
+function answer(op, a, b) {
+  const equality = op === '==' || op === '!=';
+  if (equality) { const same = a === b; return String(op === '==' ? same : !same); }
+  if (kind(a) !== kind(b) || kind(a) === 'boolean') { return 'fault'; }
+  return String(op === '<' ? a < b : op === '<=' ? a <= b : op === '>' ? a > b : a >= b);
+}
+
+const header = (extra) => `component C {\n    state out: String = "";\n${extra}`;
+const footer = '    view { Column { Text { "{out}" } ##BUTTONS## } }\n}\n';
+const VALUES = [7, '7', true];
+const cases = [];
+const programs = {};
+
+// ---- an event parameter: both operands are parameters --------------------------------------------------------------------------------------
+{
+  let handlers = ''; let buttons = ''; let n = 0;
+  for (const [op, name] of OPS) {
+    for (const a of VALUES) {
+      for (const b of VALUES) {
+        const ev = `P${name}${n++}`;
+        handlers += `    on ${ev}(a, b) { out = "" + (a ${op} b); }\n`;
+        buttons += `Button { label: "${ev}" on: ${ev}(${lit(a)}, ${lit(b)}) } `;
+        cases.push({ ctx: 'param', event: ev, params: [a, b], op, left: a, right: b, want: answer(op, a, b) });
+      }
+    }
+  }
+  programs.param = header(handlers) + footer.replace('##BUTTONS##', buttons);
+}
+
+// ---- a lambda binding (what a `For` row is to the page and replay alike): the element of a list against a literal ----------------------------
+{
+  let handlers = ''; let buttons = ''; let n = 0;
+  const lists = [['nums', 7], ['strs', '7']];
+  for (const [op, name] of OPS) {
+    for (const [list, a] of lists) {
+      for (const b of VALUES) {
+        const ev = `L${name}${n++}`;
+        handlers += `    on ${ev} { out = "" + len(filter(${list}, x => x ${op} ${lit(b)})); }\n`;
+        buttons += `Button { label: "${ev}" on: ${ev} } `;
+        const w = answer(op, a, b);
+        cases.push({ ctx: 'lambda', event: ev, params: [], op, left: a, right: b, want: w === 'fault' ? 'fault' : (w === 'true' ? '1' : '0') });
+      }
+    }
+  }
+  programs.lambda = header('    state nums: List[Int] = [7];\n    state strs: List[String] = ["7"];\n' + handlers) + footer.replace('##BUTTONS##', buttons);
+}
+
+// ---- a `match` binding ---------------------------------------------------------------------------------------------------------------------------
+{
+  let handlers = ''; let buttons = ''; let n = 0;
+  const results = [['rn', 7], ['rs', '7']];
+  for (const [op, name] of OPS) {
+    for (const [r, a] of results) {
+      for (const b of VALUES) {
+        const ev = `M${name}${n++}`;
+        handlers += `    on ${ev} { out = "" + (match ${r} { Ok(v) => { v ${op} ${lit(b)} } Err(_) => { false } Cancelled => { false } }); }\n`;
+        buttons += `Button { label: "${ev}" on: ${ev} } `;
+        cases.push({ ctx: 'match', event: ev, params: [], op, left: a, right: b, want: answer(op, a, b) });
+      }
+    }
+  }
+  // a list is refused by == and != whichever it is compared with
+  for (const [op, name] of [['==', 'eq'], ['!=', 'ne']]) {
+    const ev = `M${name}${n++}`;
+    handlers += `    on ${ev} { out = "" + (match rl { Ok(v) => { v ${op} v } Err(_) => { false } Cancelled => { false } }); }\n`;
+    buttons += `Button { label: "${ev}" on: ${ev} } `;
+    cases.push({ ctx: 'match', event: ev, params: [], op, left: ['a'], right: ['a'], want: 'fault' });
+  }
+  programs.match = header('    state rn: Result[Int, String] = Ok(7);\n    state rs: Result[String, String] = Ok("7");\n    state rl: Result[List[String], String] = Ok(["a"]);\n' + handlers) + footer.replace('##BUTTONS##', buttons);
+}
+
+const out = {
+  about: 'Comparisons whose operand the compiler cannot type (docs/comparisons.md section 6). `programs` holds one source per context with one handler per case; `cases` the event to fire (with its params), the operands and `want`: "true", "false" or "fault" (a replay-type-error), for a lambda "1" or "0" (the number of elements that pass). Generated by scripts/gen-compare-unknown-corpus.js.',
+  programs,
+  cases,
+};
+fs.writeFileSync(path.join(__dirname, '..', 'tests', 'compare_unknown_corpus.json'), JSON.stringify(out, null, 1) + '\n');
+console.log(`${cases.length} cases: ${['param', 'lambda', 'match'].map((c) => `${c} ${cases.filter((x) => x.ctx === c).length}`).join(', ')}`);
