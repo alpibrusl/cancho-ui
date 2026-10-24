@@ -1,0 +1,49 @@
+{
+  "checks": [
+    {
+      "name": "check-overflow.js",
+      "argv": [
+        "node",
+        "scripts/check-overflow.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "the box stops scrolling",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": ".cui-table-scroll { overflow-x: auto; max-width: 100%; }",
+      "to": ".cui-table-scroll { max-width: 100%; }"
+    },
+    {
+      "name": "the table is not put in a box",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "} else if matches!(kind, IrElementKind::Table) {\n                // A table that is wider",
+      "to": "} else if matches!(kind, IrElementKind::Table) && false {\n                // A table that is wider"
+    },
+    {
+      "name": "the box cannot be focused",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "{0}{1}_scroll.setAttribute('tabindex', '0');\\n",
+      "to": "\\n"
+    },
+    {
+      "name": "the box is not a region",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "{0}{1}_scroll.setAttribute('role', 'region');\\n",
+      "to": "{0}{1}_scroll.setAttribute('role', 'group');\\n"
+    },
+    {
+      "name": "the box has no name",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "{1}_scroll.setAttribute('aria-label', {2});",
+      "to": "{1}_scroll.setAttribute('data-name', {2});"
+    },
+    {
+      "name": "every control is at least 400 px wide",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "button, input, textarea { min-height: 44px; min-width: 44px; font: inherit; }",
+      "to": "button, input, textarea { min-height: 44px; min-width: 400px; font: inherit; }"
+    }
+  ]
+}

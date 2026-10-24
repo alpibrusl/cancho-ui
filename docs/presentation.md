@@ -31,7 +31,7 @@ the page template, so `--page` (the gallery demos, `docs/mobile-backend.md` sect
 `disabled: 3`).
 
 Measured at 1280 px: the page is no wider than `90ch` (908 px) and is centred (186 px from the left), and so is every
-input; at 420 px nothing scrolls sideways. The Previous and Next buttons were **0 px** apart (no rule for `.cui-row`) and are
+input; at 420 px nothing scrolls sideways *(corrected 2026-10-24, #144: true at 420 px and at 412, **not under 412**: the ops console's table, 382 px at its narrowest, made the page scroll 3 px sideways at 380 px, 22 at 360 and 62 at 320; section 4b)*. The Previous and Next buttons were **0 px** apart (no rule for `.cui-row`) and are
 8 px apart.
 
 ## 3. `tone:`
@@ -142,6 +142,32 @@ a `row` for the header and one per machine on the page, five `cell`s each; every
 
 `Chart` is drawn from data with a text alternative: [`charts.md`](charts.md). The stylesheet defines its colour, `--cui-chart`, for both schemes.
 
+## 4b. A table wider than the page scrolls in its own box (issue #144)
+
+**Measured before** (desktop Chromium, `Pixel 7` profile with only the viewport width changed; the page's scroll width minus its client width): the ops
+console at 412 px 0, 380 px 3, 375 px 7, 360 px 22, 320 px 62. The table's columns at their minimum content widths add up to 367 px
+(`id` 43, `name` 60, `state` 74, `temperature (C)` 111, `select` 79) and a table cannot be narrower than that. `scripts/check-mobile-demos.js` runs at 412
+only, so it could not see it. The other 12 demos had no overflow at any of the five widths (`scripts/check-overflow.js`, 13 demos x 320, 360, 375, 380, 412: 61 of 65 passed, the 4
+failures all the ops console).
+
+**Two repairs tried, both measured in Chromium at 320 and 360 px:**
+
+| | page overflow | the table |
+|---|---|---|
+| `overflow-wrap: anywhere` on `th`, `td` | 0 | fits, but breaks words mid-word: `M-106` became `M-` / `106`, `running` became `run` / `nin` / `g`, `name` `na` / `me` (screenshot read) |
+| a box with `overflow-x: auto` around the table | 0 | readable; the `select` column is off screen to the right until the box is scrolled (78 px at 320, 38 at 360) |
+| `display: block; overflow-x: auto` on the table itself (CSS only) | 0 | Chromium kept `table`, 6 `row`s and 25 `cell`s in its accessibility tree; **not built**, because WebKit has dropped table semantics for a `display: block` table in the past and no WebKit is available here to measure it |
+
+**Decided: the box.** A table is emitted inside `<div class="cui-table-scroll" tabindex="0" role="region" aria-label="…">` (the label is the table's; with no label, no role and no name),
+and the baseline stylesheet gives the box `overflow-x: auto; max-width: 100%`. Wide data tables are the case WCAG 1.4.10 (Reflow) allows to scroll in two dimensions; a keyboard
+user focuses the region (it has a name and `tabindex="0"`) and scrolls with the arrow keys. A page built without the baseline stylesheet gets a plain `div`. The table keeps its own
+role, name and rows (`getByRole('table', { name: 'Machines' })` and 6 `row`s still found).
+
+**Measured after:** 65 of 65 (13 demos x 5 widths) with no horizontal page overflow, at the first look and 1 s later; at 320 px the ops console's box scrolls (`scrollWidth > clientWidth`), is a
+region named `Machines`, and the right arrow moved `scrollLeft` from 0 to 40. **Not measured:** a screen reader reading the region (the accessibility tree is Chromium's), Safari and Firefox, a real
+phone, and a table with no `label:` (the region then has no role and no name, by construction, not by a test of a screen reader). The first column stays visible only if the box is not scrolled:
+no sticky first column.
+
 ## 5. Refusals
 
 | tag | when |
@@ -158,6 +184,8 @@ a `row` for the header and one per machine on the page, five `cell`s each; every
 none of it emitted without any of it, the stylesheet having a rule for every class, a trace, the diff of a changed tone.
 `scripts/check-ops-console.js`: everything above in Chromium, with screenshots (`5-wide.png`, `6-narrow.png`).
 
+`scripts/check-overflow.js` (#144): 13 demos at 320, 360, 375, 380 and 412 px, no horizontal page overflow, and at 320 px the ops console's table box is a focusable, named region that the right arrow scrolls (`scripts/breaks/overflow.json`: 6 breaks, each caught by the check failing on its own; one first written did not compile and was rewritten); `cargo test` `a_table_scrolls_in_its_own_named_focusable_box`.
+
 Twelve deliberate breaks, each caught: any tone string accepted, a gap up to 9, a `Table` taking any child, no `<tbody>`, no
 `scope`, the tone written as `tone` and not `data-tone`, no `<label>`, a button not wrapped in a cell (cargo, after a test
 was added for it, and the browser), no prefix in the stylesheet, no gap in `.cui-row`, a pale warn colour (the contrast
@@ -166,7 +194,7 @@ check), a missing `max_width` style.
 ## 7. Not done
 
 * **Cells wrap at a hyphen on a narrow screen** (`M-` / `106` at 420 px): no `nowrap`, because a long cell would then
-  scroll the page sideways, which is worse. A column width belongs to the host page's CSS.
+  widen the table; a table wider than the page now scrolls in its own box (section 4b), not the page. A column width belongs to the host page's CSS.
 * No column width, alignment (numbers right-aligned), sorting from the header, or sticky header; a header cell is not a button.
 * `tone:` on a `Button`, a `For`-made list, or a state field checked at run time; a tone is three words, not a palette.
 * An empty `columnheader` text is not refused (the ops console names its button column `select`).
