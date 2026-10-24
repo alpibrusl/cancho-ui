@@ -373,6 +373,9 @@ pub(crate) fn emit_view_node(
             if matches!(kind, IrElementKind::Map) {
                 return crate::map::emit(indent, &var, parent_var, accessibility, bindings, params);
             }
+            if matches!(kind, IrElementKind::Code) {
+                return crate::code::emit(indent, &var, parent_var, bindings, children, params);
+            }
             if matches!(kind, IrElementKind::SortList) {
                 return crate::sortlist::emit(
                     indent,
@@ -779,10 +782,12 @@ pub(crate) fn emit_view_node(
             // Children.
             let child_indent = format!("{}    ", indent);
             if kind.holds_text()
-                && children
-                    .iter()
-                    .all(|c| matches!(c, IrViewNode::Text { .. }))
+                && (cancho_ui_ir::structure::is_inline_container(kind)
+                    || children
+                        .iter()
+                        .all(|c| matches!(c, IrViewNode::Text { .. })))
             {
+                // text goes into the element as text nodes, between its inline elements (`<p>a <strong>b</strong> c</p>`), not in a `<span>` each
                 for c in children {
                     if let IrViewNode::Text { parts, .. } = c {
                         for p in parts {
@@ -803,6 +808,19 @@ pub(crate) fn emit_view_node(
                                 }
                             }
                         }
+                    } else {
+                        out.push_str(&emit_view_node(
+                            next_id,
+                            &child_indent,
+                            c,
+                            &var,
+                            params,
+                            components,
+                            prop_consumers,
+                            has_slots,
+                            slot_prefix,
+                            slot_arr,
+                        ));
                     }
                 }
             } else {

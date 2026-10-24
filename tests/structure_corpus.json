@@ -41,6 +41,57 @@
    "name": "a level 4 heading and a section inside a section",
    "view": "Section { Section { id: \"inner\" Heading { level: 4 \"Deep\" } } }",
    "html": "<div class=\"cui-col\"><section><section id=\"inner\"><h4>Deep</h4></section></section></div>"
+  },
+  {
+   "name": "inline content in a Rich",
+   "view": "Rich { \"A \" Strong { \"b\" } \" \" Em { \"c\" } \" \" Code { \"d\" } \" \" Small { \"e\" } Break { } \" f \" Link { to: \"https://a.example/\" \"g\" } \".\" }",
+   "html": "<div class=\"cui-col\"><p>A <strong>b</strong> <em>c</em> <code>d</code> <small>e</small><br></br> f <a href=\"https://a.example/\">g</a>.</p></div>"
+  },
+  {
+   "name": "a Rich with a role and an interpolation",
+   "view": "Rich { style: \"lead\" \"Hello \" Strong { \"x\" } \", n is {n}\" }",
+   "html": "<div class=\"cui-col\"><p data-style=\"lead\">Hello <strong>x</strong>, n is 0</p></div>"
+  },
+  {
+   "name": "inline content in a heading",
+   "view": "Heading { level: 1 \"Tools.\" Break { } Em { \"Not adapted.\" } }",
+   "html": "<div class=\"cui-col\"><h1>Tools.<br></br><em>Not adapted.</em></h1></div>"
+  },
+  {
+   "name": "inline content in a link",
+   "view": "Link { to: \"https://a.example/\" Strong { \"Bold\" } \" link\" }",
+   "html": "<div class=\"cui-col\"><a href=\"https://a.example/\"><strong>Bold</strong> link</a></div>"
+  },
+  {
+   "name": "a caption with a link",
+   "view": "Figure { Caption { \"See \" Link { to: \"https://a.example/\" \"x\" } \".\" } }",
+   "html": "<div class=\"cui-col\"><figure><figcaption>See <a href=\"https://a.example/\">x</a>.</figcaption></figure></div>"
+  },
+  {
+   "name": "a details with a summary that has inline content",
+   "view": "Details { Summary { \"More \" Small { \"(a real run)\" } } Text { \"in\" } }",
+   "html": "<div class=\"cui-col\"><details><summary>More <small>(a real run)</small></summary><span>in</span></details></div>"
+  },
+  {
+   "name": "inline elements inside inline elements",
+   "view": "Rich { Strong { Em { \"x\" } } \" and \" Em { Link { to: \"#a\" \"y\" } } } Section { id: \"a\" Text { \"s\" } }",
+   "html": "<div class=\"cui-col\"><p><strong><em>x</em></strong> and <em><a href=\"#a\">y</a></em></p><section id=\"a\"><span>s</span></section></div>"
+  },
+  {
+   "name": "a code block",
+   "view": "Code { \"a\\nb\" }",
+   "html": "<div class=\"cui-col\"><div class=\"cui-code\"><pre tabindex=\"0\"><code>a\nb</code></pre></div></div>"
+  },
+  {
+   "name": "a code block that can be copied and scrolls",
+   "view": "Code { copy: true max_height: 28 \"x\" }",
+   "html": "<div class=\"cui-col\"><div class=\"cui-code\" data-copy=\"\"><pre style=\"max-height: 28rem;\" tabindex=\"0\"><code>x</code></pre><button aria-label=\"Copy the code\" class=\"cui-copy\" type=\"button\">Copy</button></div></div>",
+   "requires": "Clipboard"
+  },
+  {
+   "name": "a code block with a brace and an interpolation",
+   "view": "Code { \"\\{\\\"k\\\": \\{n\\}\\} = {n}\" }",
+   "html": "<div class=\"cui-col\"><div class=\"cui-code\"><pre tabindex=\"0\"><code>{\"k\": {n}} = 0</code></pre></div></div>"
   }
  ],
  "refusals": [
@@ -353,6 +404,172 @@
    "name": "two mains in two components",
    "program": "component A {\n    view { Main { Text { \"a\" } } }\n}\n\ncomponent B {\n    view { Main { Text { \"b\" } } }\n}\n",
    "code": "landmark-duplicate"
+  },
+  {
+   "name": "a Text inside a Rich",
+   "view": "Rich { Text { \"x\" } }",
+   "code": "rich-child-invalid"
+  },
+  {
+   "name": "a Button inside a Rich",
+   "view": "Rich { Button { label: \"b\" on: Up } }",
+   "code": "rich-child-invalid"
+  },
+  {
+   "name": "a Rich inside a Rich",
+   "view": "Rich { Rich { \"x\" } }",
+   "code": "rich-child-invalid"
+  },
+  {
+   "name": "a Link inside a Link",
+   "view": "Link { to: \"https://a.example/\" Link { to: \"https://b.example/\" \"x\" } }",
+   "code": "rich-child-invalid"
+  },
+  {
+   "name": "a Text inside a Heading",
+   "view": "Heading { level: 2 Text { \"x\" } }",
+   "code": "rich-child-invalid"
+  },
+  {
+   "name": "a Column inside a Caption",
+   "view": "Figure { Caption { Column { Text { \"x\" } } } }",
+   "code": "rich-child-invalid"
+  },
+  {
+   "name": "a Break with something in it",
+   "view": "Rich { Break { \"x\" } \"y\" }",
+   "code": "rich-child-invalid"
+  },
+  {
+   "name": "a Rich with nothing in it",
+   "view": "Rich { }",
+   "code": "rich-empty"
+  },
+  {
+   "name": "a Rich of spaces",
+   "view": "Rich { \"   \" }",
+   "code": "rich-empty"
+  },
+  {
+   "name": "a Strong with nothing in it",
+   "view": "Rich { Strong { } \"x\" }",
+   "code": "rich-empty"
+  },
+  {
+   "name": "a Strong outside a Rich",
+   "view": "Strong { \"x\" }",
+   "code": "inline-outside-rich"
+  },
+  {
+   "name": "an Em outside a Rich",
+   "view": "Em { \"x\" }",
+   "code": "inline-outside-rich"
+  },
+  {
+   "name": "a Small outside a Rich",
+   "view": "Small { \"x\" }",
+   "code": "inline-outside-rich"
+  },
+  {
+   "name": "a Break outside a Rich",
+   "view": "Break { }",
+   "code": "inline-outside-rich"
+  },
+  {
+   "name": "a copy that is a number",
+   "view": "Code { copy: 1 \"x\" }",
+   "code": "code-copy-invalid"
+  },
+  {
+   "name": "a copy that is a string",
+   "view": "Code { copy: \"yes\" \"x\" }",
+   "code": "code-copy-invalid"
+  },
+  {
+   "name": "a height of 0",
+   "view": "Code { max_height: 0 \"x\" }",
+   "code": "code-max-height-invalid"
+  },
+  {
+   "name": "a height of 3",
+   "view": "Code { max_height: 3 \"x\" }",
+   "code": "code-max-height-invalid"
+  },
+  {
+   "name": "a height of 101",
+   "view": "Code { max_height: 101 \"x\" }",
+   "code": "code-max-height-invalid"
+  },
+  {
+   "name": "a height that is a string",
+   "view": "Code { max_height: \"10\" \"x\" }",
+   "code": "code-max-height-invalid"
+  },
+  {
+   "name": "an element inside a Code",
+   "view": "Code { Text { \"x\" } }",
+   "code": "code-child-invalid"
+  },
+  {
+   "name": "an element inside an inline code",
+   "view": "Rich { Code { Strong { \"x\" } } }",
+   "code": "code-child-invalid"
+  },
+  {
+   "name": "a copy button with no Clipboard declared",
+   "view": "Code { copy: true \"x\" }",
+   "code": "clipboard-not-declared"
+  },
+  {
+   "name": "a Clipboard declared and not used",
+   "view": "Code { \"x\" }",
+   "code": "capability-unused",
+   "requires": "Clipboard"
+  },
+  {
+   "name": "a Details with two summaries",
+   "view": "Details { summary: \"a\" Summary { \"b\" } Text { \"x\" } }",
+   "code": "details-incomplete"
+  },
+  {
+   "name": "a Summary that is not first",
+   "view": "Details { Text { \"x\" } Summary { \"b\" } }",
+   "code": "details-incomplete"
+  },
+  {
+   "name": "a Summary outside a Details",
+   "view": "Summary { \"b\" }",
+   "code": "details-incomplete"
+  },
+  {
+   "name": "a level on a Rich",
+   "view": "Rich { level: 2 \"x\" }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "a label on a Rich",
+   "view": "Rich { label: \"x\" \"y\" }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "a to on a Code",
+   "view": "Code { to: \"https://a.example/\" \"x\" }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "an id on a Strong",
+   "view": "Rich { Strong { id: \"a\" \"x\" } }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "a style on a Code",
+   "view": "Code { style: \"note\" \"x\" }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "a style that is not one on a Rich",
+   "view": "Rich { style: \"huge\" \"x\" }",
+   "code": "text-style-invalid"
   }
  ]
 }

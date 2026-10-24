@@ -1,0 +1,145 @@
+{
+  "checks": [
+    {
+      "name": "cargo test structure",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "structure"
+      ]
+    },
+    {
+      "name": "check-structure.js",
+      "argv": [
+        "node",
+        "scripts/check-structure.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "a Rich is a div",
+      "file": "crates/cancho-ui-ir/src/ir.rs",
+      "from": "            IrElementKind::Rich => \"p\",",
+      "to": "            IrElementKind::Rich => \"div\","
+    },
+    {
+      "name": "a Strong is a b",
+      "file": "crates/cancho-ui-ir/src/ir.rs",
+      "from": "            IrElementKind::Strong => \"strong\",",
+      "to": "            IrElementKind::Strong => \"b\","
+    },
+    {
+      "name": "a Break is an hr",
+      "file": "crates/cancho-ui-ir/src/ir.rs",
+      "from": "            IrElementKind::Break => \"br\",",
+      "to": "            IrElementKind::Break => \"hr\","
+    },
+    {
+      "name": "a Code in a sentence is a box",
+      "file": "crates/cancho-ui-ir/src/lower.rs",
+      "from": "*k = IrElementKind::InlineCode;",
+      "to": "*k = IrElementKind::Code;"
+    },
+    {
+      "name": "text in a Rich is a span each",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "(cancho_ui_ir::structure::is_inline_container(kind)",
+      "to": "(false && cancho_ui_ir::structure::is_inline_container(kind)"
+    },
+    {
+      "name": "a Link may hold a Link",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "IrElementKind::Link => !matches!(parent, IrElementKind::Link),",
+      "to": "IrElementKind::Link => true,"
+    },
+    {
+      "name": "a Text may stand in a Rich",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "        _ => false,\n    }\n}\n\nfn is_inline_only",
+      "to": "        _ => true,\n    }\n}\n\nfn is_inline_only"
+    },
+    {
+      "name": "an empty Rich is allowed",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "IrElementKind::Rich | IrElementKind::Strong | IrElementKind::Em | IrElementKind::Small => {\n            if children.is_empty()",
+      "to": "IrElementKind::Rich | IrElementKind::Strong | IrElementKind::Em | IrElementKind::Small if false => {\n            if children.is_empty()"
+    },
+    {
+      "name": "a Strong may stand anywhere",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "if is_inline_only(kind) && !parent.is_some_and(is_inline_container) {",
+      "to": "if false && is_inline_only(kind) && !parent.is_some_and(is_inline_container) {"
+    },
+    {
+      "name": "a code box may be any height",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "pub const CODE_HEIGHT: (i64, i64) = (4, 100);",
+      "to": "pub const CODE_HEIGHT: (i64, i64) = (0, 1000000);"
+    },
+    {
+      "name": "a copy button needs no Clipboard",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "&& !c.requires.iter().any(|r| r.name == \"Clipboard\")",
+      "to": "&& false"
+    },
+    {
+      "name": "a Clipboard may go unused",
+      "file": "crates/cancho-ui-ir/src/lower.rs",
+      "from": "|| (req.name == \"Clipboard\" && crate::structure::view_has_copy(&c.view.body))",
+      "to": "|| req.name == \"Clipboard\""
+    },
+    {
+      "name": "the page writes at once and not on a tap",
+      "file": "crates/cancho-ui-codegen-web/src/code.rs",
+      "from": "{var}_copy.addEventListener('click', function () {{ __cui_copy({var}_copy, {var}_pre); }});\\n",
+      "to": "__cui_copy({var}_copy, {var}_pre);\\n"
+    },
+    {
+      "name": "the page reads the clipboard too",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "navigator.clipboard.writeText(text).then(",
+      "to": "navigator.clipboard.readText(); navigator.clipboard.writeText(text).then("
+    },
+    {
+      "name": "the page copies more than is shown",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "const text = pre.textContent;",
+      "to": "const text = pre.textContent + ' ';"
+    },
+    {
+      "name": "a code box cannot be scrolled by keyboard",
+      "file": "crates/cancho-ui-codegen-web/src/code.rs",
+      "from": "{var}_pre.setAttribute('tabindex', '0');\\n",
+      "to": "\\n"
+    },
+    {
+      "name": "a height is written in px",
+      "file": "crates/cancho-ui-codegen-web/src/code.rs",
+      "from": "{var}_pre.style.maxHeight = '{h}rem';",
+      "to": "{var}_pre.style.maxHeight = '{h}px';"
+    },
+    {
+      "name": "the copy code is left out of the page",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "        .any(|c| cancho_ui_ir::structure::view_has_copy(&c.view.body))\n    {\n        out.push_str(COPY_ADAPTER_JS);",
+      "to": "        .any(|c| false && cancho_ui_ir::structure::view_has_copy(&c.view.body))\n    {\n        out.push_str(COPY_ADAPTER_JS);"
+    },
+    {
+      "name": "a Summary may be anywhere in a Details",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "if summaries > 1 || (summaries == 1 && !first_is_summary) {",
+      "to": "if false {"
+    },
+    {
+      "name": "a Code may hold elements",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": ".all(|c| matches!(c, IrViewNode::Text { .. }))\n            {\n                return Err(refuse(\n                    \"code-child-invalid\"",
+      "to": ".all(|c| matches!(c, IrViewNode::Text { .. }))\n                || true\n            {\n                return Err(refuse(\n                    \"code-child-invalid\""
+    }
+  ]
+}

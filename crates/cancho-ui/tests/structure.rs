@@ -42,8 +42,13 @@ fn corpus() -> Value {
 }
 
 fn program(c: &Value, view: &str) -> String {
+    program_with(c, view, None)
+}
+
+fn program_with(c: &Value, view: &str, requires: Option<&str>) -> String {
+    let requires = requires.map_or(String::new(), |r| format!("requires {r};\n    "));
     format!(
-        "component C {{\n    {}\n    view {{ Column {{ {view} }} }}\n}}\n",
+        "component C {{\n    {requires}{}\n    view {{ Column {{ {view} }} }}\n}}\n",
         c["state"].as_str().expect("state")
     )
 }
@@ -69,7 +74,12 @@ fn codes(text: &str) -> (i32, Vec<String>) {
 fn every_valid_view_of_the_corpus_checks() {
     let c = corpus();
     for case in c["valid"].as_array().expect("valid") {
-        let (code, got) = codes(&program(&c, case["view"].as_str().expect("view")));
+        let text = program_with(
+            &c,
+            case["view"].as_str().expect("view"),
+            case["requires"].as_str(),
+        );
+        let (code, got) = codes(&text);
         assert_eq!((code, got), (0, vec![]), "{}", case["name"]);
     }
 }
@@ -81,7 +91,11 @@ fn every_refusal_of_the_corpus_is_refused_by_its_tag() {
     for case in c["refusals"].as_array().expect("refusals") {
         let text = match case["program"].as_str() {
             Some(whole) => whole.to_string(),
-            None => program(&c, case["view"].as_str().expect("view")),
+            None => program_with(
+                &c,
+                case["view"].as_str().expect("view"),
+                case["requires"].as_str(),
+            ),
         };
         let want = case["code"].as_str().expect("code");
         let (code, got) = codes(&text);
@@ -108,6 +122,14 @@ fn every_refusal_of_the_corpus_is_refused_by_its_tag() {
         "landmark-duplicate",
         "nav-label-missing",
         "binding-unknown",
+        "rich-child-invalid",
+        "rich-empty",
+        "inline-outside-rich",
+        "code-copy-invalid",
+        "code-max-height-invalid",
+        "code-child-invalid",
+        "clipboard-not-declared",
+        "capability-unused",
     ] {
         assert!(tags.contains(tag), "no case reaches {tag}");
     }
@@ -193,6 +215,8 @@ fn the_nesting_bound_of_32_applies_to_the_new_elements() {
         ("Details { summary: \"s\" Text { \"x\" } }", 3),
         ("Figure { Caption { \"c\" } }", 3),
         ("Article { Text { \"x\" } }", 3),
+        ("Rich { \"a \" Strong { Em { \"x\" } } }", 4),
+        ("Code { \"x\" }", 2),
     ] {
         assert_eq!(
             codes(&nested(32 - d, inner)),
@@ -210,6 +234,44 @@ fn the_nesting_bound_of_32_applies_to_the_new_elements() {
 }
 
 #[test]
+fn a_copy_button_is_the_clipboard_capability_and_only_a_write() {
+    let plain = "component C {\n    view { Code { \"x\" } }\n}\n";
+    let copy =
+        "component C {\n    requires Clipboard;\n    view { Code { copy: true \"x\" } }\n}\n";
+    let (fp, fc) = (scratch("plain.cui", plain), scratch("copy.cui", copy));
+    // authority: the capability is declared, shown by `inspect effects`, and added to a program by `diff` as an expansion
+    let (_, out, _) = run(&["inspect", "effects", p(&fc), "C"]);
+    let v: Value = serde_json::from_str(&out).expect("JSON");
+    assert_eq!(v["requires"][0]["name"], "Clipboard");
+    let (code, human, _) = run(&["diff", p(&fp), p(&fc)]);
+    assert_eq!(code, 5, "{human}");
+    assert!(
+        human.contains("+ requires Clipboard") && human.contains("authority: expanded"),
+        "{human}"
+    );
+    let (_, js, _) = run(&["diff", p(&fp), p(&fc), "--output", "json"]);
+    let v: Value = serde_json::from_str(&js).expect("JSON");
+    assert_eq!(v["authority"], "expanded");
+    // the emitted module: no clipboard at all without a copy button; with one, `writeText` and never `readText`, and the write is in the adapter the
+    // button's click calls
+    let (_, plain_js, _) = run(&["build", p(&fp)]);
+    assert!(
+        !plain_js.contains("clipboard") && !plain_js.contains("__cui_copy"),
+        "no copy button, no clipboard code"
+    );
+    let (_, copy_js, _) = run(&["build", p(&fc)]);
+    assert!(
+        copy_js.contains("navigator.clipboard.writeText(text)") && !copy_js.contains("readText"),
+        "{copy_js}"
+    );
+    assert_eq!(copy_js.matches("writeText(").count(), 1);
+    assert!(
+        copy_js.contains("addEventListener('click', function () { __cui_copy("),
+        "the write is reached from a click only"
+    );
+}
+
+#[test]
 fn garbage_is_a_refusal_and_not_a_panic() {
     let c = corpus();
     for view in [
@@ -224,6 +286,11 @@ fn garbage_is_a_refusal_and_not_a_panic() {
         "Nav { Nav { label: \"a\" Text { \"x\" } } Nav { label: \"b\" Text { \"y\" } } }",
         "Link { to: \"\\u{0}\" \"x\" }",
         "Text { style: \"eyebrow\" style: \"note\" \"x\" }",
+        "Rich { \"unterminated }",
+        "Rich { Strong { Strong { Strong { } } } }",
+        "Code { copy: copy \"x\" }",
+        "Code { max_height: 99999999999999999999 \"x\" }",
+        "Details { Summary { Summary { \"x\" } } }",
         "Heading { level: 9223372036854775807 \"x\" }",
         "Heading { level: -1 \"x\" }",
     ] {

@@ -1055,6 +1055,18 @@ fn lower_view_node_with_effects(
             if matches!(kind, ElementKind::Table) {
                 lowered_children = crate::table::table_rows(lowered_children)?;
             }
+            // a `Code` inside inline content is the `<code>` of a sentence, not a box (docs/structure.md section 7)
+            if crate::structure::ast_is_inline_container(kind) {
+                for c in lowered_children.iter_mut() {
+                    if let IrViewNode::Element {
+                        kind: k @ IrElementKind::Code,
+                        ..
+                    } = c
+                    {
+                        *k = IrElementKind::InlineCode;
+                    }
+                }
+            }
             let mut lowered_bindings = Vec::with_capacity(bindings.len());
             for b in bindings {
                 lowered_bindings.push(lower_binding(b, Some(kind), &mut effects)?);
@@ -1174,6 +1186,13 @@ fn lower_kind(k: &ElementKind) -> IrElementKind {
         ElementKind::Details => IrElementKind::Details,
         ElementKind::Figure => IrElementKind::Figure,
         ElementKind::Caption => IrElementKind::Caption,
+        ElementKind::Rich => IrElementKind::Rich,
+        ElementKind::Strong => IrElementKind::Strong,
+        ElementKind::Em => IrElementKind::Em,
+        ElementKind::Small => IrElementKind::Small,
+        ElementKind::Break => IrElementKind::Break,
+        ElementKind::Summary => IrElementKind::Summary,
+        ElementKind::Code => IrElementKind::Code,
         ElementKind::Named(s) => IrElementKind::Named(s.clone()),
     }
 }
@@ -1537,6 +1556,7 @@ fn check_capabilities(ir: &IrFile) -> Result<(), LowerError> {
                 // a `Map` asks its tile host for images: that is the use of `Network` it declares (docs/maps.md)
                 c.reachable_effects.iter().any(|e| e.capability == req.name)
                     || (req.name == "Network" && crate::map::view_has_map(&c.view.body))
+                    || (req.name == "Clipboard" && crate::structure::view_has_copy(&c.view.body))
             };
             if !used {
                 return Err(LowerError::CapabilityUnused {

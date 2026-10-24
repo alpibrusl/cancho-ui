@@ -619,6 +619,32 @@ function __cui_router_replace(p) {
 }
 "#;
 
+/// The copy button of a `Code { copy: true }` (docs/structure.md section 8). It writes the text of the box to the clipboard (`writeText`, never `readText`)
+/// when the button is tapped, and tells the person what happened; where the clipboard is not offered it selects the text so that Ctrl+C or the
+/// long-press menu finishes the job.
+pub(crate) const COPY_ADAPTER_JS: &str = r#"// Platform adapter: Clipboard (docs/structure.md section 8). Write only, and only inside the click of a Copy button.
+function __cui_copy(button, pre) {
+    const text = pre.textContent;
+    const back = function () { setTimeout(function () { button.textContent = 'Copy'; }, 1500); };
+    const select = function () {
+        try {
+            const range = document.createRange();
+            range.selectNodeContents(pre);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+        } catch (e) { /* no selection API: the text is still on the page */ }
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { button.textContent = 'Copied'; back(); }, function () { select(); button.textContent = 'Select and copy'; back(); });
+    } else {
+        select();
+        button.textContent = 'Press Ctrl+C';
+        back();
+    }
+}
+"#;
+
 /// The `FileField` adapter (docs/file-upload.md): the chosen file as one JSON text. `accept_matches` is the page's copy of
 /// `cancho_ui_ir::file_field::accept_matches`; `tests/file_corpus.json` is run against both.
 pub(crate) const FILE_ADAPTER_JS: &str = r#"// Platform adapter: FileField (docs/file-upload.md). The page is redrawn from nothing at every render, which empties a file input,

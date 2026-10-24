@@ -635,6 +635,16 @@ impl Serialize for IrElementKind {
             IrElementKind::Details => ser.serialize_unit_variant("IrElementKind", 26, "Details"),
             IrElementKind::Figure => ser.serialize_unit_variant("IrElementKind", 27, "Figure"),
             IrElementKind::Caption => ser.serialize_unit_variant("IrElementKind", 28, "Caption"),
+            IrElementKind::Rich => ser.serialize_unit_variant("IrElementKind", 29, "Rich"),
+            IrElementKind::Strong => ser.serialize_unit_variant("IrElementKind", 30, "Strong"),
+            IrElementKind::Em => ser.serialize_unit_variant("IrElementKind", 31, "Em"),
+            IrElementKind::Small => ser.serialize_unit_variant("IrElementKind", 32, "Small"),
+            IrElementKind::Break => ser.serialize_unit_variant("IrElementKind", 33, "Break"),
+            IrElementKind::Summary => ser.serialize_unit_variant("IrElementKind", 34, "Summary"),
+            IrElementKind::Code => ser.serialize_unit_variant("IrElementKind", 35, "Code"),
+            IrElementKind::InlineCode => {
+                ser.serialize_unit_variant("IrElementKind", 36, "InlineCode")
+            }
             IrElementKind::Table => ser.serialize_unit_variant("IrElementKind", 5, "Table"),
             IrElementKind::TableRow => ser.serialize_unit_variant("IrElementKind", 6, "TableRow"),
             IrElementKind::Cell => ser.serialize_unit_variant("IrElementKind", 7, "Cell"),

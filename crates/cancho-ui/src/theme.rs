@@ -229,6 +229,7 @@ pub fn css(theme: &IrTheme) -> String {
         "a.cui-link-secondary { color: var(--cui-accent); border-color: var(--cui-accent); }\n",
     );
     s.push_str("a.cui-link-quiet { color: var(--cui-muted); }\n");
+    s.push_str(".cui-code { background: var(--cui-code-bg); color: var(--cui-code-fg); }\n");
     s.push_str(":focus-visible { outline: 3px solid var(--cui-accent); outline-offset: 2px; }\n");
     s
 }

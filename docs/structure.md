@@ -1,7 +1,7 @@
 # Structure: headings, sections, landmarks, links, details, figures, and the roles of a text
 
-> **Status: B1 of step 2 of [`www.md`](www.md), built.** Designed in `www.md` 5.2 and 5.2b (which three real sections of the cancho-www home page were sketched in, and what the proposal
-> could not say), decided by the user on 2026-10-24 (`www.md` section 10 items 9 and 10). `Rich` and `Code` are B2; `Image`, `Media`, `ratio` and `Grid` weights are B3; prerendering is P1.
+> **Status: B1 and B2 of step 2 of [`www.md`](www.md), built** (sections 7 and 8 are B2: `Rich`, its inline children, `Summary`, `Code`, `Clipboard`). Designed in `www.md` 5.2 and 5.2b (which three real sections of the cancho-www home page were sketched in, and what the proposal
+> could not say), decided by the user on 2026-10-24 (`www.md` section 10 items 9 and 10). `Image`, `Media`, `ratio` and `Grid` weights are B3; prerendering is P1.
 > Measured in Chromium (Playwright, `Pixel 7` profile, desktop Chromium, not a device) and in `cargo test`; numbers say which.
 
 ## 1. What a program can say
@@ -61,7 +61,7 @@ Every refusal below has a rule tag in [`spec/diagnostics/README.md`](../spec/dia
 **Corrections to `www.md` 5.2, measured in 5.2b and built here:** there is no `section-label-missing` (the page has 5 landmarks and 0 regions: an unnamed `Section` is not a landmark); a `Link` has no `rel`
 (128 external links, 0 `target`); and `heading-level-skipped` would refuse the real page, whose first three cards are `h3`s under the `h1`.
 
-**Not built here, and said so:** the skip link that a `Main` was to write (a page-level element: step 3, 5.3), `sticky`, `pressed:`, `role: group` (the human/agent switch needs it: to be checked then), dynamic
+**Not built in B1, and said so:** the skip link that a `Main` was to write (a page-level element: step 3, 5.3), `sticky`, `pressed:`, `role: group` (the human/agent switch needs it: to be checked then), dynamic
 links built from data (`link-to-invalid` says so), and `landmark-misplaced` (a `Main` inside an `Article` is not refused).
 
 ## 3. Authority and `diff`
@@ -104,3 +104,70 @@ appearances and roles take its colours: `primary` is `accent_fg` on `accent`, `s
 Safari, Firefox, a real phone; a screen reader reading any of it (the accessibility tree is Chromium's); the look of the elements beside the cancho-www page's own (no pixel comparison); the byte cost of the new
 stylesheet rules on a large page; whether a `Link { appearance }` reads as a button to a user of the page (it is an `<a>`, and says so in the tree: `link`). `Rich` (links inside a sentence) is B2, so a paragraph with an
 inline link cannot be written yet: 82 of the page's 162 text blocks wait for it.
+
+## 7. `Rich`: inline content (B2)
+
+```
+Rich { "A program opens a file. " Strong { "What this shows:" } " " Code { "check" } " found it. See " Link { to: "#docs" "the docs" } "." Break { } "Next." }
+Heading { level: 1 "Tools built for agents." Break { } Em { "Not adapted from humans." } }
+Figure { Caption { "20 seconds. " Link { to: "https://github.com/alpibrusl/cancho-ui" "cancho-ui" } "." } }
+Details { Summary { "The same session as text " Small { "(a real run)" } } Code { "$ cancho check leak.cho" } }
+```
+
+| element | becomes | holds |
+|---|---|---|
+| `Rich { style: .. }` | `<p>` (`data-style` as a styled `Text`) | text and inline elements; `style:` is `"eyebrow"`, `"lead"`, `"note"`, `"label"` |
+| `Strong`, `Em`, `Small` | `<strong>`, `<em>`, `<small>` | text and inline elements |
+| `Code` inside inline content | `<code>` | text only |
+| `Break` | `<br>` | nothing |
+| `Link` (inside any of them) | `<a href>` | text and `Strong`, `Em`, `Small`, `Break`, `Code`; **not another `Link`** |
+| `Summary` (first child of a `Details`, instead of `summary:`) | `<summary>` | the same inline content |
+
+* **Inline content is also what a `Heading`, a `Caption` and a `Link` hold**: they take text and the same inline elements (the real page has a `<br>` and an `<em>` in its `h1`, `<small>` in a `summary`, links in both
+  `figcaption`s: 5.2b item 6). A `Text { .. }` or any block element inside them is `rich-child-invalid` (B1 let a `Heading` hold a `Text` by accident).
+* Text goes into the element as **text nodes between the inline elements** (`<p>A <strong>b</strong> c</p>`), not in a `<span>` each. A `For` or an `If` inside inline content is allowed and draws its text in a
+  `<span>` per item, which a prerenderer would have to reproduce.
+* **The same name, two meanings, by place**: `Code { .. }` directly inside inline content is the `<code>` of a sentence (`InlineCode` in the IR, decided when the view is lowered); anywhere else it is the box of
+  section 8. `Strong`, `Em`, `Small` and `Break` anywhere else are `inline-outside-rich`.
+* **`Span` was not added**, though the decision listed it: a `<span>` with no attribute says nothing. Measured on the live page: 85 `span`s, **42 of them inside text blocks, and every one of those carries a class**
+  (`n`, `chip built`, ..: the numbers and the stage chips of the generated lists), none is a bare span; the three sections measured in 5.2b have none. What those 42 need is a styled inline element (a chip), which is
+  not in the closed set and which a `Span` would not give. Whether the port (www.md Q11) needs a `Chip` is left to the port, which will say so by its parity report.
+* **`Strong` is `<strong>`**, and the page writes `<b>` (16 times, mostly a name: `<b>cancho</b>`). Both are bold; a screen reader reads them alike; `<strong>` says importance. A parity check against the live page will
+  list the 16 as a difference rather than hide it.
+* Tags: `rich-child-invalid`, `rich-empty`, `inline-outside-rich`, `code-child-invalid`; a `Summary` outside a `Details`, or beside `summary:`, or not first, is `details-incomplete`.
+
+## 8. `Code`, and the `Clipboard` capability (B2)
+
+```
+component Install {
+    requires Clipboard;
+    view { Code { copy: true max_height: 28 "git clone https://github.com/alpibrusl/cancho\ncargo build -p cancho --release" } }
+}
+```
+
+* **The DOM**: `<div class="cui-code" data-copy=""><pre tabindex="0" style="max-height: 28rem;"><code>..</code></pre><button type="button" class="cui-copy" aria-label="Copy the code">Copy</button></div>`. The `<pre>` is
+  focusable (`tabindex="0"`) so a keyboard user can scroll it; without `copy:` there is no `data-copy` and no button; without `max_height:` no `style`. `max_height:` is an integer from 4 to 100 (rem):
+  `code-max-height-invalid`; `copy:` is `true` or `false`: `code-copy-invalid`; the box holds text only: `code-child-invalid`. A brace in the text is written `\{`, as in a `Text`.
+* **`copy: true` is the `Clipboard` capability**: the component declares `requires Clipboard;` (`clipboard-not-declared` if it does not; the existing `capability-unused` if it declares it and has no copy button).
+  It is **write only**, and only from a tap by construction: the compiler writes the one call to `navigator.clipboard.writeText` inside the click of the button it draws, and no other code touches the clipboard.
+  `inspect effects` lists `Clipboard` under `requires` and `diff` adds it as `+ requires Clipboard` with `authority: expanded` (tests).
+* The tap writes the text **as shown** (`pre.textContent`), says "Copied" for 1.5 s, and where the write is refused ("Select and copy") or the clipboard is absent ("Press Ctrl+C") it selects the box so that the keyboard or
+  the long-press menu finishes the job. The cancho-www page strips trailing `# comments` from what it copies; that is the page's own rule and is not reproduced: a parity check will list it.
+* **Measured** (Chromium, `Pixel 7` profile, clipboard permission granted): nothing writes to the clipboard at load or at a render; a tap writes the text of the box once and reading it back gives the same text; the page
+  calls `readText` 0 times; with `writeText` rejecting, the label is "Select and copy" and the text is selected; with `navigator.clipboard` undefined, "Press Ctrl+C" and the text is selected; the button is at least
+  44 x 44 and named. The emitted module of a program with no copy button has no clipboard code at all, and one with it has one `writeText(` (tests).
+* **Looks**: the box is dark in both schemes, `#12151a` with `#d6dde8` (13.39:1) by default and `code_bg`/`code_fg` with a theme (drawn at 13.39:1 in both schemes of the site's palette); the copy button keeps the
+  baseline's 44 px target and sits in the corner; `pre` has room for it (`padding-right`).
+* **Not measured**: a real phone's long-press menu; iOS Safari's rule that `writeText` needs the tap itself (the call is inside the click handler, which satisfies it, but no iPhone ran it); a screen reader announcing
+  "Copied" (the label changes text, with no live region: a person who cannot see it is not told: **a gap**, noted for a later pass).
+
+## 9. Checked (B2)
+
+* `tests/structure_corpus.json` now has 18 valid views with the DOM each must become (10 added for B2, all equal in Chromium) and 95 refusals (34 added; every tag of this section is reached); 7 new rule tags in
+  `spec/diagnostics/README.md`.
+* `scripts/check-structure.js` part E: the clipboard behaviour above; part D adds the code box (13.39:1 in both schemes with the site's palette).
+* `scripts/breaks/structure-b2.json`: 20 deliberate breaks, **each caught by a check failing on its own, on the first run** (none `HUNG`, none `BUILD`): a `Rich` as a `div`, a `Strong` as a `b`, a `Break` as an `hr`,
+  inline code as a box, text in a `Rich` in a `span` each, a `Link` in a `Link`, a `Text` in a `Rich`, an empty `Rich`, a `Strong` anywhere, any code height, a copy button with no `Clipboard`, a `Clipboard` unused,
+  the page writing at once instead of on a tap, the page also reading the clipboard, copying more than is shown, a code box with no `tabindex`, a height in px, the copy code left out, a `Summary` anywhere, a `Code`
+  that holds elements. The 21 breaks of B1 were run again on this branch: all caught.
+* Gate: fmt, clippy `-D warnings`, `cargo test --workspace` 623 passed, 0 failed, all 54 `scripts/check-*.js`, and both `--self-test` runs.

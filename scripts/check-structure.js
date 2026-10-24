@@ -7,6 +7,8 @@
 //      named), the headings in order with no skipped level, every link named and not generic, the details and the figure, the in-page
 //      links reaching their targets, the targets of links in a header, a nav and a footer at least 44 px, the appearances at least 44 px,
 //      the focus ring on a focused link;
+//   E. the copy button of a Code: nothing is written to the clipboard until it is tapped, a tap writes the text of the box once and the page never reads it, and with the
+//      clipboard refused or absent the text is selected;
 //   C. a screen that appears (an `If`) hands the focus to its `Heading`, as it does to a `Text { role: heading }`;
 //   D. with a theme, a link of each appearance is drawn at a contrast of at least 4.5:1 in both colour schemes (the oracle's formula).
 //   node scripts/check-structure.js
@@ -78,7 +80,7 @@ const SERIALISE = `(function () {
     const errors = [];
     page.on('pageerror', (e) => errors.push(String(e)));
     for (const c of corpus.valid) {
-      const b = buildText(`component C {\n    ${corpus.state}\n    view { Column { ${c.view} } }\n}\n`);
+      const b = buildText(`component C {\n    ${c.requires ? `requires ${c.requires};\n    ` : ''}${corpus.state}\n    view { Column { ${c.view} } }\n}\n`);
       if (b.code !== 0) { check(`A: ${c.name}: builds`, false, b.err.slice(0, 160)); continue; }
       await page.goto(`${base}/${b.id}/`);
       await page.waitForFunction(() => document.getElementById('root') && document.getElementById('root').childNodes.length > 0);
@@ -113,7 +115,7 @@ const SERIALISE = `(function () {
     check('B: the headings, in order, skip no level', levels.length >= 6 && !skipped, levels.join(' '));
     const links = ax.filter((n) => role(n) === 'link');
     check('B: every link has a name, and none is a generic one', links.length >= 8 && links.every((n) => nm(n).trim() !== '' && !/^(here|click here|link|read more|more)$/i.test(nm(n).trim())), links.map(nm).join(' | '));
-    check('B: the details has its summary as a disclosure and its text is hidden until it is opened', await page.evaluate(() => { const d = document.querySelector('details'); return d && d.querySelector('summary') && !d.open && !d.querySelector('span').checkVisibility(); }));
+    check('B: the details has its summary as a disclosure and its text is hidden until it is opened', await page.evaluate(() => { const d = document.querySelector('details'); return d && d.querySelector('summary') && !d.open && !d.querySelector('code').checkVisibility(); }));
     check('B: the figure is named by its caption', ax.some((n) => role(n) === 'figure') && await page.evaluate(() => document.querySelector('figure figcaption').textContent === 'One minute.'));
     // in-page links reach their target
     const before = await page.evaluate(() => Math.round(document.getElementById('demo').getBoundingClientRect().top));
@@ -172,13 +174,57 @@ const SERIALISE = `(function () {
       const drawn = await page.evaluate(() => {
         const css = (el) => { const s = getComputedStyle(el); let bg = s.backgroundColor, e = el; while ((bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') && e.parentElement) { e = e.parentElement; bg = getComputedStyle(e).backgroundColor; } return [s.color, bg]; };
         const q = (sel) => document.querySelector(sel);
-        return { primary: css(q('a.cui-link-primary')), secondary: css(q('a.cui-link-secondary')), plain: css(q('header a')), eyebrow: css(q('[data-style="eyebrow"]')), lead: css(q('[data-style="lead"]')), note: css(q('[data-style="note"]')) };
+        return { primary: css(q('a.cui-link-primary')), secondary: css(q('a.cui-link-secondary')), plain: css(q('header a')), eyebrow: css(q('[data-style="eyebrow"]')), lead: css(q('[data-style="lead"]')), note: css(q('[data-style="note"]')), code: css(q('.cui-code')) };
       });
       for (const [name, [fg, bg]] of Object.entries(drawn)) {
         const r = ratio(hex(fg), hex(bg));
         check(`D: ${scheme}: ${name} is drawn at ${r.toFixed(2)}:1, at least 4.5`, r >= 4.5);
       }
       await ctx.close();
+    }
+  }
+
+  // E. the copy button: the clipboard is written once, by a tap, with the text of the box, and never read
+  {
+    const WATCH = `(function () {
+      window.__clip = { writes: [], reads: 0 };
+      const c = navigator.clipboard;
+      if (!c) { return; }
+      const w = c.writeText.bind(c), r = c.readText.bind(c);
+      c.writeText = (t) => { window.__clip.writes.push(String(t)); return w(t); };
+      c.readText = () => { window.__clip.reads += 1; return r(); };
+    })();`;
+    const ctx = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block', permissions: ['clipboard-read', 'clipboard-write'] });
+    await ctx.addInitScript(WATCH);
+    const page = await ctx.newPage();
+    await page.goto(`${base}/${ex.id}/`);
+    await page.getByRole('heading', { level: 1 }).waitFor();
+    await page.getByRole('button', { name: 'Click', exact: true }).click(); // a render
+    await sleep(300);
+    check('E: the page has not touched the clipboard at load or at a render', (await page.evaluate(() => window.__clip.writes.length + window.__clip.reads)) === 0);
+    await page.evaluate(() => document.querySelector('details').setAttribute('open', ''));
+    const wanted = await page.evaluate(() => document.querySelector('.cui-code pre').textContent);
+    const btn = page.getByRole('button', { name: 'Copy the code' });
+    check('E: the copy button is at least 44 x 44 and named', await btn.evaluate((b) => { const r = b.getBoundingClientRect(); return r.width >= 44 && r.height >= 44; }));
+    await btn.click();
+    await sleep(300);
+    const after = await page.evaluate(async () => ({ writes: window.__clip.writes, reads: window.__clip.reads, text: await navigator.clipboard.readText(), label: document.querySelector('.cui-copy').textContent }));
+    check('E: a tap writes the text of the box, once, and says so', after.writes.length === 1 && after.writes[0] === wanted && after.text === wanted && after.label === 'Copied', JSON.stringify({ n: after.writes.length, label: after.label }));
+    check('E: the page itself never read the clipboard', after.reads === 0, String(after.reads));
+    await ctx.close();
+    // the clipboard refused, and absent: the text is selected for Ctrl+C and the button says what to do
+    for (const [name, init, want] of [['refused', 'navigator.clipboard.writeText = () => Promise.reject(new Error("no"));', 'Select and copy'], ['absent', 'Object.defineProperty(navigator, "clipboard", { value: undefined });', 'Press Ctrl+C']]) {
+      const c2 = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block' });
+      await c2.addInitScript(init);
+      const p2 = await c2.newPage();
+      await p2.goto(`${base}/${ex.id}/`);
+      await p2.getByRole('heading', { level: 1 }).waitFor();
+      await p2.evaluate(() => document.querySelector('details').setAttribute('open', ''));
+      await p2.getByRole('button', { name: 'Copy the code' }).click();
+      await sleep(300);
+      const got = await p2.evaluate(() => ({ label: document.querySelector('.cui-copy').textContent, selected: String(getSelection()) }));
+      check(`E: with the clipboard ${name}, the button says "${want}" and the text is selected`, got.label === want && got.selected.includes('cargo build'), JSON.stringify(got));
+      await c2.close();
     }
   }
 

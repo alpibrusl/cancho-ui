@@ -100,6 +100,7 @@ fn check_node(c: &IrComponent, node: &IrViewNode, in_for: bool) -> Result<(), Lo
                     check_binding(c, kind, b)?;
                 }
                 crate::structure::check_complete(
+                    c,
                     kind,
                     accessibility,
                     bindings,
@@ -164,6 +165,14 @@ fn element_name(kind: &IrElementKind) -> &'static str {
         IrElementKind::Details => "Details",
         IrElementKind::Figure => "Figure",
         IrElementKind::Caption => "Caption",
+        IrElementKind::Rich => "Rich",
+        IrElementKind::Strong => "Strong",
+        IrElementKind::Em => "Em",
+        IrElementKind::Small => "Small",
+        IrElementKind::Break => "Break",
+        IrElementKind::Summary => "Summary",
+        IrElementKind::Code => "Code",
+        IrElementKind::InlineCode => "Code",
         IrElementKind::Named(_) => "a component",
     }
 }

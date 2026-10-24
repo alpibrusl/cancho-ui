@@ -180,7 +180,7 @@ set or a literal checked at compile time ([`controls.md`](controls.md) section 1
 
 ### 5.2 Structure
 
-> **B1 is built: [`structure.md`](structure.md)** (2026-10-24): `Heading`, `Section`, the landmarks, `Article`, `Link` with `appearance` and the host listing, `Details`, `Figure`/`Caption`, `Text { style }`. Where the bullets below differ from it, `structure.md` is right and the difference is marked here. Not in B1: `Rich`, `Code`, `Image`, `Media`, `Grid`, the skip link (step 3), `pressed:`.
+> **B1 and B2 are built: [`structure.md`](structure.md)** (2026-10-24): `Heading`, `Section`, the landmarks, `Article`, `Link` with `appearance` and the host listing, `Details`, `Figure`/`Caption`, `Text { style }`; `Rich` with `Strong`, `Em`, `Small`, `Break`, inline `Code` and `Summary`; `Code { copy, max_height }` and the `Clipboard` capability (`Span` was not added: structure.md section 7; `clipboard-write-not-from-tap` is not a tag, because the write is only in the button's click by construction and Chromium measures it). Where the bullets below differ from it, `structure.md` is right and the difference is marked here. Not yet: `Image`, `Media`, `Grid` (B3), the skip link (step 3), `pressed:`.
 
 * **`Heading { level: 1..4 "text" }`**, **`Section { id: "try" label: "..." ... }`**, landmarks `Header`, `Nav`, `Main`, `Footer`, `Aside`. A `Main` makes the compiler
   write the skip link *(not built in B1: it is a page-level element, step 3; corrected 2026-10-24)*. Tags: `heading-level-skipped` (an `h3` directly under an `h1`), `heading-empty`, `landmark-duplicate` (two `Main`s).

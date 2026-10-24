@@ -13,6 +13,8 @@ use crate::lower::LowerError;
 pub const APPEARANCES: &[&str] = &["primary", "secondary", "quiet"];
 /// The `style:` of a `Text`: a typographic role, a closed set.
 pub const TEXT_STYLES: &[&str] = &["eyebrow", "lead", "note", "label"];
+/// The range of a code block's `max_height:`, in rem.
+pub const CODE_HEIGHT: (i64, i64) = (4, 100);
 /// The range of a heading's `level:`.
 pub const LEVELS: (i64, i64) = (1, 4);
 /// The words that do not say where a link goes (compared lower-cased, with punctuation trimmed), `link-label-generic`.
@@ -44,6 +46,62 @@ pub fn is_structure(kind: &IrElementKind) -> bool {
             | IrElementKind::Details
             | IrElementKind::Figure
             | IrElementKind::Caption
+            | IrElementKind::Rich
+            | IrElementKind::Strong
+            | IrElementKind::Em
+            | IrElementKind::Small
+            | IrElementKind::Break
+            | IrElementKind::Summary
+            | IrElementKind::Code
+            | IrElementKind::InlineCode
+    )
+}
+
+/// The elements whose children are inline content: text, and `Strong`, `Em`, `Small`, `Break`, `Code` (as `<code>`) and `Link`.
+pub fn is_inline_container(kind: &IrElementKind) -> bool {
+    matches!(
+        kind,
+        IrElementKind::Rich
+            | IrElementKind::Heading
+            | IrElementKind::Caption
+            | IrElementKind::Summary
+            | IrElementKind::Strong
+            | IrElementKind::Em
+            | IrElementKind::Small
+            | IrElementKind::Link
+    )
+}
+
+/// The same set before lowering, so a `Code` written inside inline content can be made an `InlineCode`.
+pub fn ast_is_inline_container(kind: &cancho_ui_syntax::ast::ElementKind) -> bool {
+    use cancho_ui_syntax::ast::ElementKind as K;
+    matches!(
+        kind,
+        K::Rich | K::Heading | K::Caption | K::Summary | K::Strong | K::Em | K::Small | K::Link
+    )
+}
+
+/// What may stand inside an inline container: `Link` not inside a `Link`.
+fn inline_child_ok(parent: &IrElementKind, child: &IrElementKind) -> bool {
+    match child {
+        IrElementKind::Strong
+        | IrElementKind::Em
+        | IrElementKind::Small
+        | IrElementKind::Break
+        | IrElementKind::InlineCode => true,
+        IrElementKind::Link => !matches!(parent, IrElementKind::Link),
+        _ => false,
+    }
+}
+
+fn is_inline_only(kind: &IrElementKind) -> bool {
+    matches!(
+        kind,
+        IrElementKind::Strong
+            | IrElementKind::Em
+            | IrElementKind::Small
+            | IrElementKind::Break
+            | IrElementKind::InlineCode
     )
 }
 
@@ -75,6 +133,13 @@ fn name(kind: &IrElementKind) -> &'static str {
         IrElementKind::Details => "Details",
         IrElementKind::Figure => "Figure",
         IrElementKind::Caption => "Caption",
+        IrElementKind::Rich => "Rich",
+        IrElementKind::Strong => "Strong",
+        IrElementKind::Em => "Em",
+        IrElementKind::Small => "Small",
+        IrElementKind::Break => "Break",
+        IrElementKind::Summary => "Summary",
+        IrElementKind::Code | IrElementKind::InlineCode => "Code",
         IrElementKind::Text => "Text",
         _ => "this element",
     }
@@ -87,6 +152,8 @@ fn keys(kind: &IrElementKind) -> &'static [&'static str] {
         IrElementKind::Link => &["to", "appearance"],
         IrElementKind::Details => &["summary", "id"],
         IrElementKind::Caption => &["id"],
+        IrElementKind::Rich => &["style"],
+        IrElementKind::Code => &["copy", "max_height"],
         k if is_landmark_or_container(k) => &["id"],
         _ => &[],
     }
@@ -211,6 +278,15 @@ fn literal_text(children: &[IrViewNode]) -> Option<String> {
                     }
                 }
             }
+            IrViewNode::Element { kind, children, .. }
+                if is_inline_container(kind) || matches!(kind, IrElementKind::InlineCode) =>
+            {
+                out.push_str(&literal_text(children)?);
+            }
+            IrViewNode::Element {
+                kind: IrElementKind::Break,
+                ..
+            } => out.push(' '),
             _ => return None,
         }
     }
@@ -219,7 +295,15 @@ fn literal_text(children: &[IrViewNode]) -> Option<String> {
 
 /// Checks one binding. `Ok(true)`: this module owns it and it is fine; `Ok(false)`: not its business.
 pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerError> {
-    const NEW: &[&str] = &["id", "level", "appearance", "style", "summary"];
+    const NEW: &[&str] = &[
+        "id",
+        "level",
+        "appearance",
+        "style",
+        "summary",
+        "copy",
+        "max_height",
+    ];
     let structure = is_structure(kind);
     if !structure && !(NEW.contains(&b.key.as_str())) {
         return Ok(false);
@@ -251,7 +335,8 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                     "level" => "Heading",
                     "appearance" => "Link",
                     "summary" => "Details",
-                    "style" => "Text",
+                    "style" => "Text and Rich",
+                    "copy" | "max_height" => "Code",
                     _ => "the structure elements (Section, Article, Heading, ..)",
                 }
             ),
@@ -302,6 +387,38 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                 .map(|()| true)
                 .map_err(|why| refuse("link-scheme-refused", why, b.span)),
         },
+        "style" => match string_of(b) {
+            Some(s) if TEXT_STYLES.contains(&s) => Ok(true),
+            _ => Err(refuse(
+                "text-style-invalid",
+                format!(
+                    "`style:` is one of {} as a string literal",
+                    TEXT_STYLES.join(", ")
+                ),
+                b.span,
+            )),
+        },
+        "copy" => match &b.value {
+            IrBindingValue::Const { expr, .. } if matches!(**expr, IrExpr::BoolLit { .. }) => {
+                Ok(true)
+            }
+            _ => Err(refuse(
+                "code-copy-invalid",
+                "`copy:` is `true` or `false`: `Code { copy: true \"..\" }`".to_string(),
+                b.span,
+            )),
+        },
+        "max_height" => match int_of(b) {
+            Some(n) if (CODE_HEIGHT.0..=CODE_HEIGHT.1).contains(&n) => Ok(true),
+            _ => Err(refuse(
+                "code-max-height-invalid",
+                format!(
+                    "`max_height:` is an integer literal from {} to {}, in rem",
+                    CODE_HEIGHT.0, CODE_HEIGHT.1
+                ),
+                b.span,
+            )),
+        },
         "appearance" => match string_of(b) {
             Some(s) if APPEARANCES.contains(&s) => Ok(true),
             _ => Err(refuse(
@@ -324,6 +441,7 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
 
 /// What an element needs to be complete, and what it may not carry.
 pub fn check_complete(
+    c: &IrComponent,
     kind: &IrElementKind,
     accessibility: &IrAccessibility,
     bindings: &[IrBinding],
@@ -419,12 +537,85 @@ pub fn check_complete(
                 }
             }
         }
-        IrElementKind::Details if !has("summary") => {
+        IrElementKind::Details => {
+            let summaries = children
+                .iter()
+                .filter(|c| {
+                    matches!(
+                        c,
+                        IrViewNode::Element {
+                            kind: IrElementKind::Summary,
+                            ..
+                        }
+                    )
+                })
+                .count();
+            let first_is_summary = matches!(
+                children.first(),
+                Some(IrViewNode::Element {
+                    kind: IrElementKind::Summary,
+                    ..
+                })
+            );
+            if !has("summary") && summaries == 0 {
+                return Err(refuse(
+                    "details-incomplete",
+                    "a Details needs `summary:`, the line that opens it (`Details { summary: \"More\" .. }`), or a `Summary { .. }` as its first child when that line has inline content".to_string(),
+                    span,
+                ));
+            }
+            if has("summary") && summaries > 0 {
+                return Err(refuse(
+                    "details-incomplete",
+                    "a Details has `summary:` or a `Summary { .. }` child, not both".to_string(),
+                    span,
+                ));
+            }
+            if summaries > 1 || (summaries == 1 && !first_is_summary) {
+                return Err(refuse(
+                    "details-incomplete",
+                    "a Details has one `Summary`, and it is the first thing in it".to_string(),
+                    span,
+                ));
+            }
+        }
+        IrElementKind::Rich | IrElementKind::Strong | IrElementKind::Em | IrElementKind::Small => {
+            if children.is_empty() || text.as_deref().is_some_and(|t| t.trim().is_empty()) {
+                return Err(refuse(
+                    "rich-empty",
+                    format!("{} with nothing in it says nothing", name(kind)),
+                    span,
+                ));
+            }
+        }
+        IrElementKind::Break if !children.is_empty() => {
             return Err(refuse(
-                "details-incomplete",
-                "a Details needs `summary:`, the line that opens it: `Details { summary: \"More\" .. }`".to_string(),
+                "rich-child-invalid",
+                "a Break is a line break and holds nothing".to_string(),
                 span,
             ));
+        }
+        IrElementKind::Code | IrElementKind::InlineCode => {
+            if !children
+                .iter()
+                .all(|c| matches!(c, IrViewNode::Text { .. }))
+            {
+                return Err(refuse(
+                    "code-child-invalid",
+                    "a Code holds text and nothing else: it is shown as it is written".to_string(),
+                    span,
+                ));
+            }
+            if matches!(kind, IrElementKind::Code)
+                && code_spec(bindings).0
+                && !c.requires.iter().any(|r| r.name == "Clipboard")
+            {
+                return Err(refuse(
+                    "clipboard-not-declared",
+                    "`Code { copy: true }` puts text on the clipboard when its button is tapped: declare `requires Clipboard;` in this component".to_string(),
+                    span,
+                ));
+            }
         }
         _ => {}
     }
@@ -457,7 +648,7 @@ pub fn attrs(kind: &IrElementKind, bindings: &[IrBinding]) -> Vec<(&'static str,
             ("to", Some(s)) if matches!(kind, IrElementKind::Link) => {
                 out.push(("href", s.to_string()))
             }
-            ("style", Some(s)) if matches!(kind, IrElementKind::Text) => {
+            ("style", Some(s)) if matches!(kind, IrElementKind::Text | IrElementKind::Rich) => {
                 out.push(("data-style", s.to_string()))
             }
             _ => {}
@@ -482,6 +673,38 @@ pub fn class(kind: &IrElementKind, bindings: &[IrBinding]) -> Option<String> {
 pub fn handles(kind: &IrElementKind, key: &str) -> bool {
     (is_structure(kind) && keys(kind).contains(&key))
         || (matches!(kind, IrElementKind::Text) && key == "style")
+}
+
+/// What a `Code { .. }` block asks for: whether it has a copy button, and the height (in rem) after which it scrolls.
+pub fn code_spec(bindings: &[IrBinding]) -> (bool, Option<i64>) {
+    let copy = bindings.iter().any(|b| {
+        b.key == "copy"
+            && matches!(&b.value, IrBindingValue::Const { expr, .. } if matches!(**expr, IrExpr::BoolLit { value: true, .. }))
+    });
+    let max = bindings
+        .iter()
+        .find(|b| b.key == "max_height")
+        .and_then(int_of);
+    (copy, max)
+}
+
+/// Whether a view draws a `Code { copy: true }`: the use of `Clipboard` it declares.
+pub fn view_has_copy(node: &IrViewNode) -> bool {
+    match node {
+        IrViewNode::Element {
+            kind,
+            bindings,
+            children,
+            ..
+        } => {
+            (matches!(kind, IrElementKind::Code) && code_spec(bindings).0)
+                || children.iter().any(view_has_copy)
+        }
+        IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
+            children.iter().any(view_has_copy)
+        }
+        IrViewNode::Text { .. } => false,
+    }
 }
 
 /// The line that opens a `Details`.
@@ -529,6 +752,39 @@ fn walk<'a>(
                 {
                     w.anchors.push((frag, b.span));
                 }
+            }
+            if let Some(p) = parent
+                && is_inline_container(p)
+                && !inline_child_ok(p, kind)
+            {
+                return Err(refuse(
+                    "rich-child-invalid",
+                    format!(
+                        "{} holds text and `Strong`, `Em`, `Small`, `Break`, `Code` and `Link`: {} does not belong in it",
+                        name(p),
+                        name(kind)
+                    ),
+                    *span,
+                ));
+            }
+            if is_inline_only(kind) && !parent.is_some_and(is_inline_container) {
+                return Err(refuse(
+                    "inline-outside-rich",
+                    format!(
+                        "{} is inline content: it goes inside a `Rich`, a `Heading`, a `Caption`, a `Link` or another inline element",
+                        name(kind)
+                    ),
+                    *span,
+                ));
+            }
+            if matches!(kind, IrElementKind::Summary)
+                && !matches!(parent, Some(IrElementKind::Details))
+            {
+                return Err(refuse(
+                    "details-incomplete",
+                    "a Summary is the first child of a Details".to_string(),
+                    *span,
+                ));
             }
             match kind {
                 IrElementKind::Main => w.mains.push(*span),
