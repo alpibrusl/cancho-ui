@@ -7,6 +7,7 @@
 
 mod chart;
 mod eval;
+mod geo;
 mod locale;
 mod machine;
 mod report;
@@ -30,6 +31,7 @@ pub use eval::{
     JSON_ITEMS_MAX, arith, json_get, json_items, json_quote, math_builtin, move_item, num_of_text,
     page_count, sort_key_order_json, text_builtin_json,
 };
+pub use geo::{distance_km, parse_position};
 pub use report::{
     Failure, FiredJson, HUMAN_VALUE_BOUND, IssuedJson, NOT_CLAIMED, REPORT_SCHEMA, REPORT_VERSION,
     RequestJson, SpanJson, StepReport, TestReport, TickJson, WriteJson, render_human,

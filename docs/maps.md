@@ -1,6 +1,6 @@
 # Maps: a nearest-places list first, then a tile map behind a declared host (issue #81)
 
-> **Status: DESIGN, not built.** Written 2026-10-24 before the code ([`CONTRIBUTING.md`](../CONTRIBUTING.md) section 1). Numbers measured
+> **Status: step one (3.1) BUILT; step two (3.2) is design, not built.** Written 2026-10-24 before the code ([`CONTRIBUTING.md`](../CONTRIBUTING.md) section 1). Numbers measured
 > by `scripts/measure-maps.js` (Chromium of the Playwright install, `Pixel 7` profile, 412 px; the tile hosts and the page are local
 > servers) on main at 7c16153. Anything not measured says **assumption**. Section 8 lists what is not known.
 
@@ -45,7 +45,7 @@
   A place is a JSON text row `{"name": "Sol", "pos": "40.4169,-3.7035"}` read with `json.get`, which is how a list from `net.get` already arrives.
   The page is then:
   `shown = take(sort(places, p => distance(pos, json.get(p, "pos", ""), 20000)), 5);`
-* **Done when** (the issue): `examples/near/near.cui` shows the nearest five of a list for a position the trace supplies, with the distance
+* **Built** (section 9 says what the build found and changed). **Done when** (the issue): `examples/near/near.cui` shows the nearest five of a list for a position the trace supplies, with the distance
   in km; its trace covers a position that arrives, a refusal (`Err("permission denied")`), and a place with an unreadable `pos` sorted last;
   `scripts/check-near.js` runs the page in Chromium with the geolocation permission **granted** (a position emulated), **denied** (the
   answer is `permission denied` and the list says so) and **absent** (no API). The ordering is checked against the corpus in both evaluators.
@@ -151,3 +151,18 @@ gate. The probe `scripts/measure-maps/near.cui` and its trace pass under `cancho
 * **Large places lists.** The 200 and 50 limits are chosen from the charts measurements (`charts.md`), not measured for pins.
 * **Screen reader speech.** The accessibility tree is measured; what NVDA, VoiceOver or TalkBack say for the figure is **assumption**.
 * **A coarse position near the poles** (beyond latitude 75) and the antimeridian in the Chromium page: the corpus covers the maths, the page is not measured there.
+
+## 9. Step one, built (`distance`, `examples/near`)
+
+* **Built as designed:** the pure builtin `distance(a, b, default)` (replay: `geo.rs`; page: `__cui_distance`, emitted only where used), `tests/distance_corpus.json`
+  (67 cases, the expected values computed outside the program with Python's `math` on a sphere of 6371.0088 km, compared to **1e-9 km**: the two
+  libraries' `sin` and `asin` are not promised to agree in the last digit), `examples/near` with a trace of 8 steps (a position, a refusal, a position at the
+  airport, a text that is no position), `scripts/check-near.js`, `scripts/breaks/near.json`.
+* **Changed from section 3.1:** the **gallery tile is moved to step two.** A live "places near me" page on the public gallery would ask every visitor's browser for
+  their position, and giving a demo a scripted position is a shim the gallery does not have (`check-gallery.js` R1 to R8, `check-mobile-demos.js`). With the
+  map the demo can show a fixed place. The `maps` tile in the "soon" list stays, and stays true: no `Map` exists. The example is in `examples/` and counts
+  there.
+* **Strict parse, stated:** `"40.4, -3.7"` (a space), `"+1,2"`, `".5,1"`, `"1,2,3"` and a trailing newline are not positions and give the default,
+  the grammar of `num` (`lists.md` section 1). `location.current()` never answers any of those; a program that builds the text itself `trim`s first.
+* **The order of equal and unreadable places:** the default takes part in the sort like any other number (`sort` is stable), so `20000` puts unreadable places
+  last and `-1` first. `examples/near` filters them out with `>= 0` instead and says so in its header.

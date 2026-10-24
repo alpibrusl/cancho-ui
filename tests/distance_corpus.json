@@ -1,0 +1,474 @@
+{
+ "about": "distance(a, b, default) in kilometres (docs/maps.md 3.1). `want` is a number (compared to 1e-9 km; computed outside the program, with Python's math, on a sphere of 6371.0088 km) or \"default\".",
+ "cases": [
+  {
+   "a": "40.4168,-3.7038",
+   "b": "41.3874,2.1686",
+   "default": -1,
+   "want": 505.0963617692237,
+   "why": "Madrid to Barcelona, about 505 km"
+  },
+  {
+   "a": "40.4168,-3.7038",
+   "b": "40.4168,-3.7038",
+   "default": -1,
+   "want": 0.0,
+   "why": "the same point is 0"
+  },
+  {
+   "a": "0,0",
+   "b": "0,1",
+   "default": -1,
+   "want": 111.1950802335329,
+   "why": "one degree of longitude on the equator"
+  },
+  {
+   "a": "0,0",
+   "b": "1,0",
+   "default": -1,
+   "want": 111.1950802335329,
+   "why": "one degree of latitude"
+  },
+  {
+   "a": "90,0",
+   "b": "-90,0",
+   "default": -1,
+   "want": 20015.114442035923,
+   "why": "pole to pole is half the circumference"
+  },
+  {
+   "a": "90,0",
+   "b": "90,100",
+   "default": -1,
+   "want": 5.976859174925012e-13,
+   "why": "the longitude means nothing at the pole"
+  },
+  {
+   "a": "0,179",
+   "b": "0,-179",
+   "default": -1,
+   "want": 222.39016046706487,
+   "why": "across the antimeridian is 2 degrees, not 358"
+  },
+  {
+   "a": "0,-179",
+   "b": "0,179",
+   "default": -1,
+   "want": 222.39016046706487,
+   "why": "and the other way round"
+  },
+  {
+   "a": "-33.87,151.21",
+   "b": "51.5,-0.12",
+   "default": -1,
+   "want": 16994.03158533437,
+   "why": "Sydney to London"
+  },
+  {
+   "a": "0,0",
+   "b": "0,180",
+   "default": -1,
+   "want": 20015.114442035923,
+   "why": "antipodes on the equator"
+  },
+  {
+   "a": "45,0",
+   "b": "-45,180",
+   "default": -1,
+   "want": 20015.114442035923,
+   "why": "antipodes"
+  },
+  {
+   "a": "40.42,-3.70",
+   "b": "40.41,-3.70",
+   "default": -1,
+   "want": 1.1119508023359672,
+   "why": "the 2-decimal cell of a coarse position: about 1.1 km"
+  },
+  {
+   "a": "-0,0",
+   "b": "0,0",
+   "default": -1,
+   "want": 0.0,
+   "why": "a negative zero is a zero"
+  },
+  {
+   "a": "1e1,2",
+   "b": "10,2",
+   "default": -1,
+   "want": 0.0,
+   "why": "an exponent is a number (the grammar of num)"
+  },
+  {
+   "a": "40.42,-3.70",
+   "b": "40.42,-3.70",
+   "default": -1,
+   "want": 0.0,
+   "why": "a rounded position against itself"
+  },
+  {
+   "a": "-90,-180",
+   "b": "90,180",
+   "default": -1,
+   "want": 20015.114442035923,
+   "why": "corner to corner"
+  },
+  {
+   "a": "0.00001,0",
+   "b": "0,0",
+   "default": -1,
+   "want": 0.001111950802335329,
+   "why": "the fine cell: about 1.1 m"
+  },
+  {
+   "a": "12.5,-77.25",
+   "b": "12.5,-77.25",
+   "default": -1,
+   "want": 0.0,
+   "why": "a position with halves"
+  },
+  {
+   "a": "",
+   "b": "0,0",
+   "default": -1,
+   "want": "default",
+   "why": "empty (default -1)"
+  },
+  {
+   "a": "",
+   "b": "0,0",
+   "default": 20000,
+   "want": "default",
+   "why": "empty (default 20000)"
+  },
+  {
+   "a": "1",
+   "b": "0,0",
+   "default": -1,
+   "want": "default",
+   "why": "one part (default -1)"
+  },
+  {
+   "a": "1",
+   "b": "0,0",
+   "default": 20000,
+   "want": "default",
+   "why": "one part (default 20000)"
+  },
+  {
+   "a": "1,2,3",
+   "b": "0,0",
+   "default": -1,
+   "want": "default",
+   "why": "three parts (default -1)"
+  },
+  {
+   "a": "1,2,3",
+   "b": "0,0",
+   "default": 20000,
+   "want": "default",
+   "why": "three parts (default 20000)"
+  },
+  {
+   "a": "91,0",
+   "b": "0,0",
+   "default": -1,
+   "want": "default",
+   "why": "latitude 91 (default -1)"
+  },
+  {
+   "a": "91,0",
+   "b": "0,0",
+   "default": 20000,
+   "want": "default",
+   "why": "latitude 91 (default 20000)"
+  },
+  {
+   "a": "-90.0001,0",
+   "b": "0,0",
+   "default": -1,
+   "want": "default",
+   "why": "latitude beyond -90 (default -1)"
+  },
+  {
+   "a": "-90.0001,0",
+   "b": "0,0",
+   "default": 20000,
+   "want": "default",
+   "why": "latitude beyond -90 (default 20000)"
+  },
+  {
+   "a": "0,181",
+   "b": "0,0",
+   "default": -1,
+   "want": "default",
+   "why": "longitude 181 (default -1)"
+  },
+  {
+   "a": "0,181",
+   "b": "0,0",
+   "default": 20000,
+   "want": "default",
+   "why": "longitude 181 (default 20000)"
+  },
+  {
+   "a": "0,-180.5",
+   "b": "0,0",
+   "default": -1,
+   "want": "default",
+   "why": "longitude beyond -180 (default -1)"
+  },
+  {
+   "a": "0,-180.5",
+   "b": "0,0",
+   "default": 20000,
+   "want": "default",
+   "why": "longitude beyond -180 (default 20000)"
+  },
+  {
+   "a": " 1,2",
+   "b": "0,0",
+   "default": -1,
+   "want": "default",
+   "why": "a leading space (default -1)"
+  },
+  {
+   "a": " 1,2",
+   "b": "0,0",
+   "default": 20000,
+   "want": "default",
+   "why": "a leading space (default 20000)"
+  },
+  {
+   "a": "1, 2",
+   "b": "0,0",
+   "default": -1,
+   "want": "default",
+   "why": "a space after the comma (default -1)"
+  },
+  {
+   "a": "1, 2",
+   "b": "0,0",
+   "default": 20000,
+   "want": "default",
+   "why": "a space after the comma (default 20000)"
+  },
+  {
+   "a": "1,2 ",
+   "b": "0,0",
+   "default": -1,
+   "want": "default",
+   "why": "a trailing space (default -1)"
+  },
+  {
+   "a": "1,2 ",
+   "b": "0,0",
+   "default": 20000,
+   "want": "default",
+   "why": "a trailing space (default 20000)"
+  },
+  {
+   "a": "a,b",
+   "b": "0,0",
+   "default": -1,
+   "want": "default",
+   "why": "not numbers (default -1)"
+  },
+  {
+   "a": "a,b",
+   "b": "0,0",
+   "default": 20000,
+   "want": "default",
+   "why": "not numbers (default 20000)"
+  },
+  {
+   "a": "NaN,1",
+   "b": "0,0",
+   "default": -1,
+   "want": "default",
+   "why": "NaN (default -1)"
+  },
+  {
+   "a": "NaN,1",
+   "b": "0,0",
+   "default": 20000,
+   "want": "default",
+   "why": "NaN (default 20000)"
+  },
+  {
+   "a": "Infinity,0",
+   "b": "0,0",
+   "default": -1,
+   "want": "default",
+   "why": "Infinity (default -1)"
+  },
+  {
+   "a": "Infinity,0",
+   "b": "0,0",
+   "default": 20000,
+   "want": "default",
+   "why": "Infinity (default 20000)"
+  },
+  {
+   "a": "+1,2",
+   "b": "0,0",
+   "default": -1,
+   "want": "default",
+   "why": "a plus sign (default -1)"
+  },
+  {
+   "a": "+1,2",
+   "b": "0,0",
+   "default": 20000,
+   "want": "default",
+   "why": "a plus sign (default 20000)"
+  },
+  {
+   "a": ".5,1",
+   "b": "0,0",
+   "default": -1,
+   "want": "default",
+   "why": "no leading digit (default -1)"
+  },
+  {
+   "a": ".5,1",
+   "b": "0,0",
+   "default": 20000,
+   "want": "default",
+   "why": "no leading digit (default 20000)"
+  },
+  {
+   "a": "5.,1",
+   "b": "0,0",
+   "default": -1,
+   "want": "default",
+   "why": "no digit after the point (default -1)"
+  },
+  {
+   "a": "5.,1",
+   "b": "0,0",
+   "default": 20000,
+   "want": "default",
+   "why": "no digit after the point (default 20000)"
+  },
+  {
+   "a": "0x10,1",
+   "b": "0,0",
+   "default": -1,
+   "want": "default",
+   "why": "hex (default -1)"
+  },
+  {
+   "a": "0x10,1",
+   "b": "0,0",
+   "default": 20000,
+   "want": "default",
+   "why": "hex (default 20000)"
+  },
+  {
+   "a": "1e999,0",
+   "b": "0,0",
+   "default": -1,
+   "want": "default",
+   "why": "overflows to infinity (default -1)"
+  },
+  {
+   "a": "1e999,0",
+   "b": "0,0",
+   "default": 20000,
+   "want": "default",
+   "why": "overflows to infinity (default 20000)"
+  },
+  {
+   "a": "0,0",
+   "b": "",
+   "default": -1,
+   "want": "default",
+   "why": "the second empty (default -1)"
+  },
+  {
+   "a": "0,0",
+   "b": "",
+   "default": 20000,
+   "want": "default",
+   "why": "the second empty (default 20000)"
+  },
+  {
+   "a": "0,0",
+   "b": ",",
+   "default": -1,
+   "want": "default",
+   "why": "the second only a comma (default -1)"
+  },
+  {
+   "a": "0,0",
+   "b": ",",
+   "default": 20000,
+   "want": "default",
+   "why": "the second only a comma (default 20000)"
+  },
+  {
+   "a": ",",
+   "b": "0,0",
+   "default": -1,
+   "want": "default",
+   "why": "only a comma (default -1)"
+  },
+  {
+   "a": ",",
+   "b": "0,0",
+   "default": 20000,
+   "want": "default",
+   "why": "only a comma (default 20000)"
+  },
+  {
+   "a": "1;2",
+   "b": "0,0",
+   "default": -1,
+   "want": "default",
+   "why": "semicolon (default -1)"
+  },
+  {
+   "a": "1;2",
+   "b": "0,0",
+   "default": 20000,
+   "want": "default",
+   "why": "semicolon (default 20000)"
+  },
+  {
+   "a": "1,2\n",
+   "b": "0,0",
+   "default": -1,
+   "want": "default",
+   "why": "a trailing newline (default -1)"
+  },
+  {
+   "a": "1,2\n",
+   "b": "0,0",
+   "default": 20000,
+   "want": "default",
+   "why": "a trailing newline (default 20000)"
+  },
+  {
+   "a": "\uff11,\uff12",
+   "b": "0,0",
+   "default": -1,
+   "want": "default",
+   "why": "full-width digits (default -1)"
+  },
+  {
+   "a": "\uff11,\uff12",
+   "b": "0,0",
+   "default": 20000,
+   "want": "default",
+   "why": "full-width digits (default 20000)"
+  },
+  {
+   "a": "0,0",
+   "b": "1,xx",
+   "default": 7.5,
+   "want": "default",
+   "why": "the second part is not a number; the default is returned as it is"
+  }
+ ]
+}
