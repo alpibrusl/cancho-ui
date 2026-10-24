@@ -65,7 +65,41 @@ text. Not built, for three reasons.
 
 ## 5. What is left, and why
 
-A comparison with an operand whose type the pass cannot see is not refused: an event parameter, a `For` binding, a `match` arm
+*(Corrected, #103, section 6: the residue below is closed by option B, applied only where an operand's type is not seen.)* A comparison with an operand whose type the pass cannot see is not refused: an event parameter, a `For` binding, a `match` arm
 (`docs/conditionals.md` section 6). Measured: a `TextField` handler `on Param(x) { out = "" + (x <= 7) + " " + (x == 7); }` given
 `"7"`: replay faults at `<=` (`replay-type-error`), the page answers `true`; `==` is `false` in both. Closing that is option B (a
 strict comparison in the page), a runtime cost in every comparison, and is filed as its own issue (#103) rather than done here.
+
+## 6. An operand the compiler cannot type: the page is strict there (issue #103)
+
+> **Status: BUILT.** Option B of section 2, applied only where it is needed.
+
+**Measured before** (`scripts/check-compare-unknown.js <older compiler> --report`): over `tests/compare_unknown_corpus.json`, 128 comparisons of an
+event parameter, a lambda binding and a `match` binding against numbers, strings and bools, **62 answered differently** in the page and in replay: replay
+faults (`replay-type-error`), the page coerced (`"7" <= 7` true, `true >= 7` true, `7 < true` false). The probe of the issue (a `TextField` given
+`7`, handler `x <= 7`): replay faults, the page answered `true`.
+
+**What was built.**
+* `__cui_lt`, `__cui_le`, `__cui_gt`, `__cui_ge`: throw `replay-type-error` unless both operands are numbers or both are strings, then compare. `__cui_eq` (and `!=` as its negation): throws if either
+  operand is a list, a variant or not a value, else strict equality, which across scalar types is false, as replay's. Each is a few lines, emitted only when a comparison needs it (the order
+  helpers and the equality helper are separate chunks).
+* **Where.** A comparison goes through a helper only when an operand is not *known* to be a number, a string or a bool: `scalar_kind` in `conditions.rs` is the same typing the
+  `comparison-type-mismatch` rule uses (a literal, a state field's declared type, a builtin whose answer is fixed); an event parameter, a `For` or lambda binding and a
+  `match` binding are not known. Where both operands are known the compiler has already refused what replay would, and the host's own operator is emitted, as before.
+* **The cost, measured** (the module `cancho-ui build` writes, before and after):
+
+| example | before | after | added |
+|---|---|---|---|
+| `examples/ops-console` | 48,524 bytes | 48,524 | **0** (no comparison of an unknown operand) |
+| `examples/tickets` | 48,919 | 49,225 | **306** (0.6 %: `__cui_eq` and one call, `json.get(x, "id", "") == id`) |
+| `examples/cancel` | 12,726 | 13,226 | 500 (the ordering helpers) |
+| `examples/routes` | 14,988 | 15,299 | 311 |
+
+  Every other example is byte-for-byte unchanged. `docs/demo/routes/app.js` is regenerated.
+* **After:** all 128 cases answer what replay answers (value, or `replay-type-error`), in `cargo test` (`crates/cancho-ui/tests/compare_unknown.rs`) and in Chromium; the probe is a fault in both, and the
+  state is unchanged. A page throws the error from the handler: the program stops at that statement, the state keeps what it had, and the error is the page's uncaught error (replay stops the trace).
+
+**A `For` binding in the view.** Replay does not draw the view, so it never evaluates `Text { "{n <= 5}" }` inside a `For`: that case cannot be compared with replay. The page is strict there too (checked in Chromium,
+numbers compare, strings against a number throw), and the corpus covers the same thing through a lambda binding, which both evaluators evaluate. **Not modelled in replay:** a comparison in a view expression.
+
+**Not done.** Typing event parameters (`on Pick(id: String)`, option 2 of the issue; #56) closes the hole at the source and is the larger change; this does not preclude it.

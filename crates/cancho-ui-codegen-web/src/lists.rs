@@ -165,6 +165,31 @@ function __cui_distance(a, b, fallback) {
 }
 ";
 
+/// `<`, `<=`, `>` and `>=` where an operand's type is not known to the compiler (docs/comparisons.md section 6): two numbers or two strings, else the
+/// `replay-type-error` replay gives, so that the page does not coerce (`"7" <= 7` is true in JavaScript).
+const ORDER_JS: &str = "\
+function __cui_ord(a, b) {
+    if (!((typeof a === \"number\" && typeof b === \"number\") || (typeof a === \"string\" && typeof b === \"string\"))) {
+        throw new Error(\"replay-type-error: `<`, `<=`, `>` and `>=` order two numbers or two strings\");
+    }
+}
+function __cui_lt(a, b) { __cui_ord(a, b); return a < b; }
+function __cui_le(a, b) { __cui_ord(a, b); return a <= b; }
+function __cui_gt(a, b) { __cui_ord(a, b); return a > b; }
+function __cui_ge(a, b) { __cui_ord(a, b); return a >= b; }
+";
+
+/// `==` and `!=` where an operand's type is not known to the compiler: replay defines them on numbers, strings and bools (across types they are
+/// simply unequal) and refuses a list or a variant, which the host would compare by identity.
+const EQ_JS: &str = "\
+function __cui_eq(a, b) {
+    if (typeof a === \"object\" || typeof b === \"object\" || typeof a === \"function\" || typeof b === \"function\" || a === undefined || b === undefined) {
+        throw new Error(\"replay-type-error: `==` and `!=` compare numbers, strings and bools\");
+    }
+    return a === b;
+}
+";
+
 pub fn helpers_used(emitted: &str) -> String {
     let mut out = String::new();
     // A helper shared by two calls (take and skip) is listed once: a module may not declare a function twice.
@@ -179,6 +204,11 @@ pub fn helpers_used(emitted: &str) -> String {
         (&["__cui_take(", "__cui_skip("][..], PAGING_JS),
         (&["__cui_concat("][..], CONCAT_JS),
         (&["__cui_move("][..], MOVE_JS),
+        (
+            &["__cui_lt(", "__cui_le(", "__cui_gt(", "__cui_ge("][..],
+            ORDER_JS,
+        ),
+        (&["__cui_eq("][..], EQ_JS),
         (&["__cui_distance("][..], DISTANCE_JS),
         (
             &[

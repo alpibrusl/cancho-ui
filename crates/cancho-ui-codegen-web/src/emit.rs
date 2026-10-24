@@ -520,6 +520,8 @@ fn emit_component(
     keep_focus: bool,
     module_credentials: bool,
 ) -> String {
+    // the state fields the comparisons of this component are typed by (docs/comparisons.md section 6)
+    crate::expr::set_state(&c.state);
     // Tier 13: components that some instance passes properties to
     // take a `props` argument; their state initializers consult
     // it, falling back to the declared default. Components never

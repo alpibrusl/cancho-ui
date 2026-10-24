@@ -17,6 +17,51 @@ fn binary_js(op: IrBinOp, l: &str, r: &str) -> String {
     }
 }
 
+thread_local! {
+    /// The state fields of the component being emitted, so that a comparison can tell an operand it knows from one it does not.
+    static STATE: std::cell::RefCell<Vec<IrStateField>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// The component whose expressions are emitted next.
+pub(crate) fn set_state(state: &[IrStateField]) {
+    STATE.with(|s| *s.borrow_mut() = state.to_vec());
+}
+
+/// A binary operator of two expressions. A comparison whose operand's type the compiler cannot see (an event parameter, a `For`, lambda or
+/// `match` binding) goes through a strict helper that throws `replay-type-error` as replay faults (docs/comparisons.md section 6): `<`, `<=`, `>`
+/// and `>=` need two numbers or two strings, `==` and `!=` refuse a list or a variant. Where both operands are known the compiler has already
+/// refused what replay would, and the host's own operator is emitted, as before.
+fn binary_expr_js(
+    op: IrBinOp,
+    lhs: &IrExpr,
+    rhs: &IrExpr,
+    l: &str,
+    r: &str,
+    params: &[&str],
+) -> String {
+    let ordering = matches!(op, IrBinOp::Lt | IrBinOp::Le | IrBinOp::Gt | IrBinOp::Ge);
+    let equality = matches!(op, IrBinOp::Eq | IrBinOp::Ne);
+    if !ordering && !equality {
+        return binary_js(op, l, r);
+    }
+    let unknown = STATE.with(|s| {
+        let s = s.borrow();
+        cancho_ui_ir::conditions::scalar_kind(&s, params, lhs).is_none()
+            || cancho_ui_ir::conditions::scalar_kind(&s, params, rhs).is_none()
+    });
+    if !unknown {
+        return binary_js(op, l, r);
+    }
+    match op {
+        IrBinOp::Lt => format!("__cui_lt({l}, {r})"),
+        IrBinOp::Le => format!("__cui_le({l}, {r})"),
+        IrBinOp::Gt => format!("__cui_gt({l}, {r})"),
+        IrBinOp::Ge => format!("__cui_ge({l}, {r})"),
+        IrBinOp::Eq => format!("__cui_eq({l}, {r})"),
+        _ => format!("(!__cui_eq({l}, {r}))"),
+    }
+}
+
 pub(crate) fn emit_expr_init(e: &IrExpr) -> String {
     match e {
         IrExpr::IntLit { value, .. } => value.to_string(),
@@ -47,9 +92,14 @@ pub(crate) fn emit_expr_init(e: &IrExpr) -> String {
             emit_expr_init(then),
             emit_expr_init(else_)
         ),
-        IrExpr::Binary { op, lhs, rhs, .. } => {
-            binary_js(*op, &emit_expr_init(lhs), &emit_expr_init(rhs))
-        }
+        IrExpr::Binary { op, lhs, rhs, .. } => binary_expr_js(
+            *op,
+            lhs,
+            rhs,
+            &emit_expr_init(lhs),
+            &emit_expr_init(rhs),
+            &[],
+        ),
         // State-field initial values can be `Ok(value)` or
         // `Err(reason)` constructors — Tier 6 lifted the
         // restriction that initial values must be literals. The
@@ -155,10 +205,13 @@ pub(crate) fn emit_expr_runtime(e: &IrExpr, params: &[&str]) -> String {
             emit_expr_runtime(then, params),
             emit_expr_runtime(else_, params)
         ),
-        IrExpr::Binary { op, lhs, rhs, .. } => binary_js(
+        IrExpr::Binary { op, lhs, rhs, .. } => binary_expr_js(
             *op,
+            lhs,
+            rhs,
             &emit_expr_runtime(lhs, params),
             &emit_expr_runtime(rhs, params),
+            params,
         ),
         IrExpr::Ok { value, .. } => {
             "({__cui_tag:\"Ok\",value:".to_string() + &emit_expr_runtime(value, params) + "})"
