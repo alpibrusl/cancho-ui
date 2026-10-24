@@ -1,0 +1,118 @@
+# Prerender: the static parts of a page, written at build time (P1)
+
+> **Status: design note, nothing built** (2026-10-24). It answers `www.md` 5.2c and section 10 item 7 (the user chose option B: prerender what is static, say plainly that an element with state is not).
+> Every number below was measured on this machine in Chromium (Playwright, desktop Chromium; the `Pixel 7` profile is a viewport and a user agent, not a phone) unless it says *derived* or *not measured*.
+> The scripts are throwaway (`/tmp`), their method is stated with each number; the checks that will keep the claims true are in section 8.
+
+## 1. The problem, measured
+
+| | measured |
+|---|---|
+| a `build --page` program with JavaScript off | `<div id="root"></div><noscript>This app needs JavaScript.</noscript>`: 3 elements (`www.md` 5.2c) |
+| the cancho-www home page with JavaScript off | 738 elements, 16,006 characters of text; `index.html` is 49,368 bytes (14,027 gzipped) |
+| first contentful paint of a page of 901 elements (`app.js` held back 1.5 s, a synthetic delay and not a network profile) | **1,580 ms without prerender, 60 ms with the same DOM written into `index.html`** (the same 25,489 characters of text visible) |
+| the same page opened at `#s70` with `app.js` held back | without prerender the target does not exist for 1.5 s (`scrollY` 0); with it, the element exists and the page **still sits at `scrollY` 0 until the script arrives**; see 5 |
+
+The point of the page being readable without scripts is that a crawler, a link-preview fetcher and an agent that fetches HTML (`agents.md`, `llms.txt`) read it; and that a person on a slow link reads while the script loads.
+
+## 2. What is static
+
+The compiler already knows, for every view node, whether it depends on anything that changes. **A node is static when it and all it contains are literals**: an element none of whose bindings is a state reference, an expression, an event or a `disabled`/`error`/`checked`/`value`; a `Text` or a `Heading` whose parts are all literal text; no `For`, no `If`, no component instance with properties.
+A **hole** is a node that is not static, and its whole subtree: a `Text` with `{n}`, a `Button` (its click is JavaScript), a `For`, an `If`, a `TextField`, a `Chart`, a `Map`, an instance of another component. A static element **may contain holes** (a `Section` with a `Heading`, three paragraphs and a `For` is static; the `For` is the hole in it).
+
+* **Computed, not declared.** `www.md` 5.2c suggested `Section { static }` so that the program says so. It is dropped: the compiler has to compute staticness to check the claim anyway, and an annotation that can only be right or refused adds a way to be wrong. The compiler reports what it prerendered (`inspect`, section 6) instead.
+* **The initial state is not used.** Option A (render the first view from the initial state) was not chosen. A `Text { "{n}" }` is a hole even though `n` starts at 0, and a `For` over data fetched at `start` is a hole: its content does not exist at build time, and one over a literal list is also a hole (one rule, no exceptions to explain).
+* **Classified by reading, not by the compiler:** of the 29 valid views of `tests/structure_corpus.json`, 24 are fully static and 5 have a hole (an interpolation in a heading, a `Rich` with an interpolation, a copy button, a brace and an interpolation in a code block, a `For`).
+* A control with JavaScript behaviour is a hole, and **a hole draws nothing without JavaScript**. The copy button of a `Code` is one: the box is prerendered (`data-copy` and all), the button is not, so a visitor without scripts is not shown a button that does nothing.
+
+## 3. One recipe, so the two cannot differ
+
+The elements of B1 to B3 already have their DOM in the IR crate and the JavaScript emitter only writes calls for it: `structure::{tag, attrs, class, summary, code_spec}` and `media::{image_dom, media_dom, class, grid_style}`. The prerenderer **calls the same functions**; it has no table of its own.
+
+What is *not* yet in a recipe: the generic elements (`Column`, `Row`, `Text`, `Table`, `Cell`) and the attributes common to all elements are written inline by `codegen-web/src/view.rs` (the layout class, `role`, `aria-label` from `label:`, `data-tone`, the `cui-gap-N` class, `max-width`, text as a text node or a `span`). **P1 moves those into `cancho_ui_ir::recipe::static_dom(node) -> Option<Dom>`** (`media::Dom` already is a tag, ordered attributes, children and text), calls it from `view.rs` for every static node, and from the prerenderer. After that the JavaScript emitter does not decide what a static element is: a break that changes a tag in the recipe changes both, and a break in `view.rs` that bypasses the recipe is caught by the equality check of section 8.
+
+## 4. Hydration: what the script does to what the page already shows
+
+Measured, on `examples/structure` (46 elements) with its own rendered DOM written into `index.html` and `app.js` held back 1.5 s; before the script a user tabs to the first link, selects a paragraph, and opens the `<details>`:
+
+| after the script ran (today's emitter, which empties `#root` and rebuilds) | |
+|---|---|
+| nodes | 46, the same (no duplicates) |
+| pixels | **0 of 2,382,564 differ** between the screenshot before and after; layout shift 0 |
+| the focused link | **kept** (the emitter already saves the focus by path and restores it) |
+| the text selection | **lost** |
+| `<details open>` | **closed again** |
+
+And what any re-parenting does, measured on a focused link, an open `details`, a selection, a scrolled `pre` and a playing video: `appendChild` into another parent and `replaceChildren` of the same nodes both lose the **focus**, the **selection** and the `pre`'s **scroll position**, and keep `details.open` and a playing video (it was still playing, 0.5 s in); `insertBefore` of an unrelated node keeps everything but the moved node's own focus. So *adopting* prerendered nodes by moving them into a new tree does not help: **only a node that is never detached keeps what the visitor did to it**.
+
+Three designs, from the measurement:
+
+| | what happens | cost |
+|---|---|---|
+| H1. **replace** (the emitter unchanged; `#root` is emptied and rebuilt) | the first render replaces the prerendered nodes with equal ones | nothing to build; loses the selection and the `details` state of a visitor who acted before the script; every later render does the same, as today |
+| H2. **holes** | the JavaScript builds **only the holes**, into the places the prerendered HTML marks (`<!--cui:h3-->`), and never touches a static node; a render rebuilds the holes and nothing else | the emitter's render changes from "rebuild the tree" to "rebuild the holes"; static elements stop being built by JavaScript at all (derived saving, 8) |
+| H3. adopt by moving | see above: loses focus, selection and scroll | rejected |
+
+**Recommendation: P1a = prerender with H1; P1b = H2.** P1a is what the crawler, the agent and the first paint need and changes nothing in the emitter's render; its known cost is the two losses above, for a visitor who acts before the script runs. P1b removes them, and makes every later render cheaper, but it changes the render function of every program, so it is a PR of its own with its own breaks. (Splitting is the coordinator's call; if P1b is not wanted, P1a stands alone.)
+
+## 5. Focus, ids and anchors
+
+* **Ids are the program's own** (`id:` on a structure element, `cui-` is the compiler's and refused to authors): prerendered as they are, so `#try` exists before the script. A hole's marker is a comment, not an element: no id, no duplicate.
+* **Fragment links.** Measured: with the DOM prerendered and a deferred module script held back, Chromium **does not scroll to `#s70` until the script arrives** (the document is not finished parsing), and then jumps. With `async` on the module it scrolls at once, but then a page with no prerender never scrolls to its fragment at all (`scrollY` stays 0 after the script: a defect of today's pages if the script were `async`; they are not). With **`<script>var h=decodeURIComponent(location.hash.slice(1)),e=h&&document.getElementById(h);if(e)e.scrollIntoView()</script>` written right after the prerendered root** (about 120 bytes) the prerendered page is at the target before the script (`scrollY` 18,946 at 700 ms) and stays there after it. P1 writes this script when the program has any `id:`. It is inline, so a page that sets its own Content-Security-Policy without `'unsafe-inline'` would block it; the compiler's own CSP (a map's `img-src`) does not.
+* **Focus.** A prerendered link is focusable before the script. Under H1 the emitter's existing save-and-restore keeps it (measured above); under H2 the node is never touched.
+* **Screen focus** (`screen-focus.md`): the first render of a program with `route` moves focus to a heading as today; prerender does not change when that happens.
+
+## 6. What a visitor without JavaScript sees, declared
+
+| part of the program | without JavaScript |
+|---|---|
+| a static element | drawn, with its text, links, images, videos with controls, `details` that open |
+| a hole | **nothing** (no placeholder text) |
+| a program that has any hole | `<noscript>` keeps a line, reworded: "Some parts of this page need JavaScript." A fully static program has no `<noscript>` line at all, because nothing needs it |
+| an island (step 3) | its `label:` (already required) is written as the text of its placeholder, so what the picture is called is not lost; an open island (the map) keeps its list as the text alternative, which is already the plan |
+| a control (`Button`, `TextField`, the copy button) | not drawn: a visitor without scripts is not shown a control that does nothing |
+
+`cancho-ui inspect prerender <Component>` (new) lists, per component, the static roots written into the page and the holes, with the reason for each hole ("`Text` reads `n`", "`Button`"), so that a person sees what an agent will read.
+
+## 7. What the build writes
+
+`build --page` and `--pwa` write the prerendered nodes **inside** `<div id="root">` of `index.html` (the offline worker already caches `index.html`). Only the **entry** component of the program (the one auto-mounted into `#root`) is prerendered; instances of other components are holes, as above. With `--no-auto-mount` there is no root and nothing is written. Prerendered text and attributes are escaped by one function (`& < > "`), and a `Code` or a `Text` containing `</script>` or `<!--` stays text (a case in the corpus).
+
+## 8. Costs, measured
+
+Programs of N repeated blocks (a `Section` with a `Heading`, a `Rich` with a `Strong`, a `Link` and a `Code`, and a `Code` block: 9 elements) built with `--page`; the HTML is `#root.innerHTML` as the script makes it:
+
+| elements | HTML bytes | `app.js` bytes | HTML per element | `app.js` per element |
+|---:|---:|---:|---:|---:|
+| 10 | 450 | 7,519 | 45 | (the program itself) |
+| 451 | 21,943 | 115,417 | 48.7 | 239 |
+| 901 | 43,893 | 226,068 | 48.7 | 243 |
+| 1,801 | 87,993 | 449,805 | 48.9 | 246 |
+
+So prerendering costs **about 49 bytes of HTML per static element** and the JavaScript that builds the same element costs **about 240**. *Derived, not measured*: a page of the cancho-www page's 738 static elements would add about **36 kB** of HTML; under H1 it still carries about **177 kB** of JavaScript that rebuilds them (the whole `app.js` of the page would be larger than the page's `index.html`, `site.js` and `site.css` together, 109,572 bytes); under H2 that JavaScript is not written at all, because static elements are not built by it. Gzip is not given for these programs: their blocks repeat, and they compress to 1,760 bytes for 87,993, which says nothing about a real page. The real page's `index.html` is 49,368 bytes, 14,027 gzipped.
+
+## 9. The check that keeps it true
+
+A new part G of `scripts/check-structure.js` (and a Rust test) over **the same corpus** (`tests/structure_corpus.json`, all `valid` views, including the B3 ones with files):
+
+1. each valid view is built with `--page`; the page is opened **with JavaScript disabled** and `#root` serialised by the check's own serialiser (the one of part A); for a fully static view it equals the corpus `html` exactly; for a view with a hole it equals the corpus `html` **with the holes removed** (the corpus gets an `html_static` field for those 5 views, written by hand);
+2. the same page opened with JavaScript, after the script has run: the static parts of the DOM equal the same string (hole contents replaced by their marker before serialising);
+3. the page opened with `app.js` held back and the script released: no node is duplicated (the count of every `id` is 1), `scrollY` at a fragment is the same before and after, the focused element is the same;
+4. a no-JS page's text is what 6 says (a hole contributes nothing; no control is drawn);
+5. the byte cost: `HTML per static element` stays under 100 (a ceiling a wrong recipe would break), reported with the table of 8.
+
+Deliberate breaks planned (each must fail a check on its own): a tag changed in the recipe; the prerenderer using its own escape; a hole's content written into the static HTML; a control drawn without JavaScript; the hash script left out; `<noscript>` kept on a fully static page; a static node emitted twice; `view.rs` bypassing the recipe for `Text`; an id duplicated by a marker; and under H2 a static node rebuilt by a render (caught by the identity check of 3).
+
+## 10. Not measured, and what could make this wrong
+
+* Safari and Firefox (fragment scrolling while a module script is pending is Chromium's behaviour here); a real phone; a slow network (the 1.5 s hold is a synthetic delay on `app.js`, not a throttled connection); a screen reader reading the prerendered page before the script.
+* The 738-element figure for the port is *derived* from 49 B/element; the port (Q11) will produce the real number.
+* Whether `async` module scripts are worth having once the hash script exists: not measured.
+* H2's saving (the JavaScript of static elements not written) is derived from the per-element cost, not built.
+* A visitor who acts before the script loads under H1 loses a selection and an opened `details`; a playing video kept playing in the move test but was not tested under a rebuild of the real emitter with a `Media` element.
+
+## 11. Decisions for the coordinator
+
+1. **P1a (H1) first, P1b (H2) as its own PR**, or both in one. Recommendation: split, as above.
+2. A **new subcommand** `inspect prerender` and a **`recipe` module** moved out of `view.rs`: part of P1a.
+3. The `<noscript>` line is reworded and is absent from a fully static page. This changes the output of every `--page` build of a static program (the 13 gallery demos are interactive and would keep the line; this was not checked demo by demo).
