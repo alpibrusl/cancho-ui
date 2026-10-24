@@ -25,6 +25,7 @@ pub mod lower;
 pub mod map;
 pub mod media;
 pub mod messages;
+pub mod recipe;
 pub mod routing;
 pub mod serialize;
 pub mod sortlist;

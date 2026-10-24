@@ -48,7 +48,7 @@ component Hello {
 
     // The Column primitive becomes a div with the layout class.
     assert!(js.contains("document.createElement('div')"));
-    assert!(js.contains("classList.add('cui-col')"));
+    assert!(js.contains("setAttribute('class', \"cui-col\")"));
 
     // Accessibility metadata is honored.
     assert!(js.contains("setAttribute('role', \"banner\")"));
@@ -76,7 +76,7 @@ component Bar {
 }
 ";
     let js = compile_str(src);
-    assert!(js.contains("classList.add('cui-row')"));
+    assert!(js.contains("setAttribute('class', \"cui-row\")"));
 }
 
 #[test]

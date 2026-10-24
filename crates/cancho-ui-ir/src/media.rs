@@ -595,7 +595,7 @@ pub struct Dom {
 }
 
 impl Dom {
-    fn new(tag: &'static str) -> Dom {
+    pub fn element(tag: &'static str) -> Dom {
         Dom {
             tag,
             attrs: Vec::new(),
@@ -603,7 +603,7 @@ impl Dom {
             text: None,
         }
     }
-    fn attr(mut self, k: &'static str, v: impl Into<String>) -> Dom {
+    pub fn attr(mut self, k: &'static str, v: impl Into<String>) -> Dom {
         self.attrs.push((k, v.into()));
         self
     }
@@ -616,7 +616,7 @@ pub fn image_dom(bindings: &[IrBinding]) -> Dom {
     let src = s("src").unwrap_or_default();
     let fallback = s("fallback");
     let priority = find(bindings, "priority").and_then(bool_of) == Some(true);
-    let mut pic = Dom::new("picture").attr("class", "cui-img");
+    let mut pic = Dom::element("picture").attr("class", "cui-img");
     if let Some(r) = s("ratio") {
         pic = pic.attr("data-ratio", r);
     }
@@ -625,7 +625,7 @@ pub fn image_dom(bindings: &[IrBinding]) -> Dom {
         Some(fb) => (
             fb.clone(),
             Some(
-                Dom::new("source")
+                Dom::element("source")
                     .attr(
                         "type",
                         asset_type(&src, IMAGE_TYPES).unwrap_or("image/webp"),
@@ -643,7 +643,7 @@ pub fn image_dom(bindings: &[IrBinding]) -> Dom {
     } else {
         s("alt").unwrap_or_default()
     };
-    let mut img = Dom::new("img")
+    let mut img = Dom::element("img")
         .attr("src", img_src)
         .attr("width", n("width").to_string())
         .attr("height", n("height").to_string())
@@ -664,7 +664,7 @@ pub fn media_dom(accessibility: &IrAccessibility, bindings: &[IrBinding]) -> Dom
     let sources = find(bindings, "src")
         .and_then(sources_of)
         .unwrap_or_default();
-    let mut v = Dom::new("video").attr("class", "cui-media");
+    let mut v = Dom::element("video").attr("class", "cui-media");
     if let Some(r) = s("ratio") {
         v = v.attr("data-ratio", r);
     }
@@ -684,12 +684,12 @@ pub fn media_dom(accessibility: &IrAccessibility, bindings: &[IrBinding]) -> Dom
     }
     for src in &sources {
         v.children.push(
-            Dom::new("source")
+            Dom::element("source")
                 .attr("src", src.clone())
                 .attr("type", asset_type(src, VIDEO_TYPES).unwrap_or("video/mp4")),
         );
     }
-    let mut a = Dom::new("a").attr("href", sources.first().cloned().unwrap_or_default());
+    let mut a = Dom::element("a").attr("href", sources.first().cloned().unwrap_or_default());
     a.text = Some(label);
     v.children.push(a);
     v

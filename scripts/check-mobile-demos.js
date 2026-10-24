@@ -58,6 +58,18 @@ function serve(site) {
 }
 
 // Every problem of one run, as strings.
+// A demo has rendered when its script has drawn something the page's own HTML did not have: since the compiler writes the static part of a page into
+// `index.html` (docs/prerender.md), text in the root no longer means the script ran.
+async function scriptRendered(frameOrPage) {
+  const staticRoot = await frameOrPage.evaluate(async () => {
+    const text = await (await fetch(location.href)).text();
+    const root = new DOMParser().parseFromString(text, 'text/html').getElementById('root');
+    return root ? root.innerHTML : '';
+  }).catch(() => null);
+  if (staticRoot === null) { return false; }
+  return frameOrPage.waitForFunction((s) => { const r = document.getElementById('root'); return r && r.innerText.trim().length > 0 && r.innerHTML !== s; }, staticRoot, { timeout: 5000 }).then(() => true).catch(() => false);
+}
+
 async function run(site, manifest) {
   const problems = [];
   const server = await serve(site);
@@ -82,7 +94,7 @@ async function run(site, manifest) {
       if ((await el.getAttribute('loading')) !== 'lazy') { problems.push(`${t.id}: the iframe is not lazy (the landing page would load every demo at once)`); }
       await el.scrollIntoViewIfNeeded();
       const fr = await el.contentFrame();
-      const ok = fr && await fr.waitForFunction(() => document.getElementById('root') && document.getElementById('root').innerText.trim().length > 0, null, { timeout: 5000 }).then(() => true).catch(() => false);
+      const ok = fr && await scriptRendered(fr);
       if (!ok) { problems.push(`${t.id}: the embedded demo rendered nothing`); }
     }
     await page.waitForTimeout(300);
@@ -100,7 +112,7 @@ async function run(site, manifest) {
       p.on('pageerror', (e) => own.push(`page error: ${String(e).slice(0, 100)}`));
       p.on('response', (r) => { if (r.status() >= 400) { own.push(`HTTP ${r.status()} ${r.url().replace(base, '')}`); } });
       await p.goto(`${base}/demo/${t.id}/`);
-      const rendered = await p.waitForFunction(() => document.getElementById('root') && document.getElementById('root').innerText.trim().length > 0, null, { timeout: 5000 }).then(() => true).catch(() => false);
+      const rendered = await scriptRendered(p);
       if (!rendered) { problems.push(`${t.id}: opened on its own, it rendered nothing`); }
       if (own.length) { problems.push(`${t.id} on its own: ${[...new Set(own)].slice(0, 3).join(' | ')}`); }
       const hasManifest = await p.evaluate(() => !!document.querySelector('link[rel=manifest]'));

@@ -110,6 +110,13 @@ function __cui_call(group, start, inflight) {
 }
 
 // Focus survives a re-render: see docs/semantics.md, Question 9.
+// What makes a static element the one it is: its address and text. Controls change their text with the state, so only links, summaries and code boxes have a key.
+function __cui_focus_key(el) {
+    if (el.tagName === 'A' || el.tagName === 'SUMMARY' || el.tagName === 'PRE') {
+        return el.tagName + '\u0000' + (el.getAttribute('href') || '') + '\u0000' + el.id + '\u0000' + el.textContent;
+    }
+    return null;
+}
 function __cui_focus_save(root) {
     const el = document.activeElement;
     if (!el || el === document.body || el === root || !root.contains(el)) { return null; }
@@ -117,8 +124,13 @@ function __cui_focus_save(root) {
     for (let n = el; n !== root; n = n.parentNode) {
         path.unshift(Array.prototype.indexOf.call(n.parentNode.childNodes, n));
     }
+    const key = __cui_focus_key(el);
     return {
         path: path,
+        key: key,
+        // which of the elements that look the same this is: the page written at build time lacks the parts the script draws, so the place of a link
+        // in the tree is not the place it had (docs/prerender.md section 4)
+        nth: key === null ? 0 : Array.prototype.filter.call(root.querySelectorAll(el.tagName), function (x) { return __cui_focus_key(x) === key; }).indexOf(el),
         tag: el.tagName,
         tabindex: el.getAttribute('tabindex'),
         label: el.getAttribute('aria-label'),
@@ -136,6 +148,10 @@ function __cui_focus_restore(root, saved) {
     if (!saved) { return false; }
     let n = root;
     for (let i = 0; i < saved.path.length && n; i++) { n = n.childNodes[saved.path[i]]; }
+    if (saved.key !== null && saved.key !== undefined && (!n || n.tagName !== saved.tag || __cui_focus_key(n) !== saved.key)) {
+        const twins = Array.prototype.filter.call(root.querySelectorAll(saved.tag), function (x) { return __cui_focus_key(x) === saved.key; });
+        n = twins[saved.nth] || null;
+    }
     if (!n || n.tagName !== saved.tag || n.getAttribute('aria-label') !== saved.label) { return false; }
     // A heading the page focused (docs/screen-focus.md) is not focusable until it has its tabindex again.
     if (saved.tabindex === '-1') { n.setAttribute('tabindex', '-1'); }
@@ -259,7 +275,7 @@ function mount_Search(root) {
             __cui_status_begin(root);
             root.textContent = '';
             const __n0 = document.createElement('div');
-            __n0.classList.add('cui-col');
+            __n0.setAttribute('class', "cui-col");
                 const __n1 = document.createElement('input');
                 __n1.setAttribute('aria-label', "Search query");
                 __n1.setAttribute('type', 'text');

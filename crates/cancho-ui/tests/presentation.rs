@@ -284,9 +284,10 @@ fn the_page_says_tone_gap_width_and_label() {
         "{js}"
     );
     assert!(js.contains("setAttribute('data-tone', \"warn\")"), "{js}");
-    assert!(js.contains("classList.add('cui-gap-3')"), "{js}");
+    // the class and the style of a layout element come from the recipe the prerenderer also reads (docs/prerender.md)
+    assert!(js.contains("\"cui-row cui-gap-3\")"), "{js}");
     assert!(
-        js.contains("style.maxWidth = '60ch'") && js.contains("style.marginInline = 'auto'"),
+        js.contains("\"max-width: 60ch; margin-inline: auto;\")"),
         "{js}"
     );
     // the label is shown, in a <label> around the field, and the field keeps its aria-label
@@ -311,7 +312,7 @@ fn a_program_without_them_is_emitted_as_it_was() {
     for gone in [
         "data-tone",
         "cui-gap",
-        "maxWidth",
+        "max-width",
         "createElement('label')",
         "createElement('table')",
     ] {

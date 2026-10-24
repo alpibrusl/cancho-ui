@@ -6,6 +6,8 @@
 
 use std::path::Path;
 
+use cancho_ui_ir::recipe::Prerender;
+
 /// The files of one PWA, in the order they are written: `(file name, bytes)`.
 pub type PwaFiles = Vec<(String, Vec<u8>)>;
 
@@ -25,12 +27,13 @@ pub fn generate(
     img_src: Option<&str>,
     theme: Option<&ThemeAssets>,
     site: &[(String, Vec<u8>)],
+    prerender: Option<&Prerender>,
 ) -> PwaFiles {
     let mut files: PwaFiles = vec![
         ("app.js".into(), js.as_bytes().to_vec()),
         (
             "index.html".into(),
-            index_html(name, true, img_src, theme).into_bytes(),
+            index_html(name, true, img_src, theme, prerender).into_bytes(),
         ),
         ("manifest.webmanifest".into(), manifest(name).into_bytes()),
         ("icon-192.png".into(), icon_png(192)),
@@ -52,12 +55,13 @@ pub fn generate_page(
     img_src: Option<&str>,
     theme: Option<&ThemeAssets>,
     site: &[(String, Vec<u8>)],
+    prerender: Option<&Prerender>,
 ) -> PwaFiles {
     let mut files: PwaFiles = vec![
         ("app.js".into(), js.as_bytes().to_vec()),
         (
             "index.html".into(),
-            index_html(name, false, img_src, theme).into_bytes(),
+            index_html(name, false, img_src, theme, prerender).into_bytes(),
         ),
     ];
     files.extend(theme.iter().flat_map(|t| t.fonts.iter().cloned()));
@@ -92,9 +96,10 @@ fn index_html(
     installable: bool,
     img_src: Option<&str>,
     theme: Option<&ThemeAssets>,
+    prerender: Option<&Prerender>,
 ) -> String {
     let title = html_escape(name);
-    let mut html = String::from(
+    let html = String::from(
         r##"<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -177,8 +182,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 </style>
 @THEME_CSS@</head>
 <body>
-<div id="root"></div>
-<noscript>This app needs JavaScript.</noscript>
+@ROOT@
 <script type="module" src="./app.js"></script>
 @APP_REGISTER@</body>
 </html>
@@ -197,10 +201,6 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
         Some(t) => format!("<style id=\"cui-theme\">\n{}</style>\n", t.css),
         None => String::new(),
     };
-    html = html
-        .replace("@CSP@", &csp)
-        .replace("@TITLE@", &title)
-        .replace("@THEME_CSS@", &theme_css);
     let (theme, links, register) = if installable {
         (
             "<meta name=\"theme-color\" content=\"#1f6feb\">\n",
@@ -210,9 +210,40 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
     } else {
         ("", "", "")
     };
-    html.replace("@APP_THEME@", theme)
-        .replace("@APP_LINKS@", links)
-        .replace("@APP_REGISTER@", register)
+    let fill = |part: &str| {
+        part.replace("@CSP@", &csp)
+            .replace("@TITLE@", &title)
+            .replace("@THEME_CSS@", &theme_css)
+            .replace("@APP_THEME@", theme)
+            .replace("@APP_LINKS@", links)
+            .replace("@APP_REGISTER@", register)
+    };
+    // the program's own text goes in after every token is replaced, and the template is filled on either side of it, so that text can never be
+    // read as a token
+    let (head, tail) = html.split_once("@ROOT@").unwrap_or((html.as_str(), ""));
+    format!("{}{}{}", fill(head), root_block(prerender), fill(tail))
+}
+
+/// The root of the page: the static HTML the compiler wrote for it (docs/prerender.md), a script that goes to a `#fragment` link at once (a page
+/// whose script has not run is not finished parsing, and the browser would wait), and what a visitor without script is told. A program with
+/// nothing static keeps the old line; one with holes says some parts need script; one with none says nothing, because nothing is missing.
+fn root_block(prerender: Option<&Prerender>) -> String {
+    const HASH: &str = "<script>var h=decodeURIComponent(location.hash.slice(1)),e=h&&document.getElementById(h);if(e)e.scrollIntoView()</script>\n";
+    match prerender {
+        Some(p) if p.content => format!(
+            "<div id=\"root\">{}</div>\n{}{}",
+            p.html,
+            if p.ids > 0 { HASH } else { "" },
+            if p.holes.is_empty() {
+                ""
+            } else {
+                "<noscript>Some parts of this page need JavaScript.</noscript>\n"
+            }
+        ),
+        _ => {
+            "<div id=\"root\"></div>\n<noscript>This app needs JavaScript.</noscript>\n".to_string()
+        }
+    }
 }
 
 fn manifest(name: &str) -> String {
@@ -425,7 +456,7 @@ mod tests {
 
     #[test]
     fn a_name_is_escaped_in_the_page_and_in_the_manifest() {
-        let files = generate("//", "A \"b\" <c> & d", None, None, &[]);
+        let files = generate("//", "A \"b\" <c> & d", None, None, &[], None);
         let html = String::from_utf8(files[1].1.clone()).unwrap();
         assert!(html.contains("<title>A &quot;b&quot; &lt;c&gt; &amp; d</title>"));
         let manifest: serde_json::Value = serde_json::from_slice(&files[2].1).unwrap();
@@ -435,7 +466,7 @@ mod tests {
     #[test]
     fn a_page_is_not_an_app() {
         // `--page` (docs/mobile-backend.md section 5.2): the script and the page, and nothing a browser installs from.
-        let files = generate_page("//", "Demo", None, None, &[]);
+        let files = generate_page("//", "Demo", None, None, &[], None);
         let names: Vec<&str> = files.iter().map(|(n, _)| n.as_str()).collect();
         assert_eq!(names, ["app.js", "index.html"]);
         let html = String::from_utf8(files[1].1.clone()).unwrap();
@@ -454,24 +485,25 @@ mod tests {
             "still a page for a phone"
         );
         // The page of `--pwa` is the same page plus those lines.
-        let app = String::from_utf8(generate("//", "Demo", None, None, &[])[1].1.clone()).unwrap();
+        let app =
+            String::from_utf8(generate("//", "Demo", None, None, &[], None)[1].1.clone()).unwrap();
         assert!(app.contains("manifest") && app.contains("serviceWorker"));
     }
 
     #[test]
     fn the_worker_version_follows_every_byte_it_caches() {
-        let a = generate("one", "x", None, None, &[]);
-        let b = generate("two", "x", None, None, &[]);
+        let a = generate("one", "x", None, None, &[], None);
+        let b = generate("two", "x", None, None, &[], None);
         let sw = |f: &PwaFiles| String::from_utf8(f.last().unwrap().1.clone()).unwrap();
         assert_ne!(sw(&a), sw(&b));
-        assert_eq!(sw(&a), sw(&generate("one", "x", None, None, &[])));
+        assert_eq!(sw(&a), sw(&generate("one", "x", None, None, &[], None)));
     }
 
     #[test]
     fn the_maskable_icon_keeps_its_mark_inside_the_safe_zone() {
         // #67: the manifest has a maskable entry for each icon, and the mark of that icon lies inside the circle of radius
         // 40% of the image, whatever the size, so a circular mask cuts nothing of it.
-        let files = generate("//", "x", None, None, &[]);
+        let files = generate("//", "x", None, None, &[], None);
         let manifest: serde_json::Value = serde_json::from_slice(&files[2].1).unwrap();
         let icons = manifest["icons"].as_array().unwrap();
         for size in [192u32, 512] {

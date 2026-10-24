@@ -197,10 +197,32 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
                     }
                     None => Vec::new(),
                 };
-                let files = if opts.pwa {
-                    pwa::generate(&out, &name, img_src.as_deref(), theme.as_ref(), &site)
+                // the static part of the component that is mounted into the page, written into `index.html` (docs/prerender.md)
+                let prerender = if opts.no_auto_mount {
+                    None
                 } else {
-                    pwa::generate_page(&out, &name, img_src.as_deref(), theme.as_ref(), &site)
+                    ir.as_ref()
+                        .and_then(|i| i.components.last())
+                        .map(|c| cancho_ui_ir::recipe::prerender(&c.view.body))
+                };
+                let files = if opts.pwa {
+                    pwa::generate(
+                        &out,
+                        &name,
+                        img_src.as_deref(),
+                        theme.as_ref(),
+                        &site,
+                        prerender.as_ref(),
+                    )
+                } else {
+                    pwa::generate_page(
+                        &out,
+                        &name,
+                        img_src.as_deref(),
+                        theme.as_ref(),
+                        &site,
+                        prerender.as_ref(),
+                    )
                 };
                 pwa::write_all(dir, &files).map_err(CliError::Env)?;
             }
@@ -271,6 +293,27 @@ fn run_inspect(args: &[String]) -> Result<ExitCode, CliError> {
                 o.insert("links".to_string(), serde_json::json!(links));
             }
             cancho_ui_ir::pretty_json(&v)
+        }
+        "prerender" => {
+            // what `build --page` writes into the page for this component and what it leaves to the script (docs/prerender.md)
+            let name = opts.arg.as_ref().ok_or_else(|| {
+                CliError::Usage("`inspect prerender` requires a component name".into())
+            })?;
+            let idx = ir
+                .components
+                .iter()
+                .position(|c| &c.name == name)
+                .ok_or_else(|| CliError::Env(format!("component `{}` not found", name)))?;
+            let p = cancho_ui_ir::recipe::prerender(&ir.components[idx].view.body);
+            cancho_ui_ir::pretty_json(&serde_json::json!({
+                "component": name,
+                // only the last component of the entry file is mounted into the page
+                "mounted": idx + 1 == ir.components.len(),
+                "static_elements": p.static_elements,
+                "content": p.content,
+                "html_bytes": p.html.len(),
+                "holes": p.holes.iter().map(|h| serde_json::json!({"what": h.what, "reason": h.reason})).collect::<Vec<_>>(),
+            }))
         }
         "ir" => cancho_ui_ir::pretty_json(&ir),
         other => {
@@ -595,7 +638,7 @@ impl InspectOpts {
         let mut out = InspectOpts::default();
         if args.is_empty() {
             return Err(CliError::Usage(
-                "`inspect` requires a subject (`component`, `effects`, `ir`)".into(),
+                "`inspect` requires a subject (`component`, `effects`, `prerender`, `ir`)".into(),
             ));
         }
         out.what = args[0].to_string();
