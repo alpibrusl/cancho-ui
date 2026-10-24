@@ -154,6 +154,9 @@ pub fn shell(
     })
 }
 
+/// The tag that stands, in a recipe, for the place of a `Code`'s copy button.
+pub const COPY_BUTTON_HOLE: &str = "!copy-button";
+
 /// The box of a `Code`: `div.cui-code > pre > code`, empty. The text goes into the `code`, and the copy button, which is script, after the `pre`.
 pub fn code_skeleton(bindings: &[IrBinding]) -> Dom {
     let (copy, max_height) = structure::code_spec(bindings);
@@ -167,6 +170,10 @@ pub fn code_skeleton(bindings: &[IrBinding]) -> Dom {
     }
     pre.children.push(Dom::element("code"));
     code_box.children.push(pre);
+    if copy {
+        // the button is script: a place for it, which the prerenderer turns into a hole and the script's own box skips
+        code_box.children.push(Dom::element(COPY_BUTTON_HOLE));
+    }
     code_box
 }
 
@@ -177,6 +184,12 @@ pub fn code_skeleton(bindings: &[IrBinding]) -> Dom {
 pub struct Hole {
     pub what: String,
     pub reason: String,
+    /// its number in the page, in document order: the markers `<!--cui:N-->` and `<!--/cui:N-->` of a skeleton
+    pub id: usize,
+    /// where it is in the view: the index among the children of each element from the body down
+    pub path: Vec<usize>,
+    /// the hole is the copy button of the `Code` at `path`, drawn inside the box after its `pre`; every other hole is the node at `path`
+    pub copy_button: bool,
 }
 
 /// The static HTML of a view body, and what was left out of it.
@@ -190,6 +203,8 @@ pub struct Prerender {
     /// whether anything a visitor reads or sees was written (text, a picture, a video, code): layout shells alone are a blank page
     pub content: bool,
     pub holes: Vec<Hole>,
+    /// for a skeleton (below): a hash of its HTML, which the page carries and the script built for it checks
+    pub hash: Option<String>,
 }
 
 fn escape(s: &str, attr: bool, out: &mut String) {
@@ -217,6 +232,9 @@ fn is_void(tag: &str) -> bool {
 
 struct Writer {
     out: Prerender,
+    /// write `<!--cui:N--><!--/cui:N-->` where a hole is (a skeleton), or nothing (P1a)
+    markers: bool,
+    path: Vec<usize>,
 }
 
 impl Writer {
@@ -253,6 +271,14 @@ impl Writer {
     }
 
     fn dom(&mut self, d: &Dom) {
+        if d.tag == COPY_BUTTON_HOLE {
+            self.hole_of(
+                "Code",
+                "its copy button: a button is drawn by script, and a visitor without script is not shown one that does nothing",
+                true,
+            );
+            return;
+        }
         self.open(d.tag, &d.attrs);
         if let Some(t) = &d.text {
             self.text(t);
@@ -264,10 +290,23 @@ impl Writer {
     }
 
     fn hole(&mut self, what: &str, reason: &str) {
+        self.hole_of(what, reason, false);
+    }
+
+    fn hole_of(&mut self, what: &str, reason: &str, copy_button: bool) {
+        let id = self.out.holes.len();
         self.out.holes.push(Hole {
             what: what.to_string(),
             reason: reason.to_string(),
+            id,
+            path: self.path.clone(),
+            copy_button,
         });
+        if self.markers {
+            self.out
+                .html
+                .push_str(&format!("<!--cui:{id}--><!--/cui:{id}-->"));
+        }
     }
 }
 
@@ -479,14 +518,18 @@ fn walk(w: &mut Writer, node: &IrViewNode) {
                     || children
                         .iter()
                         .all(|c| matches!(c, IrViewNode::Text { .. })));
-            for c in children {
+            for (i, c) in children.iter().enumerate() {
                 match c {
                     IrViewNode::Text { parts, .. } if text_path => {
                         if let Some(t) = literal_parts(parts) {
                             w.text(&t);
                         }
                     }
-                    other => walk(w, other),
+                    other => {
+                        w.path.push(i);
+                        walk(w, other);
+                        w.path.pop();
+                    }
                 }
             }
             w.close(s.tag);
@@ -498,9 +541,77 @@ fn walk(w: &mut Writer, node: &IrViewNode) {
 pub fn prerender(body: &IrViewNode) -> Prerender {
     let mut w = Writer {
         out: Prerender::default(),
+        markers: false,
+        path: Vec::new(),
     };
     walk(&mut w, body);
     w.out
+}
+
+/// FNV-1a 64 of some text, as 16 hex digits: a label that two builds of one page share, not a security measure.
+fn fnv(text: &str) -> String {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for b in text.bytes() {
+        h ^= u64::from(b);
+        h = h.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    format!("{h:016x}")
+}
+
+/// The static HTML of a view body with a marker pair where each hole goes, and a hash of it. A page that carries it is **hydrated**, not
+/// rebuilt: the script builds only the holes, between their markers, and never touches a node of the skeleton (docs/prerender.md).
+pub fn skeleton(body: &IrViewNode) -> Prerender {
+    let mut w = Writer {
+        out: Prerender::default(),
+        markers: true,
+        path: Vec::new(),
+    };
+    walk(&mut w, body);
+    let mut out = w.out;
+    out.hash = Some(fnv(&out.html));
+    out
+}
+
+/// The component whose page is hydrated, and its skeleton: the last component of the program (the one mounted into `#root`) when it has static
+/// content and no other component draws it as an instance. `None` means the script builds the whole page, as it does for every other build.
+pub fn hydrating(ir: &IrFile) -> Option<(usize, Prerender)> {
+    fn instantiates(node: &IrViewNode, name: &str) -> bool {
+        match node {
+            IrViewNode::Element { kind, children, .. } => {
+                matches!(kind, IrElementKind::Named(n) if n == name)
+                    || children.iter().any(|c| instantiates(c, name))
+            }
+            IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
+                children.iter().any(|c| instantiates(c, name))
+            }
+            IrViewNode::Text { .. } => false,
+        }
+    }
+    let idx = ir.components.len().checked_sub(1)?;
+    let last = &ir.components[idx];
+    if ir
+        .components
+        .iter()
+        .any(|c| instantiates(&c.view.body, &last.name))
+    {
+        return None;
+    }
+    let sk = skeleton(&last.view.body);
+    sk.content.then_some((idx, sk))
+}
+
+/// The node at `path` (the index among the children of each element, from the body down), if there is one.
+pub fn node_at<'a>(body: &'a IrViewNode, path: &[usize]) -> Option<&'a IrViewNode> {
+    let mut node = body;
+    for i in path {
+        node = match node {
+            IrViewNode::Element { children, .. }
+            | IrViewNode::For { children, .. }
+            | IrViewNode::If { children, .. } => children.get(*i)?,
+            IrViewNode::Text { .. } => return None,
+        };
+    }
+    Some(node)
 }
 
 #[cfg(test)]

@@ -256,7 +256,7 @@ pub(crate) fn emit_view_node(
             }
             if let Some(key) = &site {
                 out.push_str(&format!(
-                    "{0}__cui_ifs_now[\"{1}\"] = [{2}, __if_from, {2}.childNodes.length];\n",
+                    "{0}__cui_ifs_now[\"{1}\"] = Array.prototype.slice.call({2}.childNodes, __if_from);\n",
                     child_indent, key, parent_var
                 ));
             }

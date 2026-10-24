@@ -112,8 +112,10 @@ const SERIALISE = `(function () {
     const ctx = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block' });
     const page = await ctx.newPage();
     const errors = [];
-    page.on('pageerror', (e) => errors.push(String(e)));
+    let now = '';
+    page.on('pageerror', (e) => errors.push(`${now}: ${String(e)}`));
     for (const c of corpus.valid) {
+      now = c.name;
       const b = buildText(`component C {\n    ${c.requires ? `requires ${c.requires};\n    ` : ''}${corpus.state}\n    view { Column { ${c.view} } }\n}\n`);
       if (b.code !== 0) { check(`A: ${c.name}: builds`, false, b.err.slice(0, 160)); continue; }
       await page.goto(`${base}/${b.id}/`);
@@ -198,6 +200,74 @@ const SERIALISE = `(function () {
     check('G: a link that has another place in the tree after the script (a button came before it) still has the focus', moved[0] === 'A' && moved[1] === 'Another link', JSON.stringify(moved));
     holdApp = 0;
     await ctx.close();
+  }
+
+  // H. hydration (docs/prerender.md section 13): the script builds only the holes, so what a visitor did to the page before it ran is still there
+  // after it, and after a render. The same scenario is measured against the earlier compiler by scripts/measure-hydration.js.
+  {
+    const lines = Array.from({ length: 40 }, (_, i) => `line ${i + 1} of the code box`).join('\\n');
+    const src = `component Page {\n    state n: Int = 0;\n    on Up { n = n + 1; }\n    view {\n        Column {\n            Heading { level: 1 "Hydration" }\n            Rich { "Select " Strong { "this sentence" } " before the script runs." }\n            Details { summary: "More" Text { "Hidden text." } }\n            Code { max_height: 4 "${lines}" }\n            Link { to: "https://a.example/" "A link" }\n            Button { label: "Up" on: Up }\n            Text { "Count: {n}" }\n        }\n    }\n}\n`;
+    const b = buildText(src);
+    check('H: the hydration program builds', b.code === 0, b.err.slice(0, 160));
+    const html = fs.readFileSync(path.join(work, 'site', b.id, 'index.html'), 'utf8');
+    check('H: the page carries its skeleton: a hash on the root and a marker pair for each of the two holes', /<div id="root" data-cui-skeleton="[0-9a-f]{16}">/.test(html) && (html.match(/<!--cui:\d+--><!--\/cui:\d+-->/g) || []).length === 2, html.slice(html.indexOf('<div id="root"'), html.indexOf('<div id="root"') + 120));
+    holdApp = 1500;
+    const ctx = await browser.newContext({ ...devices['Pixel 7'], viewport: { width: 412, height: 700 }, serviceWorkers: 'block' });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(String(e)));
+    await page.addInitScript(() => { window.__shifts = 0; new PerformanceObserver((l) => { for (const e of l.getEntries()) { if (!e.hadRecentInput) { window.__shifts += e.value; } } }).observe({ type: 'layout-shift', buffered: true }); });
+    await page.goto(`${base}/${b.id}/`, { waitUntil: 'commit' });
+    await page.waitForSelector('h1');
+    const STATIC = 'h1, p, strong, details, summary, pre, code, a';
+    const before = await page.evaluate((sel) => {
+      const root = document.getElementById('root');
+      const range = document.createRange();
+      range.selectNodeContents(root.querySelector('p'));
+      const s = getSelection();
+      s.removeAllRanges();
+      s.addRange(range);
+      root.querySelector('details').open = true;
+      root.querySelector('pre').scrollTop = 40;
+      root.querySelector('a').focus();
+      window.__static = [...root.querySelectorAll(sel)];
+      return { buttons: root.querySelectorAll('button').length, selected: String(s), scroll: root.querySelector('pre').scrollTop, nodes: window.__static.length };
+    }, STATIC);
+    check('H: before the script the visitor has selected a sentence, opened the details, scrolled the code and focused the link, and there is no button', before.buttons === 0 && before.selected.startsWith('Select this sentence') && before.scroll > 0 && before.nodes === 8, JSON.stringify(before));
+    await page.waitForFunction(() => document.querySelectorAll('#root button').length > 0, null, { timeout: 8000 });
+    await sleep(300);
+    const probe = () => page.evaluate((sel) => {
+      const root = document.getElementById('root');
+      const now = [...root.querySelectorAll(sel)];
+      return { selected: String(getSelection()), open: root.querySelector('details').open, scroll: root.querySelector('pre').scrollTop, focus: document.activeElement === root.querySelector('a'), same: now.length === window.__static.length && now.every((n, i) => n === window.__static[i]), count: ([...root.querySelectorAll('span')].find((x) => x.textContent.startsWith('Count:')) || { textContent: '' }).textContent, shifts: window.__shifts };
+    }, STATIC);
+    const a = await probe();
+    check('H: after the script the selection, the open details, the scroll of the code and the focus of the link are still there', a.selected === before.selected && a.open && a.scroll === before.scroll && a.focus, JSON.stringify(a));
+    check('H: and every static node is the very node the page had, none replaced', a.same && a.shifts < 0.01, JSON.stringify({ same: a.same, shifts: a.shifts }));
+    await page.locator('#root button').click();
+    await sleep(200);
+    const k = await probe();
+    check('H: a click that changes the state redraws the hole and nothing else: the count is 1, the static nodes are still the very nodes, the details is open and the code is where it was', k.count === 'Count: 1' && k.same && k.open && k.scroll === before.scroll, JSON.stringify(k));
+    check('H: no script error', errors.length === 0, errors.join(' | '));
+    await ctx.close();
+    holdApp = 0;
+    // a script built for another page: the hash on the root does not match, so the script leaves the page as it is
+    const other = buildText(src.replace('"Hydration"', '"Another title"'));
+    const mixed = path.join(work, 'site', 'mixed');
+    fs.mkdirSync(mixed, { recursive: true });
+    fs.copyFileSync(path.join(work, 'site', b.id, 'index.html'), path.join(mixed, 'index.html'));
+    fs.copyFileSync(path.join(work, 'site', other.id, 'app.js'), path.join(mixed, 'app.js'));
+    const c2 = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block' });
+    const p2 = await c2.newPage();
+    const logs = [];
+    const errs2 = [];
+    p2.on('console', (m) => { if (m.type() === 'error') { logs.push(m.text()); } });
+    p2.on('pageerror', (e) => errs2.push(String(e)));
+    await p2.goto(`${base}/mixed/`);
+    await sleep(500);
+    const left = await p2.evaluate(() => ({ h1: document.querySelector('h1') && document.querySelector('h1').textContent, buttons: document.querySelectorAll('button').length }));
+    check('H: a script built for another page leaves the page as it is, says so, and throws nothing', left.h1 === 'Hydration' && left.buttons === 0 && logs.some((l) => l.includes('does not carry the markup')) && errs2.length === 0, JSON.stringify({ left, logs, errs2 }));
+    await c2.close();
   }
 
   // B. the example, through the accessibility tree

@@ -127,12 +127,10 @@ function __cui_at(root, path) {
 // A heading is a text with `role: heading` or a `Heading` element (docs/structure.md): both take the focus of a new screen.
 const __cui_heading_sel = '[role="heading"], h1, h2, h3, h4';
 function __cui_is_heading(n) { return n.getAttribute('role') === 'heading' || /^H[1-4]$/.test(n.tagName); }
-// The screens that just appeared (the nodes each `If` that became true drew, as [parent, from, to]): the place of the first heading in
-// them, or null when none of them has one (docs/screen-focus.md section 3).
+// The nodes each `If` that became true drew (docs/screen-focus.md section 3): the place of the first heading in them, or null.
 function __cui_appeared(root, drawn) {
     for (const d of drawn) {
-        for (let i = d[1]; i < d[2]; i++) {
-            const n = d[0].childNodes[i];
+        for (const n of d) {
             if (n.nodeType !== 1) { continue; }
             const h = __cui_is_heading(n) ? n : n.querySelector(__cui_heading_sel);
             if (h) { return __cui_path(root, h); }
@@ -278,7 +276,7 @@ function mount_Routes(root) {
                     __n4.appendChild(document.createTextNode("Try a bad path"));
                     __n0.appendChild(__n4);
                     __n4.addEventListener('click', __on_Refused);
-                    __cui_ifs_now["34:12"] = [__n0, __if_from, __n0.childNodes.length];
+                    __cui_ifs_now["34:12"] = Array.prototype.slice.call(__n0.childNodes, __if_from);
                 }
                 if ((__cui_starts_with(__state_path, "/items/") && (((__state_items).filter(function (i) { return __cui_eq(i, __state_item); })).length > 0))) {
                     const __if_from = __n0.childNodes.length;
@@ -292,7 +290,7 @@ function mount_Routes(root) {
                     __n6.setAttribute('href', '#' + String("/"));
                     __n6.appendChild(document.createTextNode("All machines"));
                     __n0.appendChild(__n6);
-                    __cui_ifs_now["42:12"] = [__n0, __if_from, __n0.childNodes.length];
+                    __cui_ifs_now["42:12"] = Array.prototype.slice.call(__n0.childNodes, __if_from);
                 }
                 if (((__state_path !== "/") && (!(__cui_starts_with(__state_path, "/items/") && (((__state_items).filter(function (i) { return __cui_eq(i, __state_item); })).length > 0))))) {
                     const __if_from = __n0.childNodes.length;
@@ -310,7 +308,7 @@ function mount_Routes(root) {
                     __n9.setAttribute('href', '#' + String("/"));
                     __n9.appendChild(document.createTextNode("All machines"));
                     __n0.appendChild(__n9);
-                    __cui_ifs_now["46:12"] = [__n0, __if_from, __n0.childNodes.length];
+                    __cui_ifs_now["46:12"] = Array.prototype.slice.call(__n0.childNodes, __if_from);
                 }
                 const __n10 = document.createElement('span');
                 __n10.setAttribute('role', "status");

@@ -1,6 +1,6 @@
 # Prerender: the static parts of a page, written at build time (P1)
 
-> **Status: P1a built** (2026-10-24; sections 12 and 13 say what was built and what the build changed in this note; P1b, the holes, is not built). It answers `www.md` 5.2c and section 10 item 7 (the user chose option B: prerender what is static, say plainly that an element with state is not).
+> **Status: P1a and P1b built** (2026-10-24; section 12 is P1a, section 13 is P1b, and each says what the build changed in this note). It answers `www.md` 5.2c and section 10 item 7 (the user chose option B: prerender what is static, say plainly that an element with state is not).
 > Every number below was measured on this machine in Chromium (Playwright, desktop Chromium; the `Pixel 7` profile is a viewport and a user agent, not a phone) unless it says *derived* or *not measured*.
 > The scripts are throwaway (`/tmp`), their method is stated with each number; the checks that will keep the claims true are in section 8.
 
@@ -91,7 +91,7 @@ Programs of N repeated blocks (a `Section` with a `Heading`, a `Rich` with a `St
 | 901 | 43,893 | 226,068 | 48.7 | 243 |
 | 1,801 | 87,993 | 449,805 | 48.9 | 246 |
 
-So prerendering costs **about 49 bytes of HTML per static element** and the JavaScript that builds the same element costs **about 240**. *Derived, not measured*: a page of the cancho-www page's 738 static elements would add about **36 kB** of HTML; under H1 it still carries about **177 kB** of JavaScript that rebuilds them (the whole `app.js` of the page would be larger than the page's `index.html`, `site.js` and `site.css` together, 109,572 bytes); under H2 that JavaScript is not written at all, because static elements are not built by it. Gzip is not given for these programs: their blocks repeat, and they compress to 1,760 bytes for 87,993, which says nothing about a real page. The real page's `index.html` is 49,368 bytes, 14,027 gzipped.
+So prerendering costs **about 49 bytes of HTML per static element** and the JavaScript that builds the same element costs **about 240**. *Derived, not measured*: a page of the cancho-www page's 738 static elements would add about **36 kB** of HTML; under H1 it still carries about **177 kB** of JavaScript that rebuilds them (the whole `app.js` of the page would be larger than the page's `index.html`, `site.js` and `site.css` together, 109,572 bytes); under H2 that JavaScript is not written at all, because static elements are not built by it *(measured in P1b, 13: a 901-element static page's `app.js` goes from 226,946 to 7,283 bytes; the derived 177 kB for the cancho-www page is still a derivation from 240 bytes an element)*. Gzip is not given for these programs: their blocks repeat, and they compress to 1,760 bytes for 87,993, which says nothing about a real page. The real page's `index.html` is 49,368 bytes, 14,027 gzipped.
 
 ## 9. The check that keeps it true
 
@@ -110,7 +110,7 @@ Deliberate breaks planned (each must fail a check on its own): a tag changed in 
 * Safari and Firefox (fragment scrolling while a module script is pending is Chromium's behaviour here); a real phone; a slow network (the 1.5 s hold is a synthetic delay on `app.js`, not a throttled connection); a screen reader reading the prerendered page before the script.
 * The 738-element figure for the port is *derived* from 49 B/element; the port (Q11) will produce the real number.
 * Whether `async` module scripts are worth having once the hash script exists: not measured.
-* H2's saving (the JavaScript of static elements not written) is derived from the per-element cost, not built.
+* H2's saving (the JavaScript of static elements not written) was derived here and is measured in 13: it is large where static content dominates, and **negative for a page that is mostly holes**.
 * A visitor who acts before the script loads under H1 loses a selection and an opened `details`; a playing video kept playing in the move test but was not tested under a rebuild of the real emitter with a `Media` element.
 
 ## 11. Decisions for the coordinator
@@ -135,4 +135,57 @@ Deliberate breaks planned (each must fail a check on its own): a tag changed in 
 * **Breaks** (`scripts/breaks/prerender.json`, 27): a Column without its class, a gap that is not a class, a max width in px, `<`, `&` or a quote written unescaped, a carriage return written raw, a NUL written, a hole in a sentence leaving the rest of it, a status text taken as static, a page of empty boxes taken as content, text in a sentence as a span each, a `details` without its summary line, ids not counted, a Heading one level off, a code box without `tabindex`, the line kept on a page with nothing missing, the old line on a page with holes, the fragment script left out and written on every page, the program's text read for tokens, an empty box written for a page with no content, the script not writing a shell's class or a details' summary, an `If` without its adapter, a link that moved not found again, and `inspect` calling every component mounted. **24 were caught on the first run, each by a check failing on its own (none `HUNG`, none `BUILD`); 3 were missed**, each because no case used what the break spoiled: a `max_width` (no corpus view had one), a quote in an attribute (none had one), and the lookup for a link that moved (the footer link of the first test kept its place; the test's own program now has a button before the link). The corpus has the first two (`a column with a maximum width`, `a quote, an ampersand and a bracket in an attribute`; the check's serialiser leaves `<` and `>` in an attribute as they are, and the corpus says so), the check has the third, and the three are now caught.
 * **A check that had to change.** `check-mobile-demos.js` decided a demo had rendered when its root had text; with the page written at build time that is true before the script runs (its self-test break "a demo is blank" was no longer caught). It now asks for the root to differ from the root in the page's own HTML, and the self-test catches the blank demo again. The pinned snapshot tests and `docs/demo/counter.js` follow the recipe (`setAttribute('class', ..)` for `classList.add`), and the gallery was rebuilt.
 * **Gate.** fmt, clippy `-D warnings`, `cargo test --workspace` 643 passed 0 failed, all 54 `check-*.js` and both `--self-test` runs; run on the code before the last three corpus cases and one check addition (part G (c)); after them `cargo test --test structure` (13) and `check-structure.js` were run again and pass.
-* **Not done in P1a** (P1b): the holes. A visitor who selects text or opens a `<details>` before the script loses both when the script runs, as measured in 4. The script is still the whole of `app.js`: its size does not shrink yet.
+* **Not done in P1a, done in P1b (13):** the holes. A visitor who selects text or opens a `<details>` before the script loses both when the script runs, as measured in 4. The script is still the whole of `app.js`: its size does not shrink yet.
+
+## 13. What P1b built (holes): static nodes are never touched
+
+* **The skeleton.** `recipe::skeleton` is `recipe::prerender` with a marker pair, `<!--cui:N--><!--/cui:N-->`, where each hole goes, and a hash of the HTML (FNV-1a 64, a label for "the same build", not a security measure). `recipe::hydrating` says which component is hydrated: the **last** component of the program, when it has static content (section 2) and no other component draws it as an instance; any other build is as in P1a. A `Code`'s copy button is a hole of its own, in the box the page already has, after its `pre`.
+* **`build --page` and `--pwa`** write the skeleton inside `<div id="root" data-cui-skeleton="HASH">` and tell the emitter to **hydrate** (`EmitOptions.hydrate`, set by those two flags only; `build` to a file or to the screen still writes a module that builds everything, because the page it is put in is not known). A hydrated script:
+  1. at mount, if `data-cui-skeleton` is not its own hash, **leaves the page as it is**, writes one line to the console, and throws nothing (a script from one build on the page of another: measured; the static part stays readable);
+  2. renders by building each hole into a fragment and putting it between its markers (`__cui_fill`), removing what was there; it **never creates, moves or removes a static node**, and it does not empty `#root`.
+* **A bug that this found and fixed, present before P1a:** the record of the screens an `If` drew (`__cui_ifs_now`) kept `[parent, from, to]`, and a hole is built in a fragment that is emptied into the page, so `__cui_appeared` read an emptied fragment and threw. It now keeps the nodes.
+
+### What the visitor keeps (measured)
+
+`scripts/measure-hydration.js` runs one program (a heading, a sentence with a `Strong`, a `details`, a code box scrolled to 40 px, a link, a button, a count) built by two compilers: P1a (`5fad649`) and this one. The script is held back 1.5 s; before it runs the visitor selects the sentence, opens the `details`, scrolls the code box and focuses the link. Chromium, `Pixel 7` profile:
+
+| compiler | `app.js` | `index.html` | after the script: selection | details open | pre scroll | link focus | static nodes the same | after a click: details open | pre scroll | static nodes the same | count | layout shift |
+|---|---:|---:|---|---|---:|---|---|---|---:|---|---|---:|
+| P1a | 10,811 | 7,471 | **lost** | **lost** | 0 | kept | **no** | **lost** | 0 | **no** | Count: 1 | 0 |
+| P1b | 9,172 | 7,558 | kept | kept | 40 | kept | yes | kept | 40 | yes | Count: 1 | 0 |
+
+"The same" is `===` on the eight static elements (`h1`, `p`, `strong`, `details`, `summary`, `pre`, `code`, `a`) held before the script ran. The check that keeps this true is `check-structure.js` part H (selection, details, scroll, focus and identity after the script and after a click; the count changes; a script on the wrong page).
+
+### Bytes (measured, this machine, debug binary)
+
+`app.js` of the same program built by P1a and by P1b (`build --page`); the first four are the repeated-block programs of section 8, which are all static:
+
+| program | static elements | P1a `app.js` | P1b `app.js` | `index.html` P1a → P1b |
+|---|---:|---:|---:|---|
+| 1 block | 10 | 8,694 | 7,281 | 6,722 → 6,759 |
+| 50 blocks | 451 | 116,445 | 7,282 | 28,216 → 28,253 |
+| 100 blocks | 901 | 226,946 | 7,283 | 50,167 → 50,204 |
+| 200 blocks | 1,801 | 450,383 | 7,283 | 94,267 → 94,304 |
+| `examples/structure` | 42 | 21,180 | 12,686 | 7,932 → 8,094 |
+
+**The script shrinks where static content dominates, and a fully static page's script is the runtime and nothing else (7.3 kB); it grows where a page is mostly holes.** The 13 gallery demos (`app.js`, P1a → P1b; the last column is `index.html`):
+
+| demo | P1a | P1b | change | `index.html` |
+|---|---:|---:|---:|---:|
+| `counter`, `clock`, `search`, `cards`, `match`, `i18n`, `map` | | | −142 each | +0 |
+| `routes` | 18,230 | 18,127 | −103 | +0 |
+| `notes` | 10,281 | 11,329 | **+1,048** | +137 |
+| `upload` | 28,206 | 29,195 | **+989** | +137 |
+| `charts` | 20,839 | 21,896 | **+1,057** | +187 |
+| `reorder` | 20,292 | 21,292 | **+1,000** | +137 |
+| `ops-console` | 51,855 | 53,436 | **+1,581** | +341 |
+
+Eight demos have no static content and are not hydrated: they are 142 bytes smaller (seven) or 103 (`routes`), a shorter comment in the screen-focus helper and nothing else; the five with a little static text (a label, a heading) are hydrated and **grow by about 1 kB**: the hydration helpers (737 bytes) and a fragment around each hole cost more than the three or four static elements save. So the claim "`app.js` shrinks" is true for a content page and false for a small app; P1b does not claim more. (The cancho-www page is the first kind; the port will give its real number.)
+
+### Checked
+
+`check-structure.js` part H (8 checks), the corpus of part G and A unchanged (the markers are comments, which the check's serialiser leaves out, and every one of the 37 views is still the DOM the corpus says, with script and without), `cargo test --test prerender` (16: the markers, the hash, the copy button's place, no static element in a hydrated script, the plain module and the content-free page unchanged, the component another draws), `scripts/breaks/hydration.json`. The 14 deliberate breaks of `scripts/breaks/hydration.json` (the script clears the page before filling; a hole keeps what it had and gets more; a hole filled at the end of its parent or before its marker; no check of the page the script is on; one hash for every skeleton; a skeleton with no markers; a hole looked for at the wrong place; a component another draws hydrated; a page with no content hydrated; `--page` building a script that rebuilds; the copy button put after the wrong element; the screens an `If` drew not kept; an unmarked node built) were **all caught on the first run, each by a check failing on its own** (none `HUNG`, none `BUILD`). The breaks of `prerender.json` (P1a) were not run again: their code is unchanged except where P1b added to it. No new refusal tag: a hydrated page that does not match its script is not a refusal but a console line.
+
+### Not measured
+
+A page whose script is old and whose HTML is new at once through a service worker (the offline cache is versioned by one hash over all files, so they change together; the skew check is for a server that serves them from two deploys); a long page's cost of finding the markers (one `TreeWalker` pass, not timed); Safari and Firefox; a screen reader on a page that is hydrated while it is read.

@@ -42,10 +42,15 @@ pub(crate) fn emit(
         }
     }
     if copy {
-        // the only place the page writes to the clipboard: inside the click of this button (a tap), never at load or at a render
-        out.push_str(&format!(
-            "{indent}const {var}_copy = document.createElement('button');\n{indent}{var}_copy.setAttribute('type', 'button');\n{indent}{var}_copy.classList.add('cui-copy');\n{indent}{var}_copy.setAttribute('aria-label', 'Copy the code');\n{indent}{var}_copy.textContent = 'Copy';\n{indent}{var}_copy.addEventListener('click', function () {{ __cui_copy({var}_copy, {pre}); }});\n{indent}{var}.appendChild({var}_copy);\n"
-        ));
+        out.push_str(&copy_button(indent, &format!("{var}_copy"), &pre, var));
     }
     out
+}
+
+/// The copy button of a `Code` box: the only place the page writes to the clipboard is inside the click of this button (a tap), never at load or at a
+/// render. `pre` is the JavaScript expression for the `pre` whose text it copies; the button is appended to `parent`.
+pub(crate) fn copy_button(indent: &str, var: &str, pre: &str, parent: &str) -> String {
+    format!(
+        "{indent}const {var} = document.createElement('button');\n{indent}{var}.setAttribute('type', 'button');\n{indent}{var}.classList.add('cui-copy');\n{indent}{var}.setAttribute('aria-label', 'Copy the code');\n{indent}{var}.textContent = 'Copy';\n{indent}{var}.addEventListener('click', function () {{ __cui_copy({var}, {pre}); }});\n{indent}{parent}.appendChild({var});\n"
+    )
 }

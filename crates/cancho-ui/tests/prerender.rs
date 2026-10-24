@@ -50,13 +50,12 @@ fn page(source: &str, flags: &[&str]) -> String {
 }
 
 fn root_of(html: &str) -> &str {
-    let start = html.find("<div id=\"root\">").expect("a root") + "<div id=\"root\">".len();
-    let end = html[start..].find("</div>\n").map(|i| start + i);
-    // the root holds nested divs: take up to the line that ends it
+    // the root, with its hash, up to the line that ends it
+    let open = html.find("<div id=\"root\"").expect("a root");
+    let start = open + html[open..].find('>').expect("the end of the tag") + 1;
     let end = html[start..]
         .find("</div>\n<")
         .map(|i| start + i)
-        .or(end)
         .expect("the end of the root");
     &html[start..end]
 }
@@ -70,7 +69,9 @@ const ALL_HOLE: &str = "component C {\n    state n: Int = 0;\n    on Up { n = n 
 fn a_static_program_is_in_the_page_and_says_nothing_about_script() {
     let html = page(STATIC, &["--page"]);
     assert!(
-        html.contains("<div id=\"root\"><main><section><h1>Title</h1><p>a <strong>b</strong></p></section></main></div>"),
+        html.contains(
+            "\"><main><section><h1>Title</h1><p>a <strong>b</strong></p></section></main></div>"
+        ) && html.contains("<div id=\"root\" data-cui-skeleton=\""),
         "{html}"
     );
     assert!(!html.contains("<noscript>"), "nothing is missing: {html}");
@@ -84,7 +85,7 @@ fn a_static_program_is_in_the_page_and_says_nothing_about_script() {
 fn a_program_with_an_id_goes_to_its_fragment_before_the_script_runs() {
     let html = page(WITH_ID, &["--page"]);
     assert_eq!(html.matches("scrollIntoView").count(), 1, "{html}");
-    let root = html.find("<div id=\"root\">").expect("root");
+    let root = html.find("<div id=\"root\"").expect("root");
     let hash = html.find("scrollIntoView").expect("hash");
     let module = html.find("type=\"module\"").expect("module");
     assert!(
@@ -97,7 +98,10 @@ fn a_program_with_an_id_goes_to_its_fragment_before_the_script_runs() {
 fn holes_are_left_to_the_script_and_the_visitor_is_told_so() {
     let html = page(WITH_HOLE, &["--page"]);
     let root = root_of(&html);
-    assert_eq!(root, "<main><h1>Count</h1></main>", "no button, no number");
+    assert_eq!(
+        root, "<main><h1>Count</h1><!--cui:0--><!--/cui:0--><!--cui:1--><!--/cui:1--></main>",
+        "no button, no number: a marker pair where each goes"
+    );
     assert!(
         html.contains("<noscript>Some parts of this page need JavaScript.</noscript>"),
         "{html}"
@@ -163,7 +167,7 @@ fn the_programs_text_is_text_and_never_a_token_of_the_page() {
         html.contains("<p>@CSP@ @TITLE@ @THEME_CSS@ @ROOT@ @APP_REGISTER@ &lt;/script&gt; &lt;!-- &lt;noscript&gt; &amp; \"q\"</p>"),
         "{html}"
     );
-    assert_eq!(html.matches("<div id=\"root\">").count(), 1);
+    assert_eq!(html.matches("<div id=\"root\"").count(), 1);
     assert!(html.contains("<title>x @ROOT@ &lt;b&gt;</title>"), "{html}");
     assert_eq!(html.matches("</html>").count(), 1);
 }
@@ -294,4 +298,140 @@ fn the_gallery_demos_are_interactive_and_each_keeps_a_line_for_a_visitor_without
         );
     }
     assert_eq!(n, 13, "the gallery has 13 demos");
+}
+
+// ---- hydration (P1b): the script builds the holes and nothing else ----------------------------------------------------------------------
+
+fn built(source: &str, flags: &[&str]) -> (String, String) {
+    let file = scratch(source);
+    let out = file.parent().expect("a directory").join("out");
+    let mut args = vec!["build", p(&file)];
+    args.extend_from_slice(flags);
+    args.extend_from_slice(&["-o", p(&out)]);
+    let (code, _, err) = run(&args);
+    assert_eq!(code, 0, "{err}");
+    (
+        std::fs::read_to_string(out.join("index.html")).expect("index.html"),
+        std::fs::read_to_string(out.join("app.js")).expect("app.js"),
+    )
+}
+
+#[test]
+fn a_hydrated_page_has_a_marker_pair_for_each_hole_and_the_script_fills_each_one() {
+    let (html, js) = built(WITH_HOLE, &["--page"]);
+    assert!(html.contains("data-cui-skeleton=\""), "{html}");
+    assert!(
+        html.contains(
+            "<main><h1>Count</h1><!--cui:0--><!--/cui:0--><!--cui:1--><!--/cui:1--></main>"
+        ),
+        "{html}"
+    );
+    assert_eq!(js.matches("__cui_fill(__cui_marks, ").count(), 2, "{js}");
+    // the hash on the page is the one the script checks
+    let hash = html
+        .split("data-cui-skeleton=\"")
+        .nth(1)
+        .and_then(|r| r.split('"').next())
+        .expect("hash");
+    assert!(js.contains(&format!("!== \"{hash}\"")), "{js}");
+    // no static node is built by the script: the heading is not in it
+    assert!(!js.contains("createElement('h1')"), "{js}");
+}
+
+#[test]
+fn a_module_built_for_another_page_builds_all_of_it() {
+    // `build` without --page, and a program with nothing static, are not hydrated
+    let file = scratch(WITH_HOLE);
+    let (code, js, err) = run(&["build", p(&file)]);
+    assert_eq!(code, 0, "{err}");
+    assert!(
+        js.contains("createElement('h1')"),
+        "the module builds the heading"
+    );
+    assert!(
+        !js.contains("__cui_fill") && !js.contains("data-cui-skeleton"),
+        "{js}"
+    );
+    let (html, js) = built(ALL_HOLE, &["--page"]);
+    assert!(
+        !js.contains("__cui_fill") && !html.contains("data-cui-skeleton"),
+        "{html}"
+    );
+    assert!(js.contains("root.textContent = ''"));
+}
+
+#[test]
+fn a_page_with_nothing_but_static_content_is_a_script_that_builds_nothing() {
+    let mut blocks = String::new();
+    for i in 0..60 {
+        blocks.push_str(&format!("Section {{ id: \"s{i}\" Heading {{ level: 2 \"Section number {i}\" }} Rich {{ \"Text \" Strong {{ \"bold\" }} \" and a \" Link {{ to: \"https://a.example/\" \"the compiler\" }} \".\" }} Code {{ \"cargo build\" }} }}\n"));
+    }
+    let source = format!("component C {{\n    view {{ Main {{\n{blocks} }} }}\n}}\n");
+    let (html, js) = built(&source, &["--page"]);
+    assert!(
+        html.len() > 15_000,
+        "the page holds the content: {}",
+        html.len()
+    );
+    // the same program's module, built for another page, is the whole tree; the hydrated script is the runtime and nothing else
+    let file = scratch(&source);
+    let (_, whole, _) = run(&["build", p(&file)]);
+    assert!(whole.len() > 100_000, "{}", whole.len());
+    assert!(js.len() < 12_000, "{} bytes", js.len());
+    assert!(
+        js.len() * 10 < whole.len(),
+        "{} against {}",
+        js.len(),
+        whole.len()
+    );
+    for gone in [
+        "createElement('section')",
+        "createElement('strong')",
+        "createElement('pre')",
+    ] {
+        assert!(!js.contains(gone), "{gone}");
+    }
+    assert!(
+        !html.contains("<noscript>"),
+        "nothing is missing without script"
+    );
+}
+
+#[test]
+fn the_copy_button_is_a_hole_in_a_box_the_page_already_has() {
+    let source = "component C {\n    requires Clipboard;\n    view { Code { copy: true \"cargo build\" } }\n}\n";
+    let (html, js) = built(source, &["--page"]);
+    assert!(
+        html.contains("<div class=\"cui-code\" data-copy=\"\"><pre tabindex=\"0\"><code>cargo build</code></pre><!--cui:0--><!--/cui:0--></div>"),
+        "{html}"
+    );
+    assert!(
+        js.contains("__cui_marks[0].start.previousElementSibling"),
+        "{js}"
+    );
+    assert!(!js.contains("createElement('pre')"));
+    assert_eq!(js.matches("writeText(").count(), 1);
+}
+
+#[test]
+fn a_component_that_another_draws_is_not_hydrated() {
+    // B is the last component, so it is mounted into the page, and A draws it too: the page cannot be B's skeleton
+    let source = "component A {\n    view { Column { Text { \"a\" } B { } } }\n}\n\ncomponent B {\n    view { Column { Heading { level: 2 \"B\" } } }\n}\n";
+    let (html, js) = built(source, &["--page"]);
+    assert!(
+        !html.contains("data-cui-skeleton") && !js.contains("__cui_fill"),
+        "{html}"
+    );
+    // the page still has what is static in B (P1a), and the script builds all of it
+    assert!(
+        html.contains("<h2>B</h2>") && js.contains("createElement('h2')"),
+        "{html}"
+    );
+    // a program whose last component draws another is hydrated: the other is built by the script into its wrapper
+    let two = "component Last {\n    view { Column { Heading { level: 2 \"Last\" } } }\n}\n\ncomponent First {\n    view { Column { Heading { level: 1 \"First\" } Last { } } }\n}\n";
+    let (html, js) = built(two, &["--page"]);
+    assert!(
+        html.contains("data-cui-skeleton") && js.contains("createElement('h2')"),
+        "{html}"
+    );
 }

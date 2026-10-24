@@ -25,6 +25,10 @@ pub(crate) fn emit_dom(indent: &str, var: &str, dom: &Dom, parent: &str, out: &m
         ));
     }
     for (i, c) in dom.children.iter().enumerate() {
+        // the place of a script-drawn part (a copy button) is not an element: the script's own box draws the part itself
+        if c.tag == cancho_ui_ir::recipe::COPY_BUTTON_HOLE {
+            continue;
+        }
         emit_dom(indent, &format!("{var}_{i}"), c, var, out);
     }
     out.push_str(&format!("{indent}{parent}.appendChild({var});\n"));

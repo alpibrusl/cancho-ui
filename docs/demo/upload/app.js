@@ -276,12 +276,10 @@ function __cui_at(root, path) {
 // A heading is a text with `role: heading` or a `Heading` element (docs/structure.md): both take the focus of a new screen.
 const __cui_heading_sel = '[role="heading"], h1, h2, h3, h4';
 function __cui_is_heading(n) { return n.getAttribute('role') === 'heading' || /^H[1-4]$/.test(n.tagName); }
-// The screens that just appeared (the nodes each `If` that became true drew, as [parent, from, to]): the place of the first heading in
-// them, or null when none of them has one (docs/screen-focus.md section 3).
+// The nodes each `If` that became true drew (docs/screen-focus.md section 3): the place of the first heading in them, or null.
 function __cui_appeared(root, drawn) {
     for (const d of drawn) {
-        for (let i = d[1]; i < d[2]; i++) {
-            const n = d[0].childNodes[i];
+        for (const n of d) {
             if (n.nodeType !== 1) { continue; }
             const h = __cui_is_heading(n) ? n : n.querySelector(__cui_heading_sel);
             if (h) { return __cui_path(root, h); }
@@ -306,6 +304,23 @@ function __cui_screen(root, move, routed, seen) {
         const t = h ? h.textContent.trim() : '';
         document.title = t ? (__cui_title0 ? t + ' \u2013 ' + __cui_title0 : t) : __cui_title0;
     }
+}
+
+function __cui_marks_of(root) {
+    const marks = {};
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        const d = n.data;
+        if (d.indexOf('cui:') === 0) { (marks[d.slice(4)] = marks[d.slice(4)] || {}).start = n; }
+        else if (d.indexOf('/cui:') === 0) { (marks[d.slice(5)] = marks[d.slice(5)] || {}).end = n; }
+    }
+    return marks;
+}
+function __cui_fill(marks, id, fragment) {
+    const m = marks[id];
+    if (!m || !m.start || !m.end) { return; }
+    while (m.start.nextSibling && m.start.nextSibling !== m.end) { m.start.parentNode.removeChild(m.start.nextSibling); }
+    m.end.parentNode.insertBefore(fragment, m.end);
 }
 
 // Arithmetic (docs/semantics.md, "Arithmetic"): + - * / never answer Infinity or NaN. A result that is not finite throws, the
@@ -418,6 +433,8 @@ function __cui_json_items(text, path) {
 // Component: Upload (id 0)
 function mount_Upload(root) {
     return (function () {
+        if (root.getAttribute('data-cui-skeleton') !== "3c86ddb9e3fdeabb") { console.error('cancho-ui: this page does not carry the markup this script was built for; it is left as it is'); return; }
+        const __cui_marks = __cui_marks_of(root);
         let __state_name = "";
         let __state_size = "";
         let __state_body = "";
@@ -471,39 +488,47 @@ function mount_Upload(root) {
             const __cui_ifs_now = {};
             const __focus = __cui_focus_save(root);
             __cui_status_begin(root);
-            root.textContent = '';
-            const __n0 = document.createElement('div');
-            __n0.setAttribute('class', "cui-col");
+            {
+                const __h = document.createDocumentFragment();
+                const __n0 = document.createElement('input');
+                __n0.setAttribute('aria-label', "Report");
+                __n0.setAttribute('accept', ".txt,.csv,text/plain,text/csv");
+                __n0.setAttribute('type', 'file');
+                __cui_file_restore(root, "43:12", __n0);
+                __n0.addEventListener('change', function (e) { __cui_file_pick(root, "43:12", e.target, 100000, ".txt,.csv,text/plain,text/csv", function (v) { __on_Picked(v); }); });
+                const __n0_field = document.createElement('label');
+                __n0_field.classList.add('cui-field');
+                __n0_field.appendChild(document.createTextNode("Report"));
+                __n0_field.appendChild(__n0);
+                __h.appendChild(__n0_field);
+                __cui_fill(__cui_marks, 0, __h);
+            }
+            {
+                const __h = document.createDocumentFragment();
                 const __n1 = document.createElement('span');
-                __n1.setAttribute('role', "heading");
-                __n1.appendChild(document.createTextNode("Send a text file"));
-                __n0.appendChild(__n1);
-                const __n2 = document.createElement('input');
-                __n2.setAttribute('aria-label', "Report");
-                __n2.setAttribute('accept', ".txt,.csv,text/plain,text/csv");
-                __n2.setAttribute('type', 'file');
-                __cui_file_restore(root, "43:12", __n2);
-                __n2.addEventListener('change', function (e) { __cui_file_pick(root, "43:12", e.target, 100000, ".txt,.csv,text/plain,text/csv", function (v) { __on_Picked(v); }); });
-                const __n2_field = document.createElement('label');
-                __n2_field.classList.add('cui-field');
-                __n2_field.appendChild(document.createTextNode("Report"));
-                __n2_field.appendChild(__n2);
-                __n0.appendChild(__n2_field);
-                const __n3 = document.createElement('span');
-                __n3.setAttribute('role', "status");
-                __n3.appendChild(document.createTextNode(String(__state_note)));
-                __n0.appendChild(__cui_status(root, "__n3", __n3));
-                const __n4 = document.createElement('span');
-                __n4.appendChild(document.createTextNode("first line: "));
-                __n4.appendChild(document.createTextNode(String(__state_preview)));
-                __n0.appendChild(__n4);
-                const __n5 = document.createElement('button');
-                __n5.setAttribute('aria-label', "Send");
-                __n5.disabled = !!__state_blocked;
-                __n5.appendChild(document.createTextNode("Send"));
-                __n0.appendChild(__n5);
-                __n5.addEventListener('click', __on_Send);
-            root.appendChild(__n0);
+                __n1.setAttribute('role', "status");
+                __n1.appendChild(document.createTextNode(String(__state_note)));
+                __h.appendChild(__cui_status(root, "__n1", __n1));
+                __cui_fill(__cui_marks, 1, __h);
+            }
+            {
+                const __h = document.createDocumentFragment();
+                const __n2 = document.createElement('span');
+                __n2.appendChild(document.createTextNode("first line: "));
+                __n2.appendChild(document.createTextNode(String(__state_preview)));
+                __h.appendChild(__n2);
+                __cui_fill(__cui_marks, 2, __h);
+            }
+            {
+                const __h = document.createDocumentFragment();
+                const __n3 = document.createElement('button');
+                __n3.setAttribute('aria-label', "Send");
+                __n3.disabled = !!__state_blocked;
+                __n3.appendChild(document.createTextNode("Send"));
+                __h.appendChild(__n3);
+                __n3.addEventListener('click', __on_Send);
+                __cui_fill(__cui_marks, 3, __h);
+            }
             __cui_status_end(root);
             if (!__cui_focus_restore(root, __focus) && __focus) { __cui_screen(root, true, false, __cui_screen_of); }
         }

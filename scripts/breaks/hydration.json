@@ -1,0 +1,128 @@
+{
+  "checks": [
+    {
+      "name": "cargo test prerender",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "prerender"
+      ]
+    },
+    {
+      "name": "cargo test structure",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "structure"
+      ]
+    },
+    {
+      "name": "check-structure.js",
+      "argv": [
+        "node",
+        "scripts/check-structure.js"
+      ]
+    },
+    {
+      "name": "check-screen-focus.js",
+      "argv": [
+        "node",
+        "scripts/check-screen-focus.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "the script clears the page before it fills the holes",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "        Some(sk) => {\n            let mut b = String::new();\n",
+      "to": "        Some(sk) => {\n            let mut b = String::new();\n            b.push_str(\"            root.textContent = '';\\n\");\n"
+    },
+    {
+      "name": "a hole keeps what it had and gets more",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "    while (m.start.nextSibling && m.start.nextSibling !== m.end) { m.start.parentNode.removeChild(m.start.nextSibling); }",
+      "to": "    while (false) { m.start.parentNode.removeChild(m.start.nextSibling); }"
+    },
+    {
+      "name": "a hole is filled at the end of its parent",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "    m.end.parentNode.insertBefore(fragment, m.end);",
+      "to": "    m.start.parentNode.appendChild(fragment);"
+    },
+    {
+      "name": "a hole is filled before its marker",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "    m.end.parentNode.insertBefore(fragment, m.end);",
+      "to": "    m.start.parentNode.insertBefore(fragment, m.start);"
+    },
+    {
+      "name": "the script does not check the page it is on",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "if (root.getAttribute('data-cui-skeleton') !== {}) {{",
+      "to": "if (false && root.getAttribute('data-cui-skeleton') !== {}) {{"
+    },
+    {
+      "name": "every skeleton has the same hash",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "    out.hash = Some(fnv(&out.html));",
+      "to": "    out.hash = Some(fnv(\"\"));"
+    },
+    {
+      "name": "a skeleton has no markers",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "        if self.markers {\n            self.out\n                .html\n                .push_str(&format!(\"<!--cui:{id}--><!--/cui:{id}-->\"));",
+      "to": "        if false {\n            self.out\n                .html\n                .push_str(&format!(\"<!--cui:{id}--><!--/cui:{id}-->\"));"
+    },
+    {
+      "name": "a hole is looked for at the wrong place",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "                        w.path.push(i);\n                        walk(w, other);",
+      "to": "                        w.path.push(0);\n                        walk(w, other);"
+    },
+    {
+      "name": "a component that another draws is hydrated",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "    if ir\n        .components\n        .iter()\n        .any(|c| instantiates(&c.view.body, &last.name))",
+      "to": "    if false\n        && ir\n            .components\n            .iter()\n            .any(|c| instantiates(&c.view.body, &last.name))"
+    },
+    {
+      "name": "a page with no content is hydrated",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "    sk.content.then_some((idx, sk))",
+      "to": "    Some((idx, sk))"
+    },
+    {
+      "name": "a page is built hydrated for a script that rebuilds it",
+      "file": "crates/cancho-ui/src/main.rs",
+      "from": "            hydrate: opts.pwa || opts.page,",
+      "to": "            hydrate: false,"
+    },
+    {
+      "name": "the copy button is put after the wrong element",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "&format!(\"__cui_marks[{}].start.previousElementSibling\", h.id),",
+      "to": "&format!(\"__cui_marks[{}].start.nextElementSibling\", h.id),"
+    },
+    {
+      "name": "the screens an If drew are not kept",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "\"{0}__cui_ifs_now[\\\"{1}\\\"] = Array.prototype.slice.call({2}.childNodes, __if_from);\\n\",",
+      "to": "\"{0}__cui_ifs_now[\\\"{1}\\\"] = []; /* {2} {1} */\\n\","
+    },
+    {
+      "name": "an unmarked hole is built too",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "                    b.push_str(&format!(\n                        \"                __cui_fill(__cui_marks, {}, __h);\\n            }}\\n\",\n                        h.id\n                    ));\n                }\n            }\n            b",
+      "to": "                    b.push_str(&format!(\n                        \"                __cui_fill(__cui_marks, {}, __h);\\n            }}\\n\",\n                        h.id\n                    ));\n                }\n            }\n            b.push_str(\"            root.appendChild(document.createElement('span'));\\n\");\n            b"
+    }
+  ]
+}
