@@ -26,6 +26,33 @@ function __cui_router_replace(p) {
     return true;
 }
 
+// Status live regions keep their node: see docs/presentation.md section 3a.
+const __cui_status_state = new WeakMap();
+function __cui_status_begin(root) {
+    let s = __cui_status_state.get(root);
+    if (!s) { s = { nodes: new Map(), seq: {}, seen: new Set() }; __cui_status_state.set(root, s); }
+    s.seq = {};
+    s.seen = new Set();
+}
+function __cui_status(root, key, fresh) {
+    const s = __cui_status_state.get(root);
+    if (!s || fresh.children.length) { return fresh; }
+    const k = key + '#' + (s.seq[key] = (s.seq[key] || 0) + 1);
+    s.seen.add(k);
+    const kept = s.nodes.get(k);
+    if (!kept) { s.nodes.set(k, fresh); return fresh; }
+    // the node's id belongs to the node (a field points at it); every other attribute is the new render's
+    Array.from(kept.attributes).forEach(function (a) { if (a.name !== 'id' && !fresh.hasAttribute(a.name)) { kept.removeAttribute(a.name); } });
+    Array.from(fresh.attributes).forEach(function (a) { if (a.name !== 'id' && kept.getAttribute(a.name) !== a.value) { kept.setAttribute(a.name, a.value); } });
+    if (kept.textContent !== fresh.textContent) { kept.textContent = fresh.textContent; }
+    return kept;
+}
+function __cui_status_end(root) {
+    const s = __cui_status_state.get(root);
+    if (!s) { return; }
+    Array.from(s.nodes.keys()).forEach(function (k) { if (!s.seen.has(k)) { s.nodes.delete(k); } });
+}
+
 const __cui_cancelled = Symbol("__cui_cancelled");
 
 // Focus survives a re-render: see docs/semantics.md, Question 9.
@@ -204,6 +231,7 @@ function mount_Routes(root) {
         function __render() {
             const __cui_ifs_now = {};
             const __focus = __cui_focus_save(root);
+            __cui_status_begin(root);
             root.textContent = '';
             const __n0 = document.createElement('div');
             __n0.classList.add('cui-col');
@@ -269,8 +297,9 @@ function mount_Routes(root) {
                 __n10.setAttribute('role', "status");
                 __n10.appendChild(document.createTextNode("jumped: "));
                 __n10.appendChild(document.createTextNode(String(__state_jumped)));
-                __n0.appendChild(__n10);
+                __n0.appendChild(__cui_status(root, "__n10", __n10));
             root.appendChild(__n0);
+            __cui_status_end(root);
             const __cui_drawn = [];
             for (const k in __cui_ifs_now) { if (!__cui_ifs_prev[k]) { __cui_drawn.push(__cui_ifs_now[k]); } }
             __cui_ifs_prev = {};

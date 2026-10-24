@@ -200,6 +200,40 @@ function __cui_screen(root, move, routed, seen) {
 }
 "#;
 
+/// Status live regions keep their node (docs/presentation.md section 3a, issue #106). A page is drawn again from nothing at every render, so the
+/// span of a `role: status` text (or of a field's `error:` message) was a new node each time, and a screen reader announces a change in a live region
+/// that already exists. Each such span is built as before and then reconciled with the one the position had at the last render: when there is one, it
+/// takes the new attributes and the new text, and only if they differ, and it is the node that goes into the new tree. Measured in Chromium
+/// (`scripts/measure-status.js`): the DOM node and the accessibility node stay the same through a render, and a message put there later reaches a
+/// `MutationObserver` on it. A position is its place in the view and, in a `For`, the order of the row.
+pub(crate) const STATUS_ADAPTER_JS: &str = r#"// Status live regions keep their node: see docs/presentation.md section 3a.
+const __cui_status_state = new WeakMap();
+function __cui_status_begin(root) {
+    let s = __cui_status_state.get(root);
+    if (!s) { s = { nodes: new Map(), seq: {}, seen: new Set() }; __cui_status_state.set(root, s); }
+    s.seq = {};
+    s.seen = new Set();
+}
+function __cui_status(root, key, fresh) {
+    const s = __cui_status_state.get(root);
+    if (!s || fresh.children.length) { return fresh; }
+    const k = key + '#' + (s.seq[key] = (s.seq[key] || 0) + 1);
+    s.seen.add(k);
+    const kept = s.nodes.get(k);
+    if (!kept) { s.nodes.set(k, fresh); return fresh; }
+    // the node's id belongs to the node (a field points at it); every other attribute is the new render's
+    Array.from(kept.attributes).forEach(function (a) { if (a.name !== 'id' && !fresh.hasAttribute(a.name)) { kept.removeAttribute(a.name); } });
+    Array.from(fresh.attributes).forEach(function (a) { if (a.name !== 'id' && kept.getAttribute(a.name) !== a.value) { kept.setAttribute(a.name, a.value); } });
+    if (kept.textContent !== fresh.textContent) { kept.textContent = fresh.textContent; }
+    return kept;
+}
+function __cui_status_end(root) {
+    const s = __cui_status_state.get(root);
+    if (!s) { return; }
+    Array.from(s.nodes.keys()).forEach(function (k) { if (!s.seen.has(k)) { s.nodes.delete(k); } });
+}
+"#;
+
 pub(crate) const SLEEP_ADAPTER_JS: &str = "\
 // Platform adapter: async sleep (Tier 7).
 // `sleep(ms)` returns a Promise that resolves to

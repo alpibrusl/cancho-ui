@@ -4,6 +4,33 @@
 //
 // Do not edit by hand. Re-run `cancho-ui build` to regenerate.
 
+// Status live regions keep their node: see docs/presentation.md section 3a.
+const __cui_status_state = new WeakMap();
+function __cui_status_begin(root) {
+    let s = __cui_status_state.get(root);
+    if (!s) { s = { nodes: new Map(), seq: {}, seen: new Set() }; __cui_status_state.set(root, s); }
+    s.seq = {};
+    s.seen = new Set();
+}
+function __cui_status(root, key, fresh) {
+    const s = __cui_status_state.get(root);
+    if (!s || fresh.children.length) { return fresh; }
+    const k = key + '#' + (s.seq[key] = (s.seq[key] || 0) + 1);
+    s.seen.add(k);
+    const kept = s.nodes.get(k);
+    if (!kept) { s.nodes.set(k, fresh); return fresh; }
+    // the node's id belongs to the node (a field points at it); every other attribute is the new render's
+    Array.from(kept.attributes).forEach(function (a) { if (a.name !== 'id' && !fresh.hasAttribute(a.name)) { kept.removeAttribute(a.name); } });
+    Array.from(fresh.attributes).forEach(function (a) { if (a.name !== 'id' && kept.getAttribute(a.name) !== a.value) { kept.setAttribute(a.name, a.value); } });
+    if (kept.textContent !== fresh.textContent) { kept.textContent = fresh.textContent; }
+    return kept;
+}
+function __cui_status_end(root) {
+    const s = __cui_status_state.get(root);
+    if (!s) { return; }
+    Array.from(s.nodes.keys()).forEach(function (k) { if (!s.seen.has(k)) { s.nodes.delete(k); } });
+}
+
 // Platform adapter: SortList (docs/drag-and-drop.md). Rows with a handle (a pointer drag) and "move up" / "move down" buttons (the keyboard and
 // screen-reader path). The event gets the two indexes; the program changes its list or not, and the page shows what the program holds.
 const __cui_drag = { on: false, defer: [] };
@@ -309,6 +336,7 @@ function mount_Reorder(root) {
             const __cui_ifs_now = {};
             if (__cui_drag.on) { if (__cui_drag.defer.indexOf(__render) < 0) { __cui_drag.defer.push(__render); } return; }
             const __focus = __cui_focus_save(root);
+            __cui_status_begin(root);
             root.textContent = '';
             const __n0 = document.createElement('div');
             __n0.classList.add('cui-col');
@@ -322,7 +350,7 @@ function mount_Reorder(root) {
                 __n3.setAttribute('role', "status");
                 __n3.appendChild(document.createTextNode(String(__state_moves)));
                 __n3.appendChild(document.createTextNode(" moves"));
-                __n0.appendChild(__n3);
+                __n0.appendChild(__cui_status(root, "__n3", __n3));
                 const __n4 = document.createElement('span');
                 __n4.appendChild(document.createTextNode(String(__cui_add("First: ", __cui_join(__cui_take(__state_tasks, 1), "")))));
                 __n0.appendChild(__n4);
@@ -332,6 +360,7 @@ function mount_Reorder(root) {
                 __n0.appendChild(__n5);
                 __n5.addEventListener('click', __on_Reset);
             root.appendChild(__n0);
+            __cui_status_end(root);
             if (!__cui_focus_restore(root, __focus) && __focus) { __cui_screen(root, true, false, __cui_screen_of); }
         }
         __render();

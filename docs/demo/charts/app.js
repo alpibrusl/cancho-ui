@@ -4,6 +4,33 @@
 //
 // Do not edit by hand. Re-run `cancho-ui build` to regenerate.
 
+// Status live regions keep their node: see docs/presentation.md section 3a.
+const __cui_status_state = new WeakMap();
+function __cui_status_begin(root) {
+    let s = __cui_status_state.get(root);
+    if (!s) { s = { nodes: new Map(), seq: {}, seen: new Set() }; __cui_status_state.set(root, s); }
+    s.seq = {};
+    s.seen = new Set();
+}
+function __cui_status(root, key, fresh) {
+    const s = __cui_status_state.get(root);
+    if (!s || fresh.children.length) { return fresh; }
+    const k = key + '#' + (s.seq[key] = (s.seq[key] || 0) + 1);
+    s.seen.add(k);
+    const kept = s.nodes.get(k);
+    if (!kept) { s.nodes.set(k, fresh); return fresh; }
+    // the node's id belongs to the node (a field points at it); every other attribute is the new render's
+    Array.from(kept.attributes).forEach(function (a) { if (a.name !== 'id' && !fresh.hasAttribute(a.name)) { kept.removeAttribute(a.name); } });
+    Array.from(fresh.attributes).forEach(function (a) { if (a.name !== 'id' && kept.getAttribute(a.name) !== a.value) { kept.setAttribute(a.name, a.value); } });
+    if (kept.textContent !== fresh.textContent) { kept.textContent = fresh.textContent; }
+    return kept;
+}
+function __cui_status_end(root) {
+    const s = __cui_status_state.get(root);
+    if (!s) { return; }
+    Array.from(s.nodes.keys()).forEach(function (k) { if (!s.seen.has(k)) { s.nodes.delete(k); } });
+}
+
 // Platform adapter: Chart (docs/charts.md). One series, a line or bars, the last 1000 values, a data table of the last 200.
 function __cui_chart_num(x) { const r = Math.round(x * 100) / 100; return Math.abs(r) >= 1e21 ? '?' : String(r); }
 function __cui_chart_summary(kind, nums, unit) {
@@ -276,6 +303,7 @@ function mount_Charts(root) {
         function __render() {
             const __cui_ifs_now = {};
             const __focus = __cui_focus_save(root);
+            __cui_status_begin(root);
             root.textContent = '';
             const __n0 = document.createElement('div');
             __n0.classList.add('cui-col');
@@ -295,7 +323,7 @@ function mount_Charts(root) {
                 __n4.setAttribute('role', "status");
                 __n4.appendChild(document.createTextNode(String(__state_count)));
                 __n4.appendChild(document.createTextNode(" readings"));
-                __n0.appendChild(__n4);
+                __n0.appendChild(__cui_status(root, "__n4", __n4));
                 const __n5 = document.createElement('div');
                 __n5.classList.add('cui-row');
                     const __n6 = document.createElement('button');
@@ -315,6 +343,7 @@ function mount_Charts(root) {
                     __n8.addEventListener('click', __on_Reset);
                 __n0.appendChild(__n5);
             root.appendChild(__n0);
+            __cui_status_end(root);
             if (!__cui_focus_restore(root, __focus) && __focus) { __cui_screen(root, true, false, __cui_screen_of); }
         }
         __render();

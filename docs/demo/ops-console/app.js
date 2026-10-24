@@ -190,6 +190,33 @@ function __cui_net_post(url, body, cred) {
     });
 }
 
+// Status live regions keep their node: see docs/presentation.md section 3a.
+const __cui_status_state = new WeakMap();
+function __cui_status_begin(root) {
+    let s = __cui_status_state.get(root);
+    if (!s) { s = { nodes: new Map(), seq: {}, seen: new Set() }; __cui_status_state.set(root, s); }
+    s.seq = {};
+    s.seen = new Set();
+}
+function __cui_status(root, key, fresh) {
+    const s = __cui_status_state.get(root);
+    if (!s || fresh.children.length) { return fresh; }
+    const k = key + '#' + (s.seq[key] = (s.seq[key] || 0) + 1);
+    s.seen.add(k);
+    const kept = s.nodes.get(k);
+    if (!kept) { s.nodes.set(k, fresh); return fresh; }
+    // the node's id belongs to the node (a field points at it); every other attribute is the new render's
+    Array.from(kept.attributes).forEach(function (a) { if (a.name !== 'id' && !fresh.hasAttribute(a.name)) { kept.removeAttribute(a.name); } });
+    Array.from(fresh.attributes).forEach(function (a) { if (a.name !== 'id' && kept.getAttribute(a.name) !== a.value) { kept.setAttribute(a.name, a.value); } });
+    if (kept.textContent !== fresh.textContent) { kept.textContent = fresh.textContent; }
+    return kept;
+}
+function __cui_status_end(root) {
+    const s = __cui_status_state.get(root);
+    if (!s) { return; }
+    Array.from(s.nodes.keys()).forEach(function (k) { if (!s.seen.has(k)) { s.nodes.delete(k); } });
+}
+
 // Platform adapter: runtime cancellation (Tier 10), with per-
 // component disposal (Tier 17).
 // `await(expr)` lowers to `__cui_call(group, start, inflight)`:
@@ -646,6 +673,7 @@ function mount_OpsConsole(root) {
         function __render() {
             const __cui_ifs_now = {};
             const __focus = __cui_focus_save(root);
+            __cui_status_begin(root);
             root.textContent = '';
             const __n0 = document.createElement('div');
             __n0.classList.add('cui-col');
@@ -659,7 +687,7 @@ function mount_OpsConsole(root) {
                 __n2.setAttribute('role', "status");
                 __n2.appendChild(document.createTextNode("status: "));
                 __n2.appendChild(document.createTextNode(String(__state_note)));
-                __n0.appendChild(__n2);
+                __n0.appendChild(__cui_status(root, "__n2", __n2));
                 const __n3 = document.createElement('button');
                 __n3.setAttribute('aria-label', "Refresh");
                 __n3.appendChild(document.createTextNode("Refresh"));
@@ -800,8 +828,9 @@ function mount_OpsConsole(root) {
                 __n28.appendChild(document.createTextNode("result: "));
                 __n28.appendChild(document.createTextNode(String(__state_outcome)));
                 if (!__n28.textContent.trim()) { __n28.removeAttribute('data-tone'); }
-                __n0.appendChild(__n28);
+                __n0.appendChild(__cui_status(root, "__n28", __n28));
             root.appendChild(__n0);
+            __cui_status_end(root);
             if (!__cui_focus_restore(root, __focus) && __focus) { __cui_screen(root, true, false, __cui_screen_of); }
         }
         __render();
