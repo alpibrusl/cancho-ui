@@ -174,7 +174,7 @@ struct ResolvedFile {
     ast: cancho_ui_syntax::ast::File,
 }
 
-fn import_diag(
+pub(crate) fn import_diag(
     code: &str,
     subject_name: String,
     message: String,
@@ -408,6 +408,7 @@ fn compile_inner(
             module: ast.module.clone(),
             imports: Vec::new(),
             components: ast.components.clone(),
+            themes: ast.themes.clone(),
             span: ast.span,
         },
     };
@@ -478,7 +479,28 @@ fn compile_inner(
         );
     }
     irs.push(entry_ir);
+    // one theme in a program: a second one in an imported module is refused, not dropped
+    if let Some(second) = irs
+        .iter()
+        .filter(|i| i.theme.is_some())
+        .nth(1)
+        .and_then(|i| i.theme.as_ref())
+    {
+        return Err(PipelineError::refused(import_diag(
+            "theme-duplicate",
+            String::new(),
+            "a program has one `theme { .. }`; the entry file and an imported module each declare one".to_string(),
+            second.span,
+            file,
+            Some("Keep the theme in the entry file and delete the other.".to_string()),
+        )));
+    }
     let merged = cancho_ui_ir::merge_ir_files(&irs);
+    // the font files a theme declares exist and are the files it names (relative to the entry file's directory)
+    if let Some(t) = &merged.theme {
+        let dir = file.parent().unwrap_or_else(|| Path::new(""));
+        crate::theme::load_fonts(t, dir, file).map_err(PipelineError::Refused)?;
+    }
     Ok((merged, file.to_path_buf()))
 }
 
@@ -1736,6 +1758,7 @@ fn control_remediation(code: &str) -> String {
         "input-type-invalid" => "Write one of text, password, email, search, tel or url as a string literal: `TextField { label: \"Password\" value: pass on: Pass type: \"password\" }` (docs/controls.md section 5).".to_string(),
         "submit-event-invalid" => "Name an event of this component that takes no parameters: `submit: Apply` with `on Apply { ... }`.".to_string(),
         "disabled-not-bool" => "Write `disabled: true`, `disabled: false` or `disabled: sending` where `sending` is a `state sending: Bool`.".to_string(),
+        c if c.starts_with("theme-") || c.starts_with("font-") => crate::theme::remediation(c),
         _ => "See docs/controls.md.".to_string(),
     }
 }

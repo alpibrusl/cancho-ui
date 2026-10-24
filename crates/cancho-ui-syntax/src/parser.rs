@@ -324,6 +324,7 @@ impl Parser {
         };
         let mut imports = Vec::new();
         let mut components = Vec::new();
+        let mut themes = Vec::new();
         while !self.at_eof() {
             // Tier 16: `import <module>.<Component>;` — only at the
             // top level, only before components in practice but the
@@ -331,6 +332,14 @@ impl Parser {
             // resolves imports wherever they appear).
             if matches!(&self.peek().token, Token::Ident(s) if s == "import") {
                 imports.push(self.parse_import()?);
+            } else if matches!(&self.peek().token, Token::Ident(s) if s == "theme")
+                && matches!(
+                    self.tokens.get(self.pos + 1).map(|t| &t.token),
+                    Some(Token::LBrace)
+                )
+            {
+                // `theme` is a keyword only here, at the top level and followed by `{` (docs/theme.md section 2).
+                themes.push(self.parse_theme_decl()?);
             } else {
                 components.push(self.parse_component()?);
             }
@@ -340,8 +349,59 @@ impl Parser {
             module,
             imports,
             components,
+            themes,
             span: Span::new(start, end),
         })
+    }
+
+    /// `theme { light { key: "value"; .. } dark { .. } font role { key: "value"; .. } }`; the current token is `theme`.
+    fn parse_theme_decl(&mut self) -> Result<ThemeDecl, ParseError> {
+        let kw = self.bump();
+        self.expect(Token::LBrace)?;
+        let mut blocks = Vec::new();
+        while !matches!(self.peek().token, Token::RBrace) {
+            let (word, word_span) = self.bump_ident("`light`, `dark` or `font`")?;
+            if word == "font" {
+                let (role, _) = self.bump_ident("the font's role (body, mono, hand)")?;
+                let (entries, close) = self.parse_theme_entries()?;
+                blocks.push(ThemeBlock::Font(ThemeFont {
+                    role,
+                    entries,
+                    span: Span::new(word_span.start, close.end),
+                }));
+            } else {
+                let (entries, close) = self.parse_theme_entries()?;
+                blocks.push(ThemeBlock::Scheme(ThemeScheme {
+                    name: word,
+                    entries,
+                    span: Span::new(word_span.start, close.end),
+                }));
+            }
+        }
+        let close = self.expect(Token::RBrace)?;
+        Ok(ThemeDecl {
+            blocks,
+            span: Span::new(kw.span.start, close.span.end),
+        })
+    }
+
+    /// `{ key: "value"; .. }`, and the span of the closing brace.
+    fn parse_theme_entries(&mut self) -> Result<(Vec<ThemeEntry>, Span), ParseError> {
+        self.expect(Token::LBrace)?;
+        let mut entries = Vec::new();
+        while !matches!(self.peek().token, Token::RBrace) {
+            let (key, key_span) = self.bump_ident("a token name")?;
+            self.expect(Token::DotDot)?;
+            let (value, _) = self.bump_string_lit("a string literal")?;
+            let semi = self.expect(Token::Semi)?;
+            entries.push(ThemeEntry {
+                key,
+                value,
+                span: Span::new(key_span.start, semi.span.end),
+            });
+        }
+        let close = self.expect(Token::RBrace)?;
+        Ok((entries, close.span))
     }
 
     fn parse_import(&mut self) -> Result<ImportDecl, ParseError> {

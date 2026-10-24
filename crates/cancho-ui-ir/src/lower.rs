@@ -185,11 +185,24 @@ pub fn lower_file(file: &File) -> Result<IrFile, LowerError> {
     for c in &file.components {
         components.push(lower_component(c, &mut next_id)?);
     }
+    if let Some(second) = file.themes.get(1) {
+        return Err(LowerError::ControlRefused {
+            code: "theme-duplicate",
+            message: "a program has one `theme { .. }`; this is a second one in the same file"
+                .to_string(),
+            span: second.span,
+        });
+    }
+    let theme = match file.themes.first() {
+        Some(t) => Some(crate::theme::lower_theme(t)?),
+        None => None,
+    };
     let ir = IrFile {
         schema: SCHEMA.to_string(),
         version: schema_version().to_string(),
         module: file.module.as_ref().map(|m| m.name.clone()),
         components,
+        theme,
     };
     crate::controls::check_controls(&ir)?;
     crate::conditions::check_conditions(&ir)?;
@@ -211,6 +224,7 @@ pub fn merge_ir_files(files: &[IrFile]) -> IrFile {
             version: schema_version().to_string(),
             module: None,
             components: Vec::new(),
+            theme: None,
         };
     };
     IrFile {
@@ -218,6 +232,8 @@ pub fn merge_ir_files(files: &[IrFile]) -> IrFile {
         version: last.version.clone(),
         module: last.module.clone(),
         components: files.iter().flat_map(|f| f.components.clone()).collect(),
+        // one theme per program (the pipeline refuses two): the last file's, which is the entry's when it has one
+        theme: files.iter().rev().find_map(|f| f.theme.clone()),
     }
 }
 

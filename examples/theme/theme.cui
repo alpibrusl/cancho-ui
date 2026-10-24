@@ -1,0 +1,76 @@
+// examples/theme/theme.cui — a program with its own colours and font (docs/theme.md).
+// The palette is the one of the home page of alpibrusl/cancho-www at commit 0579a80 (assets/site.css, `:root` and its dark override), the
+// 16 tokens of each scheme; the compiler checks the contrast of 13 pairs per scheme and writes the dark mode from the `dark` block.
+// The font is JetBrains Mono (SIL OFL 1.1, fonts/OFL-JetBrainsMono.txt), a file of this program, declared with its SHA-256.
+// A theme is presentation: replay (`cancho-ui test`) does not read it and `requires` is unchanged.
+
+theme {
+    light {
+        bg: "#f7f4eb";
+        fg: "#121417";
+        muted: "#4f545b";
+        line: "#e2ddd0";
+        surface: "#ffffff";
+        soft: "#efece1";
+        ink: "#16283b";
+        accent: "#185fa5";
+        accent_fg: "#ffffff";
+        accent_soft: "#ebf3fc";
+        good: "#0f7b5f";
+        warn: "#8a4b0a";
+        warn_bg: "#f9efd9";
+        warn_line: "#d9a441";
+        bad: "#b91c1c";
+        bad_bg: "#fdeceb";
+    }
+    dark {
+        bg: "#0b1016";
+        fg: "#e9ecf1";
+        muted: "#9aa5b4";
+        line: "#222b36";
+        surface: "#121922";
+        soft: "#172029";
+        ink: "#0a121a";
+        accent: "#6ea3ee";
+        accent_fg: "#0a1220";
+        accent_soft: "#14233a";
+        good: "#4fd1a5";
+        warn: "#f1c577";
+        warn_bg: "#1c1810";
+        warn_line: "#7e6126";
+        bad: "#ff7a72";
+        bad_bg: "#2a1413";
+    }
+    font body {
+        family: "JetBrains Mono";
+        file: "fonts/jetbrains-mono-latin-wght-normal.woff2";
+        sha256: "18be452724bfdc236c074ca94a249a7f41a86752c7d04ab258ce9ed5651f6a7e";
+        licence: "OFL-1.1";
+        weight: "100 800";
+    }
+}
+
+component Palette {
+    state clicks: Int = 0;
+    state name: String = "";
+
+    on Click { clicks = clicks + 1; }
+    on Name(value) { name = value; }
+
+    view {
+        Column {
+            Text { "Hello {name}, clicked {clicks} times" }
+            TextField { label: "Your name" value: name on: Name }
+            Button { label: "Click" on: Click }
+            Text { role: status tone: "ok" "saved" }
+            Text { role: status tone: "warn" "check this" }
+            Text { role: status tone: "error" "refused" }
+            Table {
+                label: "Tokens"
+                Row { Text { role: columnheader "token" } Text { role: columnheader "use" } }
+                Row { Text { "accent" } Text { "links and the focus ring" } }
+                Row { Text { "muted" } Text { "secondary text" } }
+            }
+        }
+    }
+}
