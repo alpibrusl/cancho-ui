@@ -1,0 +1,20 @@
+component Near {
+    state places: List[String] = ["Atocha,40.4065,-3.6893", "Retiro,40.4153,-3.6845", "Sol,40.4169,-3.7035", "Chamartin,40.4721,-3.6824", "Barajas,40.4983,-3.5676"];
+    state lat0: Float = 0.0;
+    state lon0: Float = 0.0;
+    state c: Float = 1.0;
+    state nearest: List[String] = [];
+
+    on Here(p) {
+        lat0 = num(join(take(split(p, ","), 1), ""), 0);
+        lon0 = num(join(skip(split(p, ","), 1), ""), 0);
+        c = 1 - (lat0 * 0.0174533) * (lat0 * 0.0174533) / 2 + (lat0 * 0.0174533) * (lat0 * 0.0174533) * (lat0 * 0.0174533) * (lat0 * 0.0174533) / 24 - (lat0 * 0.0174533) * (lat0 * 0.0174533) * (lat0 * 0.0174533) * (lat0 * 0.0174533) * (lat0 * 0.0174533) * (lat0 * 0.0174533) / 720;
+        nearest = take(sort(places, r => (num(join(take(skip(split(r, ","), 1), 1), ""), 0) - lat0) * (num(join(take(skip(split(r, ","), 1), 1), ""), 0) - lat0) + c * c * min(abs(num(join(skip(split(r, ","), 2), ""), 0) - lon0), 360 - abs(num(join(skip(split(r, ","), 2), ""), 0) - lon0)) * min(abs(num(join(skip(split(r, ","), 2), ""), 0) - lon0), 360 - abs(num(join(skip(split(r, ","), 2), ""), 0) - lon0))), 3);
+    }
+
+    view {
+        Column {
+            For { over: nearest as: n Text { "{n}" } }
+        }
+    }
+}

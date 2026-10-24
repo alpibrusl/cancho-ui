@@ -1,0 +1,2 @@
+{"schema":"cancho-ui-trace","version":"0.1.0","component":"Near","steps":[
+ {"event":"Here","params":["40.42,-3.70"],"state":{"nearest":["Sol,40.4169,-3.7035","Retiro,40.4153,-3.6845","Atocha,40.4065,-3.6893"]}}]}
