@@ -133,6 +133,13 @@ function __cui_page_count(n) {
 function __cui_take(list, n) { return list.slice(0, __cui_page_count(n)); }
 function __cui_skip(list, n) { return list.slice(__cui_page_count(n)); }
 
+function __cui_eq(a, b) {
+    if (typeof a === "object" || typeof b === "object" || typeof a === "function" || typeof b === "function" || a === undefined || b === undefined) {
+        throw new Error("replay-type-error: `==` and `!=` compare numbers, strings and bools");
+    }
+    return a === b;
+}
+
 // Builtins: lines, split, join, trim, upper, starts_with, ends_with (docs/lists.md section 7). Pure and total. lines and
 // split return at most 10000 elements (the rest is dropped); an empty separator does not split; trim and upper are ASCII only.
 function __cui_split(text, sep) {
@@ -226,7 +233,7 @@ function mount_Routes(root) {
                     __n4.addEventListener('click', __on_Refused);
                     __cui_ifs_now["34:12"] = [__n0, __if_from, __n0.childNodes.length];
                 }
-                if ((__cui_starts_with(__state_path, "/items/") && (((__state_items).filter(function (i) { return (i === __state_item); })).length > 0))) {
+                if ((__cui_starts_with(__state_path, "/items/") && (((__state_items).filter(function (i) { return __cui_eq(i, __state_item); })).length > 0))) {
                     const __if_from = __n0.childNodes.length;
                     const __n5 = document.createElement('span');
                     __n5.setAttribute('role', "heading");
@@ -240,7 +247,7 @@ function mount_Routes(root) {
                     __n0.appendChild(__n6);
                     __cui_ifs_now["42:12"] = [__n0, __if_from, __n0.childNodes.length];
                 }
-                if (((__state_path !== "/") && (!(__cui_starts_with(__state_path, "/items/") && (((__state_items).filter(function (i) { return (i === __state_item); })).length > 0))))) {
+                if (((__state_path !== "/") && (!(__cui_starts_with(__state_path, "/items/") && (((__state_items).filter(function (i) { return __cui_eq(i, __state_item); })).length > 0))))) {
                     const __if_from = __n0.childNodes.length;
                     const __n7 = document.createElement('span');
                     __n7.setAttribute('role', "heading");
