@@ -1,5 +1,6 @@
 //! `Map` (docs/maps.md, issue #81 step two): what it asks the tile host for (the corpus, checked here and in Chromium by `scripts/check-map.js`),
 //! the tags it needs, and how replay reports it.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -23,7 +24,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 fn scratch(name: &str, text: &str) -> PathBuf {
     static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!("cancho-ui-map-{}-{n}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-map-{}-{n}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");

@@ -1,6 +1,7 @@
 //! `json.get(text, path, default)` (`docs/language-design.md` decision 13): the model in replay against the corpus
 //! `tests/json_get_corpus.json`, what is emitted, what is refused, and a trace that uses it. The same corpus is run
 //! against the emitted JavaScript by `scripts/check-json-get.js` (outside the gate: it needs node).
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -25,7 +26,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 }
 
 fn scratch(name: &str, text: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cancho-ui-json-get-{}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-json-get-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");

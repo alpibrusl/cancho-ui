@@ -1,6 +1,7 @@
 //! `net.get`, the real `Network` adapter (`docs/adapters.md` section 9): what the compiler emits and refuses, and
 //! how a trace scripts it. The browser-side checks (same-origin only, redirects, size, timeout, offline) are
 //! `scripts/check-network.js`, outside the gate because they need a browser.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -24,7 +25,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 }
 
 fn scratch(name: &str, text: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cancho-ui-network-{}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-network-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");

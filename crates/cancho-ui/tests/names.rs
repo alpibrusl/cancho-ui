@@ -1,6 +1,7 @@
 //! `name-unknown` (alpibrusl/cancho-ui#55): a name that is neither a state field nor a binding in scope is refused at
 //! `check`, in a handler, a view expression, a label, an event argument and the `over:` of a `For`; the bindings that do
 //! introduce a name (an event parameter, a `For` binding, a lambda parameter, a `match` binding) are not refused.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -22,7 +23,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 }
 
 fn scratch(name: &str, text: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cancho-ui-names-{}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-names-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");

@@ -2,6 +2,7 @@
 //! (`tests/theme_corpus.json`) is the palette of the cancho-www home page at commit 0579a80, vendored: nothing here reads the network or
 //! that repository. The contrast numbers in it are written by `scripts/theme-oracle.js`, which does not share code with the compiler; the
 //! tests compare the compiler with them. `scripts/check-theme.js` runs the same programs in Chromium.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -39,7 +40,7 @@ fn scratch(tag: &str) -> PathBuf {
     static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let dir =
-        std::env::temp_dir().join(format!("cancho-ui-theme-{tag}-{}-{n}", std::process::id()));
+        common::scratch_root().join(format!("cancho-ui-theme-{tag}-{}-{n}", std::process::id()));
     std::fs::create_dir_all(dir.join("fonts")).expect("a scratch directory");
     std::fs::write(dir.join(FONT_FILE), FONT).expect("the font");
     dir

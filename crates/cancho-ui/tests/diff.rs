@@ -1,6 +1,7 @@
 //! `cancho-ui diff` (docs/semantic-diff.md). The engine tests run the
 //! real front end on source strings and inspect the report as JSON; the
 //! CLI tests run the binary for flags, exit codes and output channels.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -418,7 +419,7 @@ fn lists_are_sorted() {
 struct Tmp(PathBuf);
 impl Tmp {
     fn new(tag: &str) -> Tmp {
-        let p = std::env::temp_dir().join(format!("cui-diff-{}-{tag}", std::process::id()));
+        let p = common::scratch_root().join(format!("cui-diff-{}-{tag}", std::process::id()));
         let _ = std::fs::remove_dir_all(&p);
         std::fs::create_dir_all(&p).unwrap();
         Tmp(p)

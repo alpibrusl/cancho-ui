@@ -1,6 +1,7 @@
 //! `requires Credential("name", "host"..)` (`docs/adapters.md` section 18): what is accepted and refused, what is
 //! emitted, what replay shows, and that a module which mounts itself cannot be built with one. The browser side (the
 //! token reaches this origin and the hosts named, and no other) is `scripts/check-credential.js`.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -24,7 +25,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 }
 
 fn scratch(name: &str, text: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cancho-ui-credentials-{}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-credentials-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");

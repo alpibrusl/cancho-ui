@@ -1,5 +1,6 @@
 //! `Chart` (`docs/charts.md`, #77): the shared corpus `tests/chart_corpus.json` replayed in-process (the file `scripts/check-chart.js` runs
 //! in Chromium), what the report says about a chart, and every rule that refuses a misuse.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -25,7 +26,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 fn scratch(name: &str, text: &str) -> PathBuf {
     static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!("cancho-ui-chart-{}-{n}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-chart-{}-{n}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");

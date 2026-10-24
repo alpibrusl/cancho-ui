@@ -1,6 +1,7 @@
 //! `requires Network("host")` (`docs/adapters.md` section 10): the syntax, the two refusals, what is emitted, and the
 //! semantic diff. The browser-side check (an allowed host is reached, another is not) is in
 //! `scripts/check-network.js`.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -22,7 +23,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 }
 
 fn scratch(name: &str, text: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cancho-ui-narrow-{}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-narrow-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");

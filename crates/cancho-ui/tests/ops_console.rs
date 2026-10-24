@@ -1,6 +1,7 @@
 //! `examples/ops-console` (`docs/ops-console.md`): the integrated page. The browser side is
 //! `scripts/check-ops-console.js`; here, what the gate can see without one: the program checks, its trace passes and a
 //! wrong expectation fails, it asks for exactly the two network capabilities, and it builds.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -25,7 +26,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 }
 
 fn scratch(name: &str, text: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cancho-ui-ops-console-{}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-ops-console-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");

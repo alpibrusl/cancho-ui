@@ -2,6 +2,7 @@
 //! set. One program per position, each with a `match` over a `Result` state field that lacks its `Err` arm; each must be
 //! refused with the rule, through `check` (exit 1) and through `build`. Positions that the walk missed before: the
 //! arguments of `len`, `filter`, `map` and `sort`, and the list of a `filter`/`map`/`sort`.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -21,7 +22,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 }
 
 fn scratch(name: &str, text: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cancho-ui-matchpos-{}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-matchpos-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");

@@ -1,5 +1,6 @@
 //! Presentation (`docs/presentation.md`, issue #42): a visible `label:`, `gap:` and `max_width:`, `tone:` on a status text,
 //! and `Table`. What is accepted, what is refused with which tag, what the IR and the page say.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -21,7 +22,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 }
 
 fn scratch(name: &str, text: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cancho-ui-presentation-{}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-presentation-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");

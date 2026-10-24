@@ -1,6 +1,7 @@
 //! The bindings of the built-in elements (`docs/controls.md`): `disabled:`, and the refusal of a key that does
 //! nothing. What is emitted, what is refused, and how a trace sees a disabled control. The browser side is
 //! `scripts/check-controls.js`.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -22,7 +23,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 }
 
 fn scratch(name: &str, text: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cancho-ui-controls-{}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-controls-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");

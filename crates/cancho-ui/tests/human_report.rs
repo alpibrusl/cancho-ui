@@ -1,5 +1,6 @@
 //! The human report of `cancho-ui test` bounds a value on a step line and `--full` lifts the bound (issue #45).
 //! The JSON report and the expected/actual of a failure are never bounded (`docs/replay.md` section 7).
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -20,7 +21,7 @@ fn run(args: &[&str]) -> (i32, String) {
 }
 
 fn scratch(name: &str, text: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cancho-ui-human-{}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-human-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");

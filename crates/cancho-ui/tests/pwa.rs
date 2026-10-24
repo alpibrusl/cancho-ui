@@ -1,6 +1,7 @@
 //! `cancho-ui build --pwa` (`docs/mobile-backend.md`): what it writes, that it refuses like `build`, and that two
 //! builds are the same bytes. The browser-side checks (installable, offline, touch targets) are
 //! `scripts/check-pwa.js`, outside the gate because they need a browser.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -21,7 +22,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 
 /// A fresh, empty scratch path for one test (not created).
 fn scratch(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cancho-ui-pwa-{}-{name}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-pwa-{}-{name}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     dir
 }

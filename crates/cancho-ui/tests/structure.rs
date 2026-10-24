@@ -1,6 +1,7 @@
 //! The structure elements (docs/structure.md): every refusal of `tests/structure_corpus.json` is refused by its rule tag, the valid views
 //! check, the DOM they become is checked in Chromium (`scripts/check-structure.js`) against the same corpus, authority is unchanged except
 //! the hosts a `Link` names, and the nesting bound of 32 applies to the new elements.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -26,7 +27,8 @@ fn run(args: &[&str]) -> (i32, String, String) {
 fn scratch(name: &str, text: &str) -> PathBuf {
     static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!("cancho-ui-structure-{}-{n}", std::process::id()));
+    let dir =
+        common::scratch_root().join(format!("cancho-ui-structure-{}-{n}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");
@@ -540,7 +542,7 @@ fn a_link_out_of_the_directory_is_not_a_file_of_the_site() {
     let dir = a.parent().expect("a directory").to_path_buf();
     // a real PNG elsewhere, linked into the directory of the program
     let elsewhere =
-        std::env::temp_dir().join(format!("cancho-ui-elsewhere-{}.png", std::process::id()));
+        common::scratch_root().join(format!("cancho-ui-elsewhere-{}.png", std::process::id()));
     std::fs::write(&elsewhere, magic("x.png")).expect("a file");
     std::os::unix::fs::symlink(&elsewhere, dir.join("assets/out.png")).expect("a link");
     let (code, got) = codes_of(&a);
