@@ -644,7 +644,8 @@ pub(crate) fn emit_view_node(
                             input_type = Some(s.clone());
                         } else if b.key == "value" {
                             if kind.is_field() {
-                                input_value = Some(s.clone());
+                                // a text, so it is written as one: `value: ""` was `.value = ;` and `value: "abc"` a name (issue #140)
+                                input_value = Some(js_string(s));
                             } else {
                                 out.push_str(&format!(
                                     "{0}// value: on a non-TextField (Phase 2+)\n",

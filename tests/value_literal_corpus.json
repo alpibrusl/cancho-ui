@@ -1,0 +1,101 @@
+{
+ "about": "A string literal `value:` of a TextField or TextArea (issue #140): `source` is what is written between the quotes in the .cui file, `value` the text the field holds. `cargo test` reads it back from the IR (what replay reads); scripts/check-value-literal.js loads the page and reads the field.",
+ "cases": [
+  {
+   "source": "",
+   "value": "",
+   "why": "nothing"
+  },
+  {
+   "source": "abc",
+   "value": "abc",
+   "why": "plain text"
+  },
+  {
+   "source": "a b  c",
+   "value": "a b  c",
+   "why": "spaces kept"
+  },
+  {
+   "source": "say \\\"hi\\\"",
+   "value": "say \"hi\"",
+   "why": "a double quote"
+  },
+  {
+   "source": "it's",
+   "value": "it's",
+   "why": "a single quote"
+  },
+  {
+   "source": "back\\\\slash",
+   "value": "back\\slash",
+   "why": "a backslash"
+  },
+  {
+   "source": "line\\nbreak",
+   "value": "line\nbreak",
+   "why": "a line feed (a single-line <input> drops it from its value, a <textarea> keeps it: the browser's rule, `input` is what the TextField then holds)",
+   "input": "linebreak"
+  },
+  {
+   "source": "tab\\there",
+   "value": "tab\there",
+   "why": "a tab"
+  },
+  {
+   "source": "\\{x\\}",
+   "value": "{x}",
+   "why": "braces, escaped in the source"
+  },
+  {
+   "source": "$\\{alert(1)\\}",
+   "value": "${alert(1)}",
+   "why": "a template-literal opening is only text"
+  },
+  {
+   "source": "`tick`",
+   "value": "`tick`",
+   "why": "backticks"
+  },
+  {
+   "source": "</script><b>",
+   "value": "</script><b>",
+   "why": "markup is only text"
+  },
+  {
+   "source": "caf\u00e9 \u2013 \u65e5\u672c",
+   "value": "caf\u00e9 \u2013 \u65e5\u672c",
+   "why": "non-ASCII text"
+  },
+  {
+   "source": "\ud83d\ude00",
+   "value": "\ud83d\ude00",
+   "why": "a character outside the BMP"
+  },
+  {
+   "source": "a\u2028b\u2029c",
+   "value": "a\u2028b\u2029c",
+   "why": "the line separators U+2028 and U+2029 (line ends in older JavaScript)"
+  },
+  {
+   "source": "a\\0b",
+   "value": "a\u0000b",
+   "why": "a NUL"
+  },
+  {
+   "source": "/* not a comment */ // nor this",
+   "value": "/* not a comment */ // nor this",
+   "why": "comment marks"
+  },
+  {
+   "source": "0",
+   "value": "0",
+   "why": "a number's digits are text"
+  },
+  {
+   "source": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "why": "a long text"
+  }
+ ]
+}

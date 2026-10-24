@@ -356,6 +356,15 @@ that was its own issue (#111), built since as a text field that gives the handle
 
 A control that had the focus and is replaced with its screen no longer drops the focus to the body: the heading of the screen that appeared takes it (`tabindex="-1"`, the browser's ring after the keyboard, none after touch), and a routed page's title follows it. The rule, the measurements and its limits are in [`screen-focus.md`](screen-focus.md); replay does not claim it.
 
+## 11a'. A string literal `value:` (issue #140)
+
+`TextField { value: "abc" .. }` and `TextArea { value: "abc" .. }` were emitted as written: `value: ""` was `__n1.value = ;`, a syntax error that stopped the whole module from loading, and `value: "abc"` a reference to a
+name that does not exist. Measured with a corpus of 19 literals (`tests/value_literal_corpus.json`): **18 of 19 pages did not load** (`SyntaxError`, `ReferenceError`); the one that did was `"0"`, which happens to be a
+number in JavaScript. The emitter now writes the literal as a quoted, escaped text (`js_string`). Checked: `cargo test` reads each literal back from the IR (what replay reads; replay does not draw a field) and from the built module;
+`scripts/check-value-literal.js` loads the page in Chromium and reads both fields (empty, quotes, a backslash, line breaks, escaped braces, `${..}`, markup, non-ASCII, U+2028, a NUL, 300 characters).
+Two facts of the browser, measured: a single-line `<input>` drops a line feed from the value it is given (a `<textarea>` keeps it), and the view being a function of the state, a field with a literal value goes back to it at the
+next render, whatever was typed (the state keeps what was typed; `value: name` is how a field follows the person). A `{` in the literal still needs `\{` (static text is not interpolated).
+
 ## 11b. `FileField`, a file picker (issue #79)
 
 A native `<input type="file">` whose chosen text file reaches the handler as one JSON `String`: [`file-upload.md`](file-upload.md). Not repeated here.
