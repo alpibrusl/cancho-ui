@@ -330,6 +330,30 @@ pub enum ElementKind {
     Map,
     /// A link to another route of this page: `NavLink { label: "Item" to: "/items/3" }` (docs/routing.md section 4).
     NavLink,
+    /// Structure (docs/structure.md): `Heading`.
+    Heading,
+    /// Structure (docs/structure.md): `Section`.
+    Section,
+    /// Structure (docs/structure.md): `Header`.
+    Header,
+    /// Structure (docs/structure.md): `Nav`.
+    Nav,
+    /// Structure (docs/structure.md): `Main`.
+    Main,
+    /// Structure (docs/structure.md): `Footer`.
+    Footer,
+    /// Structure (docs/structure.md): `Aside`.
+    Aside,
+    /// Structure (docs/structure.md): `Article`.
+    Article,
+    /// Structure (docs/structure.md): `Link`.
+    Link,
+    /// Structure (docs/structure.md): `Details`.
+    Details,
+    /// Structure (docs/structure.md): `Figure`.
+    Figure,
+    /// Structure (docs/structure.md): `Caption`.
+    Caption,
     Named(String),
 }
 

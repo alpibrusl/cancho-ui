@@ -273,7 +273,7 @@ pub(crate) fn emit_view_node(
             let id = *next_id;
             *next_id += 1;
             let var = format!("__n{}", id);
-            let tag = kind.tag_name();
+            let tag = cancho_ui_ir::structure::tag(kind, bindings);
             let instance_name: Option<&String> = match kind {
                 IrElementKind::Named(name) => {
                     if has_slots && components.iter().any(|d| d == name) {
@@ -390,6 +390,29 @@ pub(crate) fn emit_view_node(
             if let Some(cls) = kind.layout_class() {
                 out.push_str(&format!("{0}{1}.classList.add('{2}');\n", indent, var, cls));
             }
+            // the structure elements' recipe (docs/structure.md): an id, an address, a typographic role, an appearance, a summary
+            for (name, value) in cancho_ui_ir::structure::attrs(kind, bindings) {
+                out.push_str(&format!(
+                    "{0}{1}.setAttribute('{2}', {3});\n",
+                    indent,
+                    var,
+                    name,
+                    js_string(&value)
+                ));
+            }
+            if let Some(cls) = cancho_ui_ir::structure::class(kind, bindings) {
+                out.push_str(&format!("{0}{1}.classList.add('{2}');\n", indent, var, cls));
+            }
+            if matches!(kind, IrElementKind::Details)
+                && let Some(text) = cancho_ui_ir::structure::summary(bindings)
+            {
+                out.push_str(&format!(
+                    "{0}const {1}_summary = document.createElement('summary');\n{0}{1}_summary.textContent = {2};\n{0}{1}.appendChild({1}_summary);\n",
+                    indent,
+                    var,
+                    js_string(&text)
+                ));
+            }
             if let Some(role) = &accessibility.role {
                 let r = match role {
                     IrRole::Text => "text",
@@ -485,6 +508,9 @@ pub(crate) fn emit_view_node(
             // props object, not into wrapper attributes.
             let mut props_obj: Vec<(String, &IrExpr)> = Vec::new();
             for b in bindings {
+                if cancho_ui_ir::structure::handles(kind, &b.key) {
+                    continue;
+                }
                 let as_prop = match &b.value {
                     IrBindingValue::Const { expr, .. } => Some(expr),
                     _ => None,

@@ -1162,6 +1162,18 @@ fn lower_kind(k: &ElementKind) -> IrElementKind {
         ElementKind::NavLink => IrElementKind::NavLink,
         ElementKind::SortList => IrElementKind::SortList,
         ElementKind::Map => IrElementKind::Map,
+        ElementKind::Heading => IrElementKind::Heading,
+        ElementKind::Section => IrElementKind::Section,
+        ElementKind::Header => IrElementKind::Header,
+        ElementKind::Nav => IrElementKind::Nav,
+        ElementKind::Main => IrElementKind::Main,
+        ElementKind::Footer => IrElementKind::Footer,
+        ElementKind::Aside => IrElementKind::Aside,
+        ElementKind::Article => IrElementKind::Article,
+        ElementKind::Link => IrElementKind::Link,
+        ElementKind::Details => IrElementKind::Details,
+        ElementKind::Figure => IrElementKind::Figure,
+        ElementKind::Caption => IrElementKind::Caption,
         ElementKind::Named(s) => IrElementKind::Named(s.clone()),
     }
 }

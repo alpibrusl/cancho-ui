@@ -273,6 +273,18 @@ impl Parser {
             "NavLink" => ElementKind::NavLink,
             "SortList" => ElementKind::SortList,
             "Map" => ElementKind::Map,
+            "Heading" => ElementKind::Heading,
+            "Section" => ElementKind::Section,
+            "Header" => ElementKind::Header,
+            "Nav" => ElementKind::Nav,
+            "Main" => ElementKind::Main,
+            "Footer" => ElementKind::Footer,
+            "Aside" => ElementKind::Aside,
+            "Article" => ElementKind::Article,
+            "Link" => ElementKind::Link,
+            "Details" => ElementKind::Details,
+            "Figure" => ElementKind::Figure,
+            "Caption" => ElementKind::Caption,
             other => ElementKind::Named(other.to_string()),
         };
 
@@ -346,6 +358,19 @@ impl Parser {
                         accessibility.span = Span::new(accessibility.span.start, expr.span().end);
                         accessibility.label_expr = Some(expr);
                     }
+                }
+                Token::Ident(name) if name == "style" && matches!(kind, ElementKind::Text) => {
+                    // `style: "eyebrow"`: a typographic role of a `Text` (docs/structure.md); like `tone:` it may come first, because a
+                    // `Text` has no other place to put a binding.
+                    let key_tok = self.bump();
+                    self.expect(Token::DotDot)?;
+                    let value = self.parse_binding_value("style", &kind)?;
+                    let span = Span::new(key_tok.span.start, self.tokens[self.pos - 1].span.end);
+                    bindings.push(Binding {
+                        key: "style".to_string(),
+                        value,
+                        span,
+                    });
                 }
                 Token::Ident(name) if name == "tone" => {
                     // `tone: "error"` or `tone: outcome_tone` (a String state field): a status text's tone

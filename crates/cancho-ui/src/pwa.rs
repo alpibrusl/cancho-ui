@@ -136,6 +136,18 @@ body {
     [data-tone="ok"] { color: #3fb950; } [data-tone="warn"] { color: #d29922; } [data-tone="error"] { color: #ff7b72; }
 }
 button, input, textarea { min-height: 44px; min-width: 44px; font: inherit; }
+/* structure (docs/structure.md): a link in a header, a nav or a footer is a target of its own; the appearances of a Link; the roles of a Text */
+header a, nav a, footer a { display: inline-flex; align-items: center; min-height: 44px; }
+a.cui-link-primary, a.cui-link-secondary, a.cui-link-quiet { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-height: 44px; min-width: 44px; padding: 0 1rem; border-radius: 8px; font-weight: 600; text-decoration: none; }
+a.cui-link-primary { background: LinkText; color: Canvas; }
+a.cui-link-secondary { border: 1px solid LinkText; }
+details > summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; }
+figure { margin: 0; } figcaption { font-size: 0.88rem; }
+[data-style] { margin: 0; }
+[data-style="eyebrow"], [data-style="label"] { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+[data-style="eyebrow"] { color: LinkText; }
+[data-style="lead"] { font-size: 1.1rem; max-width: 40rem; }
+[data-style="note"] { font-size: 0.88rem; }
 </style>
 @THEME_CSS@</head>
 <body>

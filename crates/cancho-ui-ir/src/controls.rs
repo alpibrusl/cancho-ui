@@ -82,6 +82,7 @@ pub fn check_controls(ir: &IrFile) -> Result<(), LowerError> {
     for c in &ir.components {
         check_node(c, &c.view.body, false)?;
     }
+    crate::structure::check_program(ir)?;
     Ok(())
 }
 
@@ -98,6 +99,14 @@ fn check_node(c: &IrComponent, node: &IrViewNode, in_for: bool) -> Result<(), Lo
                 for b in bindings {
                     check_binding(c, kind, b)?;
                 }
+                crate::structure::check_complete(
+                    kind,
+                    accessibility,
+                    bindings,
+                    children,
+                    *span,
+                    in_for,
+                )?;
                 check_navlink_complete(kind, accessibility, bindings, *span)?;
                 check_file_field(kind, accessibility, bindings, *span, in_for)?;
                 check_chart(kind, accessibility, bindings, *span, in_for)?;
@@ -143,6 +152,18 @@ fn element_name(kind: &IrElementKind) -> &'static str {
         IrElementKind::NavLink => "NavLink",
         IrElementKind::SortList => "SortList",
         IrElementKind::Map => "Map",
+        IrElementKind::Heading => "Heading",
+        IrElementKind::Section => "Section",
+        IrElementKind::Header => "Header",
+        IrElementKind::Nav => "Nav",
+        IrElementKind::Main => "Main",
+        IrElementKind::Footer => "Footer",
+        IrElementKind::Aside => "Aside",
+        IrElementKind::Article => "Article",
+        IrElementKind::Link => "Link",
+        IrElementKind::Details => "Details",
+        IrElementKind::Figure => "Figure",
+        IrElementKind::Caption => "Caption",
         IrElementKind::Named(_) => "a component",
     }
 }
@@ -866,6 +887,9 @@ fn check_to(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
 }
 
 fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
+    if crate::structure::check_binding(kind, b)? {
+        return Ok(());
+    }
     crate::sortlist::check_binding(c, kind, b)?;
     crate::map::check_binding(c, kind, b)?;
     if matches!(kind, IrElementKind::FileField)

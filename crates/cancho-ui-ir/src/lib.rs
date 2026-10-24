@@ -28,6 +28,7 @@ pub mod routing;
 pub mod serialize;
 pub mod sortlist;
 pub mod stream;
+pub mod structure;
 pub mod table;
 pub mod theme;
 

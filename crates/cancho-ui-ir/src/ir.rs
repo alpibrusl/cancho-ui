@@ -568,6 +568,30 @@ pub enum IrElementKind {
     Map,
     /// `NavLink { label: .. to: path }` (docs/routing.md section 4): a link to a route of this page, an `<a href="#path">`.
     NavLink,
+    /// Structure (docs/structure.md): `Heading`, an `<h2>` (a `Heading` takes its level from `level:`).
+    Heading,
+    /// Structure (docs/structure.md): `Section`, an `<section>` (a `Heading` takes its level from `level:`).
+    Section,
+    /// Structure (docs/structure.md): `Header`, an `<header>` (a `Heading` takes its level from `level:`).
+    Header,
+    /// Structure (docs/structure.md): `Nav`, an `<nav>` (a `Heading` takes its level from `level:`).
+    Nav,
+    /// Structure (docs/structure.md): `Main`, an `<main>` (a `Heading` takes its level from `level:`).
+    Main,
+    /// Structure (docs/structure.md): `Footer`, an `<footer>` (a `Heading` takes its level from `level:`).
+    Footer,
+    /// Structure (docs/structure.md): `Aside`, an `<aside>` (a `Heading` takes its level from `level:`).
+    Aside,
+    /// Structure (docs/structure.md): `Article`, an `<article>` (a `Heading` takes its level from `level:`).
+    Article,
+    /// Structure (docs/structure.md): `Link`, an `<a>` (a `Heading` takes its level from `level:`).
+    Link,
+    /// Structure (docs/structure.md): `Details`, an `<details>` (a `Heading` takes its level from `level:`).
+    Details,
+    /// Structure (docs/structure.md): `Figure`, an `<figure>` (a `Heading` takes its level from `level:`).
+    Figure,
+    /// Structure (docs/structure.md): `Caption`, an `<figcaption>` (a `Heading` takes its level from `level:`).
+    Caption,
     /// `Table { .. }` (docs/presentation.md section 4) and what lowering makes of its descendants: a `Row` of a table is
     /// a `TableRow`, a `Text` of that row a `Cell` (a `HeaderCell` with `role: columnheader`), and any other element of
     /// it is wrapped in a `Cell`.
@@ -592,6 +616,18 @@ impl IrElementKind {
             IrElementKind::FileField => "input",
             IrElementKind::Chart => "figure",
             IrElementKind::NavLink => "a",
+            IrElementKind::Heading => "h2",
+            IrElementKind::Section => "section",
+            IrElementKind::Header => "header",
+            IrElementKind::Nav => "nav",
+            IrElementKind::Main => "main",
+            IrElementKind::Footer => "footer",
+            IrElementKind::Aside => "aside",
+            IrElementKind::Article => "article",
+            IrElementKind::Link => "a",
+            IrElementKind::Details => "details",
+            IrElementKind::Figure => "figure",
+            IrElementKind::Caption => "figcaption",
             IrElementKind::SortList => "ul",
             IrElementKind::Map => "figure",
             IrElementKind::Table => "table",
@@ -616,6 +652,7 @@ impl IrElementKind {
                 | IrElementKind::Select
                 | IrElementKind::FileField
                 | IrElementKind::NavLink
+                | IrElementKind::Link
         ) || self.is_field()
     }
 
@@ -623,7 +660,12 @@ impl IrElementKind {
     pub fn holds_text(&self) -> bool {
         matches!(
             self,
-            IrElementKind::Text | IrElementKind::Cell | IrElementKind::HeaderCell
+            IrElementKind::Text
+                | IrElementKind::Cell
+                | IrElementKind::HeaderCell
+                | IrElementKind::Heading
+                | IrElementKind::Link
+                | IrElementKind::Caption
         )
     }
 

@@ -1,0 +1,697 @@
+//! The structure elements (docs/structure.md, step 2 of docs/www.md): headings, sections, landmarks, `Article`, `Link`, `Details`,
+//! `Figure`/`Caption`, and the `style:` of a `Text`. This module owns their rule tags and their DOM recipe (the tag, the attributes and the
+//! class an element becomes), which the JavaScript emitter reads today and the prerenderer will read, so that the two cannot drift.
+
+use std::collections::BTreeSet;
+
+use cancho_ui_syntax::Span;
+
+use crate::ir::*;
+use crate::lower::LowerError;
+
+/// The `appearance:` of a `Link`: a closed set, drawn by the baseline stylesheet (and, with a theme, in the theme's colours).
+pub const APPEARANCES: &[&str] = &["primary", "secondary", "quiet"];
+/// The `style:` of a `Text`: a typographic role, a closed set.
+pub const TEXT_STYLES: &[&str] = &["eyebrow", "lead", "note", "label"];
+/// The range of a heading's `level:`.
+pub const LEVELS: (i64, i64) = (1, 4);
+/// The words that do not say where a link goes (compared lower-cased, with punctuation trimmed), `link-label-generic`.
+pub const GENERIC_LABELS: &[&str] = &[
+    "here",
+    "click here",
+    "click",
+    "link",
+    "this link",
+    "this",
+    "more",
+    "read more",
+    "learn more",
+];
+
+/// The elements this module defines.
+pub fn is_structure(kind: &IrElementKind) -> bool {
+    matches!(
+        kind,
+        IrElementKind::Heading
+            | IrElementKind::Section
+            | IrElementKind::Header
+            | IrElementKind::Nav
+            | IrElementKind::Main
+            | IrElementKind::Footer
+            | IrElementKind::Aside
+            | IrElementKind::Article
+            | IrElementKind::Link
+            | IrElementKind::Details
+            | IrElementKind::Figure
+            | IrElementKind::Caption
+    )
+}
+
+fn is_landmark_or_container(kind: &IrElementKind) -> bool {
+    matches!(
+        kind,
+        IrElementKind::Section
+            | IrElementKind::Header
+            | IrElementKind::Nav
+            | IrElementKind::Main
+            | IrElementKind::Footer
+            | IrElementKind::Aside
+            | IrElementKind::Article
+            | IrElementKind::Figure
+    )
+}
+
+fn name(kind: &IrElementKind) -> &'static str {
+    match kind {
+        IrElementKind::Heading => "Heading",
+        IrElementKind::Section => "Section",
+        IrElementKind::Header => "Header",
+        IrElementKind::Nav => "Nav",
+        IrElementKind::Main => "Main",
+        IrElementKind::Footer => "Footer",
+        IrElementKind::Aside => "Aside",
+        IrElementKind::Article => "Article",
+        IrElementKind::Link => "Link",
+        IrElementKind::Details => "Details",
+        IrElementKind::Figure => "Figure",
+        IrElementKind::Caption => "Caption",
+        IrElementKind::Text => "Text",
+        _ => "this element",
+    }
+}
+
+/// The keys (beside `label:` on the landmarks) an element of this module takes.
+fn keys(kind: &IrElementKind) -> &'static [&'static str] {
+    match kind {
+        IrElementKind::Heading => &["level", "id"],
+        IrElementKind::Link => &["to", "appearance"],
+        IrElementKind::Details => &["summary", "id"],
+        IrElementKind::Caption => &["id"],
+        k if is_landmark_or_container(k) => &["id"],
+        _ => &[],
+    }
+}
+
+fn refuse(code: &'static str, message: String, span: Span) -> LowerError {
+    LowerError::ControlRefused {
+        code,
+        message,
+        span,
+    }
+}
+
+fn string_of(b: &IrBinding) -> Option<&str> {
+    match &b.value {
+        IrBindingValue::String(s) => Some(s),
+        _ => None,
+    }
+}
+
+fn int_of(b: &IrBinding) -> Option<i64> {
+    match &b.value {
+        IrBindingValue::Const { expr, .. } => match **expr {
+            IrExpr::IntLit { value, .. } => Some(value),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+/// An `id:` is a letter then letters, digits, `-` and `_`, at most 64; `cui-` is the compiler's own.
+pub fn id_ok(id: &str) -> bool {
+    let mut chars = id.chars();
+    chars.next().is_some_and(|c| c.is_ascii_alphabetic())
+        && id.len() <= 64
+        && id
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+        && !id.to_ascii_lowercase().starts_with("cui-")
+}
+
+/// What a `to:` is: nothing wrong, or the reason it is refused.
+pub fn check_to(to: &str) -> Result<(), String> {
+    if to.is_empty() {
+        return Err("`to:` is empty".to_string());
+    }
+    if to.chars().any(|c| c.is_control() || c.is_whitespace()) {
+        return Err("`to:` holds a space or a control character (a browser drops tabs and newlines inside a scheme, so `java\\tscript:` is not what it looks like)".to_string());
+    }
+    if to.starts_with("//") {
+        return Err(
+            "`to:` starts with `//`, an address that hides its scheme; write `https://host/..`"
+                .to_string(),
+        );
+    }
+    if let Some(i) = to.find(':') {
+        let head = &to[..i];
+        let is_scheme = !head.is_empty()
+            && head.chars().next().is_some_and(|c| c.is_ascii_alphabetic())
+            && head
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'+' | b'.' | b'-'));
+        if is_scheme {
+            let scheme = head.to_ascii_lowercase();
+            return match scheme.as_str() {
+                "https" | "http" => host_of(to).map(|_| ()).ok_or_else(|| {
+                    "`to:` has no host, or has a user name and password before it".to_string()
+                }),
+                "mailto" => {
+                    if to.len() > 7 && to[7..].contains('@') {
+                        Ok(())
+                    } else {
+                        Err("`mailto:` needs an address with an `@`".to_string())
+                    }
+                }
+                other => Err(format!(
+                    "`to:` has the scheme `{other}:`; a link goes to `https:`, `http:`, `mailto:`, a `#id` of this page, or a file of this site"
+                )),
+            };
+        }
+    }
+    if let Some(frag) = to.strip_prefix('#') {
+        return if id_ok(frag) {
+            Ok(())
+        } else {
+            Err(format!(
+                "`to: \"{to}\"` is not the id of an element (letters, digits, `-`, `_`)"
+            ))
+        };
+    }
+    Ok(())
+}
+
+/// The host of an `http(s)` address, lower-cased; `None` when there is none or a user name comes before it.
+pub fn host_of(to: &str) -> Option<String> {
+    let rest = to.split_once("://")?.1;
+    let end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
+    let authority = &rest[..end];
+    if authority.is_empty() || authority.contains('@') {
+        return None;
+    }
+    let host = authority.rsplit_once(':').map_or(authority, |(h, port)| {
+        if port.bytes().all(|b| b.is_ascii_digit()) {
+            h
+        } else {
+            authority
+        }
+    });
+    (!host.is_empty()).then(|| host.to_ascii_lowercase())
+}
+
+/// The text of a node when it is all literal: `None` when it holds an expression.
+fn literal_text(children: &[IrViewNode]) -> Option<String> {
+    let mut out = String::new();
+    for c in children {
+        match c {
+            IrViewNode::Text { parts, .. } => {
+                for p in parts {
+                    match p {
+                        IrTextPart::Literal(s) => out.push_str(s),
+                        IrTextPart::Expr(_) => return None,
+                    }
+                }
+            }
+            _ => return None,
+        }
+    }
+    Some(out)
+}
+
+/// Checks one binding. `Ok(true)`: this module owns it and it is fine; `Ok(false)`: not its business.
+pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerError> {
+    const NEW: &[&str] = &["id", "level", "appearance", "style", "summary"];
+    let structure = is_structure(kind);
+    if !structure && !(NEW.contains(&b.key.as_str())) {
+        return Ok(false);
+    }
+    if !structure && b.key == "style" && matches!(kind, IrElementKind::Text) {
+        return match string_of(b) {
+            Some(s) if TEXT_STYLES.contains(&s) => Ok(true),
+            _ => Err(refuse(
+                "text-style-invalid",
+                format!(
+                    "`style:` is one of {} as a string literal",
+                    TEXT_STYLES.join(", ")
+                ),
+                b.span,
+            )),
+        };
+    }
+    if !structure {
+        return Err(refuse(
+            "binding-unknown",
+            format!(
+                "`{}:` is not a binding of {}; it belongs to {}",
+                b.key,
+                match kind {
+                    IrElementKind::Named(_) => "a component".to_string(),
+                    _ => "this element".to_string(),
+                },
+                match b.key.as_str() {
+                    "level" => "Heading",
+                    "appearance" => "Link",
+                    "summary" => "Details",
+                    "style" => "Text",
+                    _ => "the structure elements (Section, Article, Heading, ..)",
+                }
+            ),
+            b.span,
+        ));
+    }
+    let own = keys(kind);
+    if !own.contains(&b.key.as_str()) {
+        return Err(refuse(
+            "binding-unknown",
+            format!(
+                "`{}:` is not a binding of {}; it takes {}",
+                b.key,
+                name(kind),
+                if own.is_empty() {
+                    "only `label:`".to_string()
+                } else {
+                    own.join(", ")
+                }
+            ),
+            b.span,
+        ));
+    }
+    match b.key.as_str() {
+        "id" => match string_of(b) {
+            Some(s) if id_ok(s) => Ok(true),
+            _ => Err(refuse(
+                "id-invalid",
+                "`id:` is a string literal: a letter, then letters, digits, `-` and `_` (at most 64), and not starting with `cui-`, which is the compiler's".to_string(),
+                b.span,
+            )),
+        },
+        "level" => match int_of(b) {
+            Some(n) if (LEVELS.0..=LEVELS.1).contains(&n) => Ok(true),
+            _ => Err(refuse(
+                "heading-level-invalid",
+                format!("`level:` is an integer literal from {} to {}", LEVELS.0, LEVELS.1),
+                b.span,
+            )),
+        },
+        "to" => match string_of(b) {
+            None => Err(refuse(
+                "link-to-invalid",
+                "`to:` of a Link is a string literal (a link built from data comes later)".to_string(),
+                b.span,
+            )),
+            Some(s) => check_to(s)
+                .map(|()| true)
+                .map_err(|why| refuse("link-scheme-refused", why, b.span)),
+        },
+        "appearance" => match string_of(b) {
+            Some(s) if APPEARANCES.contains(&s) => Ok(true),
+            _ => Err(refuse(
+                "link-appearance-invalid",
+                format!("`appearance:` is one of {} as a string literal", APPEARANCES.join(", ")),
+                b.span,
+            )),
+        },
+        "summary" => match string_of(b) {
+            Some(s) if !s.trim().is_empty() => Ok(true),
+            _ => Err(refuse(
+                "details-incomplete",
+                "`summary:` is the text of the line that opens the Details, a string literal that says something".to_string(),
+                b.span,
+            )),
+        },
+        _ => Ok(true),
+    }
+}
+
+/// What an element needs to be complete, and what it may not carry.
+pub fn check_complete(
+    kind: &IrElementKind,
+    accessibility: &IrAccessibility,
+    bindings: &[IrBinding],
+    children: &[IrViewNode],
+    span: Span,
+    in_for: bool,
+) -> Result<(), LowerError> {
+    if !is_structure(kind) {
+        return Ok(());
+    }
+    let has = |k: &str| bindings.iter().any(|b| b.key == k);
+    let text = literal_text(children);
+    // the name of a heading, a link, a caption and a details is its text; a `label:` would make the name differ from what is seen
+    if !is_landmark_or_container(kind)
+        && (accessibility.label.is_some() || accessibility.label_expr.is_some())
+    {
+        return Err(refuse(
+            "binding-unknown",
+            format!(
+                "`label:` is not a binding of {}: its text is its name",
+                name(kind)
+            ),
+            span,
+        ));
+    }
+    if accessibility.role.is_some() {
+        return Err(refuse(
+            "binding-unknown",
+            format!(
+                "`role:` is not a binding of {}: it is what it says it is",
+                name(kind)
+            ),
+            span,
+        ));
+    }
+    if in_for && has("id") {
+        return Err(refuse(
+            "anchor-duplicate",
+            format!(
+                "an `id:` on {} inside a `For` would be repeated for every item; an id is one element",
+                name(kind)
+            ),
+            span,
+        ));
+    }
+    match kind {
+        IrElementKind::Heading => {
+            if !has("level") {
+                return Err(refuse(
+                    "heading-level-invalid",
+                    "a Heading needs `level:`, an integer from 1 to 4: `Heading { level: 2 \"Title\" }`".to_string(),
+                    span,
+                ));
+            }
+            if text.as_deref().is_some_and(|t| t.trim().is_empty()) || children.is_empty() {
+                return Err(refuse(
+                    "heading-empty",
+                    "a Heading with no text is an empty entry in the outline of the page"
+                        .to_string(),
+                    span,
+                ));
+            }
+        }
+        IrElementKind::Link => {
+            if !has("to") {
+                return Err(refuse(
+                    "link-to-invalid",
+                    "a Link needs `to:`: `Link { to: \"https://..\" \"what it is\" }`".to_string(),
+                    span,
+                ));
+            }
+            if text.as_deref().is_some_and(|t| t.trim().is_empty()) || children.is_empty() {
+                return Err(refuse(
+                    "link-label-missing",
+                    "a Link with no text has no name for a screen reader".to_string(),
+                    span,
+                ));
+            }
+            if let Some(t) = &text {
+                let word = t
+                    .trim()
+                    .trim_matches(|c: char| !c.is_alphanumeric())
+                    .to_lowercase();
+                if GENERIC_LABELS.contains(&word.as_str()) {
+                    return Err(refuse(
+                        "link-label-generic",
+                        format!(
+                            "the link text \"{}\" does not say where the link goes: a screen reader reads links out of their sentence",
+                            t.trim()
+                        ),
+                        span,
+                    ));
+                }
+            }
+        }
+        IrElementKind::Details if !has("summary") => {
+            return Err(refuse(
+                "details-incomplete",
+                "a Details needs `summary:`, the line that opens it: `Details { summary: \"More\" .. }`".to_string(),
+                span,
+            ));
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+// ---- the DOM recipe ------------------------------------------------------------------------------------------------------------------
+
+/// The tag an element becomes: a `Heading` is `h1` to `h4` by its level, a `Text` with a `style:` is a paragraph.
+pub fn tag(kind: &IrElementKind, bindings: &[IrBinding]) -> &'static str {
+    match kind {
+        IrElementKind::Heading => match bindings.iter().find(|b| b.key == "level").and_then(int_of)
+        {
+            Some(1) => "h1",
+            Some(3) => "h3",
+            Some(4) => "h4",
+            _ => "h2",
+        },
+        IrElementKind::Text if bindings.iter().any(|b| b.key == "style") => "p",
+        k => k.tag_name(),
+    }
+}
+
+/// The attributes an element gets from its bindings, in a fixed order: `(name, value)`.
+pub fn attrs(kind: &IrElementKind, bindings: &[IrBinding]) -> Vec<(&'static str, String)> {
+    let mut out = Vec::new();
+    for b in bindings {
+        match (b.key.as_str(), string_of(b)) {
+            ("id", Some(s)) if is_structure(kind) => out.push(("id", s.to_string())),
+            ("to", Some(s)) if matches!(kind, IrElementKind::Link) => {
+                out.push(("href", s.to_string()))
+            }
+            ("style", Some(s)) if matches!(kind, IrElementKind::Text) => {
+                out.push(("data-style", s.to_string()))
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
+/// The class an element gets: a `Link` with an `appearance:`.
+pub fn class(kind: &IrElementKind, bindings: &[IrBinding]) -> Option<String> {
+    if !matches!(kind, IrElementKind::Link) {
+        return None;
+    }
+    bindings
+        .iter()
+        .find(|b| b.key == "appearance")
+        .and_then(string_of)
+        .map(|a| format!("cui-link-{a}"))
+}
+
+/// The bindings the structure recipe writes (`attrs`, `class`, a `Details`' summary): the generic binding loop skips them.
+pub fn handles(kind: &IrElementKind, key: &str) -> bool {
+    (is_structure(kind) && keys(kind).contains(&key))
+        || (matches!(kind, IrElementKind::Text) && key == "style")
+}
+
+/// The line that opens a `Details`.
+pub fn summary(bindings: &[IrBinding]) -> Option<String> {
+    bindings
+        .iter()
+        .find(|b| b.key == "summary")
+        .and_then(string_of)
+        .map(str::to_string)
+}
+
+// ---- what the whole program says ----------------------------------------------------------------------------------------------------
+
+struct Walk<'a> {
+    ids: Vec<(&'a str, Span)>,
+    anchors: Vec<(&'a str, Span)>,
+    mains: Vec<Span>,
+    navs: Vec<(bool, Span)>,
+}
+
+fn walk<'a>(
+    node: &'a IrViewNode,
+    parent: Option<&IrElementKind>,
+    w: &mut Walk<'a>,
+    last_level: &mut Option<i64>,
+) -> Result<(), LowerError> {
+    match node {
+        IrViewNode::Element {
+            kind,
+            accessibility,
+            bindings,
+            children,
+            span,
+        } => {
+            for b in bindings {
+                if b.key == "id"
+                    && is_structure(kind)
+                    && let Some(s) = string_of(b)
+                {
+                    w.ids.push((s, b.span));
+                }
+                if b.key == "to"
+                    && matches!(kind, IrElementKind::Link)
+                    && let Some(frag) = string_of(b).and_then(|s| s.strip_prefix('#'))
+                {
+                    w.anchors.push((frag, b.span));
+                }
+            }
+            match kind {
+                IrElementKind::Main => w.mains.push(*span),
+                IrElementKind::Nav => w.navs.push((
+                    accessibility.label.is_some() || accessibility.label_expr.is_some(),
+                    *span,
+                )),
+                IrElementKind::Caption if !matches!(parent, Some(IrElementKind::Figure)) => {
+                    return Err(refuse(
+                        "caption-misplaced",
+                        "a Caption is the direct child of a Figure: it is the figcaption of that figure".to_string(),
+                        *span,
+                    ));
+                }
+                IrElementKind::Figure => {
+                    let n = children
+                        .iter()
+                        .filter(|c| {
+                            matches!(
+                                c,
+                                IrViewNode::Element {
+                                    kind: IrElementKind::Caption,
+                                    ..
+                                }
+                            )
+                        })
+                        .count();
+                    if n > 1 {
+                        return Err(refuse(
+                            "caption-misplaced",
+                            "a Figure has one Caption".to_string(),
+                            *span,
+                        ));
+                    }
+                }
+                IrElementKind::Heading => {
+                    if let Some(level) = bindings.iter().find(|b| b.key == "level").and_then(int_of)
+                    {
+                        if let Some(prev) = *last_level
+                            && level > prev + 1
+                        {
+                            return Err(refuse(
+                                "heading-level-skipped",
+                                format!(
+                                    "a level {level} heading follows a level {prev} heading: a level is not skipped, because the outline of the page would have a hole"
+                                ),
+                                *span,
+                            ));
+                        }
+                        *last_level = Some(level);
+                    }
+                }
+                // a component placed here has headings of its own that this view cannot see: the order is unknown after it
+                IrElementKind::Named(_) => *last_level = None,
+                _ => {}
+            }
+            for c in children {
+                walk(c, Some(kind), w, last_level)?;
+            }
+        }
+        IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
+            for c in children {
+                walk(c, parent, w, last_level)?;
+            }
+        }
+        IrViewNode::Text { .. } => {}
+    }
+    Ok(())
+}
+
+/// The checks that need the whole program: heading order, anchors, landmarks, captions.
+pub fn check_program(ir: &IrFile) -> Result<(), LowerError> {
+    let mut w = Walk {
+        ids: Vec::new(),
+        anchors: Vec::new(),
+        mains: Vec::new(),
+        navs: Vec::new(),
+    };
+    for c in &ir.components {
+        let mut last = None;
+        walk(&c.view.body, None, &mut w, &mut last)?;
+    }
+    let mut seen = BTreeSet::new();
+    for (id, span) in &w.ids {
+        if !seen.insert(*id) {
+            return Err(refuse(
+                "anchor-duplicate",
+                format!(
+                    "the id \"{id}\" is given to two elements of this program; a link to it would go to one of them"
+                ),
+                *span,
+            ));
+        }
+    }
+    for (frag, span) in &w.anchors {
+        if !seen.contains(frag) {
+            return Err(refuse(
+                "anchor-unknown",
+                format!(
+                    "`to: \"#{frag}\"` points at an element with `id: \"{frag}\"`, and no element of this program has it"
+                ),
+                *span,
+            ));
+        }
+    }
+    if let Some(second) = w.mains.get(1) {
+        return Err(refuse(
+            "landmark-duplicate",
+            "a page has one Main: this is a second".to_string(),
+            *second,
+        ));
+    }
+    if w.navs.len() > 1
+        && let Some((_, span)) = w.navs.iter().find(|(named, _)| !named)
+    {
+        return Err(refuse(
+            "nav-label-missing",
+            "with more than one Nav, each needs `label:` so a screen reader can tell them apart: `Nav { label: \"Sections\" .. }`".to_string(),
+            *span,
+        ));
+    }
+    Ok(())
+}
+
+/// The hosts a view links to (`https://host/..`), and `mailto:` domains, sorted and without repeats: what `inspect effects` and `diff` list.
+pub fn link_hosts(node: &IrViewNode) -> BTreeSet<String> {
+    fn go(node: &IrViewNode, out: &mut BTreeSet<String>) {
+        match node {
+            IrViewNode::Element {
+                kind,
+                bindings,
+                children,
+                ..
+            } => {
+                if matches!(kind, IrElementKind::Link)
+                    && let Some(to) = bindings.iter().find(|b| b.key == "to").and_then(string_of)
+                {
+                    let lower = to.to_ascii_lowercase();
+                    if lower.starts_with("http://") || lower.starts_with("https://") {
+                        if let Some(h) = host_of(to) {
+                            out.insert(h);
+                        }
+                    } else if lower.starts_with("mailto:")
+                        && let Some(domain) = to
+                            .rsplit_once('@')
+                            .map(|(_, d)| d.split(['?', '#']).next().unwrap_or(d))
+                    {
+                        out.insert(format!("mailto:{}", domain.to_ascii_lowercase()));
+                    }
+                }
+                for c in children {
+                    go(c, out);
+                }
+            }
+            IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
+                for c in children {
+                    go(c, out);
+                }
+            }
+            IrViewNode::Text { .. } => {}
+        }
+    }
+    let mut out = BTreeSet::new();
+    go(node, &mut out);
+    out
+}

@@ -115,6 +115,12 @@ fn component(out: &mut String, d: &ComponentDiff) {
     for s in &d.schedules.removed {
         let _ = writeln!(out, "  - schedule {s}");
     }
+    for l in &d.links.added {
+        let _ = writeln!(out, "  + link {l}");
+    }
+    for l in &d.links.removed {
+        let _ = writeln!(out, "  - link {l}");
+    }
     for v in &d.view.added {
         let _ = writeln!(out, "  + view {v}");
     }
