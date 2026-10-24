@@ -115,4 +115,4 @@ Deliberate breaks planned (each must fail a check on its own): a tag changed in 
 
 1. **P1a (H1) first, P1b (H2) as its own PR**, or both in one. Recommendation: split, as above.
 2. A **new subcommand** `inspect prerender` and a **`recipe` module** moved out of `view.rs`: part of P1a.
-3. The `<noscript>` line is reworded and is absent from a fully static page. This changes the output of every `--page` build of a static program (the 13 gallery demos have holes, so they keep a line).
+3. The `<noscript>` line is reworded and is absent from a fully static page. This changes the output of every `--page` build of a static program (the 13 gallery demos are interactive and would keep the line; this was not checked demo by demo).
