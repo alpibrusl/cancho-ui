@@ -175,6 +175,7 @@ function host(dir) {
     check('C: the path form of the URL is a 404 online (the host knows no such file)', online.status() === 404, String(online.status()));
     await page.goto(`${base}#/items/gauge`);
     await page.waitForSelector('#root [role=heading]');
+    h.server.closeAllConnections(); // before waiting for `close`, which calls back only when no request is in flight
     await new Promise((ok) => h.server.close(ok));
     await page.goto(`${base}#/items/pump`);
     await page.waitForSelector('#root [role=heading]', { timeout: 5000 });

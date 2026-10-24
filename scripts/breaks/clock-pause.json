@@ -1,0 +1,57 @@
+{
+  "checks": [
+    {
+      "name": "check-ops-console.js",
+      "argv": [
+        "node",
+        "scripts/check-ops-console.js"
+      ]
+    },
+    {
+      "name": "check-stream.js",
+      "argv": [
+        "node",
+        "scripts/check-stream.js"
+      ]
+    },
+    {
+      "name": "check-schedules.js",
+      "argv": [
+        "node",
+        "scripts/check-schedules.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "ops-console: the clock is read back, 50 ms pass, and it is paused at now + 1",
+      "file": "scripts/check-ops-console.js",
+      "from": "  await page.clock.pauseAt(60000);\n\n  // the tone",
+      "to": "  await page.goto('about:blank');\n  const nowRead = await page.evaluate(() => Date.now());\n  await page.evaluate(() => new Promise((r) => setTimeout(r, 50)));\n  await page.clock.pauseAt(nowRead + 1);\n\n  // the tone"
+    },
+    {
+      "name": "ops-console, third page: the same race",
+      "file": "scripts/check-ops-console.js",
+      "from": "  await p3.clock.pauseAt(60000); // before the page exists, as above",
+      "to": "  await p3.goto('about:blank');\n  const nowRead3 = await p3.evaluate(() => Date.now());\n  await p3.evaluate(() => new Promise((r) => setTimeout(r, 50)));\n  await p3.clock.pauseAt(nowRead3 + 1);"
+    },
+    {
+      "name": "stream: the main page reads the clock back and pauses at now + 1",
+      "file": "scripts/check-stream.js",
+      "from": "    await page.clock.pauseAt(60000);\n  }\n  await page.goto(url);",
+      "to": "    await page.goto('about:blank');\n    const nowRead = await page.evaluate(() => Date.now());\n  await page.evaluate(() => new Promise((r) => setTimeout(r, 50)));\n  await page.clock.pauseAt(nowRead + 1);\n  }\n  await page.goto(url);"
+    },
+    {
+      "name": "stream, behind a worker: the same race",
+      "file": "scripts/check-stream.js",
+      "from": "    await page.clock.pauseAt(60000); // before the page exists: a time read back and paused at `now + 1` is a race",
+      "to": "    await page.goto('about:blank');\n    const nowRead2 = await page.evaluate(() => Date.now());\n  await page.evaluate(() => new Promise((r) => setTimeout(r, 50)));\n  await page.clock.pauseAt(nowRead2 + 1);"
+    },
+    {
+      "name": "schedules: the same race",
+      "file": "scripts/check-schedules.js",
+      "from": "  await page.clock.pauseAt(60000);\n  const errors = [];",
+      "to": "  await page.goto('about:blank');\n  const nowRead = await page.evaluate(() => Date.now());\n  await page.evaluate(() => new Promise((r) => setTimeout(r, 50)));\n  await page.clock.pauseAt(nowRead + 1);\n  const errors = [];"
+    }
+  ]
+}
