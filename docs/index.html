@@ -178,7 +178,7 @@ footer { border-top: 1px solid var(--line); padding: 1.5rem 0 2rem; color: var(-
         }
     }
 }</code></pre>
-  <p class="fine">Every example is in <a href="https://github.com/alpibrusl/cancho-ui/tree/main/examples">examples/</a> (26 programs): a counter, a stopwatch, a searchable list with cancellation, composed components, cross-file imports, notes in <code>Storage</code>, a machine console and more. Twelve of them run live in the <a href="#gallery">gallery</a>.</p>
+  <p class="fine">Every example is in <a href="https://github.com/alpibrusl/cancho-ui/tree/main/examples">examples/</a> (25 programs): a counter, a stopwatch, a searchable list with cancellation, composed components, cross-file imports, notes in <code>Storage</code>, a machine console and more. Twelve of them run live in the <a href="#gallery">gallery</a>.</p>
 </div></section>
 
 <!-- gallery:start -->
@@ -231,13 +231,14 @@ footer { border-top: 1px solid var(--line); padding: 1.5rem 0 2rem; color: var(-
       <p>One screen in English, Arabic and Russian. The texts are catalogs the compiler checks (a missing key or a plural form a language lacks is refused); numbers, percent, dates and times are written from tables, not <code>Intl</code>. The page starts in the browser's language, switches with a button, and turns right to left for Arabic.</p>
       <iframe class="" title="Languages and right to left, built by cancho-ui" src="demo/i18n/" loading="lazy"></iframe>
       <p class="glinks"><a href="demo/i18n/">Open on its own</a> <a href="https://github.com/alpibrusl/cancho-ui/blob/main/examples/i18n/i18n.cui">Source: i18n.cui</a></p></li>
+    <li class="gtile"><h4>Reordering a list</h4>
+      <p><code>SortList</code>: drag a row by its handle (mouse, pen or finger), or move it with its up and down buttons from the keyboard; the focus follows the row, a live region says where it went, and the page is not redrawn under a drag. The program owns the list and accepts a move with one line, <code>move(tasks, from, to)</code>.</p>
+      <iframe class="" title="Reordering a list, built by cancho-ui" src="demo/reorder/" loading="lazy"></iframe>
+      <p class="glinks"><a href="demo/reorder/">Open on its own</a> <a href="https://github.com/alpibrusl/cancho-ui/blob/main/examples/reorder/reorder.cui">Source: reorder.cui</a></p></li>
   </ul>
   <h3 class="gh">Coming soon</h3>
   <p class="lead">Not built, and not promised for any date. Each tile says what is missing and links the issue that tracks it.</p>
   <ul class="gallery">
-    <li class="gtile soon"><h4>Drag and drop <span class="badge">Coming soon</span></h4>
-      <p>Missing: Drag events and a keyboard alternative; the only events are a button press and text input.</p>
-      <p class="glinks"><a href="https://github.com/alpibrusl/cancho-ui/issues/80">Tracked in #80</a></p></li>
     <li class="gtile soon"><h4>Maps <span class="badge">Coming soon</span></h4>
       <p>Missing: A map or image primitive and a typed position; <code>location.current()</code> answers rounded text.</p>
       <p class="glinks"><a href="https://github.com/alpibrusl/cancho-ui/issues/81">Tracked in #81</a></p></li>
@@ -252,7 +253,7 @@ footer { border-top: 1px solid var(--line); padding: 1.5rem 0 2rem; color: var(-
   <h2>Measured, not promised</h2>
   <p class="lead">What the repository can show today.</p>
   <div class="nums">
-    <div class="num"><b>26</b><span>example programs compile, and 21 of them replay a recorded trace</span></div>
+    <div class="num"><b>25</b><span>example programs compile, and 21 of them replay a recorded trace</span></div>
     <div class="num"><b>390+</b><span>tests pass under <code>cargo test --workspace</code></span></div>
     <div class="num"><b>~26,000</b><span>mutated programs (every prefix, every one-character deletion) refused or accepted, never a panic</span></div>
     <div class="num"><b>0</b><span>clippy warnings under <code>-D warnings</code></span></div>
