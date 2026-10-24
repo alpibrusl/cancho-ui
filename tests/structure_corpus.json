@@ -5,7 +5,8 @@
   {
    "name": "headings in order, one with an interpolation",
    "view": "Heading { level: 1 \"Tools\" } Heading { level: 2 \"Step {n}\" } Heading { level: 3 \"Sub\" } Heading { level: 2 \"Next\" }",
-   "html": "<div class=\"cui-col\"><h1>Tools</h1><h2>Step 0</h2><h3>Sub</h3><h2>Next</h2></div>"
+   "html": "<div class=\"cui-col\"><h1>Tools</h1><h2>Step 0</h2><h3>Sub</h3><h2>Next</h2></div>",
+   "html_static": "<div class=\"cui-col\"><h1>Tools</h1><h3>Sub</h3><h2>Next</h2></div>"
   },
   {
    "name": "a section with an id and a name",
@@ -50,7 +51,8 @@
   {
    "name": "a Rich with a role and an interpolation",
    "view": "Rich { style: \"lead\" \"Hello \" Strong { \"x\" } \", n is {n}\" }",
-   "html": "<div class=\"cui-col\"><p data-style=\"lead\">Hello <strong>x</strong>, n is 0</p></div>"
+   "html": "<div class=\"cui-col\"><p data-style=\"lead\">Hello <strong>x</strong>, n is 0</p></div>",
+   "html_static": ""
   },
   {
    "name": "inline content in a heading",
@@ -86,12 +88,14 @@
    "name": "a code block that can be copied and scrolls",
    "view": "Code { copy: true max_height: 28 \"x\" }",
    "html": "<div class=\"cui-col\"><div class=\"cui-code\" data-copy=\"\"><pre style=\"max-height: 28rem;\" tabindex=\"0\"><code>x</code></pre><button aria-label=\"Copy the code\" class=\"cui-copy\" type=\"button\">Copy</button></div></div>",
-   "requires": "Clipboard"
+   "requires": "Clipboard",
+   "html_static": "<div class=\"cui-col\"><div class=\"cui-code\" data-copy=\"\"><pre style=\"max-height: 28rem;\" tabindex=\"0\"><code>x</code></pre></div></div>"
   },
   {
    "name": "a code block with a brace and an interpolation",
    "view": "Code { \"\\{\\\"k\\\": \\{n\\}\\} = {n}\" }",
-   "html": "<div class=\"cui-col\"><div class=\"cui-code\"><pre tabindex=\"0\"><code>{\"k\": {n}} = 0</code></pre></div></div>"
+   "html": "<div class=\"cui-col\"><div class=\"cui-code\"><pre tabindex=\"0\"><code>{\"k\": {n}} = 0</code></pre></div></div>",
+   "html_static": ""
   },
   {
    "name": "an image with a webp, a jpg to fall back on, and a ratio",
@@ -146,7 +150,58 @@
   {
    "name": "a grid of three weights, and a For in a grid with no weights",
    "view": "Grid { min: 10 weights: [1, 2, 4] Text { \"a\" } Text { \"b\" } Text { \"c\" } } Grid { min: 9 For { over: items as: i Text { i } } }",
-   "html": "<div class=\"cui-col\"><div class=\"cui-grid cui-grid-w\" style=\"--cui-min: 10rem; --cui-w1: 1; --cui-w2: 2; --cui-w3: 4;\"><span>a</span><span>b</span><span>c</span></div><div class=\"cui-grid\" style=\"--cui-min: 9rem;\"><span>a</span></div></div>"
+   "html": "<div class=\"cui-col\"><div class=\"cui-grid cui-grid-w\" style=\"--cui-min: 10rem; --cui-w1: 1; --cui-w2: 2; --cui-w3: 4;\"><span>a</span><span>b</span><span>c</span></div><div class=\"cui-grid\" style=\"--cui-min: 9rem;\"><span>a</span></div></div>",
+   "html_static": "<div class=\"cui-col\"><div class=\"cui-grid cui-grid-w\" style=\"--cui-min: 10rem; --cui-w1: 1; --cui-w2: 2; --cui-w3: 4;\"><span>a</span><span>b</span><span>c</span></div><div class=\"cui-grid\" style=\"--cui-min: 9rem;\"></div></div>"
+  },
+  {
+   "name": "text that looks like markup stays text",
+   "view": "Rich { \"a </script> <!-- b & c <b>x</b> \\\"q\\\"\" }",
+   "html": "<div class=\"cui-col\"><p>a &lt;/script&gt; &lt;!-- b &amp; c &lt;b&gt;x&lt;/b&gt; \"q\"</p></div>"
+  },
+  {
+   "name": "a code block that starts with a line break",
+   "view": "Code { \"\\nx\" }",
+   "html": "<div class=\"cui-col\"><div class=\"cui-code\"><pre tabindex=\"0\"><code>\nx</code></pre></div></div>"
+  },
+  {
+   "name": "a button among static siblings is left to the script",
+   "view": "Section { Heading { level: 2 \"Title\" } Button { label: \"Up\" on: Up } Text { \"after\" } }",
+   "html": "<div class=\"cui-col\"><section><h2>Title</h2><button aria-label=\"Up\">Up</button><span>after</span></section></div>",
+   "html_static": "<div class=\"cui-col\"><section><h2>Title</h2><span>after</span></section></div>"
+  },
+  {
+   "name": "a sentence with a hole in it is not shown in part",
+   "view": "Rich { \"Count: \" Strong { \"{n}\" } } Text { \"kept\" }",
+   "html": "<div class=\"cui-col\"><p>Count: <strong>0</strong></p><span>kept</span></div>",
+   "html_static": "<div class=\"cui-col\"><span>kept</span></div>"
+  },
+  {
+   "name": "a details whose rows are a For keeps its summary",
+   "view": "Details { summary: \"Rows\" For { over: items as: i Text { i } } }",
+   "html": "<div class=\"cui-col\"><details><summary>Rows</summary><span>a</span></details></div>",
+   "html_static": "<div class=\"cui-col\"><details><summary>Rows</summary></details></div>"
+  },
+  {
+   "name": "an If is the script's",
+   "view": "If { when: n == 0 Heading { level: 2 \"Zero\" } } Heading { level: 2 \"Always\" }",
+   "html": "<div class=\"cui-col\"><h2>Zero</h2><h2>Always</h2></div>",
+   "html_static": "<div class=\"cui-col\"><h2>Always</h2></div>"
+  },
+  {
+   "name": "a status text is a live region the script keeps, a heading text is static",
+   "view": "Text { role: status \"Ready\" } Text { role: heading \"Title\" }",
+   "html": "<div class=\"cui-col\"><span role=\"status\">Ready</span><span role=\"heading\">Title</span></div>",
+   "html_static": "<div class=\"cui-col\"><span role=\"heading\">Title</span></div>"
+  },
+  {
+   "name": "a column with a maximum width",
+   "view": "Column { max_width: 40 Text { \"x\" } }",
+   "html": "<div class=\"cui-col\"><div class=\"cui-col\" style=\"max-width: 40ch; margin-inline: auto;\"><span>x</span></div></div>"
+  },
+  {
+   "name": "a quote, an ampersand and a bracket in an attribute",
+   "view": "Image { src: \"assets/b.png\" alt: \"He said \\\"hi\\\" & <b>left</b>\" width: 2 height: 1 }",
+   "html": "<div class=\"cui-col\"><picture class=\"cui-img\" style=\"max-width: 2px;\"><img alt=\"He said &quot;hi&quot; &amp; <b>left</b>\" decoding=\"async\" height=\"1\" loading=\"lazy\" src=\"assets/b.png\" width=\"2\"></img></picture></div>"
   }
  ],
  "refusals": [

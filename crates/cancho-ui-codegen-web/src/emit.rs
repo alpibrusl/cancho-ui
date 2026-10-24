@@ -260,6 +260,8 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
     // A control the user is using must keep focus across the rebuild a state change causes.
     let keep_focus = ir.components.iter().any(|c| {
         view_has_focusable(&c.view.body)
+            // an `If` asks `__cui_appeared` which screen came (docs/screen-focus.md), and that is in the same adapter
+            || view_has_if(&c.view.body)
             || c.schedules.iter().any(|s| s.kind == IrScheduleKind::Route)
     });
     if keep_focus {
@@ -395,6 +397,16 @@ fn view_has_file(node: &IrViewNode) -> bool {
         IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
             children.iter().any(view_has_file)
         }
+        IrViewNode::Text { .. } => false,
+    }
+}
+
+fn view_has_if(node: &IrViewNode) -> bool {
+    match node {
+        IrViewNode::Element { children, .. } | IrViewNode::For { children, .. } => {
+            children.iter().any(view_has_if)
+        }
+        IrViewNode::If { .. } => true,
         IrViewNode::Text { .. } => false,
     }
 }

@@ -1,0 +1,211 @@
+{
+  "checks": [
+    {
+      "name": "cargo test prerender",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "prerender"
+      ]
+    },
+    {
+      "name": "cargo test recipe",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui-ir",
+        "--lib",
+        "recipe"
+      ]
+    },
+    {
+      "name": "cargo test structure",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "structure"
+      ]
+    },
+    {
+      "name": "check-structure.js",
+      "argv": [
+        "node",
+        "scripts/check-structure.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "a Column has no layout class",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "    if let Some(c) = kind.layout_class() {\n        class.push(c.to_string());\n    }",
+      "to": "    if let Some(c) = kind.layout_class().filter(|_| false) {\n        class.push(c.to_string());\n    }"
+    },
+    {
+      "name": "a gap is not a class",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "class.push(format!(\"cui-gap-{n}\"));",
+      "to": "class.push(format!(\"cui-gp-{n}\"));"
+    },
+    {
+      "name": "a max width is in px",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "format!(\"max-width: {n}ch; margin-inline: auto;\")",
+      "to": "format!(\"max-width: {n}px; margin-inline: auto;\")"
+    },
+    {
+      "name": "a < in text is written as it is",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "'<' => out.push_str(\"&lt;\"),",
+      "to": "'<' => out.push('<'),"
+    },
+    {
+      "name": "an & in text is written as it is",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "'&' => out.push_str(\"&amp;\"),",
+      "to": "'&' => out.push('&'),"
+    },
+    {
+      "name": "a quote in an attribute is written as it is",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "'\"' if attr => out.push_str(\"&quot;\"),",
+      "to": "'\"' if attr => out.push('\"'),"
+    },
+    {
+      "name": "a carriage return is written as it is",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "'\\r' => out.push_str(\"&#13;\"),",
+      "to": "'\\r' => out.push('\\r'),"
+    },
+    {
+      "name": "a NUL is written",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "!s.contains('\\0')",
+      "to": "true"
+    },
+    {
+      "name": "a hole in a sentence leaves the rest of it",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "            if kind.holds_text()\n                && let Some((inner, why)) = first_hole(node)",
+      "to": "            if false\n                && let Some((inner, why)) = first_hole(node)"
+    },
+    {
+      "name": "a status text is static",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": ".is_some_and(|r| !matches!(r, IrRole::Heading))",
+      "to": ".is_some_and(|r| !matches!(r, IrRole::Heading) && false)"
+    },
+    {
+      "name": "a page of empty boxes has content",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "        self.out.static_elements += 1;\n",
+      "to": "        self.out.static_elements += 1;\n        self.out.content = true;\n"
+    },
+    {
+      "name": "text in a sentence is a span each",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "IrViewNode::Text { parts, .. } if text_path => {",
+      "to": "IrViewNode::Text { parts, .. } if false && text_path => {"
+    },
+    {
+      "name": "a details has no summary line",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "            if let Some(t) = &s.summary {\n                w.open(\"summary\", &[]);",
+      "to": "            if let Some(t) = s.summary.as_ref().filter(|_| false) {\n                w.open(\"summary\", &[]);"
+    },
+    {
+      "name": "an id is not counted",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "            if *k == \"id\" {\n                self.out.ids += 1;\n            }",
+      "to": ""
+    },
+    {
+      "name": "the tag of a Heading is its level plus one",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "tag: structure::tag(kind, bindings),",
+      "to": "tag: if matches!(kind, IrElementKind::Heading) { \"h5\" } else { structure::tag(kind, bindings) },"
+    },
+    {
+      "name": "a code box has no tabindex",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "let mut pre = Dom::element(\"pre\").attr(\"tabindex\", \"0\");",
+      "to": "let mut pre = Dom::element(\"pre\");"
+    },
+    {
+      "name": "the line stays on a page with nothing missing",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "            if p.holes.is_empty() {\n                \"\"\n            } else {\n                \"<noscript>Some parts of this page need JavaScript.</noscript>\\n\"\n            }",
+      "to": "            \"<noscript>Some parts of this page need JavaScript.</noscript>\\n\""
+    },
+    {
+      "name": "a page with holes says the old thing",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "\"<noscript>Some parts of this page need JavaScript.</noscript>\\n\"",
+      "to": "\"<noscript>This app needs JavaScript.</noscript>\\n\""
+    },
+    {
+      "name": "the fragment script is left out",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "if p.ids > 0 { HASH } else { \"\" }",
+      "to": "\"\""
+    },
+    {
+      "name": "every page has the fragment script",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "if p.ids > 0 { HASH } else { \"\" }",
+      "to": "HASH"
+    },
+    {
+      "name": "the program's text is read for tokens",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "format!(\"{}{}{}\", fill(head), root_block(prerender), fill(tail))",
+      "to": "fill(&format!(\"{}{}{}\", head, root_block(prerender), tail))"
+    },
+    {
+      "name": "a page with no content has an empty box",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "Some(p) if p.content => format!(",
+      "to": "Some(p) if p.static_elements > 0 => format!("
+    },
+    {
+      "name": "the script does not write the class of a shell",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "                for (name, value) in &shell.attrs {",
+      "to": "                for (name, value) in shell.attrs.iter().filter(|(n, _)| *n != \"class\") {"
+    },
+    {
+      "name": "the script does not write the summary of a details",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "                if let Some(text) = &shell.summary {",
+      "to": "                if let Some(text) = shell.summary.as_ref().filter(|_| false) {"
+    },
+    {
+      "name": "an If does not bring its adapter",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "            || view_has_if(&c.view.body)\n",
+      "to": ""
+    },
+    {
+      "name": "a link that moved is not found again",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "n = twins[saved.nth] || null;",
+      "to": "n = null;"
+    },
+    {
+      "name": "inspect says every component is mounted",
+      "file": "crates/cancho-ui/src/main.rs",
+      "from": "\"mounted\": idx + 1 == ir.components.len(),",
+      "to": "\"mounted\": true,"
+    }
+  ]
+}

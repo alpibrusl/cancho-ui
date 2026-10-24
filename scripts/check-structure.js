@@ -29,6 +29,7 @@ const ROOT = path.join(__dirname, '..');
 const BIN = path.join(ROOT, 'target', 'debug', 'cancho-ui');
 const corpus = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'structure_corpus.json'), 'utf8'));
 const failures = [];
+let holdApp = 0;
 const watchdog = setTimeout(() => { console.log('FAIL watchdog: the check did not finish in 5 minutes'); process.exit(1); }, 5 * 60 * 1000);
 function check(label, ok, detail) {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${label}${detail ? `: ${detail}` : ''}`);
@@ -98,7 +99,8 @@ const SERIALISE = `(function () {
     fs.readFile(f, (e, d) => {
       if (e) { r.statusCode = 404; r.end(); return; }
       r.setHeader('content-type', { '.html': 'text/html', '.js': 'text/javascript', '.woff2': 'font/woff2' }[path.extname(f)] || 'application/octet-stream');
-      r.end(d);
+      // part G holds the script back, to look at the page before it has run
+      if (holdApp && f.endsWith('app.js')) { setTimeout(() => r.end(d), holdApp); } else { r.end(d); }
     });
   });
   await new Promise((ok) => server.listen(0, ok));
@@ -120,6 +122,81 @@ const SERIALISE = `(function () {
       check(`A: ${c.name}: the page is the DOM the corpus says`, got === c.html, got === c.html ? '' : `\n  got  ${got}\n  want ${c.html}`);
     }
     check('A: no script error', errors.length === 0, errors.join(' | '));
+    await ctx.close();
+  }
+
+  // G. prerender (docs/prerender.md): the page that was written at build time, read with JavaScript OFF, is the corpus's DOM: all of it for a view
+  // with no hole, and the DOM with the holes left out (`html_static`) for a view that has some. Then the script runs and the static parts are
+  // what they were (A has the whole DOM with script).
+  {
+    const ctx = await browser.newContext({ ...devices['Pixel 7'], javaScriptEnabled: false, serviceWorkers: 'block' });
+    const page = await ctx.newPage();
+    for (const c of corpus.valid) {
+      const b = buildText(`component C {\n    ${c.requires ? `requires ${c.requires};\n    ` : ''}${corpus.state}\n    view { Column { ${c.view} } }\n}\n`);
+      if (b.code !== 0) { check(`G: ${c.name}: builds`, false, b.err.slice(0, 160)); continue; }
+      await page.goto(`${base}/${b.id}/`);
+      const got = await page.evaluate(SERIALISE);
+      const want = c.html_static !== undefined ? c.html_static : c.html;
+      check(`G: ${c.name}: without script the page is ${c.html_static !== undefined ? 'its static part' : 'the whole DOM'}`, got === want, got === want ? '' : `\n  got  ${got}\n  want ${want}`);
+    }
+    await ctx.close();
+  }
+
+  // G (continued). the page of examples/structure before and after its script: written at build time, the script held back for 1.5 s
+  {
+    const exs = build(path.join(ROOT, 'examples/structure/structure.cui'));
+    check('G: the example builds with a prerendered page', exs.code === 0, exs.err.slice(0, 160));
+    const html = fs.readFileSync(path.join(work, 'site', exs.id, 'index.html'), 'utf8');
+    check('G: the page carries the one script that goes to a fragment, after the root and before the module', (html.match(/scrollIntoView/g) || []).length === 1 && html.indexOf('<div id="root">') < html.indexOf('scrollIntoView') && html.indexOf('scrollIntoView') < html.indexOf('type="module"'));
+    check('G: and says some parts need script, as the example has buttons', html.includes('<noscript>Some parts of this page need JavaScript.</noscript>') && !html.includes('This app needs JavaScript.'));
+    // without script: no control at all, and nothing is a hole's leftover
+    const off = await browser.newContext({ ...devices['Pixel 7'], javaScriptEnabled: false, serviceWorkers: 'block' });
+    const op = await off.newPage();
+    await op.goto(`${base}/${exs.id}/`);
+    const bare = await op.evaluate(() => ({ controls: document.querySelectorAll('button, input, textarea, select').length, headings: [...document.querySelectorAll('h1,h2,h3')].map((h) => h.textContent), text: document.body.innerText.length, ids: [...document.querySelectorAll('[id]')].length }));
+    check('G: without script a visitor is shown headings and text and no control that does nothing', bare.controls === 0 && bare.headings.length >= 6 && bare.text > 300, JSON.stringify(bare));
+    await off.close();
+    holdApp = 1500;
+    // a short window, so that the page is taller than the screen and #demo can come to the top
+    const ctx = await browser.newContext({ ...devices['Pixel 7'], viewport: { width: 412, height: 300 }, serviceWorkers: 'block' });
+    const page = await ctx.newPage();
+    await page.addInitScript(() => { window.__shifts = 0; new PerformanceObserver((l) => { for (const e of l.getEntries()) { if (!e.hadRecentInput) { window.__shifts += e.value; } } }).observe({ type: 'layout-shift', buffered: true }); });
+    const where = () => page.evaluate(() => ({ y: Math.round(scrollY), top: Math.round(document.getElementById('demo').getBoundingClientRect().top), max: document.documentElement.scrollHeight - innerHeight }));
+    const atTarget = (w) => Math.abs(w.top) <= 2 || w.y >= w.max - 1;
+    // (a) opened at a fragment: the page is there before the script, and after it
+    await page.goto(`${base}/${exs.id}/#demo`, { waitUntil: 'commit' });
+    await page.waitForSelector('h1');
+    await sleep(500);
+    const before = { ...(await where()), buttons: await page.evaluate(() => document.querySelectorAll('button').length) };
+    check('G: before the script the page is already at #demo (or as far down as it goes), with no button yet', atTarget(before) && before.buttons === 0, JSON.stringify(before));
+    await page.waitForFunction(() => document.querySelectorAll('button').length > 0, null, { timeout: 8000 });
+    await sleep(300);
+    const after = await page.evaluate(() => { const ids = [...document.querySelectorAll('[id]')].map((e) => e.id); return { dup: ids.length - new Set(ids).size, roots: document.querySelectorAll('#root').length, shifts: window.__shifts, h1: document.querySelectorAll('h1').length }; });
+    const afterAt = await where();
+    check('G: after the script nothing is duplicated, the page is still at #demo, and nothing moved', after.dup === 0 && after.roots === 1 && after.h1 === 1 && atTarget(afterAt) && after.shifts < 0.01, JSON.stringify({ before, after, afterAt }));
+    // (b) a link after the parts the script draws, focused before the script: the same link has the focus after it. Not with a fragment in
+    // the address: the browser runs its fragment navigation again when the page has loaded, which clears the focus (measured: it does so on a page with
+    // no prerender as well)
+    await page.goto(`${base}/${exs.id}/`, { waitUntil: 'commit' });
+    await page.waitForSelector('footer a');
+    await page.locator('footer a').first().focus();
+    const focusBefore = await page.evaluate(() => document.activeElement.textContent);
+    await page.waitForFunction(() => document.querySelectorAll('button').length > 0, null, { timeout: 8000 });
+    await sleep(300);
+    const focusAfter = await page.evaluate(() => [document.activeElement.tagName, document.activeElement.textContent, document.activeElement.closest('footer') !== null]);
+    check('G: a link focused before the script, below the parts it draws, has the focus after it', focusAfter[0] === 'A' && focusAfter[1] === focusBefore && focusAfter[2], JSON.stringify({ focusBefore, focusAfter }));
+    // (c) the same, where the part the script draws is a sibling BEFORE the link, so the link has another place in the tree once the script has run
+    const sib = buildText('component C {\n    state n: Int = 0;\n    on Up { n = n + 1; }\n    view { Column { Heading { level: 1 "Title" } Button { label: "Up" on: Up } Link { to: "https://a.example/" "A link" } Link { to: "https://b.example/" "Another link" } } }\n}\n');
+    check('G: the sibling program builds', sib.code === 0, sib.err.slice(0, 160));
+    await page.goto(`${base}/${sib.id}/`, { waitUntil: 'commit' });
+    await page.waitForSelector('h1');
+    check('G: before the script the links are the only things after the heading', (await page.evaluate(() => document.querySelectorAll('#root button').length)) === 0);
+    await page.locator('a', { hasText: 'Another link' }).focus();
+    await page.waitForFunction(() => document.querySelectorAll('#root button').length > 0, null, { timeout: 8000 });
+    await sleep(300);
+    const moved = await page.evaluate(() => [document.activeElement.tagName, document.activeElement.textContent, [...document.querySelectorAll('#root a')].indexOf(document.activeElement)]);
+    check('G: a link that has another place in the tree after the script (a button came before it) still has the focus', moved[0] === 'A' && moved[1] === 'Another link', JSON.stringify(moved));
+    holdApp = 0;
     await ctx.close();
   }
 

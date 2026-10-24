@@ -392,74 +392,99 @@ pub(crate) fn emit_view_node(
                     params,
                 );
             }
+            // A static element is written from the recipe the prerenderer reads (docs/prerender.md): one function says what it is, so the
+            // page the script builds and the page that was written at build time cannot differ.
+            let shell = cancho_ui_ir::recipe::shell(kind, accessibility, bindings);
             let mut out = format!(
                 "{0}const {1} = document.createElement('{2}');\n",
-                indent, var, tag
+                indent,
+                var,
+                shell.as_ref().map_or(tag, |s| s.tag)
             );
-            if let Some(cls) = kind.layout_class() {
-                out.push_str(&format!("{0}{1}.classList.add('{2}');\n", indent, var, cls));
-            }
-            // the structure elements' recipe (docs/structure.md): an id, an address, a typographic role, an appearance, a summary
-            for (name, value) in cancho_ui_ir::structure::attrs(kind, bindings) {
-                out.push_str(&format!(
-                    "{0}{1}.setAttribute('{2}', {3});\n",
-                    indent,
-                    var,
-                    name,
-                    js_string(&value)
-                ));
-            }
-            if let Some(cls) = cancho_ui_ir::structure::class(kind, bindings) {
-                out.push_str(&format!("{0}{1}.classList.add('{2}');\n", indent, var, cls));
-            }
-            // a Grid's minimum and weights are custom properties of its own, read by the stylesheet (docs/structure.md section 10)
-            if let Some(cls) = cancho_ui_ir::media::class(kind, bindings) {
-                out.push_str(&format!("{0}{1}.classList.add('{2}');\n", indent, var, cls));
-            }
-            if matches!(kind, IrElementKind::Grid)
-                && let Some(style) = cancho_ui_ir::media::grid_style(bindings)
-            {
-                out.push_str(&format!(
-                    "{0}{1}.setAttribute('style', {2});\n",
-                    indent,
-                    var,
-                    js_string(&style)
-                ));
-            }
-            if matches!(kind, IrElementKind::Details)
-                && let Some(text) = cancho_ui_ir::structure::summary(bindings)
-            {
-                out.push_str(&format!(
-                    "{0}const {1}_summary = document.createElement('summary');\n{0}{1}_summary.textContent = {2};\n{0}{1}.appendChild({1}_summary);\n",
-                    indent,
-                    var,
-                    js_string(&text)
-                ));
-            }
-            if let Some(role) = &accessibility.role {
-                let r = match role {
-                    IrRole::Text => "text",
-                    IrRole::Heading => "heading",
-                    IrRole::Button => "button",
-                    IrRole::Other(s) => s.as_str(),
-                };
-                out.push_str(&format!(
-                    "{0}{1}.setAttribute('role', {2});\n",
-                    indent,
-                    var,
-                    js_string(r)
-                ));
-            }
-            // A chart's name is its SVG's `aria-label` (label and summary), not the figure's.
-            if let (Some(label), false) =
-                (&accessibility.label, matches!(kind, IrElementKind::Chart))
-            {
-                out.push_str(&format!(
-                    "{0}{1}.setAttribute('aria-label', {2});\n",
-                    indent,
-                    var,
-                    js_string(label)
-                ));
+            if let Some(shell) = &shell {
+                for (name, value) in &shell.attrs {
+                    out.push_str(&format!(
+                        "{0}{1}.setAttribute('{2}', {3});\n",
+                        indent,
+                        var,
+                        name,
+                        js_string(value)
+                    ));
+                }
+                if let Some(text) = &shell.summary {
+                    out.push_str(&format!(
+                        "{0}const {1}_summary = document.createElement('summary');\n{0}{1}_summary.textContent = {2};\n{0}{1}.appendChild({1}_summary);\n",
+                        indent,
+                        var,
+                        js_string(text)
+                    ));
+                }
+            } else {
+                if let Some(cls) = kind.layout_class() {
+                    out.push_str(&format!("{0}{1}.classList.add('{2}');\n", indent, var, cls));
+                }
+                // the structure elements' recipe (docs/structure.md): an id, an address, a typographic role, an appearance, a summary
+                for (name, value) in cancho_ui_ir::structure::attrs(kind, bindings) {
+                    out.push_str(&format!(
+                        "{0}{1}.setAttribute('{2}', {3});\n",
+                        indent,
+                        var,
+                        name,
+                        js_string(&value)
+                    ));
+                }
+                if let Some(cls) = cancho_ui_ir::structure::class(kind, bindings) {
+                    out.push_str(&format!("{0}{1}.classList.add('{2}');\n", indent, var, cls));
+                }
+                // a Grid's minimum and weights are custom properties of its own, read by the stylesheet (docs/structure.md section 10)
+                if let Some(cls) = cancho_ui_ir::media::class(kind, bindings) {
+                    out.push_str(&format!("{0}{1}.classList.add('{2}');\n", indent, var, cls));
+                }
+                if matches!(kind, IrElementKind::Grid)
+                    && let Some(style) = cancho_ui_ir::media::grid_style(bindings)
+                {
+                    out.push_str(&format!(
+                        "{0}{1}.setAttribute('style', {2});\n",
+                        indent,
+                        var,
+                        js_string(&style)
+                    ));
+                }
+                if matches!(kind, IrElementKind::Details)
+                    && let Some(text) = cancho_ui_ir::structure::summary(bindings)
+                {
+                    out.push_str(&format!(
+                        "{0}const {1}_summary = document.createElement('summary');\n{0}{1}_summary.textContent = {2};\n{0}{1}.appendChild({1}_summary);\n",
+                        indent,
+                        var,
+                        js_string(&text)
+                    ));
+                }
+                if let Some(role) = &accessibility.role {
+                    let r = match role {
+                        IrRole::Text => "text",
+                        IrRole::Heading => "heading",
+                        IrRole::Button => "button",
+                        IrRole::Other(s) => s.as_str(),
+                    };
+                    out.push_str(&format!(
+                        "{0}{1}.setAttribute('role', {2});\n",
+                        indent,
+                        var,
+                        js_string(r)
+                    ));
+                }
+                // A chart's name is its SVG's `aria-label` (label and summary), not the figure's.
+                if let (Some(label), false) =
+                    (&accessibility.label, matches!(kind, IrElementKind::Chart))
+                {
+                    out.push_str(&format!(
+                        "{0}{1}.setAttribute('aria-label', {2});\n",
+                        indent,
+                        var,
+                        js_string(label)
+                    ));
+                }
             }
 
             // A table's rows go in its `<tbody>` (docs/presentation.md section 4); a header cell says it heads a column.
@@ -531,7 +556,8 @@ pub(crate) fn emit_view_node(
             // props object, not into wrapper attributes.
             let mut props_obj: Vec<(String, &IrExpr)> = Vec::new();
             for b in bindings {
-                if cancho_ui_ir::structure::handles(kind, &b.key)
+                if shell.is_some()
+                    || cancho_ui_ir::structure::handles(kind, &b.key)
                     || cancho_ui_ir::media::handles(kind, &b.key)
                 {
                     continue;

@@ -7,7 +7,7 @@ use cancho_ui_ir::media::Dom;
 
 use crate::emit::js_string;
 
-fn emit_dom(indent: &str, var: &str, dom: &Dom, parent: &str, out: &mut String) {
+pub(crate) fn emit_dom(indent: &str, var: &str, dom: &Dom, parent: &str, out: &mut String) {
     out.push_str(&format!(
         "{indent}const {var} = document.createElement('{}');\n",
         dom.tag
