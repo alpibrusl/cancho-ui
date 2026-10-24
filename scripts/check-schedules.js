@@ -17,6 +17,9 @@ const ROOT = path.join(__dirname, '..');
 const CANCHO_UI = process.argv[2] || path.join(ROOT, 'target', 'debug', 'cancho-ui');
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
 
+// A check that waits for a page must not wait for ever (a spoiled page can leave a promise unsettled): it fails on its own after 4 minutes.
+setTimeout(() => { console.error('FAIL the check took more than 4 minutes'); process.exit(1); }, 240000).unref();
+
 const failures = [];
 function check(label, ok, detail) {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${label}${detail ? `: ${detail}` : ''}`);
@@ -97,6 +100,11 @@ function serve(dir, hits) {
   const browser = await chromium.launch({ args: ['--no-proxy-server'] });
   const page = await browser.newPage();
   await page.clock.install({ time: 0 });
+  // Playwright's clock keeps running in real time after install, and `pauseAt` cannot go back: reading `Date.now()` in the page
+  // and pausing at `now + 1` failed with "Cannot fast-forward to the past" whenever more than 1 ms passed in between (1 run in 36
+  // with six busy loops on four cores, #74). Pause at a time the clock cannot have reached yet, before the page exists, and move
+  // time with `runFor` only.
+  await page.clock.pauseAt(60000);
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   const settle = async (n) => { for (let i = 0; i < 100; i++) { if (hits.count === n) { await page.waitForTimeout(100); return hits.count === n; } await page.waitForTimeout(30); } return false; };
@@ -105,10 +113,7 @@ function serve(dir, hits) {
   await page.waitForSelector('#root *');
   check('start runs once, after the first render', await settle(1), String(hits.count));
 
-  // Playwright's clock keeps running after install; stop it, so that only `runFor` moves time from here on. A window of
-  // 1000 ms holds exactly one tick, wherever the first one falls.
-  const now = await page.evaluate(() => Date.now());
-  await page.clock.pauseAt(now + 1);
+  // The clock is paused (above), so that only `runFor` moves time. A window of 1000 ms holds exactly one tick, wherever the first one falls.
   await page.waitForTimeout(1200);
   check('time stands still when paused: no tick without runFor', await settle(1), String(hits.count));
   await page.clock.runFor(1000);
