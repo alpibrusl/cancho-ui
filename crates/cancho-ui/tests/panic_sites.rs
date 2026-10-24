@@ -5,6 +5,7 @@
 //!
 //! Also: the paths that replaced the old panic sites are reached by real input (the CLI usage errors, the parser's
 //! constructor-arity refusals, the lexer at the end of the source).
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -125,7 +126,7 @@ fn constructors_with_the_wrong_arity_are_refused_by_the_parser() {
         let src = format!(
             "component C {{\n    state n: Int = 0;\n    on Go {{ n = {call}; }}\n    view {{ Text {{ \"{{n}}\" }} }}\n}}\n"
         );
-        let dir = std::env::temp_dir().join(format!("cancho-ui-sites-{}", std::process::id()));
+        let dir = common::scratch_root().join(format!("cancho-ui-sites-{}", std::process::id()));
         std::fs::create_dir_all(&dir).expect("a scratch directory");
         let path = dir.join("c.cui");
         std::fs::write(&path, src).expect("a scratch file");

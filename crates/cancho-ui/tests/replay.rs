@@ -1,6 +1,7 @@
 //! `cancho-ui test`: deterministic replay (docs/replay.md). Engine tests run
 //! in-process over small programs written for the purpose; the CLI tests run the
 //! binary over the example traces.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -763,7 +764,8 @@ fn every_example_trace_passes_through_the_binary() {
 }
 
 fn scratch(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cancho-ui-replay-{name}-{}", std::process::id()));
+    let dir =
+        common::scratch_root().join(format!("cancho-ui-replay-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("scratch dir");
     dir

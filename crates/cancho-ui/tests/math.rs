@@ -1,6 +1,7 @@
 //! `min`, `max`, `abs`, `floor`, `ceil` and `round` (`docs/lists.md` section 8, issue #43): the model in replay against
 //! `tests/math_corpus.json` (the file `scripts/check-lists.js` runs against the emitted JavaScript, comparing with
 //! `Object.is`), what is emitted, what is refused, and a trace that counts pages with `ceil`.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -25,7 +26,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 }
 
 fn scratch(name: &str, text: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cancho-ui-math-{}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-math-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");

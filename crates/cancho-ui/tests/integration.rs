@@ -4,6 +4,7 @@
 //! pipeline (lex → parse → type-check → IR lowering → JS emit)
 //! and asserts the JS output. Snapshot tests pin the exact emitted
 //! bytes; the fixtures double as the example programs.
+mod common;
 
 use cancho_ui_codegen_web::emit_module;
 use cancho_ui_ir::lower_file;
@@ -1256,7 +1257,11 @@ mod import_tests {
     use std::process::{Command, Output};
 
     fn temp_dir(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("cui-tier16-{}-{}", name, std::process::id()));
+        let dir = super::common::scratch_root().join(format!(
+            "cui-tier16-{}-{}",
+            name,
+            std::process::id()
+        ));
         fs::create_dir_all(&dir).expect("create temp dir");
         dir
     }

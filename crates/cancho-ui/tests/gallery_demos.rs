@@ -4,6 +4,7 @@
 //! site had each demo's `index.html` and no script, and every iframe of the gallery was blank on a phone, while the checks
 //! that read the working tree, where the file existed, passed. These tests are in the gate because CI checks out the
 //! repository and nothing else: a demo file that is not committed fails here.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -64,7 +65,7 @@ fn every_demo_is_what_the_compiler_writes_as_a_page() {
     for t in tiles {
         let id = t["id"].as_str().expect("id");
         let tmp =
-            std::env::temp_dir().join(format!("cancho-ui-gallery-{}-{id}", std::process::id()));
+            common::scratch_root().join(format!("cancho-ui-gallery-{}-{id}", std::process::id()));
         let _ = std::fs::remove_dir_all(&tmp);
         build_page(
             t["source"].as_str().expect("source"),

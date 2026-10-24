@@ -1,4 +1,5 @@
 //! The documented command lines must work as documented.
+mod common;
 
 use std::path::Path;
 use std::process::Command;
@@ -35,7 +36,7 @@ fn the_project_page_demo_is_what_the_compiler_emits() {
     // docs/demo/counter.js is served on the project page; it must be the
     // compiler's current output for examples/counter, not a stale copy.
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let out = std::env::temp_dir().join("cancho-ui-demo-counter.js");
+    let out = common::scratch_root().join("cancho-ui-demo-counter.js");
     let (code, stdout) = run(&[
         "build",
         "examples/counter/counter.cui",
@@ -56,7 +57,7 @@ fn the_project_page_demo_is_what_the_compiler_emits() {
 fn a_button_with_a_label_shows_the_label_as_its_text() {
     // `Button { label: "Increment" }` used to compile to an `aria-label` and an empty text node: a button with
     // nothing written on it.
-    let dir = std::env::temp_dir().join("cancho-ui-button-label");
+    let dir = common::scratch_root().join("cancho-ui-button-label");
     std::fs::create_dir_all(&dir).expect("scratch directory");
     let source = dir.join("labelled.cui");
     std::fs::write(
@@ -92,7 +93,8 @@ fn a_button_with_a_label_shows_the_label_as_its_text() {
 fn a_flag_with_a_value_does_not_swallow_the_file_after_it() {
     // `build -o out.js file.cui` used to fail with "requires at least one file": each flag that takes a value
     // advanced past the next argument twice.
-    let out = std::env::temp_dir().join(format!("cancho-ui-flag-order-{}.js", std::process::id()));
+    let out =
+        common::scratch_root().join(format!("cancho-ui-flag-order-{}.js", std::process::id()));
     let _ = std::fs::remove_file(&out);
     let (code, stdout) = run(&[
         "build",
@@ -117,7 +119,7 @@ fn focus_survives_a_rerender_in_every_program_with_a_focusable_control() {
     // each Enter on a Button (measured in a browser; `scripts/check-focus.js`). The helper is emitted for a program
     // with a Button or a TextField and for no other, so a program without one is unchanged.
     let build = |example: &str| {
-        let out = std::env::temp_dir().join(format!(
+        let out = common::scratch_root().join(format!(
             "cancho-ui-focus-{}-{}.js",
             std::process::id(),
             example.replace('/', "-")
@@ -158,7 +160,7 @@ fn focus_survives_a_rerender_in_every_program_with_a_focusable_control() {
 /// Run in a scratch directory, so a command that wrongly writes a file named
 /// after a flag leaves evidence there rather than in the repository.
 fn run_in_scratch(name: &str, args: &[&str]) -> (i32, String, std::path::PathBuf) {
-    let dir = std::env::temp_dir().join(format!("cancho-ui-{name}-{}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("scratch directory");
     let out = Command::new(env!("CARGO_BIN_EXE_cancho-ui"))

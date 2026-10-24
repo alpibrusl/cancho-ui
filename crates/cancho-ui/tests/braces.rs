@@ -2,6 +2,7 @@
 //! brace, anything left in an interpolation after its expression is a parse error (it used to be dropped without a
 //! diagnostic), and `json.quote` is the JSON string literal of a text, the same in replay and in the emitted JavaScript
 //! (`tests/json_quote_corpus.json`, run against the JavaScript by `scripts/check-lists.js`).
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -26,7 +27,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 }
 
 fn scratch(name: &str, text: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cancho-ui-braces-{}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-braces-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");

@@ -1,6 +1,7 @@
 //! Deep nesting (docs/nesting.md, issue #99): expressions, view nodes and types nest at most `MAX_NEST_DEPTH` (32) deep, and anything deeper is
 //! `parse-nesting-too-deep`, not a stack overflow. Each construct is run at its limit and past it (and at the two depths of the report, 1,000 and
 //! 100,000) in a child process whose stack is 2 MiB, the default of a thread a library user spawns, in `check`, `build` and `test`.
+mod common;
 
 use std::path::PathBuf;
 use std::process::Command;
@@ -186,7 +187,7 @@ fn run(args: &[&str]) -> Out {
 fn scratch(tag: &str, text: &str) -> PathBuf {
     static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!("cancho-ui-nesting-{}-{n}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-nesting-{}-{n}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(format!("{tag}.cui"));
     std::fs::write(&path, text).expect("a scratch file");

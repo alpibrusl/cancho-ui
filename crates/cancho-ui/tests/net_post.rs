@@ -1,5 +1,6 @@
 //! `net.post(url, body)` (`docs/adapters.md` section 17): a write, with its own capability. What is emitted, what is
 //! refused, how a trace scripts it. The browser side is `scripts/check-post.js`.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -25,7 +26,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 }
 
 fn scratch(name: &str, text: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cancho-ui-net-post-{}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-net-post-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");

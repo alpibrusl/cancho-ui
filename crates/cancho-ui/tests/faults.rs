@@ -2,6 +2,7 @@
 //! so a fault undoes the writes made since the last one. Every case of `tests/fault_corpus.json` replayed in-process (the
 //! same file `scripts/check-faults.js` runs in the emitted page, in Chromium), the trace key `fault` and its two rules, and
 //! what is emitted.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -77,7 +78,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 }
 
 fn scratch(name: &str, text: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cancho-ui-faults-{}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-faults-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");

@@ -1,6 +1,7 @@
 //! `call-unknown` (`spec/diagnostics/README.md`): a call to a function the language does not have is refused when the
 //! program is checked. It used to pass `check` and be emitted as `x = /* unsupported call */;`, which is a JavaScript
 //! syntax error: the page died when the browser loaded it, with no rule tag (found building `examples/ops-console`).
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -22,7 +23,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 }
 
 fn scratch(name: &str, text: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cancho-ui-call-unknown-{}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-call-unknown-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");
@@ -74,7 +75,7 @@ fn a_function_the_language_does_not_have_is_refused_with_its_tag_and_a_span() {
 #[test]
 fn building_it_writes_nothing() {
     let file = scratch("build.cui", &program("n = sqrt(n);"));
-    let out = std::env::temp_dir().join(format!(
+    let out = common::scratch_root().join(format!(
         "cancho-ui-call-unknown-{}/build.js",
         std::process::id()
     ));

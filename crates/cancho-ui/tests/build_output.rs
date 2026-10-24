@@ -1,5 +1,6 @@
 //! The emitted module (`docs/mobile-backend.md` section 9): `--no-auto-mount` changes exactly the mount lines, and every
 //! byte of the module is printable ASCII (or a newline or tab), whatever the program or its path contains.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -19,7 +20,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 }
 
 fn scratch_dir(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!(
+    let dir = common::scratch_root().join(format!(
         "cancho-ui-build-output-{}-{name}",
         std::process::id()
     ));

@@ -1,6 +1,7 @@
 //! `if`, `&&`, `||` and `!` (docs/conditionals.md): every case of `tests/cond_corpus.json` replayed in-process (the file
 //! `scripts/check-conditionals.js` runs against the emitted JavaScript in Chromium), the rules that refuse a misuse, and
 //! what is emitted.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -95,7 +96,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 }
 
 fn scratch(name: &str, text: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cancho-ui-cond-{}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-cond-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");

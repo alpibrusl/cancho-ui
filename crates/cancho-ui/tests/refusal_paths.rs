@@ -3,6 +3,7 @@
 //! arm, so a variant added without a conversion does not compile; this test is the other half, that each existing variant
 //! is reached by real input and answers with its rule. (`EmptySpan` takes a syntax tree no source produces: its test is in
 //! `crates/cancho-ui-types/src/check.rs`.)
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -24,7 +25,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 }
 
 fn scratch(name: &str, text: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cancho-ui-paths-{}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-paths-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");

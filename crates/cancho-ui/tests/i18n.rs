@@ -1,6 +1,7 @@
 //! Internationalization (`docs/i18n.md`, issue #82): what parses, what is refused with which tag, how replay picks and changes the language,
 //! and that the page carries the data and the steps replay runs. `tests/i18n_pages.json` is the file replay is run over here and Chromium is
 //! run over in `scripts/check-i18n.js`; `tests/i18n_corpus.json` holds the formats (checked in `crates/cancho-ui-ir/tests/i18n.rs`).
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -24,7 +25,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 fn scratch(name: &str, text: &str) -> PathBuf {
     static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!("cancho-ui-i18n-{}-{n}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-i18n-{}-{n}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");

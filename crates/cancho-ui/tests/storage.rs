@@ -1,6 +1,7 @@
 //! The `Storage` adapter (`docs/adapters.md`): what the compiler emits, what it refuses, how a trace replays
 //! it, and that the semantic diff sees the capability. The browser-side checks (a note survives a reload;
 //! storage that throws) are `scripts/check-storage.js`, outside the gate because they need a browser.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -30,7 +31,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 
 /// A scratch file holding `text`, named for the test.
 fn scratch(name: &str, text: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cancho-ui-storage-{}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-storage-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");

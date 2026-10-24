@@ -1,6 +1,7 @@
 //! A `match` arm `true` or `false` (`pattern-literal-unsupported`, issue #26): a bare name in a pattern binds the value
 //! and matches everything, so the arm that reads like a literal used to always win. It is refused now, by every command
 //! that checks a program: `check`, `build` and `test`.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -24,7 +25,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 }
 
 fn scratch(name: &str, text: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cancho-ui-pattern-{}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-pattern-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");

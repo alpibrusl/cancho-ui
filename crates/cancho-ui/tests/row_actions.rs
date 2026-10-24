@@ -1,5 +1,6 @@
 //! Row actions (`docs/row-actions.md`, issue #41): a `Button` label that is an expression and `on: Event(args)`. What is
 //! accepted, what is refused with which tag, what is emitted, what the IR and the diff say, and a trace.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -21,7 +22,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 }
 
 fn scratch(name: &str, text: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cancho-ui-rows-{}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-rows-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");

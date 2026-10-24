@@ -1,6 +1,7 @@
 //! `sort`, `reverse`, `contains` and `lower` (`docs/lists.md`): the model in replay against the corpus
 //! `tests/lists_corpus.json` (the same file `scripts/check-lists.js` runs against the emitted JavaScript), what is
 //! emitted, what is refused, and traces that use them.
+mod common;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -30,7 +31,7 @@ fn run(args: &[&str]) -> (i32, String, String) {
 }
 
 fn scratch(name: &str, text: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cancho-ui-lists-{}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-lists-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");
@@ -497,7 +498,7 @@ fn the_concat_helper_is_emitted_only_when_used() {
     let unused = "component C {\n    state l: List[String] = [\"a\"];\n    on Go { l = reverse(l); }\n    view { Text { \"x\" } }\n}\n";
     for (src, has) in [(used, true), (unused, false)] {
         let file = scratch("concat-emit.cui", src);
-        let out = std::env::temp_dir().join(format!("cancho-ui-lists-{}", std::process::id()));
+        let out = common::scratch_root().join(format!("cancho-ui-lists-{}", std::process::id()));
         let js = out.join("concat-emit.js");
         let (code, stdout, stderr) = run(&["build", p(&file), "-o", p(&js)]);
         assert_eq!(code, 0, "{stdout}{stderr}");
@@ -592,7 +593,7 @@ fn fold_refuses_the_wrong_arguments_and_is_emitted_only_when_used() {
         );
         assert!(stdout.contains("fold(text)"), "{call}: {stdout}");
     }
-    let dir = std::env::temp_dir().join(format!("cancho-ui-lists-{}", std::process::id()));
+    let dir = common::scratch_root().join(format!("cancho-ui-lists-{}", std::process::id()));
     for (call, has) in [("fold(s)", true), ("lower(s)", false)] {
         let src = format!(
             "component C {{\n    state s: String = \"a\";\n    on Go {{ s = {call}; }}\n    view {{ Text {{ \"x\" }} }}\n}}\n"
