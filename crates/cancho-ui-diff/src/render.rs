@@ -153,6 +153,18 @@ fn kind(k: &IrElementKind) -> String {
         IrElementKind::NavLink => "NavLink".into(),
         IrElementKind::SortList => "SortList".into(),
         IrElementKind::Map => "Map".into(),
+        IrElementKind::Heading => "Heading".into(),
+        IrElementKind::Section => "Section".into(),
+        IrElementKind::Header => "Header".into(),
+        IrElementKind::Nav => "Nav".into(),
+        IrElementKind::Main => "Main".into(),
+        IrElementKind::Footer => "Footer".into(),
+        IrElementKind::Aside => "Aside".into(),
+        IrElementKind::Article => "Article".into(),
+        IrElementKind::Link => "Link".into(),
+        IrElementKind::Details => "Details".into(),
+        IrElementKind::Figure => "Figure".into(),
+        IrElementKind::Caption => "Caption".into(),
         IrElementKind::Named(n) => n.clone(),
     }
 }

@@ -180,8 +180,10 @@ set or a literal checked at compile time ([`controls.md`](controls.md) section 1
 
 ### 5.2 Structure
 
+> **B1 is built: [`structure.md`](structure.md)** (2026-10-24): `Heading`, `Section`, the landmarks, `Article`, `Link` with `appearance` and the host listing, `Details`, `Figure`/`Caption`, `Text { style }`. Where the bullets below differ from it, `structure.md` is right and the difference is marked here. Not in B1: `Rich`, `Code`, `Image`, `Media`, `Grid`, the skip link (step 3), `pressed:`.
+
 * **`Heading { level: 1..4 "text" }`**, **`Section { id: "try" label: "..." ... }`**, landmarks `Header`, `Nav`, `Main`, `Footer`, `Aside`. A `Main` makes the compiler
-  write the skip link. Tags: `heading-level-skipped` (an `h3` directly under an `h1`), `heading-empty`, `landmark-duplicate` (two `Main`s).
+  write the skip link *(not built in B1: it is a page-level element, step 3; corrected 2026-10-24)*. Tags: `heading-level-skipped` (an `h3` directly under an `h1`), `heading-empty`, `landmark-duplicate` (two `Main`s).
   *(Corrected 2026-10-24, 5.2b: this list had `section-label-missing`. The page has 12 `section`s and **0 `region` landmarks**, measured in the accessibility tree: an unnamed
   `<section>` is not a landmark, and naming all 12 would add 12 landmarks to a page that has 5. `label:` on a `Section` is therefore optional, and a named one is a region; a `Nav`
   needs a label when there is more than one. Also: the real page's headings run h1, **h3**, h3, h3, h2 ...: the three cards under the hero are `h3`s directly under the `h1`, so

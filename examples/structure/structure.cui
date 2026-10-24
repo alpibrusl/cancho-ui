@@ -1,0 +1,79 @@
+// examples/structure/structure.cui — the structure elements (docs/structure.md): landmarks, headings, sections, links, a details, a figure.
+// A page of the shape of the cancho-www home page, in miniature. `Link` lists the hosts it names in `inspect effects` and `diff`; nothing here
+// needs a capability. Replay (`cancho-ui test`) has nothing to say about structure: the trace only shows that the handlers still run.
+
+component Page {
+    state clicks: Int = 0;
+    state screen: String = "one";
+
+    on Click { clicks = clicks + 1; }
+    on Two { screen = "two"; }
+    on One { screen = "one"; }
+
+    view {
+        Column {
+            Header {
+                Link { to: "#top" "cancho" }
+                Nav {
+                    label: "Sections"
+                    Link { to: "#try" "Try it" }
+                    Link { to: "#demo" "Demo" }
+                    Link { to: "https://github.com/alpibrusl/cancho" "GitHub" }
+                }
+            }
+            Main {
+                Section {
+                    id: "top"
+                    Text { style: "eyebrow" "Trust without comprehension" }
+                    Heading { level: 1 "Tools built for agents." }
+                    Text { style: "lead" "The compiler returns structured errors, and programs declare what they can do." }
+                    Row {
+                        Link { to: "#try" appearance: "primary" "Try it" }
+                        Link { to: "https://alpibru.com/manifesto" appearance: "secondary" "Read the manifesto" }
+                    }
+                }
+                Section {
+                    id: "try"
+                    Heading { level: 2 "Three ways in" }
+                    Article {
+                        Heading { level: 3 "See a refusal" }
+                        Text { "The compiler refuses a leaked file by a named rule." }
+                        Button { label: "Click" on: Click }
+                        Text { "Clicked {clicks} times" }
+                    }
+                    Article {
+                        Heading { level: 3 "Run the compiler" }
+                        Details {
+                            summary: "Build instructions"
+                            Text { "cargo build -p cancho --release" }
+                        }
+                    }
+                    Text { style: "note" "Not claimed: that agents do better." }
+                }
+                Section {
+                    id: "demo"
+                    Heading { level: 2 "See it refuse, then run" }
+                    Figure {
+                        Heading { level: 3 "A leak, a rule, a fix" }
+                        Text { "(the recording)" }
+                        Caption { id: "cap1" "One minute." }
+                    }
+                    Button { label: "Screen two" on: Two }
+                    If {
+                        when: screen == "two"
+                        Heading { level: 3 "Screen two" }
+                        Button { label: "Back" on: One }
+                    }
+                }
+                Aside {
+                    label: "Notes"
+                    Text { style: "label" "Pre-1.0" }
+                }
+            }
+            Footer {
+                Link { to: "agents.md" "agents.md" }
+                Link { to: "https://alpibrusl.github.io/cancho/" "Docs" }
+            }
+        }
+    }
+}

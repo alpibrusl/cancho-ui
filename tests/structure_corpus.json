@@ -1,0 +1,358 @@
+{
+ "about": "docs/structure.md. `valid`: a view body and the DOM it must become, serialised as the page does (tags lower case, attributes sorted, double quotes, no whitespace between tags): checked in Chromium by scripts/check-structure.js and, when it exists, by the prerenderer. `refusals`: a view body (or a whole program) and the rule tag that refuses it: checked by cargo test.",
+ "state": "state n: Int = 0;\n    state items: List[String] = [\"a\"];\n    on Up { n = n + 1; }",
+ "valid": [
+  {
+   "name": "headings in order, one with an interpolation",
+   "view": "Heading { level: 1 \"Tools\" } Heading { level: 2 \"Step {n}\" } Heading { level: 3 \"Sub\" } Heading { level: 2 \"Next\" }",
+   "html": "<div class=\"cui-col\"><h1>Tools</h1><h2>Step 0</h2><h3>Sub</h3><h2>Next</h2></div>"
+  },
+  {
+   "name": "a section with an id and a name",
+   "view": "Section { label: \"Try it\" id: \"try\" Text { \"x\" } }",
+   "html": "<div class=\"cui-col\"><section aria-label=\"Try it\" id=\"try\"><span>x</span></section></div>"
+  },
+  {
+   "name": "the landmarks",
+   "view": "Header { Text { \"h\" } } Nav { label: \"Sections\" Link { to: \"#a\" \"Alpha\" } } Main { Article { Text { \"a\" } } Aside { label: \"Notes\" Text { \"n\" } } } Footer { Text { \"f\" } } Section { id: \"a\" Text { \"s\" } }",
+   "html": "<div class=\"cui-col\"><header><span>h</span></header><nav aria-label=\"Sections\"><a href=\"#a\">Alpha</a></nav><main><article><span>a</span></article><aside aria-label=\"Notes\"><span>n</span></aside></main><footer><span>f</span></footer><section id=\"a\"><span>s</span></section></div>"
+  },
+  {
+   "name": "links: external, relative, mail, an appearance",
+   "view": "Link { to: \"https://github.com/alpibrusl/cancho\" \"The compiler\" } Link { to: \"agents.md\" \"agents.md\" } Link { to: \"mailto:hi@example.org\" \"Write to us\" } Link { to: \"https://alpibru.com/\" appearance: \"primary\" \"Manifesto\" } Link { to: \"http://old.example/x\" appearance: \"secondary\" \"Old page\" } Link { to: \"https://a.example/\" appearance: \"quiet\" \"Quiet\" }",
+   "html": "<div class=\"cui-col\"><a href=\"https://github.com/alpibrusl/cancho\">The compiler</a><a href=\"agents.md\">agents.md</a><a href=\"mailto:hi@example.org\">Write to us</a><a class=\"cui-link-primary\" href=\"https://alpibru.com/\">Manifesto</a><a class=\"cui-link-secondary\" href=\"http://old.example/x\">Old page</a><a class=\"cui-link-quiet\" href=\"https://a.example/\">Quiet</a></div>"
+  },
+  {
+   "name": "a details",
+   "view": "Details { summary: \"More\" Text { \"inside\" } }",
+   "html": "<div class=\"cui-col\"><details><summary>More</summary><span>inside</span></details></div>"
+  },
+  {
+   "name": "a figure with a caption and a heading",
+   "view": "Figure { id: \"f1\" Heading { level: 3 \"Title\" } Text { \"media\" } Caption { id: \"cap1\" \"A caption.\" } }",
+   "html": "<div class=\"cui-col\"><figure id=\"f1\"><h3>Title</h3><span>media</span><figcaption id=\"cap1\">A caption.</figcaption></figure></div>"
+  },
+  {
+   "name": "the roles of a text",
+   "view": "Text { style: \"eyebrow\" \"Try it\" } Text { style: \"lead\" \"A lead.\" } Text { style: \"note\" \"A note.\" } Text { style: \"label\" \"A label\" }",
+   "html": "<div class=\"cui-col\"><p data-style=\"eyebrow\">Try it</p><p data-style=\"lead\">A lead.</p><p data-style=\"note\">A note.</p><p data-style=\"label\">A label</p></div>"
+  },
+  {
+   "name": "a level 4 heading and a section inside a section",
+   "view": "Section { Section { id: \"inner\" Heading { level: 4 \"Deep\" } } }",
+   "html": "<div class=\"cui-col\"><section><section id=\"inner\"><h4>Deep</h4></section></section></div>"
+  }
+ ],
+ "refusals": [
+  {
+   "name": "a heading with no level",
+   "view": "Heading { \"x\" }",
+   "code": "heading-level-invalid"
+  },
+  {
+   "name": "a level 5",
+   "view": "Heading { level: 5 \"x\" }",
+   "code": "heading-level-invalid"
+  },
+  {
+   "name": "a level 0",
+   "view": "Heading { level: 0 \"x\" }",
+   "code": "heading-level-invalid"
+  },
+  {
+   "name": "a level that is a string",
+   "view": "Heading { level: \"2\" \"x\" }",
+   "code": "heading-level-invalid"
+  },
+  {
+   "name": "a level that is a float",
+   "view": "Heading { level: 2.5 \"x\" }",
+   "code": "heading-level-invalid"
+  },
+  {
+   "name": "a level 1 then a level 3",
+   "view": "Heading { level: 1 \"a\" } Heading { level: 3 \"b\" }",
+   "code": "heading-level-skipped"
+  },
+  {
+   "name": "a level 2 then a level 4 across sections",
+   "view": "Section { Heading { level: 2 \"a\" } } Section { Heading { level: 4 \"b\" } }",
+   "code": "heading-level-skipped"
+  },
+  {
+   "name": "an empty heading",
+   "view": "Heading { level: 2 \"\" }",
+   "code": "heading-empty"
+  },
+  {
+   "name": "a heading of spaces",
+   "view": "Heading { level: 2 \"   \" }",
+   "code": "heading-empty"
+  },
+  {
+   "name": "a heading with nothing in it",
+   "view": "Heading { level: 2 }",
+   "code": "heading-empty"
+  },
+  {
+   "name": "an id that starts with a digit",
+   "view": "Section { id: \"1a\" Text { \"x\" } }",
+   "code": "id-invalid"
+  },
+  {
+   "name": "an id with a space",
+   "view": "Section { id: \"a b\" Text { \"x\" } }",
+   "code": "id-invalid"
+  },
+  {
+   "name": "an id that is the compiler's",
+   "view": "Section { id: \"cui-x\" Text { \"x\" } }",
+   "code": "id-invalid"
+  },
+  {
+   "name": "an empty id",
+   "view": "Section { id: \"\" Text { \"x\" } }",
+   "code": "id-invalid"
+  },
+  {
+   "name": "an id of 65 characters",
+   "view": "Section { id: \"abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\" Text { \"x\" } }",
+   "code": "id-invalid"
+  },
+  {
+   "name": "an id given twice",
+   "view": "Section { id: \"a\" Text { \"x\" } } Article { id: \"a\" Text { \"y\" } }",
+   "code": "anchor-duplicate"
+  },
+  {
+   "name": "an id in a loop",
+   "view": "For { over: items as: i Section { id: \"row\" Text { i } } }",
+   "code": "anchor-duplicate"
+  },
+  {
+   "name": "a link to an id nobody has",
+   "view": "Link { to: \"#nope\" \"Nowhere\" }",
+   "code": "anchor-unknown"
+  },
+  {
+   "name": "a link to a bare hash",
+   "view": "Link { to: \"#\" \"Top\" }",
+   "code": "link-scheme-refused"
+  },
+  {
+   "name": "a link to a route",
+   "view": "Link { to: \"#/items\" \"Items\" }",
+   "code": "link-scheme-refused"
+  },
+  {
+   "name": "javascript:",
+   "view": "Link { to: \"javascript:alert(1)\" \"Go\" }",
+   "code": "link-scheme-refused"
+  },
+  {
+   "name": "JaVaScRiPt:",
+   "view": "Link { to: \"JaVaScRiPt:alert(1)\" \"Go\" }",
+   "code": "link-scheme-refused"
+  },
+  {
+   "name": "data:",
+   "view": "Link { to: \"data:text/html,x\" \"Go\" }",
+   "code": "link-scheme-refused"
+  },
+  {
+   "name": "vbscript:",
+   "view": "Link { to: \"vbscript:x\" \"Go\" }",
+   "code": "link-scheme-refused"
+  },
+  {
+   "name": "file:",
+   "view": "Link { to: \"file:///etc/passwd\" \"Go\" }",
+   "code": "link-scheme-refused"
+  },
+  {
+   "name": "ftp:",
+   "view": "Link { to: \"ftp://h/x\" \"Go\" }",
+   "code": "link-scheme-refused"
+  },
+  {
+   "name": "an address that hides its scheme",
+   "view": "Link { to: \"//evil.example/x\" \"Go\" }",
+   "code": "link-scheme-refused"
+  },
+  {
+   "name": "a tab inside the scheme",
+   "view": "Link { to: \"java\\tscript:alert(1)\" \"Go\" }",
+   "code": "link-scheme-refused"
+  },
+  {
+   "name": "a user name before the host",
+   "view": "Link { to: \"https://bank.example@evil.example/\" \"Go\" }",
+   "code": "link-scheme-refused"
+  },
+  {
+   "name": "an address with no host",
+   "view": "Link { to: \"https://\" \"Go\" }",
+   "code": "link-scheme-refused"
+  },
+  {
+   "name": "a mailto with no address",
+   "view": "Link { to: \"mailto:\" \"Go\" }",
+   "code": "link-scheme-refused"
+  },
+  {
+   "name": "a space before the address",
+   "view": "Link { to: \" https://a.example/\" \"Go\" }",
+   "code": "link-scheme-refused"
+  },
+  {
+   "name": "an empty address",
+   "view": "Link { to: \"\" \"Go\" }",
+   "code": "link-scheme-refused"
+  },
+  {
+   "name": "a link with no address",
+   "view": "Link { \"Go\" }",
+   "code": "link-to-invalid"
+  },
+  {
+   "name": "a link whose address is a number",
+   "view": "Link { to: 3 \"Go\" }",
+   "code": "link-to-invalid"
+  },
+  {
+   "name": "a link with no text",
+   "view": "Link { to: \"#a\" } Section { id: \"a\" Text { \"x\" } }",
+   "code": "link-label-missing"
+  },
+  {
+   "name": "a link with empty text",
+   "view": "Link { to: \"https://a.example/\" \"\" }",
+   "code": "link-label-missing"
+  },
+  {
+   "name": "a link that says here",
+   "view": "Link { to: \"https://a.example/\" \"here\" }",
+   "code": "link-label-generic"
+  },
+  {
+   "name": "a link that says click here",
+   "view": "Link { to: \"https://a.example/\" \"Click here\" }",
+   "code": "link-label-generic"
+  },
+  {
+   "name": "a link that says read more",
+   "view": "Link { to: \"https://a.example/\" \"Read more.\" }",
+   "code": "link-label-generic"
+  },
+  {
+   "name": "a link that says LINK",
+   "view": "Link { to: \"https://a.example/\" \"LINK\" }",
+   "code": "link-label-generic"
+  },
+  {
+   "name": "an appearance that does not exist",
+   "view": "Link { to: \"https://a.example/\" appearance: \"big\" \"Go on\" }",
+   "code": "link-appearance-invalid"
+  },
+  {
+   "name": "an appearance that is a number",
+   "view": "Link { to: \"https://a.example/\" appearance: 3 \"Go on\" }",
+   "code": "link-appearance-invalid"
+  },
+  {
+   "name": "a text style that does not exist",
+   "view": "Text { style: \"huge\" \"x\" }",
+   "code": "text-style-invalid"
+  },
+  {
+   "name": "a text style that is a number",
+   "view": "Text { style: 3 \"x\" }",
+   "code": "text-style-invalid"
+  },
+  {
+   "name": "a details with no summary",
+   "view": "Details { Text { \"x\" } }",
+   "code": "details-incomplete"
+  },
+  {
+   "name": "a details with an empty summary",
+   "view": "Details { summary: \"\" Text { \"x\" } }",
+   "code": "details-incomplete"
+  },
+  {
+   "name": "a caption outside a figure",
+   "view": "Caption { \"x\" }",
+   "code": "caption-misplaced"
+  },
+  {
+   "name": "a caption in a section",
+   "view": "Section { Caption { \"x\" } }",
+   "code": "caption-misplaced"
+  },
+  {
+   "name": "two captions",
+   "view": "Figure { Caption { \"a\" } Caption { \"b\" } }",
+   "code": "caption-misplaced"
+  },
+  {
+   "name": "two mains",
+   "view": "Main { Text { \"a\" } } Main { Text { \"b\" } }",
+   "code": "landmark-duplicate"
+  },
+  {
+   "name": "two navs, one unnamed",
+   "view": "Nav { label: \"A\" Text { \"a\" } } Nav { Text { \"b\" } }",
+   "code": "nav-label-missing"
+  },
+  {
+   "name": "a label on a heading",
+   "view": "Heading { label: \"x\" level: 2 \"T\" }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "a role on a section",
+   "view": "Section { role: heading Text { \"x\" } }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "a level on a column",
+   "view": "Column { level: 2 Text { \"x\" } }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "an id on a column",
+   "view": "Column { id: \"a\" Text { \"x\" } }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "an appearance on a button",
+   "view": "Button { label: \"x\" appearance: \"primary\" on: Up }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "a to on a section",
+   "view": "Section { to: \"https://a.example/\" Text { \"x\" } }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "a style on a column",
+   "view": "Column { style: \"note\" Text { \"x\" } }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "a summary on a section",
+   "view": "Section { summary: \"x\" Text { \"x\" } }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "a label on a link",
+   "view": "Link { label: \"x\" to: \"https://a.example/\" \"Go on\" }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "two mains in two components",
+   "program": "component A {\n    view { Main { Text { \"a\" } } }\n}\n\ncomponent B {\n    view { Main { Text { \"b\" } } }\n}\n",
+   "code": "landmark-duplicate"
+  }
+ ]
+}

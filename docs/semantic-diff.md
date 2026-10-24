@@ -354,3 +354,14 @@ changing the global table, because `5` means nothing to the other commands.
   one-character mutants of the single-file examples against their
   originals, in both directions, without a panic
   (`tests/no_panic.rs`).
+
+---
+
+## 11. The theme and the links of a view (added 2026-10-24)
+
+Two things beside components are compared, and neither is authority.
+
+* **A theme** (`theme.md`): `theme` in the JSON is a list of `{ setting, base, candidate }`, one per colour token, font key or scheme added, removed or changed (`light.accent`, `dark.bg`,
+  `font.body.sha256`), absent when the themes are equal; the human form is `~ theme light.accent: #185fa5 -> #0f3d6e`. It counts in `change_count`; `authority` does not move.
+* **The hosts a `Link` names** (`structure.md` 3): a changed component has a `links` delta (`added`, `removed`: `github.com`, `mailto:example.org`), absent when equal; the human form is `  + link evil.example`.
+  A new host is a review item: it is where a reader can be sent. It is not an effect, so `authority` does not move.

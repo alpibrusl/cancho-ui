@@ -220,6 +220,15 @@ pub fn css(theme: &IrTheme) -> String {
         "[data-tone=\"warn\"] { color: var(--cui-warn); background: var(--cui-warn-bg); }\n",
     );
     s.push_str("[data-tone=\"error\"] { color: var(--cui-bad); background: var(--cui-bad-bg); }\n");
+    s.push_str("[data-style=\"eyebrow\"], [data-style=\"label\"] { color: var(--cui-accent); }\n");
+    s.push_str("[data-style=\"lead\"], [data-style=\"note\"] { color: var(--cui-muted); }\n");
+    s.push_str(
+        "a.cui-link-primary { background: var(--cui-accent); color: var(--cui-accent-fg); }\n",
+    );
+    s.push_str(
+        "a.cui-link-secondary { color: var(--cui-accent); border-color: var(--cui-accent); }\n",
+    );
+    s.push_str("a.cui-link-quiet { color: var(--cui-muted); }\n");
     s.push_str(":focus-visible { outline: 3px solid var(--cui-accent); outline-offset: 2px; }\n");
     s
 }

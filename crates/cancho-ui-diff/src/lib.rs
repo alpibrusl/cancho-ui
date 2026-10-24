@@ -40,6 +40,12 @@ pub enum Authority {
     Unchanged,
 }
 
+impl<T> Delta<T> {
+    fn is_empty(&self) -> bool {
+        self.added.is_empty() && self.removed.is_empty()
+    }
+}
+
 impl Authority {
     pub fn as_str(self) -> &'static str {
         match self {
@@ -137,6 +143,10 @@ pub struct ComponentDiff {
     pub events: EventChanges,
     pub effects: EffectChanges,
     pub view: Delta<String>,
+    /// The hosts the component's `Link`s name (docs/structure.md): where a reader can be sent. A new host is a review item; it is not
+    /// an effect, so `authority` does not move. Absent from the JSON when nothing changed.
+    #[serde(skip_serializing_if = "Delta::is_empty")]
+    pub links: Delta<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -225,6 +235,7 @@ struct Facets {
     events: BTreeMap<String, EventFacet>,
     effects: BTreeMap<(String, String), Vec<IrSpan>>,
     view: BTreeMap<String, usize>,
+    links: BTreeSet<String>,
 }
 
 #[derive(Default)]
@@ -315,6 +326,7 @@ fn facets(c: &IrComponent) -> Facets {
         events,
         effects,
         view,
+        links: cancho_ui_ir::structure::link_hosts(&c.view.body),
     }
 }
 
@@ -483,6 +495,10 @@ fn diff_component(name: &str, b: &IrComponent, c: &IrComponent) -> ComponentDiff
         }
     }
 
+    let links = Delta {
+        added: cf.links.difference(&bf.links).cloned().collect(),
+        removed: bf.links.difference(&cf.links).cloned().collect(),
+    };
     ComponentDiff {
         name: name.to_string(),
         authority,
@@ -492,6 +508,7 @@ fn diff_component(name: &str, b: &IrComponent, c: &IrComponent) -> ComponentDiff
         events,
         effects,
         view,
+        links,
     }
 }
 
@@ -511,6 +528,8 @@ fn leaf_count(d: &ComponentDiff) -> usize {
         + d.effects.changed.len()
         + d.view.added.len()
         + d.view.removed.len()
+        + d.links.added.len()
+        + d.links.removed.len()
 }
 
 /// Compare two typed IRs by component name. `base_label` and

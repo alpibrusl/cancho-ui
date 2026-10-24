@@ -1,0 +1,151 @@
+{
+  "checks": [
+    {
+      "name": "cargo test structure",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "structure"
+      ]
+    },
+    {
+      "name": "check-structure.js",
+      "argv": [
+        "node",
+        "scripts/check-structure.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "a level 1 heading is an h2",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "            Some(1) => \"h1\",\n",
+      "to": ""
+    },
+    {
+      "name": "a nav is a div",
+      "file": "crates/cancho-ui-ir/src/ir.rs",
+      "from": "            IrElementKind::Nav => \"nav\",",
+      "to": "            IrElementKind::Nav => \"div\","
+    },
+    {
+      "name": "a link has no href",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "out.push((\"href\", s.to_string()))",
+      "to": "out.push((\"data-href\", s.to_string()))"
+    },
+    {
+      "name": "an appearance has no class",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "        .map(|a| format!(\"cui-link-{a}\"))",
+      "to": "        .map(|_a| String::new())"
+    },
+    {
+      "name": "a details has no summary line",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "            if matches!(kind, IrElementKind::Details)\n                && let Some(text)",
+      "to": "            if matches!(kind, IrElementKind::Details) && false\n                && let Some(text)"
+    },
+    {
+      "name": "a skipped heading level is allowed",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "&& level > prev + 1\n",
+      "to": "&& level > prev + 2\n"
+    },
+    {
+      "name": "any other scheme is accepted",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "                other => Err(format!(\n                    \"`to:` has the scheme",
+      "to": "                other => Ok(()).map_err(|_: String| format!(\n                    \"`to:` has the scheme"
+    },
+    {
+      "name": "no link text is generic",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "    \"here\",\n    \"click here\",\n    \"click\",\n    \"link\",\n    \"this link\",\n    \"this\",\n    \"more\",\n    \"read more\",\n    \"learn more\",\n",
+      "to": "    \"zzz\",\n"
+    },
+    {
+      "name": "an anchor may point at nothing",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "if !seen.contains(frag) {",
+      "to": "if false && !seen.contains(frag) {"
+    },
+    {
+      "name": "an id may be given twice",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "if !seen.insert(*id) {",
+      "to": "if false && !seen.insert(*id) {"
+    },
+    {
+      "name": "two mains are allowed",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "if let Some(second) = w.mains.get(1) {",
+      "to": "if let Some(second) = w.mains.get(2) {"
+    },
+    {
+      "name": "two unnamed navs are allowed",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "if w.navs.len() > 1 {",
+      "to": "if w.navs.len() > 5 {"
+    },
+    {
+      "name": "a user name before the host is accepted",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "if authority.is_empty() || authority.contains('@') {",
+      "to": "if authority.is_empty() {"
+    },
+    {
+      "name": "a host is not lower-cased",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "(!host.is_empty()).then(|| host.to_ascii_lowercase())",
+      "to": "(!host.is_empty()).then(|| host.to_string())"
+    },
+    {
+      "name": "diff does not count a link",
+      "file": "crates/cancho-ui-diff/src/lib.rs",
+      "from": "        + d.links.added.len()\n        + d.links.removed.len()\n",
+      "to": "        + 0\n"
+    },
+    {
+      "name": "a link in a header is a small target",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "header a, nav a, footer a { display: inline-flex; align-items: center; min-height: 44px; }",
+      "to": "header a, nav a, footer a { display: inline-flex; align-items: center; min-height: 20px; }"
+    },
+    {
+      "name": "a new screen does not look for an h2",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "const __cui_heading_sel = '[role=\"heading\"], h1, h2, h3, h4';",
+      "to": "const __cui_heading_sel = '[role=\"heading\"]';"
+    },
+    {
+      "name": "a styled text is a span",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "IrElementKind::Text if bindings.iter().any(|b| b.key == \"style\") => \"p\",",
+      "to": "IrElementKind::Text if bindings.iter().any(|b| b.key == \"style\") => \"span\","
+    },
+    {
+      "name": "an id may be the compiler's",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "        && !id.to_ascii_lowercase().starts_with(\"cui-\")\n",
+      "to": "\n"
+    },
+    {
+      "name": "a details may have an empty summary",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "Some(s) if !s.trim().is_empty() => Ok(true),",
+      "to": "Some(_) => Ok(true),"
+    },
+    {
+      "name": "a caption may stand anywhere",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "IrElementKind::Caption if !matches!(parent, Some(IrElementKind::Figure)) => {",
+      "to": "IrElementKind::Caption if false && !matches!(parent, Some(IrElementKind::Figure)) => {"
+    }
+  ]
+}

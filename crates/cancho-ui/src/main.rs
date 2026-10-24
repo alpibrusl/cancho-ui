@@ -249,11 +249,19 @@ fn run_inspect(args: &[String]) -> Result<ExitCode, CliError> {
                 .iter()
                 .find(|c| &c.name == name)
                 .ok_or_else(|| CliError::Env(format!("component `{}` not found", name)))?;
-            cancho_ui_ir::pretty_json(&serde_json::json!({
+            let mut v = serde_json::json!({
                 "component": comp.name,
                 "requires": comp.requires,
                 "reachable_effects": comp.reachable_effects,
-            }))
+            });
+            // the hosts a `Link` names (docs/structure.md): listed, because they are where a reader can be sent; not an effect
+            let links = cancho_ui_ir::structure::link_hosts(&comp.view.body);
+            if !links.is_empty()
+                && let Some(o) = v.as_object_mut()
+            {
+                o.insert("links".to_string(), serde_json::json!(links));
+            }
+            cancho_ui_ir::pretty_json(&v)
         }
         "ir" => cancho_ui_ir::pretty_json(&ir),
         other => {
