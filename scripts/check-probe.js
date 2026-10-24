@@ -160,6 +160,9 @@ const P = require(path.join(PROBE, 'probe.js'));
   const report = () => page.evaluate(() => window.__probeReport);
   const press = async (label) => { await page.click(`button:has-text("${label}")`); await sleep(500); };
 
+  // The worker registers after the first report is written (registration is asynchronous, and slower on a busy machine: 2 runs in 15 with six
+  // busy loops on four cores read "Not registered." from the first report), so wait for the report that says so, not for a time.
+  await page.waitForFunction(() => window.__probeReport.serviceWorker.registered && window.__probeReport.serviceWorker.registered.status === 'yes', null, { timeout: 15000 }).catch(() => {});
   let rep = await report();
   check('C: the first visit is visit 1, not controlled by the worker yet, offline start not yet proven', rep.loadHistory.length === 1 && rep.loadHistory[0].visit === 1 && rep.loadHistory[0].controller === false && rep.offlineStart.status === 'needs a tap', J(rep.loadHistory));
   check('C: it registered its worker', rep.serviceWorker.registered.status === 'yes', J(rep.serviceWorker.registered));
@@ -218,8 +221,12 @@ const P = require(path.join(PROBE, 'probe.js'));
   check('C: the page shows the same text as the JSON block and lists the manual steps', (await page.locator('#manual li').count()) === 5 && (await page.inputValue('#json')).includes('"cancho-ui-device-probe"'));
 
   // offline start after one visit: the server is gone and the network is off
-  await new Promise((ok) => server.close(ok));
+  // Close the connections first and then wait for `close`: `server.close(cb)` calls back only when no request is in flight, and one still was
+  // in 5 runs in 70 with six busy loops on four cores, so the wait never ended (the 4-minute watchdog). Measured: with a request in flight,
+  // waiting first is still open after 2 s, and closing the connections first closes in 1 ms.
+  const closed = new Promise((ok) => server.close(ok));
   server.closeAllConnections();
+  await closed;
   await ctx.setOffline(true);
   await page.reload();
   await page.waitForFunction(() => window.__probeReport && window.__probeReport.loadHistory.length >= 3, null, { timeout: 15000 });
