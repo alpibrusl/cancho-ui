@@ -73,8 +73,8 @@
     {
       "name": "a pair is dropped for another",
       "file": "crates/cancho-ui-ir/src/theme.rs",
-      "from": "(\"bad\", \"bg\"),\n];",
-      "to": "(\"bad\", \"surface\"),\n];"
+      "from": "(\"bad\", \"bg\"),\n    (\"code_fg\", \"code_bg\"),\n];",
+      "to": "(\"bad\", \"surface\"),\n    (\"code_fg\", \"code_bg\"),\n];"
     },
     {
       "name": "the dark scheme is not checked",
@@ -195,6 +195,18 @@
       "file": "crates/cancho-ui-diff/src/lib.rs",
       "from": "    let authority = if expanded {",
       "to": "    let authority = if expanded || !diff_theme(base, candidate).is_empty() {"
+    },
+    {
+      "name": "the code pair is judged on the page background",
+      "file": "crates/cancho-ui-ir/src/theme.rs",
+      "from": "(\"code_fg\", \"code_bg\"),\n];",
+      "to": "(\"code_fg\", \"bg\"),\n];"
+    },
+    {
+      "name": "a code token is a repeat of another",
+      "file": "crates/cancho-ui-ir/src/theme.rs",
+      "from": "    \"code_bg\",\n    \"code_fg\",\n];",
+      "to": "    \"code_bg\",\n    \"bad_bg\",\n];"
     }
   ]
 }

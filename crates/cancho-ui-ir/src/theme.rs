@@ -1,4 +1,4 @@
-//! `theme { light { .. } dark { .. } font body { .. } }` (docs/theme.md): the sixteen colour tokens of each of two schemes, checked for contrast,
+//! `theme { light { .. } dark { .. } font body { .. } }` (docs/theme.md): the eighteen colour tokens of each of two schemes, checked for contrast,
 //! and the fonts a program declares. Pure: nothing here reads a file (the font files are checked by the CLI, which has a directory).
 
 use cancho_ui_syntax::Span;
@@ -7,8 +7,8 @@ use cancho_ui_syntax::ast::{ThemeBlock, ThemeDecl, ThemeEntry};
 use crate::ir::{IrFont, IrScheme, IrTheme};
 use crate::lower::LowerError;
 
-/// The closed set of colour tokens, in the order they are written to the page and to `diff`.
-pub const TOKENS: [&str; 16] = [
+/// The closed set of colour tokens (`code_bg` and `code_fg` are the colours of a code box, www.md 5.2b item 11), in the order they are written to the page and to `diff`.
+pub const TOKENS: [&str; 18] = [
     "bg",
     "fg",
     "muted",
@@ -25,11 +25,13 @@ pub const TOKENS: [&str; 16] = [
     "warn_line",
     "bad",
     "bad_bg",
+    "code_bg",
+    "code_fg",
 ];
 
 /// The pairs whose contrast is checked in each scheme: (text token, background token). WCAG 2.x 1.4.3 asks 4.5:1 for text. `line`, `ink` and
 /// `warn_line` are decoration: no text is set in them by the baseline stylesheet, so they have no pair (docs/theme.md section 4).
-pub const PAIRS: [(&str, &str); 13] = [
+pub const PAIRS: [(&str, &str); 14] = [
     ("fg", "bg"),
     ("fg", "surface"),
     ("muted", "bg"),
@@ -43,6 +45,7 @@ pub const PAIRS: [(&str, &str); 13] = [
     ("warn", "warn_bg"),
     ("bad", "bad_bg"),
     ("bad", "bg"),
+    ("code_fg", "code_bg"),
 ];
 
 pub const MIN_RATIO: f64 = 4.5;

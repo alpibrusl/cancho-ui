@@ -899,7 +899,7 @@ fn no_token_can_remove_the_44_px_targets_or_the_focus_ring() {
         built > 40 && refused > 20,
         "built {built}, refused {refused}"
     );
-    // every one of the 16 tokens built at least once: each was really tried
+    // every one of the 18 tokens built at least once: each was really tried
     for t in tokens(&c) {
         assert!(
             per_token_built.get(&t).copied().unwrap_or(0) > 0,

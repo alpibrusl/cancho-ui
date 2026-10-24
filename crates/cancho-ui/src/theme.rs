@@ -86,9 +86,9 @@ pub fn sha256_hex(data: &[u8]) -> String {
 /// What to write beside the page for each rule tag of the theme.
 pub fn remediation(code: &str) -> String {
     match code {
-        "theme-token-unknown" => "The schemes are `light` and `dark`; the colour tokens are bg, fg, muted, line, surface, soft, ink, accent, accent_fg, accent_soft, good, warn, warn_bg, warn_line, bad and bad_bg; the fonts are `font body`, `font mono` and `font hand`; a font's keys are family, file, sha256, licence and weight. Each is written once (docs/theme.md section 3).".to_string(),
+        "theme-token-unknown" => "The schemes are `light` and `dark`; the colour tokens are bg, fg, muted, line, surface, soft, ink, accent, accent_fg, accent_soft, good, warn, warn_bg, warn_line, bad, bad_bg, code_bg and code_fg; the fonts are `font body`, `font mono` and `font hand`; a font's keys are family, file, sha256, licence and weight. Each is written once (docs/theme.md section 3).".to_string(),
         "theme-colour-invalid" => "Write a colour as a string of six hex digits, \"#rrggbb\": `accent: \"#185fa5\";`. Names, three digits, alpha and functions are not colours of a theme.".to_string(),
-        "theme-scheme-missing" => "Write both `light { .. }` and `dark { .. }`, each with all sixteen tokens: the compiler writes the dark mode from the `dark` block, so there is no default to fall back on.".to_string(),
+        "theme-scheme-missing" => "Write both `light { .. }` and `dark { .. }`, each with all eighteen tokens: the compiler writes the dark mode from the `dark` block, so there is no default to fall back on.".to_string(),
         "theme-contrast" => "Darken or lighten the text token (or its background) of the pair named in the message until it reaches 4.5:1 (WCAG 2.x 1.4.3). The message gives the ratio it has.".to_string(),
         "theme-duplicate" => "A program has one `theme { .. }`, in its entry file.".to_string(),
         "font-remote" => "A font is a file of this program: `file: \"fonts/x.woff2\"`, copied into the build with its `sha256`. A font by address would be a request to another host.".to_string(),
