@@ -134,11 +134,11 @@ const SERIALISE = `(function () {
     await ctx.close();
   }
 
-  // C. a new screen takes the focus on its Heading (a routed program: examples/routes with Heading in place of a heading text)
+  // C. a new screen takes the focus on its Heading (a routed program: examples/routes with Heading in place of a heading text, the detail screen's inside a Section, so that the heading is found by the selector and not only as a direct child)
   {
     const src = fs.readFileSync(path.join(ROOT, 'examples/routes/routes.cui'), 'utf8')
       .replace('Text { role: heading "Machines" }', 'Heading { level: 1 "Machines" }')
-      .replace('Text { role: heading "Machine {item}" }', 'Heading { level: 2 "Machine {item}" }')
+      .replace('Text { role: heading "Machine {item}" }', 'Section { Heading { level: 2 "Machine {item}" } }')
       .replace('Text { role: heading "Not found" }', 'Heading { level: 2 "Not found" }');
     const b = buildText(src);
     check('C: the routes example with Heading builds', b.code === 0, b.err.slice(0, 160));

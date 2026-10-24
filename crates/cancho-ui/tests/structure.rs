@@ -157,6 +157,16 @@ fn a_link_lists_its_host_in_inspect_and_diff_and_authority_stays() {
         v["components"]["changed"][0]["links"]["added"],
         serde_json::json!(["evil.example", "mailto:example.org"])
     );
+    // a change of host and nothing else: two link lines (one host out, one in) and two view lines (the descriptor of a Link names its `to`),
+    // so `change_count` is 4, and it is 2 if the link lines are not counted
+    let one = "component C {\n    view { Link { to: \"https://a.example/\" \"x\" } }\n}\n";
+    let two = "component C {\n    view { Link { to: \"https://b.example/\" \"x\" } }\n}\n";
+    let (f1, f2) = (scratch("one.cui", one), scratch("two.cui", two));
+    let (code, js, _) = run(&["diff", p(&f1), p(&f2), "--output", "json"]);
+    assert_eq!(code, 5, "a changed host is a change: {js}");
+    let v: Value = serde_json::from_str(&js).expect("JSON");
+    assert_eq!(v["change_count"], 4, "{js}");
+    assert_eq!(v["authority"], "unchanged");
     // the same links twice: no `links` key at all
     let (_, js, _) = run(&["diff", p(&fa), p(&fa), "--output", "json"]);
     assert!(!js.contains("\"links\""), "{js}");

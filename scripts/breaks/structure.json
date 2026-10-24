@@ -90,8 +90,8 @@
     {
       "name": "two unnamed navs are allowed",
       "file": "crates/cancho-ui-ir/src/structure.rs",
-      "from": "if w.navs.len() > 1 {",
-      "to": "if w.navs.len() > 5 {"
+      "from": "if w.navs.len() > 1\n",
+      "to": "if w.navs.len() > 5\n"
     },
     {
       "name": "a user name before the host is accepted",

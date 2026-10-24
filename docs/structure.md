@@ -92,6 +92,11 @@ appearances and roles take its colours: `primary` is `accent_fg` on `accent`, `s
   each appearance and role at 4.5:1 or more in both schemes (lowest 5.93:1).
 * **The nesting bound of 32 applies**: one bound over view nodes, expressions and types, and the text of a heading is an expression of its own, so `Heading` with a text is 2 deep and `Details { Text { .. } }` is 3;
   `32 - d` sections around an innermost of depth `d` checks and one more is `parse-nesting-too-deep`, tested for a `Heading`, a `Link`, a `Details`, a `Figure` with a `Caption` and an `Article`.
+* **Breaks**: `scripts/breaks/structure.json`, 21, each caught by a check failing on its own (none `HUNG`, none `BUILD`): a level 1 heading written as an h2, a nav as a div, a link with no `href`, an appearance with no
+  class, a details with no summary, a skipped level allowed, any scheme accepted, no generic words, an anchor to nothing, a repeated id, two mains, two unnamed navs, a user name before the host, a host not lower-cased,
+  a link not counted by `diff`, a small target in a header, a new screen not looking for an `h2`, a styled text as a span, the compiler's `cui-` ids, an empty summary, a caption anywhere. The first run missed 3 and
+  had one `BAD`: `diff` was caught by an exit code another change already gave (the test now changes only a host: 4 changes, 2 if links are not counted), the screen-focus break was equivalent for a heading that is a
+  direct child (the check now puts the heading inside a `Section`, so only the selector finds it), and a `from` text had changed with the formatter.
 * **Garbage**: 13 malformed views (unterminated, repeated keys, a NUL in an address, a level of 2^63-1 or -1, a `Caption` in a `Caption`) are refusals and not panics.
 
 ## 6. Not measured
