@@ -1,0 +1,36 @@
+// SKETCH, NOT COMPILED (docs/www.md section 5.2b). Section `#demo` of the cancho-www home page at commit dbbf7ae (index.html lines 377-466):
+// two videos with posters, captions that carry inline links, and the same session as text in a <details>.
+
+component Demo {
+    state transcript: String = "";                                                              // GAP 1: the page has this text IN its HTML (written by a Python script); here it needs net.get, so JS
+    requires Network;
+    start Load;
+    on Load { transcript = await(net.get("demo/transcript.txt")); }                            // (the shape of the handler is illustrative: the sketch does not claim it type-checks)
+
+    view {
+        Section {
+            id: "demo"
+            Text { style: "eyebrow" "Recorded, not staged" }
+            Heading { level: 2 "See it refuse, then run." }
+            Text { style: "lead" "Real terminals, real output; only the typing is simulated. A leaked file is refused by a named rule, one line fixes it, and the compiler says what the program may do. Then the same idea, lifted to a UI." }
+            Grid { min: 22                                                                       // `.videos`: repeat(auto-fit, minmax(22rem, 1fr)) and 1fr under 30rem: needs minmax(min(100%, 22rem), 1fr)
+                Figure {
+                    Heading { level: 3 "cancho: a leak, a rule, a fix" }                         // GAP 9: an <h3> inside the <figure>, before the media
+                    Media { kind: "video" src: ["demo/demo.mp4", "demo/demo.webm"] poster: "demo/poster.png" ratio: "16:9" caption: "cap1" label: "Watch the demo (mp4)" }
+                    Caption { id: "cap1"
+                        Rich { "1 minute. The last step builds the same program with the compiler written in cancho, which is not yet the default. " Link { to: "demo/demo.cast" "As text (asciicast)" }
+                               ", and " Link { to: "https://github.com/alpibrusl/cancho-www/blob/main/scripts/record_demo.sh" "the script that makes it" } "." } }
+                }
+                Figure {
+                    Heading { level: 3 "cancho-ui: a component declares what it may do" }
+                    Media { kind: "video" src: ["assets/media/ui-demo.mp4", "assets/media/ui-demo.webm"] poster: "assets/media/ui-demo.poster.jpg" ratio: "16:9" caption: "cap2" label: "Watch the demo (mp4)" }
+                    Caption { id: "cap2" Rich { "20 seconds: real compiler output beside the compiled counter running, not a live session. " Link { to: "https://github.com/alpibrusl/cancho-ui" "cancho-ui" } "." } }
+                }
+            }
+            Details {
+                summary: Rich { "The same session as text " Small "(a real run, written by scripts/demo_transcript.sh)" }                // GAP 6: the summary has inline markup (<small>)
+                Code { text: transcript max_height: 28 }                                          // GAP 10: scroll box with a maximum height (.demo-text pre.code)
+            }
+        }
+    }
+}

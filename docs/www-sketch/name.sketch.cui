@@ -1,0 +1,48 @@
+// SKETCH, NOT COMPILED (docs/www.md section 5.2b). The header and section `#name` of the cancho-www home page at commit dbbf7ae
+// (index.html lines 28-45 and 533-547): landmarks, a nav, a menu in a <details>, a pressed-button switch, headings, three images in figures.
+
+component Name {
+    state agent_view: Bool = false;
+    on Human { agent_view = false; }
+    on Agent { agent_view = true; }
+
+    view {
+        Column {
+            Header {
+                sticky: true                                                                    // step 3 (5.3), shown here because the header needs it
+                Link { to: "#top" appearance: "quiet" "cancho" }                                // GAP 6: the brand has an <img> logo with alt="" before the word; Link takes text only
+                Text { style: "label" "Pre-1.0 · alpha" }                                      // .prever, hidden under 40rem: GAP 7
+                Nav { label: "Sections"                                                         // GAP 7: shown from 62rem, replaced by the Details menu below it: a width-dependent swap of two lists
+                    Link { to: "#try" "Try it" } Link { to: "#trust" "Trust" } Link { to: "#verifies" "Evidence" } Link { to: "#ecosystem" "Ecosystem" }
+                    Link { to: "#demo" "Demo" } Link { to: "#agents" "Agents" } Link { to: "https://alpibru.com/manifesto" "Manifesto" } Link { to: "https://alpibrusl.github.io/cancho/" "Docs" } }
+                Row { role: group label: "View this page as"                                    // `role: group` on a Row: to be checked in B1 (roles allowed today: status, alert, columnheader, ...)
+                    Button { label: "human" pressed: !agent_view on: Human }                    // `pressed:` (5.2)
+                    Button { label: "agent" pressed: agent_view on: Agent } }
+                Link { to: "https://github.com/alpibrusl/cancho" appearance: "quiet" "GitHub" } // GAP 6: carries a star <svg aria-hidden> icon
+                Details { summary: "Menu"                                                       // GAP 6: the summary is an icon (svg) with aria-label="Menu", no visible text
+                    Link { to: "#try" "Try it" } Link { to: "#trust" "Trust" } /* ... the same eight links and GitHub, a second time ... */ }
+            }
+            Main {
+                Section {
+                    id: "name"
+                    Text { style: "eyebrow" "The name" }
+                    Heading { level: 2 "A big rock." }
+                    Rich { style: "lead" Strong "cancho" " is Spanish for a boulder. In La Pedriza, a granite landscape north of Madrid, weathered, jointed rock left fields of boulders resting on one another with nothing between them. Each stays by its own weight and what it touches. The language is built the same way: every piece says what it rests on, and the compiler checks it." }
+                    Grid { min: 17                                                              // `.gallery`: repeat(auto-fit, minmax(17rem, 1fr)): measured equal at 12 widths
+                        Figure {
+                            Image { src: "assets/img/field.webp" fallback: "assets/img/field.jpg" width: 1024 height: 768
+                                    alt: "Aerial view of a hillside covered in tall stacks of rounded granite boulders, with a dirt path and scrub between them under an overcast sky." ratio: "4:3" }   // GAP 8: crop to 4:3, rounded corners, hover zoom (.gallery picture / img)
+                            Caption { "A field of boulders. None is held by anything but what it touches." } }
+                        Figure { Image { src: "assets/img/dawn.webp" fallback: "assets/img/dawn.jpg" width: 1024 height: 768 alt: "Granite boulders in pink morning light and low mist, with one large rounded rock in the centre." ratio: "4:3" } Caption { "First light on the granite." } }
+                        Figure { Image { src: "assets/img/balance.webp" fallback: "assets/img/balance.jpg" width: 1024 height: 768 alt: "Two rounded granite boulders, one resting on the other, lit from behind by the setting sun over a wide valley." ratio: "4:3" } Caption { "Two stones, no mortar." } }
+                    }
+                    Rich { style: "note" "Illustrations generated with Mistral AI. They show the idea; they are not photographs of La Pedriza." }
+                }
+            }
+            Footer {
+                Rich { "cancho · " Link { to: "https://alpibru.com" "Alpibru" } " · EUPL-1.2" }
+                Link { to: "https://github.com/alpibrusl/cancho" "GitHub" } Link { to: "https://alpibru.com/manifesto" "Manifesto" } Link { to: "agents.md" "agents.md" } Link { to: "llms.txt" "llms.txt" }
+            }
+        }
+    }
+}

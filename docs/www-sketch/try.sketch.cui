@@ -1,0 +1,66 @@
+// SKETCH, NOT COMPILED. docs/www.md section 5.2 proposes the elements used here; none exists yet. This is section `#try` of the cancho-www
+// home page (index.html lines 93-151 at commit dbbf7ae), written in the proposed syntax, to find what the proposal cannot say.
+// What cannot be said is marked  // GAP n  and explained in www.md section 5.2b.
+
+component Try {
+    view {
+        Section {
+            id: "try"
+            Text { style: "eyebrow" "Try it" }                                                    // GAP 3: a typographic role (13 .eyebrow on the page)
+            Heading { level: 2 "Three ways in, from sixty seconds to a real task." }
+            Text { style: "lead" "Every command here was run before it went on this page. cancho is pre-1.0, building it needs Rust and clang, and what is not claimed is written down below." }   // .sub
+            Grid {                                                                              // `.try` is a plain stack of three cards; Column would do
+                Article {                                                                       // GAP 5: <article>, not <section>: three named regions would be noise
+                    layout: "text-code"                                                         // GAP 4: 1fr / 1.75fr from 60rem, one column below: not Grid { min: }
+                    Column {
+                        Text { style: "label" "60 seconds · nothing to install" }               // .when
+                        Heading { level: 3 "See a refusal" }
+                        Rich { "A program opens a file and never closes it. The compiler refuses it by a named rule; one added line fixes it. "
+                               Strong "What this shows:" " " Code "check" " found a resource that is never consumed and named the rule. Nothing was run, and a pass would not mean the program is correct in other ways." }
+                        Row {
+                            Link { to: "#demo" appearance: "primary" "Watch the recorded session" }                              // GAP 2: a link drawn as a button (.btn.primary / .ghost / .text)
+                            Link { to: "https://github.com/alpibrusl/cancho-www/tree/main/demo/src" appearance: "secondary" "The two files" }
+                        }
+                    }
+                    Code { "$ cancho check leak.cho --std\nleak.cho:12:9: error: `f` is still live at the end of this block; nothing consumes it\n$ echo $?\n1\n$ cancho check fixed.cho --std     # one line added: file_close(f);\n$ echo $?\n0" }
+                }
+                Article {
+                    layout: "text-code"
+                    Column {
+                        Text { style: "label" "5 minutes · Rust and clang" }
+                        Heading { level: 3 "Run the compiler" }
+                        Rich { Code "check" " only checks; " Code "run" " builds and executes. The first " Code "run" " builds the compiler written in cancho once. Green on linux-x86_64 and darwin-aarch64. " Code "authority" " is the one to try on something you did not write." }
+                        Row {
+                            Link { to: "https://github.com/alpibrusl/cancho#building" appearance: "secondary" "Build instructions" }
+                            Link { to: "https://alpibrusl.github.io/cancho/" appearance: "secondary" "Docs" }
+                        }
+                    }
+                    Column {
+                        Code { copy: true "git clone https://github.com/alpibrusl/cancho && cd cancho\ncargo build -p cancho --release\n./target/release/cancho run examples/hello.cho --std\n./target/release/cancho authority examples/tally.cho --std" }
+                        Code { "Hello, world!\nperforms\n    io_read\n    io_write\nnever touches\n    the filesystem\n    the network\n    the heap\n    the command line\n    foreign code\n(output shortened)" }
+                    }
+                }
+                Article {
+                    layout: "text-code"
+                    Column {
+                        Text { style: "label" "A real task · an agent does the work" }
+                        Heading { level: 3 "Give it to an agent" }
+                        Rich { "The first line prints the page an agent should read; the rest is its loop: check (a rule tag, not a sentence), see what the program can reach, run the tests. Or paste "
+                               Link { to: "https://github.com/alpibrusl/cancho-code/blob/main/docs/agent-prompt.md" "cancho-code’s agent prompt" } " into Claude Code or Codex: it installs ..." }
+                        Row {
+                            Link { to: "https://github.com/alpibrusl/cancho-code" appearance: "secondary" "cancho-code" }
+                            Link { to: "https://alpibrusl.github.io/cancho-tools/" appearance: "secondary" "The ten tools" }
+                        }
+                    }
+                    Column {
+                        Code { copy: true "cancho agent-guidelines > AGENTS.md\ncancho check src/*.cho --std --output json\ncancho authority src/*.cho --std\ncancho test tests/*.cho --std" }
+                        Rich { style: "label-strong" "What an agent sees when two of them collide, from " Link { to: "https://alpibrusl.github.io/cancho-tools/" "cancho-tools" } ":" }
+                        Code { "{\"rule\":\"precondition.hash-mismatch\",\"hint\":\"re-read the file, ..." }
+                    }
+                }
+            }
+            Rich { style: "note" "Not claimed: that agents do better with cancho-tools than with the usual tools. That needs an agent-in-the-loop evaluation that has not been run ("
+                   Link { to: "https://github.com/alpibrusl/cancho/issues/228" "cancho#228" } "). cancho-code reports its own measured results, with their conditions, in its README." }
+        }
+    }
+}
