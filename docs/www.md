@@ -64,7 +64,7 @@ Hand-written JavaScript: **726 lines, 45,573 bytes** (site, map, rocks, scene), 
 | page height | 12,459 px at 1280 px; 22,092 px at 412 px | |
 
 So three quarters of the DOM is generated drawing; the readable content (762 nodes, 16,006 characters of text without JS, 37,220 with) is plain HTML
-that works without JavaScript. The page is usable with scripts off today (section text, links, `<details>`, videos); that is a property to keep.
+that works without JavaScript. The page is usable with scripts off today (section text, links, `<details>`, videos); that is a property to keep. *(5.2c, 2026-10-24: no step of this plan keeps it; a cancho-ui page is empty without scripts.)*
 
 ### 2.4 The CSS (counted, comments removed)
 
@@ -181,12 +181,16 @@ set or a literal checked at compile time ([`controls.md`](controls.md) section 1
 ### 5.2 Structure
 
 * **`Heading { level: 1..4 "text" }`**, **`Section { id: "try" label: "..." ... }`**, landmarks `Header`, `Nav`, `Main`, `Footer`, `Aside`. A `Main` makes the compiler
-  write the skip link. Tags: `heading-level-skipped` (an `h3` directly under an `h1`), `heading-empty`, `landmark-duplicate` (two `Main`s),
-  `section-label-missing`.
+  write the skip link. Tags: `heading-level-skipped` (an `h3` directly under an `h1`), `heading-empty`, `landmark-duplicate` (two `Main`s).
+  *(Corrected 2026-10-24, 5.2b: this list had `section-label-missing`. The page has 12 `section`s and **0 `region` landmarks**, measured in the accessibility tree: an unnamed
+  `<section>` is not a landmark, and naming all 12 would add 12 landmarks to a page that has 5. `label:` on a `Section` is therefore optional, and a named one is a region; a `Nav`
+  needs a label when there is more than one. Also: the real page's headings run h1, **h3**, h3, h3, h2 ...: the three cards under the hero are `h3`s directly under the `h1`, so
+  `heading-level-skipped` would refuse the page as it is. That is the rule working; the page's cards would become `h2`s.)*
 * **`Rich { ... }`: inline content.** Children only `Span "text"`, `Link`, `Code "text"`, `Strong "text"`, `Em "text"`; interpolation as in `Text`. This is the
   largest single item (82 of 162 blocks). It lowers to one `<p>` with inline children; a `Text` stays plain. Tags: `rich-child-invalid`, `rich-empty`.
 * **`Link { to: "https://..." "label" }`**: a literal URL only; `https:` or `http:` or `mailto:` or a `#id` (`link-scheme-refused`: `javascript:`, `data:`);
-  written with `rel="noopener noreferrer"` for another origin. An accessible name is the label (`link-label-missing`, and `link-label-generic` for "click
+  written with **no `rel`** *(corrected 2026-10-24, 5.2b: this said `rel="noopener noreferrer"`. The page has 128 external links, 0 `target`s and 0 `rel`s on links; `noopener` only matters
+  with `target="_blank"`, which `Link` has no binding for, and `noreferrer` would remove the `Referer` the linked sites now receive: a change of behaviour nobody asked for)*. An accessible name is the label (`link-label-missing`, and `link-label-generic` for "click
   here", "here", "link"). **Authority: external links are reachable destinations, not effects**, but they are listed: `authority` shows `links:
   alpibru.com, github.com`, and **`diff` reports a new host** (the page has 128 external links to a handful of hosts: a new one is a review item). A link built from fetched data (the
   projects' `url`) must pass the same scheme check at run time and is not host-listed (`link-dynamic`, shown by `authority` as "dynamic links").
@@ -198,13 +202,96 @@ set or a literal checked at compile time ([`controls.md`](controls.md) section 1
 * **`Media { kind: "video" src: ".." alt-source: ".." poster: ".." caption: id }`**: `controls`, `playsinline`, `preload="metadata"` always;
   **no autoplay** (`media-autoplay-refused` is not a key you can set: it does not exist); `caption:` must name a caption element (`media-caption-missing`), the page's
   `aria-describedby`. A transcript or text alternative is *required to be declared* (`media-text-alternative-missing`), as the page's "the same session as text".
-* **`Code { copy: true "text" }`**: a `<pre tabindex="0"><code>`; `copy:` adds the Copy button; the **`Clipboard` capability** (`requires Clipboard;`, write only,
+* **`Code { copy: true "text" }`** *(5.2b: the page draws code on `--term-bg`/`--term-fg`, which are two of the 22 art colours and not tokens; a decision is needed)*: a `<pre tabindex="0"><code>`; `copy:` adds the Copy button; the **`Clipboard` capability** (`requires Clipboard;`, write only,
   on a user tap only) is declared and shown by `authority`. Tag: `clipboard-write-not-from-tap`.
 * **`pressed:` on `Button`** (`aria-pressed`, a `Bool` state field) for the tabs, chips and switch (`button-pressed-type`).
-* **`Grid { min: 18 }`**: a responsive grid with a column minimum in `ch`/`rem` (`grid-min-invalid` outside a range); `columns: 1 | 2 | 3` per width breakpoint is
-  **not** offered: the page's 19 width queries are mostly "1 column under a width, N above", which `min:` covers. Measure that claim on the page in step 2.
+* **`Grid { min: 18 }`**: a responsive grid with a column minimum in `rem` (`grid-min-invalid` outside a range), written `repeat(auto-fit, minmax(min(100%, 18rem), 1fr))`;
+  `columns: 1 | 2 | 3` per width breakpoint is not offered. *(**The claim here was wrong and is replaced** by 5.2b: of the page's 19 width queries `min:` reproduces **1**, and 3 more
+  approximately; 6 are asymmetric columns, 5 show or hide something, 3 scroll or collapse. A `weights:` binding is proposed for the asymmetric ones.)*
 * **Replay:** none of these has behaviour but `Button.pressed` and `Code.copy` (a handler); replay checks the lowering and the refusals. **Accessible form:** the
   elements *are* the semantic HTML (heading levels, landmarks, `alt`, link names), and `check` refuses the cases above instead of an audit finding them later.
+
+### 5.2b What three real sections showed (Phase A of step 2, 2026-10-24)
+
+**Method.** cancho-www re-cloned read-only, shallow, at **`dbbf7ae`** ("Map: a trail of roles passing a file", #13), newer than `0579a80`: `index.html`, `site.js` and `ecosystem.json` are
+byte-identical to `0579a80`; `site.css` is +2 lines and `map.js` +15. Three sections, written as **sketches in the proposed syntax, not compiled** (`docs/www-sketch/`): `try`
+(`index.html` 93-151, prose with links and code), the header with `#name` (28-45, 533-547: landmarks, a nav, a menu, a pressed-button switch, three images in figures), and `demo`
+(377-466: two videos with captions and a transcript). Each was compared element by element with the page's DOM. **The "compiled DOM" in the tables is derived by hand from the proposed lowering,
+not produced by a compiler**; the page's own numbers are counted. Layout was measured in Chromium at 12 widths (320 to 1440) on the real page.
+
+#### What the existing sections are
+
+| | `try` | header | `name` | `demo` |
+|---|---|---|---|---|
+| elements | 58 | 35 | 22 | 26 |
+| text blocks with inline markup | 5 of 10 `p`; 10 `code`, 1 `b`, 9 `a` | n/a | 1 `b` | links inside both `figcaption`s, a `small` inside a `summary` |
+| classes the CSS depends on | `eyebrow sub try reveal tx when links btn(primary, ghost) cd codebox what note` (14) | `top wrap brand prever opt hright switch ghbtn menu` | `eyebrow sub gallery reveal note` | `eyebrow sub videos demo-text code` |
+| ids / anchors | `try` | `top`, `view-human`, `view-agent` | `name` | `demo`, `cap1`, `cap2` |
+| notable attributes | `tabindex=0` on 5 `pre` | `aria-label` x3, `role=group`, `aria-pressed` x2, `aria-hidden` x2 (icons) | `srcset`, `width`, `height`, `alt` (long), `loading=lazy`, `decoding=async` | `preload`, `poster`, `aria-describedby`, 4 `source`, a fallback `a` inside each `video` |
+
+#### What the proposed bindings can say, and what they can not
+
+| # | not expressible, or wrong in 5.2 | measured | what it needs |
+|---|---|---|---|
+| 1 | **The page works without JavaScript; a cancho-ui page does not** | page without JS: 738 elements, 16,006 characters of text; a `build --page` counter without JS: **3 elements, "This app needs JavaScript."** | **material: section 5.2c** |
+| 2 | a link drawn as a button (`.btn` with `primary`, `ghost`, `text`) | 9 `a.btn` (6 ghost, 2 primary, 1 text) | `Link { appearance: "primary" \| "secondary" \| "quiet" }`, a closed set; colours from the theme tokens |
+| 3 | text roles (`eyebrow`, `sub`, `note`, `when`, `what`) | `eyebrow` 13, `sub` 10, `note` 9, `what` 6, `when` 3 | `Text`/`Rich { style: "eyebrow" \| "lead" \| "note" \| "label" }`, closed; an accessible reading is unchanged (all are paragraphs) |
+| 4 | asymmetric columns (`1fr 1.75fr`) | `.try article`: 308 + 539 px at 960 px, 378 + 661 at 1280; auto-fit `min` can match the *breakpoint* (by arithmetic on the measured widths, not measured: a `min` of about 25 rem would put the change between 900 and 960 px, as the page does) but gives equal columns: about 420 px for the code column (derived), not 539 to 661 | `Grid { min: 25 weights: [1, 1.75] }`, weights from a short list of ratios |
+| 5 | `<article>` | 6 `article`s in the AX tree, 0 `region`s | `Article { }`: `Section` would add a landmark per card |
+| 6 | inline content outside `Rich`: the `<img alt="">` logo inside the brand link, the star `<svg aria-hidden>` in `GitHub`, an icon-only `summary` named by `aria-label`, `<small>` in a `summary`, `<br>` and `<em>` in the `h1` | 19 `a` in the header, 2 `svg`, 1 `br`, 1 `em`, 1 `small` | `Heading`, `Link`, `Details.summary` take inline children; `Rich` gets `Break` and `Small`; an icon is `Link { icon: "star" }` from a closed set, or stays an island (step 3) |
+| 7 | **responsive visibility and swapping** (the nav is shown from 62 rem and a `Details` menu with the same links from below) | 5 of the 19 width queries (46, 40, 30, 62 and 62 rem); the 9 menu links are a **second copy** of the nav | `Nav { collapse: "menu" }` emitting one list; belongs to step 3 (5.3, the header); until then two lists and no hiding |
+| 8 | image crop to a ratio, rounded corners, hover zoom | `.gallery picture { aspect-ratio: 4/3; overflow: hidden; border-radius: 16px }` and a 1.04 scale on hover, with a reduced-motion override | `ratio: "4:3"` is a binding; corners and shadow are the baseline's; the zoom is **not** expressible (a motion effect, step 5) |
+| 9 | an `h3` inside a `<figure>` before the media | 2 `figure`s have one | `Figure { .. }` and `Caption { id }` as containers (the proposal had `Image`/`Media` own the `figure`); `Media.caption:` names a `Caption` |
+| 10 | a scroll box with a height limit (`pre.code`, 28 rem) | 1 | `Code { max_height: 28 }` (a closed range) |
+| 11 | **`Code` colours**: the page's code boxes are `--term-bg` `#12151a` with `--term-fg` `#d6dde8` in both schemes (13.39:1) | those are two of the 22 art colours, **not** in the 16 tokens; `fg` on `soft` is 15.6:1 (light) and 13.91:1 (dark) | **a decision**: (a) add `code_bg`, `code_fg` as tokens 17 and 18 and a pair; or (b) draw code in `fg` on `soft`, which loses the dark box in the light scheme |
+| 12 | `Section` is not the only anchor target | the hero is a `div id="top"` | `Section` can be any block and carry `id`; `anchor-unknown` still applies |
+| 13 | `role: group` on a `Row` (the human/agent switch) | not tested | to be checked in B1; a `Group { label }` if `role:` does not allow it |
+| 14 | `.reveal` (14 uses) and `style="--i:0"` per item | 14 + 10 cairns | step 5, not step 2 |
+
+**What expressed cleanly:** `Section`, `Heading`, the `Rich` paragraphs with `Link`, `Code` and `Strong` (every inline element in the three sections: 9 `a`, 10 `code`, 1 `b`), `Image` with `webp` + `jpg`,
+`width` and `height`, `alt`, and `loading`; `Media` with two sources, a poster, `controls`, `playsinline`, `preload`, and a described-by caption; `Details`; the footer. The compiled elements were **not counted** (nothing compiles yet); `Column` and `Grid` would supply the page's `div.tx`/`div.cd` wrappers, and none of the author's class names would exist.
+
+**The 19 width queries, classified** (the claim in 5.2 was that `min:` covers "mostly 1 column under a width, N above"):
+
+| kind | queries | `Grid { min }` |
+|---|---:|---|
+| auto-fit equal columns | 1 (`.videos` under 30 rem) | **yes**: the same column count as the page at all 12 widths, for `.videos` (`min: 22`) and `.gallery` (`min: 17`, which the page has no query for); `.videos` needs `min(100%, 22rem)` or it overflows below 22 rem, which is why the page has its 30 rem rule |
+| equal columns from one breakpoint (`.chain` 5, `.verif` 3, `.paths` 3) | 3 | approximately: auto-fit gives 2 and 4 columns between, where the page has 1 |
+| a decoration that turns with the layout (`.chain` connector) | 1 | no |
+| asymmetric or fixed-side tracks (`.hero` twice, `.stage`, `.mapwrap`, `.agents`, `.try`) | 6 | **no**: needs `weights:` or a fixed side |
+| show or hide something by width (`nav a.opt`, `.prever`, `.ghbtn`, the nav/menu swap, its margins) | 5 | no |
+| scroll or collapse (`.map`, `.canvas`, `.compare`) | 3 | no (the first two are islands) |
+
+So of 19, `min:` is right for 1, roughly right for 3, and not meant for 15. In the three sections: the header has 5 queries, all visibility; `try` 1, asymmetric; `demo` 1, the `min:` one.
+
+**A side finding about the page itself (not touched):** at 1024 px wide the page's scroll width exceeds its client width by **63 px** (the header's nav is shown from 62 rem and does not fit; the
+body hides `overflow-x`, so no scroll bar shows) and at 320 px by 4 px. Measured on the clone served locally, in Chromium, as scroll width minus client width (a script of this session, not a repository script).
+
+**Landmarks and headings, measured on the page** (Chromium accessibility tree, with and without JavaScript): `banner` 1, `navigation` 1, `main` 1, `contentinfo` 1, `complementary` 1, `region` 0, `article` 6,
+`figure` 5, 35 to 36 headings, 111 links, `DisclosureTriangle` 2, `Video` 2, a `table` 1. Heading levels in order: `1 3 3 3 2 ...`: one skip (h1 to h3).
+
+### 5.2c Static first paint: the page is readable without JavaScript, and a cancho-ui page is not
+
+**Measured.** With JavaScript off, the cancho-www page has 738 elements and 16,006 characters of text (1,507 accessibility nodes, 5 landmarks); a program built with
+`cancho-ui build --page` has `<div id="root"></div><noscript>This app needs JavaScript.</noscript>`: **3 elements**, one sentence. With JavaScript on, the home page is 2,951 elements.
+`docs/platform-model.md` lists "a server-side rendering backend" as a Phase 6 "if asked" item; nothing in the compiler renders HTML.
+
+**Why it matters for this page in particular.** The page is also *for agents* (`agents.md`, `llms.txt`, `<link rel="alternate">`): a crawler, a link-preview fetcher or an agent that
+fetches HTML without running scripts would see "This app needs JavaScript." Writing the page's structure in cancho-ui (step 2) with no static output is a regression for them, and 2.3 above listed
+"works with scripts off" as "a property to keep" without noticing that no step of the plan keeps it.
+
+**Options, none built:**
+
+| option | what it is | cost |
+|---|---|---|
+| A. **Render the first view at build time** | `build --page` writes the initial DOM, from the initial state, into `#root`; the script then rebuilds it (it already empties `#root` and rebuilds at every render) | a second renderer in Rust beside the JS emitter for each element: the structure elements are static and simple, the controls are not; the two must agree on a **shared corpus** (serialise both DOMs and compare), the way replay and the page do. Data fetched at `start` (a `net.get`) is absent from the static HTML. Medium to large |
+| B. **Static elements only** | only the new structure elements (no state-dependent ones) are prerendered; the program says so (`Section { static }`) | smaller; the page's prose, headings, images and videos are exactly these |
+| C. **Accept it** | keep the HTML twin the site already has (`agents.md`, `llms.txt`) for crawlers and agents, and require JavaScript for humans | none to build; the home page stops being readable by tools that do not run scripts, and the first paint is an empty page until `app.js` runs |
+| D. **A hybrid** | the program is the source of truth; a separate generator writes the structure's HTML into `index.html` between markers (the way `gen_agent_files.py` does for four regions today) | a second generator, which is the thing step 2 was meant to remove |
+
+**This changes the plan materially, so step 2 is not built until the user chooses.** The recommendation is **B** (prerender what is static, measure it, and say plainly that an element with state is
+not prerendered): it keeps the readable content and the agent-facing HTML, it is checkable by a shared corpus, and it does not need the rest of the compiler to change. The cost of choosing C is the one
+sentence above.
 
 ### 5.3 Page-level
 
