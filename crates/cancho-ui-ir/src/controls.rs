@@ -108,6 +108,7 @@ fn check_node(c: &IrComponent, node: &IrViewNode, in_for: bool) -> Result<(), Lo
                     *span,
                     in_for,
                 )?;
+                crate::media::check_complete(kind, accessibility, bindings, children, *span)?;
                 check_navlink_complete(kind, accessibility, bindings, *span)?;
                 check_file_field(kind, accessibility, bindings, *span, in_for)?;
                 check_chart(kind, accessibility, bindings, *span, in_for)?;
@@ -173,6 +174,9 @@ fn element_name(kind: &IrElementKind) -> &'static str {
         IrElementKind::Summary => "Summary",
         IrElementKind::Code => "Code",
         IrElementKind::InlineCode => "Code",
+        IrElementKind::Image => "Image",
+        IrElementKind::Media => "Media",
+        IrElementKind::Grid => "Grid",
         IrElementKind::Named(_) => "a component",
     }
 }
@@ -499,7 +503,8 @@ fn check_input_type(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerErro
 
 /// `gap:` and `max_width:` are bindings of a `Column` or a `Row`, and take an integer literal in a fixed range.
 fn check_layout(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
-    if !matches!(kind, IrElementKind::Column | IrElementKind::Row) {
+    let grid_gap = matches!(kind, IrElementKind::Grid) && b.key == "gap";
+    if !grid_gap && !matches!(kind, IrElementKind::Column | IrElementKind::Row) {
         return Err(LowerError::ControlRefused {
             code: "binding-unknown",
             message: format!(
@@ -897,6 +902,9 @@ fn check_to(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
 
 fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
     if crate::structure::check_binding(kind, b)? {
+        return Ok(());
+    }
+    if crate::media::check_binding(kind, b)? {
         return Ok(());
     }
     crate::sortlist::check_binding(c, kind, b)?;

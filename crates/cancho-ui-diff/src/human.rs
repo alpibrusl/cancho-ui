@@ -172,5 +172,14 @@ pub fn render_human(r: &DiffReport) -> String {
             (None, None) => Ok(()),
         };
     }
+    for a in &r.assets {
+        let short = |h: &String| h.chars().take(12).collect::<String>();
+        let _ = match (&a.base, &a.candidate) {
+            (Some(b), Some(c)) => writeln!(out, "~ file {}: {} -> {}", a.path, short(b), short(c)),
+            (None, Some(c)) => writeln!(out, "+ file {} = {}", a.path, short(c)),
+            (Some(b), None) => writeln!(out, "- file {} = {}", a.path, short(b)),
+            (None, None) => Ok(()),
+        };
+    }
     out
 }

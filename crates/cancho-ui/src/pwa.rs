@@ -18,12 +18,13 @@ pub struct ThemeAssets {
 const BACKGROUND: [u8; 3] = [0x1f, 0x6f, 0xeb];
 const MARK: [u8; 3] = [0xff, 0xff, 0xff];
 
-/// Everything `--pwa` writes for a program compiled to `js`, named `name`.
+/// Everything `--pwa` writes for a program compiled to `js`, named `name`; `site` is the files its views name (`Image`, `Media`).
 pub fn generate(
     js: &str,
     name: &str,
     img_src: Option<&str>,
     theme: Option<&ThemeAssets>,
+    site: &[(String, Vec<u8>)],
 ) -> PwaFiles {
     let mut files: PwaFiles = vec![
         ("app.js".into(), js.as_bytes().to_vec()),
@@ -36,6 +37,7 @@ pub fn generate(
         ("icon-512.png".into(), icon_png(512)),
     ];
     files.extend(theme.iter().flat_map(|t| t.fonts.iter().cloned()));
+    files.extend(site.iter().cloned());
     let sw = service_worker(&files);
     files.push(("sw.js".into(), sw.into_bytes()));
     files
@@ -49,6 +51,7 @@ pub fn generate_page(
     name: &str,
     img_src: Option<&str>,
     theme: Option<&ThemeAssets>,
+    site: &[(String, Vec<u8>)],
 ) -> PwaFiles {
     let mut files: PwaFiles = vec![
         ("app.js".into(), js.as_bytes().to_vec()),
@@ -58,6 +61,7 @@ pub fn generate_page(
         ),
     ];
     files.extend(theme.iter().flat_map(|t| t.fonts.iter().cloned()));
+    files.extend(site.iter().cloned());
     files
 }
 
@@ -108,6 +112,14 @@ body {
 }
 .cui-col { display: flex; flex-direction: column; gap: 0.5rem; }
 .cui-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+/* Grid (docs/structure.md section 10): as many columns as fit at `min`, equal; with weights, one flex line whose cells grow in proportion and wrap, one under another, when the line cannot hold them */
+.cui-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--cui-min)), 1fr)); gap: 0.5rem; }
+.cui-grid.cui-grid-w { display: flex; flex-wrap: wrap; }
+.cui-grid-w > * { min-width: 0; }
+.cui-grid-w > :nth-child(1) { flex: var(--cui-w1) 1 min(100%, calc(var(--cui-min) * var(--cui-w1))); }
+.cui-grid-w > :nth-child(2) { flex: var(--cui-w2) 1 min(100%, calc(var(--cui-min) * var(--cui-w2))); }
+.cui-grid-w > :nth-child(3) { flex: var(--cui-w3) 1 min(100%, calc(var(--cui-min) * var(--cui-w3))); }
+.cui-grid-w > :nth-child(4) { flex: var(--cui-w4) 1 min(100%, calc(var(--cui-min) * var(--cui-w4))); }
 /* gap: 0..4 on a Row or Column (docs/presentation.md section 2) */
 .cui-gap-0 { gap: 0; } .cui-gap-1 { gap: 0.25rem; } .cui-gap-2 { gap: 0.5rem; } .cui-gap-3 { gap: 1rem; } .cui-gap-4 { gap: 2rem; }
 /* a TextField with a label: the label is shown above the field */
@@ -155,6 +167,13 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 .cui-code code { font: inherit; }
 .cui-code[data-copy] pre { padding-right: 5.5rem; }
 .cui-copy { position: absolute; top: 0.45rem; right: 0.45rem; }
+/* Image and Media (docs/structure.md section 10): never wider than the file or the column; a `ratio` crops to the shape */
+.cui-img { display: block; overflow: hidden; border-radius: 12px; }
+.cui-img img { display: block; width: 100%; height: auto; }
+.cui-img[data-ratio] img { height: 100%; object-fit: cover; }
+.cui-media { display: block; width: 100%; max-width: 100%; height: auto; border-radius: 12px; background: #000; }
+[data-ratio="1:1"] { aspect-ratio: 1 / 1; } [data-ratio="4:3"] { aspect-ratio: 4 / 3; } [data-ratio="3:2"] { aspect-ratio: 3 / 2; }
+[data-ratio="16:9"] { aspect-ratio: 16 / 9; } [data-ratio="21:9"] { aspect-ratio: 21 / 9; } [data-ratio="3:4"] { aspect-ratio: 3 / 4; } [data-ratio="2:3"] { aspect-ratio: 2 / 3; }
 </style>
 @THEME_CSS@</head>
 <body>
@@ -240,7 +259,13 @@ fn service_worker(files: &PwaFiles) -> String {
     }
     let version = format!("{:016x}", fnv1a64(&parts));
     let mut precache = vec!["./".to_string()];
-    precache.extend(files.iter().map(|(name, _)| format!("./{name}")));
+    // a video is not kept offline: it is the one kind of file that would make the install many times the size of the app (docs/structure.md section 10)
+    precache.extend(
+        files
+            .iter()
+            .filter(|(name, _)| !(name.ends_with(".mp4") || name.ends_with(".webm")))
+            .map(|(name, _)| format!("./{name}")),
+    );
     let list = precache
         .iter()
         .map(|p| format!("    \"{p}\""))
@@ -400,7 +425,7 @@ mod tests {
 
     #[test]
     fn a_name_is_escaped_in_the_page_and_in_the_manifest() {
-        let files = generate("//", "A \"b\" <c> & d", None, None);
+        let files = generate("//", "A \"b\" <c> & d", None, None, &[]);
         let html = String::from_utf8(files[1].1.clone()).unwrap();
         assert!(html.contains("<title>A &quot;b&quot; &lt;c&gt; &amp; d</title>"));
         let manifest: serde_json::Value = serde_json::from_slice(&files[2].1).unwrap();
@@ -410,7 +435,7 @@ mod tests {
     #[test]
     fn a_page_is_not_an_app() {
         // `--page` (docs/mobile-backend.md section 5.2): the script and the page, and nothing a browser installs from.
-        let files = generate_page("//", "Demo", None, None);
+        let files = generate_page("//", "Demo", None, None, &[]);
         let names: Vec<&str> = files.iter().map(|(n, _)| n.as_str()).collect();
         assert_eq!(names, ["app.js", "index.html"]);
         let html = String::from_utf8(files[1].1.clone()).unwrap();
@@ -429,24 +454,24 @@ mod tests {
             "still a page for a phone"
         );
         // The page of `--pwa` is the same page plus those lines.
-        let app = String::from_utf8(generate("//", "Demo", None, None)[1].1.clone()).unwrap();
+        let app = String::from_utf8(generate("//", "Demo", None, None, &[])[1].1.clone()).unwrap();
         assert!(app.contains("manifest") && app.contains("serviceWorker"));
     }
 
     #[test]
     fn the_worker_version_follows_every_byte_it_caches() {
-        let a = generate("one", "x", None, None);
-        let b = generate("two", "x", None, None);
+        let a = generate("one", "x", None, None, &[]);
+        let b = generate("two", "x", None, None, &[]);
         let sw = |f: &PwaFiles| String::from_utf8(f.last().unwrap().1.clone()).unwrap();
         assert_ne!(sw(&a), sw(&b));
-        assert_eq!(sw(&a), sw(&generate("one", "x", None, None)));
+        assert_eq!(sw(&a), sw(&generate("one", "x", None, None, &[])));
     }
 
     #[test]
     fn the_maskable_icon_keeps_its_mark_inside_the_safe_zone() {
         // #67: the manifest has a maskable entry for each icon, and the mark of that icon lies inside the circle of radius
         // 40% of the image, whatever the size, so a circular mask cuts nothing of it.
-        let files = generate("//", "x", None, None);
+        let files = generate("//", "x", None, None, &[]);
         let manifest: serde_json::Value = serde_json::from_slice(&files[2].1).unwrap();
         let icons = manifest["icons"].as_array().unwrap();
         for size in [192u32, 512] {

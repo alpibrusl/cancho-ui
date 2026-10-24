@@ -26,6 +26,7 @@
 //! the lessons; in particular, single-dash flags render with their
 //! literal dash in `cancho-ui skill` output (Phase 2).
 
+mod assets;
 mod diff_cmd;
 mod pipeline;
 mod pwa;
@@ -188,10 +189,18 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
                     }
                     None => None,
                 };
+                // the pictures and videos the views name, copied into the build at the paths the page uses
+                let site = match ir.as_ref() {
+                    Some(i) => {
+                        assets::load(i, file.parent().unwrap_or_else(|| std::path::Path::new("")))
+                            .map_err(CliError::Env)?
+                    }
+                    None => Vec::new(),
+                };
                 let files = if opts.pwa {
-                    pwa::generate(&out, &name, img_src.as_deref(), theme.as_ref())
+                    pwa::generate(&out, &name, img_src.as_deref(), theme.as_ref(), &site)
                 } else {
-                    pwa::generate_page(&out, &name, img_src.as_deref(), theme.as_ref())
+                    pwa::generate_page(&out, &name, img_src.as_deref(), theme.as_ref(), &site)
                 };
                 pwa::write_all(dir, &files).map_err(CliError::Env)?;
             }

@@ -368,6 +368,12 @@ pub enum ElementKind {
     Summary,
     /// Inline content and code (docs/structure.md section 7): `Code`.
     Code,
+    /// Pictures, video and grids (docs/structure.md section 10): `Image`.
+    Image,
+    /// Pictures, video and grids (docs/structure.md section 10): `Media`.
+    Media,
+    /// Pictures, video and grids (docs/structure.md section 10): `Grid`.
+    Grid,
     Named(String),
 }
 
