@@ -10,6 +10,7 @@ mod eval;
 mod geo;
 mod locale;
 mod machine;
+mod number;
 mod report;
 mod router;
 mod sortlist;
@@ -32,6 +33,7 @@ pub use eval::{
     page_count, sort_key_order_json, text_builtin_json,
 };
 pub use geo::{distance_km, parse_position};
+pub use number::{delivered as number_delivered, parse_number};
 pub use report::{
     Failure, FiredJson, HUMAN_VALUE_BOUND, IssuedJson, NOT_CLAIMED, REPORT_SCHEMA, REPORT_VERSION,
     RequestJson, SpanJson, StepReport, TestReport, TickJson, WriteJson, render_human,
@@ -362,6 +364,21 @@ fn run_step(
                     "params",
                     format!(
                         "`{name}` is fired only by a FileField, and the step's value is not one it gives: {why}"
+                    ),
+                ));
+            }
+            // A number field gives its event the number typed as the text `num` reads (`1.5`, not `1,5` or `1.50`), or the typed text when it
+            // is not a number; a trace that gives a number in another spelling describes a page that does not exist (docs/number-input.md).
+            if m.is_number_event(name)
+                && let Some(Value::Str(given)) = params.first()
+                && let Some(plain) = number::parse_number(given, m.number_lang())
+                && &plain != given
+            {
+                return Err(stop(
+                    "trace-number-invalid",
+                    "params",
+                    format!(
+                        "`{name}` is fired only by a number field, which gives the number typed as the text {plain:?}, never {given:?} (docs/number-input.md section 3)"
                     ),
                 ));
             }

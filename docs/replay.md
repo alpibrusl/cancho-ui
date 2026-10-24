@@ -447,6 +447,7 @@ Every refusal has a stable tag. Tier **tested** throughout.
 | `trace-history-empty` | `back` or `forward` with no entry to go to | yes |
 | `trace-stream-state` | a `stream` or `message` step the page could not have seen: an answer nobody is waiting for, a `drop` with no connection, a message on a stream that is not open, either on a component that does not `subscribe` | yes |
 | `trace-locale-invalid` | a trace's `locales` that is not a list of language tags | yes |
+| `trace-number-invalid` | an event fired only by number fields (`TextField { type: "number" }`) whose parameter is a number in a spelling the page does not give (`1.50`, `.5`, `1e5`, `+1`, `007`, ` 1`, `-0`; `1,5` where the language reads a decimal comma): the field gives the text `num` reads (`docs/number-input.md` section 4) | yes |
 | `trace-move-invalid` | an event fired only by `SortList`s whose parameters are not two different whole numbers inside the list (equal indexes, past the end, negative, a fraction, not numbers) | yes |
 | `replay-type-error` | an operator or builtin applied to values it is not defined on | yes |
 | `replay-unknown-identifier` | an identifier that is neither a local nor a state field | yes |

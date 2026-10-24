@@ -1,0 +1,701 @@
+{
+ "about": "What a number field (TextField { type: \"number\" }) gives its event for what was typed, by the language of the component (null: no Locale capability, English). `delivered` is the number as the text num reads, or the typed text itself. docs/number-input.md section 3.",
+ "cases": [
+  {
+   "lang": null,
+   "typed": "",
+   "delivered": "",
+   "why": "nothing typed is nothing [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "1",
+   "delivered": "1",
+   "why": "a digit [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "12",
+   "delivered": "12",
+   "why": "digits [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "-",
+   "delivered": "-",
+   "why": "a minus alone is not yet a number [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "-5",
+   "delivered": "-5",
+   "why": "a negative [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "+5",
+   "delivered": "5",
+   "why": "a plus sign is dropped [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "1.",
+   "delivered": "1",
+   "why": "a point with nothing after it is the number so far [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "1.5",
+   "delivered": "1.5",
+   "why": "a decimal [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": ".5",
+   "delivered": "0.5",
+   "why": "no digit before the point: JSON would refuse .5, the page says 0.5 [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "-.5",
+   "delivered": "-0.5",
+   "why": "a negative with no digit before the point [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": ".",
+   "delivered": ".",
+   "why": "a point alone [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "1e5",
+   "delivered": "100000",
+   "why": "an exponent [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "1e",
+   "delivered": "1e",
+   "why": "an exponent with no digits is not yet a number [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "1e+",
+   "delivered": "1e+",
+   "why": "a signed exponent with no digits [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "1E5",
+   "delivered": "100000",
+   "why": "an upper-case E [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "1e-3",
+   "delivered": "0.001",
+   "why": "a negative exponent [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "0.10",
+   "delivered": "0.1",
+   "why": "trailing zeros go [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "007",
+   "delivered": "7",
+   "why": "leading zeros go (JSON would refuse them) [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "1,5",
+   "delivered": "1,5",
+   "why": "a comma is a grouping mark in English, which a field does not read [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "1,234",
+   "delivered": "1,234",
+   "why": "a grouped number is not read [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "12abc",
+   "delivered": "12abc",
+   "why": "letters after digits [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": " 12 ",
+   "delivered": "12",
+   "why": "spaces around it are ignored [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "1 2",
+   "delivered": "1 2",
+   "why": "a space inside [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "1.2.3",
+   "delivered": "1.2.3",
+   "why": "two points [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "abc",
+   "delivered": "abc",
+   "why": "text [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "1e400",
+   "delivered": "1e400",
+   "why": "too large for a number [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "1e21",
+   "delivered": "1e21",
+   "why": "from 1e21 up it is text (JavaScript and replay print it differently) [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "1e20",
+   "delivered": "100000000000000000000",
+   "why": "the largest magnitude below 1e21 [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "1e-6",
+   "delivered": "0.000001",
+   "why": "the smallest nonzero magnitude [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "1e-7",
+   "delivered": "1e-7",
+   "why": "below 1e-6 it is text [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "0",
+   "delivered": "0",
+   "why": "zero [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "-0",
+   "delivered": "0",
+   "why": "negative zero is zero [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "0e5",
+   "delivered": "0",
+   "why": "zero with an exponent [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "\u0663",
+   "delivered": "3",
+   "why": "an Arabic-Indic digit [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "\uff11\uff12.\uff15",
+   "delivered": "12.5",
+   "why": "full-width digits [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "\u0663\u066b\u0665",
+   "delivered": "\u0663\u066b\u0665",
+   "why": "the Arabic decimal separator is not English's [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "\u22125",
+   "delivered": "-5",
+   "why": "the true minus sign [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "--5",
+   "delivered": "--5",
+   "why": "two minus signs [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "5-",
+   "delivered": "5-",
+   "why": "a minus after [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "+-5",
+   "delivered": "+-5",
+   "why": "a plus and a minus [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "1e5.5",
+   "delivered": "1e5.5",
+   "why": "a point in the exponent [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "e5",
+   "delivered": "e5",
+   "why": "an exponent with no mantissa [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "1.e5",
+   "delivered": "100000",
+   "why": "a point with nothing after it, then an exponent [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": ".e5",
+   "delivered": ".e5",
+   "why": "no digits at all [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "0.30000000000000004",
+   "delivered": "0.30000000000000004",
+   "why": "the shortest text that reads back the same [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "9007199254740993",
+   "delivered": "9007199254740992",
+   "why": "beyond 2^53 the nearest double [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "00.5",
+   "delivered": "0.5",
+   "why": "leading zeros before a point [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "-0.0",
+   "delivered": "0",
+   "why": "negative zero with a point [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": " ",
+   "delivered": " ",
+   "why": "only a space [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "1\u00a0",
+   "delivered": "1",
+   "why": "a no-break space after it [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "1e0005",
+   "delivered": "100000",
+   "why": "zeros in the exponent [no Locale]"
+  },
+  {
+   "lang": null,
+   "typed": "\u200e-5",
+   "delivered": "-5",
+   "why": "a left-to-right mark is ignored [no Locale]"
+  },
+  {
+   "lang": "en",
+   "typed": "",
+   "delivered": "",
+   "why": "nothing typed is nothing [en]"
+  },
+  {
+   "lang": "en",
+   "typed": "1",
+   "delivered": "1",
+   "why": "a digit [en]"
+  },
+  {
+   "lang": "en",
+   "typed": "12",
+   "delivered": "12",
+   "why": "digits [en]"
+  },
+  {
+   "lang": "en",
+   "typed": "-",
+   "delivered": "-",
+   "why": "a minus alone is not yet a number [en]"
+  },
+  {
+   "lang": "en",
+   "typed": "-5",
+   "delivered": "-5",
+   "why": "a negative [en]"
+  },
+  {
+   "lang": "en",
+   "typed": "+5",
+   "delivered": "5",
+   "why": "a plus sign is dropped [en]"
+  },
+  {
+   "lang": "en",
+   "typed": "1.",
+   "delivered": "1",
+   "why": "a point with nothing after it is the number so far [en]"
+  },
+  {
+   "lang": "en",
+   "typed": "1.5",
+   "delivered": "1.5",
+   "why": "a decimal [en]"
+  },
+  {
+   "lang": "en",
+   "typed": ".5",
+   "delivered": "0.5",
+   "why": "no digit before the point: JSON would refuse .5, the page says 0.5 [en]"
+  },
+  {
+   "lang": "en",
+   "typed": "-.5",
+   "delivered": "-0.5",
+   "why": "a negative with no digit before the point [en]"
+  },
+  {
+   "lang": "en",
+   "typed": ".",
+   "delivered": ".",
+   "why": "a point alone [en]"
+  },
+  {
+   "lang": "en",
+   "typed": "1e5",
+   "delivered": "100000",
+   "why": "an exponent [en]"
+  },
+  {
+   "lang": "en",
+   "typed": "1e",
+   "delivered": "1e",
+   "why": "an exponent with no digits is not yet a number [en]"
+  },
+  {
+   "lang": "en",
+   "typed": "1e+",
+   "delivered": "1e+",
+   "why": "a signed exponent with no digits [en]"
+  },
+  {
+   "lang": "en",
+   "typed": "1E5",
+   "delivered": "100000",
+   "why": "an upper-case E [en]"
+  },
+  {
+   "lang": "en",
+   "typed": "1e-3",
+   "delivered": "0.001",
+   "why": "a negative exponent [en]"
+  },
+  {
+   "lang": "en",
+   "typed": "0.10",
+   "delivered": "0.1",
+   "why": "trailing zeros go [en]"
+  },
+  {
+   "lang": "en",
+   "typed": "007",
+   "delivered": "7",
+   "why": "leading zeros go (JSON would refuse them) [en]"
+  },
+  {
+   "lang": "en",
+   "typed": "1,5",
+   "delivered": "1,5",
+   "why": "a comma is a grouping mark in English, which a field does not read [en]"
+  },
+  {
+   "lang": "en",
+   "typed": "1,234",
+   "delivered": "1,234",
+   "why": "a grouped number is not read [en]"
+  },
+  {
+   "lang": "es",
+   "typed": "1,5",
+   "delivered": "1.5",
+   "why": "the decimal comma [es]"
+  },
+  {
+   "lang": "es",
+   "typed": ".5",
+   "delivered": ".5",
+   "why": "a point is the grouping mark here, so it is not read [es]"
+  },
+  {
+   "lang": "es",
+   "typed": "1.234,5",
+   "delivered": "1.234,5",
+   "why": "a grouped number is not read [es]"
+  },
+  {
+   "lang": "es",
+   "typed": ",5",
+   "delivered": "0.5",
+   "why": "no digit before the comma [es]"
+  },
+  {
+   "lang": "es",
+   "typed": "1,",
+   "delivered": "1",
+   "why": "a comma with nothing after it [es]"
+  },
+  {
+   "lang": "es",
+   "typed": "-1,5e3",
+   "delivered": "-1500",
+   "why": "sign, comma and exponent [es]"
+  },
+  {
+   "lang": "es",
+   "typed": "1,2,3",
+   "delivered": "1,2,3",
+   "why": "two commas [es]"
+  },
+  {
+   "lang": "es",
+   "typed": "\u0663,\u0665",
+   "delivered": "3.5",
+   "why": "Arabic-Indic digits with a comma [es]"
+  },
+  {
+   "lang": "de",
+   "typed": "1,5",
+   "delivered": "1.5",
+   "why": "the decimal comma [de]"
+  },
+  {
+   "lang": "de",
+   "typed": ".5",
+   "delivered": ".5",
+   "why": "a point is the grouping mark here, so it is not read [de]"
+  },
+  {
+   "lang": "de",
+   "typed": "1.234,5",
+   "delivered": "1.234,5",
+   "why": "a grouped number is not read [de]"
+  },
+  {
+   "lang": "de",
+   "typed": ",5",
+   "delivered": "0.5",
+   "why": "no digit before the comma [de]"
+  },
+  {
+   "lang": "de",
+   "typed": "1,",
+   "delivered": "1",
+   "why": "a comma with nothing after it [de]"
+  },
+  {
+   "lang": "de",
+   "typed": "-1,5e3",
+   "delivered": "-1500",
+   "why": "sign, comma and exponent [de]"
+  },
+  {
+   "lang": "de",
+   "typed": "1,2,3",
+   "delivered": "1,2,3",
+   "why": "two commas [de]"
+  },
+  {
+   "lang": "de",
+   "typed": "\u0663,\u0665",
+   "delivered": "3.5",
+   "why": "Arabic-Indic digits with a comma [de]"
+  },
+  {
+   "lang": "pt",
+   "typed": "1,5",
+   "delivered": "1.5",
+   "why": "the decimal comma [pt]"
+  },
+  {
+   "lang": "pt",
+   "typed": ".5",
+   "delivered": ".5",
+   "why": "a point is the grouping mark here, so it is not read [pt]"
+  },
+  {
+   "lang": "pt",
+   "typed": "1.234,5",
+   "delivered": "1.234,5",
+   "why": "a grouped number is not read [pt]"
+  },
+  {
+   "lang": "pt",
+   "typed": ",5",
+   "delivered": "0.5",
+   "why": "no digit before the comma [pt]"
+  },
+  {
+   "lang": "pt",
+   "typed": "1,",
+   "delivered": "1",
+   "why": "a comma with nothing after it [pt]"
+  },
+  {
+   "lang": "pt",
+   "typed": "-1,5e3",
+   "delivered": "-1500",
+   "why": "sign, comma and exponent [pt]"
+  },
+  {
+   "lang": "pt",
+   "typed": "1,2,3",
+   "delivered": "1,2,3",
+   "why": "two commas [pt]"
+  },
+  {
+   "lang": "pt",
+   "typed": "\u0663,\u0665",
+   "delivered": "3.5",
+   "why": "Arabic-Indic digits with a comma [pt]"
+  },
+  {
+   "lang": "fr",
+   "typed": "1,5",
+   "delivered": "1.5",
+   "why": "the decimal comma [fr]"
+  },
+  {
+   "lang": "fr",
+   "typed": "1.5",
+   "delivered": "1.5",
+   "why": "a point is read where it is not the grouping mark [fr]"
+  },
+  {
+   "lang": "fr",
+   "typed": "1\u202f234",
+   "delivered": "1\u202f234",
+   "why": "a grouping space is not read [fr]"
+  },
+  {
+   "lang": "fr",
+   "typed": "  2,50 ",
+   "delivered": "2.5",
+   "why": "spaces and a trailing zero [fr]"
+  },
+  {
+   "lang": "ru",
+   "typed": "1,5",
+   "delivered": "1.5",
+   "why": "the decimal comma [ru]"
+  },
+  {
+   "lang": "ru",
+   "typed": "1.5",
+   "delivered": "1.5",
+   "why": "a point is read where it is not the grouping mark [ru]"
+  },
+  {
+   "lang": "ru",
+   "typed": "1\u00a0234",
+   "delivered": "1\u00a0234",
+   "why": "a grouping space is not read [ru]"
+  },
+  {
+   "lang": "ru",
+   "typed": "  2,50 ",
+   "delivered": "2.5",
+   "why": "spaces and a trailing zero [ru]"
+  },
+  {
+   "lang": "ar",
+   "typed": "-5",
+   "delivered": "-5",
+   "why": "the ASCII minus [ar]"
+  },
+  {
+   "lang": "ar",
+   "typed": "\u200e-5",
+   "delivered": "-5",
+   "why": "the language's minus with its mark [ar]"
+  },
+  {
+   "lang": "ar",
+   "typed": "\u0663.\u0665",
+   "delivered": "3.5",
+   "why": "Arabic-Indic digits [ar]"
+  },
+  {
+   "lang": "ar",
+   "typed": "1,5",
+   "delivered": "1,5",
+   "why": "a comma is the grouping mark [ar]"
+  },
+  {
+   "lang": "he",
+   "typed": "-5",
+   "delivered": "-5",
+   "why": "the ASCII minus [he]"
+  },
+  {
+   "lang": "he",
+   "typed": "\u200e-5",
+   "delivered": "-5",
+   "why": "the language's minus with its mark [he]"
+  },
+  {
+   "lang": "he",
+   "typed": "\u0663.\u0665",
+   "delivered": "3.5",
+   "why": "Arabic-Indic digits [he]"
+  },
+  {
+   "lang": "he",
+   "typed": "1,5",
+   "delivered": "1,5",
+   "why": "a comma is the grouping mark [he]"
+  },
+  {
+   "lang": "hi",
+   "typed": "1.5",
+   "delivered": "1.5",
+   "why": "a decimal point [hi]"
+  },
+  {
+   "lang": "hi",
+   "typed": "1,5",
+   "delivered": "1,5",
+   "why": "a comma is the grouping mark [hi]"
+  },
+  {
+   "lang": "ja",
+   "typed": "1.5",
+   "delivered": "1.5",
+   "why": "a decimal point [ja]"
+  },
+  {
+   "lang": "ja",
+   "typed": "1,5",
+   "delivered": "1,5",
+   "why": "a comma is the grouping mark [ja]"
+  }
+ ]
+}

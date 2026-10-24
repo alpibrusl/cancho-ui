@@ -95,7 +95,7 @@ fn codes(src: &str) -> Vec<String> {
 #[test]
 fn a_type_that_is_not_offered_is_refused() {
     for ty in [
-        "number", "checkbox", "date", "hidden", "file", "range", "PASSWORD", "", "text ",
+        "checkbox", "date", "hidden", "file", "range", "PASSWORD", "", "text ",
     ] {
         assert_eq!(
             codes(&program(&format!("type: \"{ty}\""))),

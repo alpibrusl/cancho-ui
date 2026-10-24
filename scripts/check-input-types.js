@@ -4,7 +4,7 @@
 // must receive exactly `received`. The browser sanitizes some types (an email address and a url lose the whitespace around
 // them), so the value a trace gives for such a field is the sanitized one. Also checked: the attribute is on the element, a
 // password is typed one key at a time through the re-render that every keystroke causes (the type stays `password` and the focus
-// stays in the field), and the measurement that kept `number` out. Outside the gate: needs node, the `playwright` package with
+// stays in the field), and the measurement that kept the browser's own number input out (`type: "number"` is a text field, checked by scripts/check-number.js). Outside the gate: needs node, the `playwright` package with
 // a Chromium, and a built `cancho-ui`.
 //   node scripts/check-input-types.js [path/to/cancho-ui]
 'use strict';
@@ -93,7 +93,7 @@ const program = (type) => `component F {
     await page.close();
   }
 
-  // Why `number` is not offered. A number field answers "" while what is typed is not yet a number ("1e"), and the page draws the
+  // Why `type: "number"` is not the browser's number input. A number field answers "" while what is typed is not yet a number ("1e"), and the page draws the
   // field again from the state at every key, so the half-typed text is wiped. The program below is the compiler's own text field
   // with its type attribute changed after the build (the compiler refuses `number`).
   {
@@ -117,7 +117,7 @@ const program = (type) => `component F {
     await page.waitForTimeout(30);
     const v = await page.evaluate(() => document.querySelector('#root input').value);
     console.log(`note a number field typed '1e5' key by key ends holding ${JSON.stringify(v)} (patched ${patched} file)`);
-    check('a number field loses half-typed text when the page redraws it (why `number` is not offered)', patched === 1 && v !== '1e5', JSON.stringify(v));
+    check('the native number input loses half-typed text when the page redraws it (why `type: "number"` is a text field, docs/number-input.md)', patched === 1 && v !== '1e5', JSON.stringify(v));
     await page.close();
   }
 

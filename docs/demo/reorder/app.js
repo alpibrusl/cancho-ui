@@ -152,6 +152,9 @@ function __cui_focus_save(root) {
         end: el.selectionEnd,
         direction: el.selectionDirection,
         scroll: el.scrollTop,
+        // A number field (docs/number-input.md) is rebuilt with the number it holds, which would turn "1." into "1" under the finger: what
+        // was typed is kept for the rebuilt field to take back.
+        typed: el.hasAttribute('data-cui-number') ? el.value : null,
     };
 }
 // True when the control that had the focus has it again.
@@ -163,6 +166,10 @@ function __cui_focus_restore(root, saved) {
     // A heading the page focused (docs/screen-focus.md) is not focusable until it has its tabindex again.
     if (saved.tabindex === '-1') { n.setAttribute('tabindex', '-1'); }
     n.focus();
+    if (saved.typed !== null && saved.typed !== undefined && n.hasAttribute('data-cui-number') && typeof __cui_number_text === 'function'
+        && __cui_number_text(n.__cui_nl, saved.typed) === __cui_number_text(n.__cui_nl, n.value)) {
+        n.value = saved.typed;
+    }
     if (typeof saved.start === 'number' && n.setSelectionRange) {
         try { n.setSelectionRange(saved.start, saved.end, saved.direction); } catch (e) { /* not a text control */ }
     }
