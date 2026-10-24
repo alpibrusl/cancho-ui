@@ -183,3 +183,30 @@ Unit: the parser is unchanged; replay: hide, an `advance` across several periods
 due; none while a run is in flight; none after dispose), a second `hide`, an `advance` shorter than the time left. Browser
 (Chromium, `page.clock` and a faked `document.visibilityState`): the same cases through the emitted code, and
 `pagehide`/`pageshow`.
+
+## 12. A failure of `scripts/check-schedules.js` under load: the cause (issue #74)
+
+> Written 2026-10-24. Measured on 4 cores, with six busy loops (`node -e 'for(;;){}'`) running next to the script.
+
+`scripts/check-schedules.js` failed once in a full sequential run and passed three reruns (reported in #73). **Reproduced**: under that
+load it failed at run **23** of a loop (run 36 passed; one failure in at least 36 runs; with no load, 3 of 3 passed and no failure was seen). The output ended in
+`clock.pauseAt: Error: Cannot fast-forward to the past`, thrown at the line after the first check (`start runs once`).
+
+**The cause was in the check, not in the schedule runtime.** After `page.clock.install({ time: 0 })` Playwright's fake clock keeps running in
+real time. The check read `Date.now()` in the page and then called `page.clock.pauseAt(now + 1)`: between the two calls the fake clock moves on by
+the real time the round trip takes, and `pauseAt` cannot go back. With more than 1 ms in between (always possible on a loaded machine) it threw. The
+`1 ms` was a wait on a race the check had no reason to take.
+
+**The fix is not a longer margin.** The clock is now paused before the page exists, at a time it cannot have reached (`pauseAt(60000)`
+right after `install`), and from then on only `runFor` moves time. Nothing is read back from the page, so there is no window. The assertion that
+follows (`time stands still when paused`) is unchanged and still waits 1,200 ms of real time with no tick.
+
+Measured after the change, under the same load: **100 of 100** runs passed (the failure appeared by run 23 before). Not a proof that nothing else
+is racy: every "nothing happened" assertion in the script is a real-time wait of 100 to 300 ms that can only pass wrongly, never fail wrongly, and those were
+not changed. The script now also fails on its own after 4 minutes, as every script that can hang must.
+
+**The check can fail.** `scripts/breaks/schedules.json` has five breaks in the emitted schedule code, all caught by `check-schedules.js` itself
+(a tick starts a run although one is in flight; a hidden page keeps ticking; the catch-up tick leaves no period before the next; a persisted
+`pageshow` does not resume; disposal leaves the timers armed). A sixth break, removing `removeEventListener('visibilitychange', ..)` on disposal, was **not
+caught** and is left out: after disposal the component's tick list is empty, so a leaked listener does nothing a page can observe; the check's last
+assertion (`and no longer listens to the page being shown`) therefore proves the empty list, not the removed listener.

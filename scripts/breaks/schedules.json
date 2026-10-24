@@ -1,0 +1,43 @@
+{
+  "checks": [
+    {
+      "name": "check-schedules.js",
+      "argv": [
+        "node",
+        "scripts/check-schedules.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "a tick starts a run although one is in flight",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "run: function () {{ if (__cui_busy.{0} === 0) {{ __on_{0}(); }} }} }});",
+      "to": "run: function () {{ __on_{0}(); }} }});"
+    },
+    {
+      "name": "a hidden page keeps ticking",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "\"function __cui_pause() { __cui_every.forEach(function (s) { if (s.o !== null) { clearTimeout(s.o); s.o = null; } }); }\",",
+      "to": "\"function __cui_pause() { }\","
+    },
+    {
+      "name": "the catch-up tick is not a period before the next",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "if (s.next <= now) { s.next = now + s.ms; __cui_arm(s); s.run(); }",
+      "to": "if (s.next <= now) { s.next = now; __cui_arm(s); s.run(); }"
+    },
+    {
+      "name": "a persisted pageshow does not resume",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "\"function __cui_pageshow(e) { if (e.persisted) { __cui_visibility(); } }\",",
+      "to": "\"function __cui_pageshow(e) { if (!e.persisted) { __cui_visibility(); } }\","
+    },
+    {
+      "name": "disposal leaves the timers running",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "\"__cui_every.forEach(function (s) { if (s.o !== null) { clearTimeout(s.o); s.o = null; } });\",\n                    \"__cui_every.length = 0;\",",
+      "to": "\"__cui_every.length = 0;\","
+    }
+  ]
+}
