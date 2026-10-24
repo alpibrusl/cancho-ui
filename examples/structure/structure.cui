@@ -1,8 +1,9 @@
 // examples/structure/structure.cui — the structure elements (docs/structure.md): landmarks, headings, sections, links, a details, a figure.
 // A page of the shape of the cancho-www home page, in miniature. `Link` lists the hosts it names in `inspect effects` and `diff`; nothing here
-// needs a capability. Replay (`cancho-ui test`) has nothing to say about structure: the trace only shows that the handlers still run.
+// needs a capability except the copy button of a `Code { copy: true }`, which is `requires Clipboard;`. Replay (`cancho-ui test`) has nothing to say about structure: the trace only shows that the handlers still run.
 
 component Page {
+    requires Clipboard;
     state clicks: Int = 0;
     state screen: String = "one";
 
@@ -37,7 +38,7 @@ component Page {
                     Heading { level: 2 "Three ways in" }
                     Article {
                         Heading { level: 3 "See a refusal" }
-                        Text { "The compiler refuses a leaked file by a named rule." }
+                        Rich { "The compiler refuses a leaked file by a " Strong { "named rule" } ": " Code { "check" } " found a resource nothing consumes. See " Link { to: "https://alpibrusl.github.io/cancho/" "the language docs" } "." }
                         Button { label: "Click" on: Click }
                         Text { "Clicked {clicks} times" }
                     }
@@ -45,7 +46,7 @@ component Page {
                         Heading { level: 3 "Run the compiler" }
                         Details {
                             summary: "Build instructions"
-                            Text { "cargo build -p cancho --release" }
+                            Code { copy: true max_height: 8 "git clone https://github.com/alpibrusl/cancho\ncargo build -p cancho --release" }
                         }
                     }
                     Text { style: "note" "Not claimed: that agents do better." }

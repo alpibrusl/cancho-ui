@@ -14,6 +14,7 @@
 //! - add a minimal stylesheet (cui-col, cui-row).
 
 mod adapters;
+mod code;
 mod controls;
 pub mod emit;
 mod expr;

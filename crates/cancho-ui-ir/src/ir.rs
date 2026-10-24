@@ -592,6 +592,22 @@ pub enum IrElementKind {
     Figure,
     /// Structure (docs/structure.md): `Caption`, an `<figcaption>` (a `Heading` takes its level from `level:`).
     Caption,
+    /// Inline content and code (docs/structure.md section 7): `Rich`, a `<p>` (a `Code` is a box around a `<pre>`; an `InlineCode` is a `Code` inside inline content).
+    Rich,
+    /// Inline content and code (docs/structure.md section 7): `Strong`, a `<strong>` (a `Code` is a box around a `<pre>`; an `InlineCode` is a `Code` inside inline content).
+    Strong,
+    /// Inline content and code (docs/structure.md section 7): `Em`, a `<em>` (a `Code` is a box around a `<pre>`; an `InlineCode` is a `Code` inside inline content).
+    Em,
+    /// Inline content and code (docs/structure.md section 7): `Small`, a `<small>` (a `Code` is a box around a `<pre>`; an `InlineCode` is a `Code` inside inline content).
+    Small,
+    /// Inline content and code (docs/structure.md section 7): `Break`, a `<br>` (a `Code` is a box around a `<pre>`; an `InlineCode` is a `Code` inside inline content).
+    Break,
+    /// Inline content and code (docs/structure.md section 7): `Summary`, a `<summary>` (a `Code` is a box around a `<pre>`; an `InlineCode` is a `Code` inside inline content).
+    Summary,
+    /// Inline content and code (docs/structure.md section 7): `Code`, a `<div>` (a `Code` is a box around a `<pre>`; an `InlineCode` is a `Code` inside inline content).
+    Code,
+    /// Inline content and code (docs/structure.md section 7): `InlineCode`, a `<code>` (a `Code` is a box around a `<pre>`; an `InlineCode` is a `Code` inside inline content).
+    InlineCode,
     /// `Table { .. }` (docs/presentation.md section 4) and what lowering makes of its descendants: a `Row` of a table is
     /// a `TableRow`, a `Text` of that row a `Cell` (a `HeaderCell` with `role: columnheader`), and any other element of
     /// it is wrapped in a `Cell`.
@@ -628,6 +644,14 @@ impl IrElementKind {
             IrElementKind::Details => "details",
             IrElementKind::Figure => "figure",
             IrElementKind::Caption => "figcaption",
+            IrElementKind::Rich => "p",
+            IrElementKind::Strong => "strong",
+            IrElementKind::Em => "em",
+            IrElementKind::Small => "small",
+            IrElementKind::Break => "br",
+            IrElementKind::Summary => "summary",
+            IrElementKind::Code => "div",
+            IrElementKind::InlineCode => "code",
             IrElementKind::SortList => "ul",
             IrElementKind::Map => "figure",
             IrElementKind::Table => "table",
@@ -666,6 +690,12 @@ impl IrElementKind {
                 | IrElementKind::Heading
                 | IrElementKind::Link
                 | IrElementKind::Caption
+                | IrElementKind::Rich
+                | IrElementKind::Strong
+                | IrElementKind::Em
+                | IrElementKind::Small
+                | IrElementKind::Summary
+                | IrElementKind::InlineCode
         )
     }
 

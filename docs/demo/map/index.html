@@ -56,6 +56,13 @@ figure { margin: 0; } figcaption { font-size: 0.88rem; }
 [data-style="eyebrow"] { color: LinkText; }
 [data-style="lead"] { font-size: 1.1rem; max-width: 40rem; }
 [data-style="note"] { font-size: 0.88rem; }
+/* inline content and code (docs/structure.md sections 7 and 8): a code box is dark in both schemes, as the cancho-www page draws it */
+code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9em; }
+.cui-code { position: relative; border-radius: 12px; background: #12151a; color: #d6dde8; }
+.cui-code pre { margin: 0; padding: 0.9rem 1rem; overflow: auto; white-space: pre; font: 0.78rem/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.cui-code code { font: inherit; }
+.cui-code[data-copy] pre { padding-right: 5.5rem; }
+.cui-copy { position: absolute; top: 0.45rem; right: 0.45rem; }
 </style>
 </head>
 <body>

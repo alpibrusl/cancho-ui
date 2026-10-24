@@ -285,6 +285,13 @@ impl Parser {
             "Details" => ElementKind::Details,
             "Figure" => ElementKind::Figure,
             "Caption" => ElementKind::Caption,
+            "Rich" => ElementKind::Rich,
+            "Strong" => ElementKind::Strong,
+            "Em" => ElementKind::Em,
+            "Small" => ElementKind::Small,
+            "Break" => ElementKind::Break,
+            "Summary" => ElementKind::Summary,
+            "Code" => ElementKind::Code,
             other => ElementKind::Named(other.to_string()),
         };
 

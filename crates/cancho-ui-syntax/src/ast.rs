@@ -354,6 +354,20 @@ pub enum ElementKind {
     Figure,
     /// Structure (docs/structure.md): `Caption`.
     Caption,
+    /// Inline content and code (docs/structure.md section 7): `Rich`.
+    Rich,
+    /// Inline content and code (docs/structure.md section 7): `Strong`.
+    Strong,
+    /// Inline content and code (docs/structure.md section 7): `Em`.
+    Em,
+    /// Inline content and code (docs/structure.md section 7): `Small`.
+    Small,
+    /// Inline content and code (docs/structure.md section 7): `Break`.
+    Break,
+    /// Inline content and code (docs/structure.md section 7): `Summary`.
+    Summary,
+    /// Inline content and code (docs/structure.md section 7): `Code`.
+    Code,
     Named(String),
 }
 

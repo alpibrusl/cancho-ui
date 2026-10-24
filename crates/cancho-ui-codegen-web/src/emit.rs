@@ -237,6 +237,14 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
         out.push_str(CHART_ADAPTER_JS);
         out.push('\n');
     }
+    if ir
+        .components
+        .iter()
+        .any(|c| cancho_ui_ir::structure::view_has_copy(&c.view.body))
+    {
+        out.push_str(COPY_ADAPTER_JS);
+        out.push('\n');
+    }
     if ir.components.iter().any(|c| view_has_file(&c.view.body)) {
         out.push_str(FILE_ADAPTER_JS);
         out.push('\n');

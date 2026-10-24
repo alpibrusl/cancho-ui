@@ -165,6 +165,14 @@ fn kind(k: &IrElementKind) -> String {
         IrElementKind::Details => "Details".into(),
         IrElementKind::Figure => "Figure".into(),
         IrElementKind::Caption => "Caption".into(),
+        IrElementKind::Rich => "Rich".into(),
+        IrElementKind::Strong => "Strong".into(),
+        IrElementKind::Em => "Em".into(),
+        IrElementKind::Small => "Small".into(),
+        IrElementKind::Break => "Break".into(),
+        IrElementKind::Summary => "Summary".into(),
+        IrElementKind::Code => "Code".into(),
+        IrElementKind::InlineCode => "Code".into(),
         IrElementKind::Named(n) => n.clone(),
     }
 }
