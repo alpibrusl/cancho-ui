@@ -149,7 +149,7 @@ fn the_message_is_next_to_the_field_and_the_field_points_at_it() {
     for needle in [
         "setAttribute('aria-invalid', 'true')",
         "setAttribute('aria-describedby',",
-        "_err.setAttribute('role', 'status')",
+        "_err_new.setAttribute('role', 'status')",
         "'cui-err-' + (window.__cui_uid",
     ] {
         assert!(html.contains(needle), "{needle}");

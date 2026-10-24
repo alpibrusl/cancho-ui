@@ -63,13 +63,57 @@ whether it is empty or not, so a message put there by a later render is in a liv
 text is appended, `if (!el.textContent.trim()) { el.removeAttribute('data-tone'); }` (only for a `Text` with a `tone:`). It needs
 no stylesheet (a page built without `--pwa` has none) and it is exact for a text of spaces, which `:empty` is not. What was *not*
 established: whether a screen reader announces a message put into a live region that was drawn again in the same render. The
-page replaces every status node at every render (before and after this change), which is its own issue (#106).
+page replaces every status node at every render (before and after this change), which is its own issue (#106). *(Corrected, #106, section 3a: it no longer does.)*
 `examples/tickets` uses a constant `tone: "error"` on its messages again: three state fields and their assignments are gone.
 
 Measured (Chromium): a 201 shows `data-tone="ok"`, the prefix `✓ ` and `rgb(26, 127, 55)`; a 409 `warn`, `⚠ `,
 `rgb(154, 103, 0)`; a 503 `error`, `✗ `, `rgb(207, 34, 46)`. **Contrast** against the page's own background (`Canvas`), WCAG AA
 is 4.5:1: light 5.08 (ok), 4.87 (warn), 5.36 (error); dark (the stylesheet has its own colours under
 `prefers-color-scheme: dark`) 7.37, 7.42, 7.43.
+
+## 3a. A status keeps its node from one render to the next (issue #106)
+
+> **Status: BUILT.** Measured 2026-10-24 on main at d90b3a0 (Chromium, `Pixel 7` profile, accessibility tree through the DevTools protocol).
+
+**The problem, measured** (`scripts/check-status.js <older compiler> --report`, and `scripts/measure-status.js`). The page is drawn again from nothing at every render. In a page with seven
+live regions (a toned status, three rows of a `For`, one under an `If`, the message of a field, an alert), a render in which only a counter changed made **all seven new DOM nodes
+and new accessibility nodes** (ids `43 47 48 49 50 51 52` before, `78 82 83 84 85 86 87` after), so a reference to a status taken before the render was `isConnected === false`
+and a `MutationObserver` on it saw nothing. A screen reader announces a change in a live region that already exists; a region that is inserted with its text already in it is announced
+inconsistently (the usual advice, **not measured here**).
+
+**Two options, measured** (`scripts/measure-status.js`: four small pages drawn from nothing at every render, as the compiler's pages are; the same four renders: empty, filled, the
+same text again, changed):
+
+| | the span is the same DOM node | its accessibility node id | what an observer on it sees: filled / same text again / changed | focus of a text field typed in | a render with 200 statuses (median of 15) |
+|---|---|---|---|---|---|
+| today: everything is new | no | **changes at every render** (11, 17, 25, 33) | nothing / nothing / nothing (it was removed first) | kept | 3.3 ms |
+| **option 1**: the span is built as before and the one this position had is put into the new tree, written only if its text changed | **yes** | **stays** (11, 11, 11, 11) | `childList +1 -0` / **nothing** / `childList +1 -1` | kept | 2.6 ms |
+| ideal of option 1: nothing is removed, the text is written in place | yes | stays | the same as option 1 | kept | 0.6 ms |
+| option 2: one hidden `role=status` element outside the page, written when a text changes | yes (the announcer) | stays | the same | kept | 2.8 ms |
+
+Option 1 and option 2 both give a live region that is a change when the text is written; the accessibility node survives the **move** of a node into the new tree in the same task (that was the thing to
+measure, since it is what the browser reports to a screen reader). **Option 1 was chosen**, for reasons that are not measurements and are said as such:
+* the status the program declared with `role: status` stays the node that carries the message, in the place the person sees it; option 2 announces from a different, invisible node, so either the visible one
+  stops being a live region (the program's `role: status` is no longer what the tree says) or both announce (twice);
+* each status is its own region: option 2 funnels every status of the page through one announcer, which loses which region a message belongs to and orders what are separate announcements;
+* it costs nothing that option 2 does not (render time is the same), and no hidden text is duplicated for readers of the page's text.
+
+**What was built.** A `Text { role: status }` or `role: alert`, and the message that `error:` draws beside a field, are built as before and then reconciled with the node the same position had at
+the last render (`__cui_status`): the old node takes the new attributes and the new text, **each only if it differs**, and it is the node that goes into the new tree. A position is its place in the view and,
+in a `For`, the order of the row. A status that is not drawn in a render (under an `If` that is false, a row that is gone) is forgotten, and a new one starts from the text it has. The field's message keeps its `id`
+(the field's `aria-describedby` points at it). Only a module with such a text carries the 1.5 KB adapter: `examples/counter` 7,235 to 8,719 bytes, `examples/ops-console` 48,524 to 50,037, `examples/tickets` 48,919 to 50,833.
+
+**Checked** (`scripts/check-status.js`, Chromium, `Pixel 7`): a render that changed only something else keeps every live region's DOM node and accessibility node id, with role, `live` (polite; assertive for an alert)
+and `atomic` as before, and an observer on each sees **no** change (nothing is announced again); a message filled later reaches the observer as `childList +1`, a changed one as `+1 -1` on the same node, an emptied one
+leaves the same node in the tree as a live region with no tone; a change of tone is an attribute change of the same node; typing in a text field whose handler writes a status at every key keeps the focus, the caret and
+every character, and the status node is written once per key; the field's message is the same node with the same id, `aria-invalid` and `aria-describedby` following its text; a row that goes is gone and the others keep their nodes;
+a status under an `If` that hides it comes back as a new node; `role: alert` is kept the same way. `scripts/breaks/status.json`: nine breaks, each caught by the check itself.
+
+**Not measured, and not claimed.** Whether a **real screen reader** announces a message put into one of these regions: no screen reader was available (the same gap as #65 for real devices). What is measured is what such a reader is
+given: a live region that exists before the message and receives it as a change. Firefox and Safari; how a reader treats a node that is moved within a task (Chromium keeps the accessibility node; the reader's behaviour is not
+measured); a region that **first appears** with its text (the first render of a status that already has a message, a row that is added, a status under an `If` that becomes true) is inserted with its content, which is the case
+the advice calls unreliable, and is not improved by this. **Not built:** an assertion of "the text that would be announced, by region" in a replay report (the third question of the issue): replay does not evaluate the text of a
+view, so it would be a larger change; the page's behaviour is what is asserted here.
 
 ## 4. `Table`
 

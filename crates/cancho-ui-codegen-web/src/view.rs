@@ -972,6 +972,17 @@ pub(crate) fn emit_view_node(
                     "{0}const {1}_field = document.createElement('label');\n{0}{1}_field.classList.add('cui-field');\n{0}{1}_field.appendChild(document.createTextNode({2}));\n{0}{1}_field.appendChild({1});\n{0}{3}.appendChild({1}_field);\n",
                     indent, var, text, parent_var
                 ));
+            } else if matches!(kind, IrElementKind::Text)
+                && matches!(&accessibility.role, Some(IrRole::Other(r)) if r == "status" || r == "alert")
+            {
+                // A live region keeps its node from one render to the next (docs/presentation.md section 3a, issue #106).
+                out.push_str(&format!(
+                    "{0}{2}.appendChild(__cui_status(root, {3}, {1}));\n",
+                    indent,
+                    var,
+                    parent_var,
+                    js_string(&var)
+                ));
             } else {
                 out.push_str(&format!(
                     "{0}{2}.appendChild({1});\n",
@@ -983,15 +994,24 @@ pub(crate) fn emit_view_node(
             // holds text (docs/controls.md section 7). The control is marked invalid only then. The id is unique across the page
             // even in a `For`, so it comes from a counter, not from the node number.
             if let Some(name) = &field_error {
+                // The span is a live region and keeps its node, and so its id, from one render to the next (issue #106): it is built, then
+                // reconciled with the one this position had.
                 out.push_str(&format!(
-                    "{0}const {1}_err = document.createElement('span');\n\
-{0}{1}_err.id = 'cui-err-' + (window.__cui_uid = (window.__cui_uid || 0) + 1);\n\
-{0}{1}_err.setAttribute('role', 'status');\n\
-{0}{1}_err.setAttribute('data-tone', 'error');\n\
-{0}{1}_err.appendChild(document.createTextNode(String({4}{2})));\n\
-{0}if ({1}_err.textContent.trim()) {{ {1}.setAttribute('aria-invalid', 'true'); {1}.setAttribute('aria-describedby', {1}_err.id); }} else {{ {1}_err.removeAttribute('data-tone'); }}\n\
+                    "{0}const {1}_err_new = document.createElement('span');\n\
+{0}{1}_err_new.setAttribute('role', 'status');\n\
+{0}{1}_err_new.setAttribute('data-tone', 'error');\n\
+{0}{1}_err_new.appendChild(document.createTextNode(String({4}{2})));\n\
+{0}if (!{1}_err_new.textContent.trim()) {{ {1}_err_new.removeAttribute('data-tone'); }}\n\
+{0}const {1}_err = __cui_status(root, {5}, {1}_err_new);\n\
+{0}if (!{1}_err.id) {{ {1}_err.id = 'cui-err-' + (window.__cui_uid = (window.__cui_uid || 0) + 1); }}\n\
+{0}if ({1}_err.textContent.trim()) {{ {1}.setAttribute('aria-invalid', 'true'); {1}.setAttribute('aria-describedby', {1}_err.id); }}\n\
 {0}{3}.appendChild({1}_err);\n",
-                    indent, var, name, parent_var, STATE_PREFIX
+                    indent,
+                    var,
+                    name,
+                    parent_var,
+                    STATE_PREFIX,
+                    js_string(&format!("{var}_err"))
                 ));
             }
 

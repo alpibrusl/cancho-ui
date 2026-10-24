@@ -205,6 +205,10 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
         out.push_str(ROUTER_ADAPTER_JS);
         out.push('\n');
     }
+    if ir.components.iter().any(|c| view_has_status(&c.view.body)) {
+        out.push_str(crate::adapters::STATUS_ADAPTER_JS);
+        out.push('\n');
+    }
     if ir
         .components
         .iter()
@@ -336,6 +340,28 @@ fn view_has_chart(node: &IrViewNode) -> bool {
         }
         IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
             children.iter().any(view_has_chart)
+        }
+        IrViewNode::Text { .. } => false,
+    }
+}
+
+/// Does a view hold a live region whose node is kept (docs/presentation.md section 3a): a `Text` with `role: status` or `alert`, or a field with `error:`?
+fn view_has_status(node: &IrViewNode) -> bool {
+    match node {
+        IrViewNode::Element {
+            kind,
+            accessibility,
+            bindings,
+            children,
+            ..
+        } => {
+            (matches!(kind, IrElementKind::Text)
+                && matches!(&accessibility.role, Some(IrRole::Other(r)) if r == "status" || r == "alert"))
+                || bindings.iter().any(|b| b.key == "error")
+                || children.iter().any(view_has_status)
+        }
+        IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
+            children.iter().any(view_has_status)
         }
         IrViewNode::Text { .. } => false,
     }
@@ -775,6 +801,10 @@ fn emit_component(
     if keep_focus {
         out.push_str("            const __focus = __cui_focus_save(root);\n");
     }
+    // docs/presentation.md section 3a: the live regions of the last render are kept for this one to reuse
+    if view_has_status(&c.view.body) {
+        out.push_str("            __cui_status_begin(root);\n");
+    }
     out.push_str("            root.textContent = '';\n");
     let mut node_id = 0u32;
     let view_body = emit_view_node(
@@ -790,6 +820,9 @@ fn emit_component(
         None,
     );
     out.push_str(&view_body);
+    if view_has_status(&c.view.body) {
+        out.push_str("            __cui_status_end(root);\n");
+    }
     if view_body.contains("__cui_ifs_now[") {
         out.push_str("            const __cui_drawn = [];\n            for (const k in __cui_ifs_now) { if (!__cui_ifs_prev[k]) { __cui_drawn.push(__cui_ifs_now[k]); } }\n            __cui_ifs_prev = {};\n            for (const k in __cui_ifs_now) { __cui_ifs_prev[k] = true; }\n            if (__cui_drawn.length) { __cui_screen_of = { path: __cui_appeared(root, __cui_drawn) }; }\n");
     }

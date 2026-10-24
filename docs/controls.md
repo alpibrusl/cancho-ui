@@ -208,7 +208,7 @@ moves to the field is not told it is wrong or why.
 the component (anything else is `error-binding-invalid`; on anything but a `TextField`, `binding-unknown`). The field is invalid
 while that field holds text and valid while it is empty: there is no separate `invalid:` to disagree with the message.
 
-**What the page draws.** A `<span id="cui-err-N" role="status" data-tone="error">` right after the field's `<label>` holding the
+**What the page draws.** *(Since #106 the span keeps its node and its id from one render to the next: `docs/presentation.md` section 3a.)* A `<span id="cui-err-N" role="status" data-tone="error">` right after the field's `<label>` holding the
 message; while the message has visible characters the field has `aria-invalid="true"` and `aria-describedby="cui-err-N"`; while
 it has none the field has neither and the span has no tone and no mark (the rule of section 3 of `docs/presentation.md`, #94).
 The id comes from a counter on `window` (`__cui_uid`), not from the node number, because a `For` runs the same code once per row.

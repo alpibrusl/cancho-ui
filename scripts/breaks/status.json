@@ -1,0 +1,67 @@
+{
+  "checks": [
+    {
+      "name": "check-status.js",
+      "argv": [
+        "node",
+        "scripts/check-status.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "a position never finds the node of the last render",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "    const kept = s.nodes.get(k);\n",
+      "to": "    const kept = undefined;\n"
+    },
+    {
+      "name": "the text is written at every render",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "    if (kept.textContent !== fresh.textContent) { kept.textContent = fresh.textContent; }",
+      "to": "    kept.textContent = fresh.textContent;"
+    },
+    {
+      "name": "the new attributes are not copied",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "    Array.from(fresh.attributes).forEach(function (a) { if (a.name !== 'id' && kept.getAttribute(a.name) !== a.value) { kept.setAttribute(a.name, a.value); } });\n",
+      "to": ""
+    },
+    {
+      "name": "an attribute that has gone is kept",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "    Array.from(kept.attributes).forEach(function (a) { if (a.name !== 'id' && !fresh.hasAttribute(a.name)) { kept.removeAttribute(a.name); } });\n",
+      "to": ""
+    },
+    {
+      "name": "the message of a field gets a new id at every render",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "if (!{1}_err.id) {{ {1}_err.id =",
+      "to": "if (true) {{ {1}_err.id ="
+    },
+    {
+      "name": "the positions are not counted again at each render",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "        out.push_str(\"            __cui_status_begin(root);\\n\");\n",
+      "to": ""
+    },
+    {
+      "name": "a status that left the view is kept",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "        out.push_str(\"            __cui_status_end(root);\\n\");\n",
+      "to": ""
+    },
+    {
+      "name": "a status text is a new node again",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "                    \"{0}{2}.appendChild(__cui_status(root, {3}, {1}));\\n\",",
+      "to": "                    \"{0}{2}.appendChild({1}); void {3};\\n\","
+    },
+    {
+      "name": "an alert is a new node again",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "Some(IrRole::Other(r)) if r == \"status\" || r == \"alert\")",
+      "to": "Some(IrRole::Other(r)) if r == \"status\")"
+    }
+  ]
+}
