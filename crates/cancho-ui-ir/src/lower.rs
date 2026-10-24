@@ -1145,6 +1145,7 @@ fn lower_kind(k: &ElementKind) -> IrElementKind {
         ElementKind::Chart => IrElementKind::Chart,
         ElementKind::NavLink => IrElementKind::NavLink,
         ElementKind::SortList => IrElementKind::SortList,
+        ElementKind::Map => IrElementKind::Map,
         ElementKind::Named(s) => IrElementKind::Named(s.clone()),
     }
 }
@@ -1505,7 +1506,9 @@ fn check_capabilities(ir: &IrFile) -> Result<(), LowerError> {
                             )
                 })
             } else {
+                // a `Map` asks its tile host for images: that is the use of `Network` it declares (docs/maps.md)
                 c.reachable_effects.iter().any(|e| e.capability == req.name)
+                    || (req.name == "Network" && crate::map::view_has_map(&c.view.body))
             };
             if !used {
                 return Err(LowerError::CapabilityUnused {

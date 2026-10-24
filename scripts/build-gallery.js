@@ -65,6 +65,10 @@ function buildDemos(m, cancho, outRoot) {
     // run from the repository root with the relative source path: the emitted code names its source in a comment
     const r = spawnSync(cancho, ['build', t.source, '--page', '-o', dir, '--name', t.title], { encoding: 'utf8', cwd: ROOT });
     if (r.status !== 0) { throw new Error(`building ${t.source}: ${r.stderr}${r.stdout}`); }
+    // files a demo needs beside it (the stand-in tiles of the map): copied as they are
+    for (const [to, from] of Object.entries(t.copy || {})) {
+      fs.cpSync(path.join(ROOT, from), path.join(dir, to), { recursive: true });
+    }
     if (t.id === 'ops-console') {
       fs.mkdirSync(path.join(dir, 'api'), { recursive: true });
       const text = machines().map((x) => JSON.stringify(x)).join('\n') + '\n';

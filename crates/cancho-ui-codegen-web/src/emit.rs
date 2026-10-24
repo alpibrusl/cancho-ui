@@ -216,6 +216,14 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
     if ir
         .components
         .iter()
+        .any(|c| crate::map::view_has_map(&c.view.body))
+    {
+        out.push_str(crate::map::ADAPTER_JS);
+        out.push('\n');
+    }
+    if ir
+        .components
+        .iter()
         .any(|c| crate::number::view_has_number(&c.view.body))
     {
         out.push_str(crate::number::ADAPTER_JS);
@@ -620,6 +628,10 @@ fn emit_component(
             "        const __cui_location_digits = {};\n",
             if fine { 5 } else { 2 }
         ));
+        // a map holds only as fine a tile as the position it was given (docs/maps.md)
+        if crate::map::view_has_map(&c.view.body) {
+            out.push_str(&format!("        const __cui_map_coarse = {};\n", !fine));
+        }
     }
     if module_credentials {
         // docs/adapters.md section 18: the tokens this instance was mounted with (a child gets its parent's).

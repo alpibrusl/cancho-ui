@@ -178,7 +178,7 @@ footer { border-top: 1px solid var(--line); padding: 1.5rem 0 2rem; color: var(-
         }
     }
 }</code></pre>
-  <p class="fine">Every example is in <a href="https://github.com/alpibrusl/cancho-ui/tree/main/examples">examples/</a> (26 programs): a counter, a stopwatch, a searchable list with cancellation, composed components, cross-file imports, notes in <code>Storage</code>, a machine console and more. Twelve of them run live in the <a href="#gallery">gallery</a>.</p>
+  <p class="fine">Every example is in <a href="https://github.com/alpibrusl/cancho-ui/tree/main/examples">examples/</a> (27 programs): a counter, a stopwatch, a searchable list with cancellation, composed components, cross-file imports, notes in <code>Storage</code>, a machine console and more. Thirteen of them run live in the <a href="#gallery">gallery</a>.</p>
 </div></section>
 
 <!-- gallery:start -->
@@ -235,13 +235,14 @@ footer { border-top: 1px solid var(--line); padding: 1.5rem 0 2rem; color: var(-
       <p><code>SortList</code>: drag a row by its handle (mouse, pen or finger), or move it with its up and down buttons from the keyboard; the focus follows the row, a live region says where it went, and the page is not redrawn under a drag. The program owns the list and accepts a move with one line, <code>move(tasks, from, to)</code>.</p>
       <iframe class="" title="Reordering a list, built by cancho-ui" src="demo/reorder/" loading="lazy"></iframe>
       <p class="glinks"><a href="demo/reorder/">Open on its own</a> <a href="https://github.com/alpibrusl/cancho-ui/blob/main/examples/reorder/reorder.cui">Source: reorder.cui</a></p></li>
+    <li class="gtile"><h4>A map with its list</h4>
+      <p><code>Map</code>: the tiles of an address the program writes (here a folder of stand-in tiles beside this page; the compiler has no default tile host and this page asks nobody else for anything), the places pinned over them, the same places as a list nearest first (the list is what a screen reader reads), and the credit under the map. The map is centred on the middle of the tile, so a tile server learns the tile and no more.</p>
+      <iframe class="" title="A map with its list, built by cancho-ui" src="demo/map/" loading="lazy"></iframe>
+      <p class="glinks"><a href="demo/map/">Open on its own</a> <a href="https://github.com/alpibrusl/cancho-ui/blob/main/examples/map/map.cui">Source: map.cui</a></p></li>
   </ul>
   <h3 class="gh">Coming soon</h3>
   <p class="lead">Not built, and not promised for any date. Each tile says what is missing and links the issue that tracks it.</p>
   <ul class="gallery">
-    <li class="gtile soon"><h4>Maps <span class="badge">Coming soon</span></h4>
-      <p>Missing: A map or image primitive and a typed position; <code>location.current()</code> answers rounded text.</p>
-      <p class="glinks"><a href="https://github.com/alpibrusl/cancho-ui/issues/81">Tracked in #81</a></p></li>
     <li class="gtile soon"><h4>Native shell and push on mobile <span class="badge">Coming soon</span></h4>
       <p>Missing: Push notifications and background work. Whether an installed web page can do them is not measured (device tests are #65), so whether a native shell is needed is an open decision.</p>
       <p class="glinks"><a href="https://github.com/alpibrusl/cancho-ui/issues/68">Tracked in #68</a></p></li>
@@ -253,7 +254,7 @@ footer { border-top: 1px solid var(--line); padding: 1.5rem 0 2rem; color: var(-
   <h2>Measured, not promised</h2>
   <p class="lead">What the repository can show today.</p>
   <div class="nums">
-    <div class="num"><b>26</b><span>example programs compile, and 22 of them replay a recorded trace</span></div>
+    <div class="num"><b>27</b><span>example programs compile, and 23 of them replay a recorded trace</span></div>
     <div class="num"><b>390+</b><span>tests pass under <code>cargo test --workspace</code></span></div>
     <div class="num"><b>~26,000</b><span>mutated programs (every prefix, every one-character deletion) refused or accepted, never a panic</span></div>
     <div class="num"><b>0</b><span>clippy warnings under <code>-D warnings</code></span></div>

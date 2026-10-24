@@ -171,10 +171,14 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
                         .unwrap_or("app")
                         .to_string()
                 });
+                // a program with a map gets a Content-Security-Policy listing the hosts it declared (docs/maps.md)
+                let img_src = pipeline::compile_to_ir(file)
+                    .ok()
+                    .and_then(|ir| cancho_ui_ir::map::csp_img_sources(&ir));
                 let files = if opts.pwa {
-                    pwa::generate(&out, &name)
+                    pwa::generate(&out, &name, img_src.as_deref())
                 } else {
-                    pwa::generate_page(&out, &name)
+                    pwa::generate_page(&out, &name, img_src.as_deref())
                 };
                 pwa::write_all(dir, &files).map_err(CliError::Env)?;
             }

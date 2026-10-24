@@ -1,0 +1,41 @@
+// examples/map/map.cui — a map of places with a list beside it (docs/maps.md, issue #81).
+// The tiles come from the program's `tiles:` address and nowhere else: the compiler has no default host and names no provider. This address is a
+// path on the page's own origin (a folder of stand-in tiles next to the page, scripts/tile-png.js), so a page built from this file asks nobody
+// else for anything. For a tile provider write its address and declare its host, `requires Network("tiles.example");`, and credit it in
+// `attribution:` as its terms ask: the page then carries a Content-Security-Policy that lets images in from that host and no other.
+// The map is centred on the middle of the tile the position is in, not on the position, so the tile server learns the tile and no more.
+
+component Places {
+    requires Network;
+
+    state here: String = "40.41694,-3.70351";
+    state places: List[String] = [
+        "\{\"name\":\"Puerta del Sol\",\"pos\":\"40.41694,-3.70351\"\}",
+        "\{\"name\":\"Retiro\",\"pos\":\"40.41531,-3.68446\"\}",
+        "\{\"name\":\"Atocha\",\"pos\":\"40.40653,-3.68927\"\}",
+        "\{\"name\":\"Plaza de Castilla\",\"pos\":\"40.46659,-3.68894\"\}",
+        "\{\"name\":\"Chamartin\",\"pos\":\"40.47212,-3.68240\"\}",
+        "\{\"name\":\"Barajas\",\"pos\":\"40.49830,-3.56760\"\}",
+        "\{\"name\":\"Somewhere\",\"pos\":\"unknown\"\}"
+    ];
+
+    on AtSol { here = "40.41694,-3.70351"; }
+    on AtAirport { here = "40.49830,-3.56760"; }
+
+    view {
+        Column {
+            Row {
+                Button { label: "Centre on Puerta del Sol" on: AtSol }
+                Button { label: "Centre on Barajas" on: AtAirport }
+            }
+            Map {
+                label: "Places near the centre"
+                center: here
+                places: places
+                zoom: 13
+                tiles: "./tiles/{z}/{x}/{y}.png"
+                attribution: "Stand-in tiles for this example; put your tile provider's credit here."
+            }
+        }
+    }
+}

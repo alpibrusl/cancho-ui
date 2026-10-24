@@ -260,7 +260,7 @@ function r8(ctx) {
   if (!m1 || Number(m1[1]) !== programs.length || Number(m1[2]) !== replayed.size) { problems.push(`the page says ${m1 ? m1[1] + ' compile, ' + m1[2] + ' replay' : 'nothing'}; the repository has ${programs.length} programs, ${replayed.size} replaying a trace`); }
   if (!m2 || Number(m2[1]) !== programs.length) { problems.push(`the page says "(${m2 ? m2[1] : '?'} programs)"; the repository has ${programs.length}`); }
   if (/Nine more examples/.test(html)) { problems.push('the stale sentence "Nine more examples" is still on the page'); }
-  const words = ['none', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+  const words = ['none', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen'];
   const live = html.match(/(\w+) of them run live/);
   if (live && words.indexOf(live[1].toLowerCase()) !== ctx.manifest.supported.length) { problems.push(`the page says ${live[1].toLowerCase()} run live; the manifest has ${ctx.manifest.supported.length}`); }
   return problems;
@@ -279,15 +279,15 @@ const BREAKS = [
   ['R1 no drift', 'a word changed in a tile', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('Missing: Push', 'Missing: PUSH')), 'r1'],
   ['R2 built = source', 'a demo is not what the source builds', (c) => editFile(path.join(c.docs, 'demo/clock/app.js'), (s) => s + '\n// edited\n'), 'r2'],
   ['R3 loads clean', 'a demo throws when it loads', (c) => editFile(path.join(c.docs, 'demo/match/app.js'), (s) => s + '\nthrow new Error("broken demo");\n'), 'r3'],
-  ['R4 soon is tracked', 'a coming-soon tile loses its issue link', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace(/<p class="glinks"><a href="[^"]*\/issues\/81">Tracked in #81<\/a><\/p>/, '<p class="glinks"></p>')), 'r4'],
-  ['R4 soon is tracked', 'a coming-soon tile promises a date', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('A map or image primitive', 'A map or image primitive, arriving in Q4 2027')), 'r4'],
+  ['R4 soon is tracked', 'a coming-soon tile loses its issue link', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace(/<p class="glinks"><a href="[^"]*\/issues\/68">Tracked in #68<\/a><\/p>/, '<p class="glinks"></p>')), 'r4'],
+  ['R4 soon is tracked', 'a coming-soon tile promises a date', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('Push notifications and background work', 'Push notifications and background work, arriving in Q4 2027')), 'r4'],
   ['R5 soon is true', 'a probe that now passes (the feature exists)', (c) => { c.manifest.soon[0].probe = { view: 'Text { "x" }', rule: 'component-kind-unknown' }; }, 'r5'],
   ['R6 no overflow at 420 px', 'a tile wider than the screen', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('</style>', '.gtile { min-width: 34rem !important; }\n</style>')), 'r6'],
   ['R7 accessible', 'an iframe without a title', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('title="Counter, built by cancho-ui" ', '')), 'r7'],
   ['R7 accessible', 'low contrast text', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('</style>', '.gtile p { color: #c8c8c8 !important; }\n</style>')), 'r7'],
   ['R7 accessible', 'no focus ring', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('</style>', '.gallery a:focus, .gallery a:focus-visible { outline: none !important; }\n</style>')), 'r7'],
   ['R7 accessible', 'headings skip a level', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('<h3 class="gh">Built with cancho-ui</h3>', '<h5 class="gh">Built with cancho-ui</h5>')), 'r7'],
-  ['R8 counts are true', 'the page says 17 programs', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('(26 programs)', '(17 programs)')), 'r8'],
+  ['R8 counts are true', 'the page says 17 programs', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('(27 programs)', '(17 programs)')), 'r8'],
 ];
 
 async function runRule(name, ctx) {

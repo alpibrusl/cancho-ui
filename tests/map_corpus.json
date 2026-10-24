@@ -1,0 +1,2792 @@
+{
+ "about": "What a Map (docs/maps.md) asks the tile host for and lists: the zoom used, the exact tile addresses, the list nearest first with its km (one decimal), how many places are listed, how many there are, and how many of the nearest 50 fall inside the picture. Expected values computed outside the program (Python's math).",
+ "cases": [
+  {
+   "why": "Madrid, a coarse position at zoom 13",
+   "center": "40.42,-3.70",
+   "zoom": 13,
+   "coarse": true,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Puerta del Sol\", \"pos\": \"40.41694,-3.70351\"}",
+    "{\"name\": \"Retiro\", \"pos\": \"40.41531,-3.68446\"}",
+    "{\"name\": \"Atocha\", \"pos\": \"40.40653,-3.68927\"}",
+    "{\"name\": \"Plaza de Castilla\", \"pos\": \"40.46659,-3.68894\"}",
+    "{\"name\": \"Chamartin\", \"pos\": \"40.47212,-3.68240\"}",
+    "{\"name\": \"Barajas\", \"pos\": \"40.49830,-3.56760\"}",
+    "{\"name\": \"Somewhere\", \"pos\": \"unknown\"}",
+    "not json",
+    "{\"pos\": \"40.4,-3.7\"}",
+    "{\"name\": \"No position\"}",
+    "{\"name\": \"Twin A\", \"pos\": \"40.42,-3.71\"}",
+    "{\"name\": \"Twin B\", \"pos\": \"40.42,-3.71\"}"
+   ],
+   "want": {
+    "zoom": 13,
+    "tiles": [
+     "https://tiles.example/13/4010/3087.png",
+     "https://tiles.example/13/4011/3087.png",
+     "https://tiles.example/13/4012/3087.png",
+     "https://tiles.example/13/4010/3088.png",
+     "https://tiles.example/13/4011/3088.png",
+     "https://tiles.example/13/4012/3088.png",
+     "https://tiles.example/13/4010/3089.png",
+     "https://tiles.example/13/4011/3089.png",
+     "https://tiles.example/13/4012/3089.png"
+    ],
+    "list": [
+     {
+      "name": "Puerta del Sol",
+      "km": "0.5"
+     },
+     {
+      "name": "Twin A",
+      "km": "0.8"
+     },
+     {
+      "name": "Twin B",
+      "km": "0.8"
+     },
+     {
+      "name": "Retiro",
+      "km": "1.4"
+     },
+     {
+      "name": "Atocha",
+      "km": "1.8"
+     },
+     {
+      "name": "",
+      "km": "2.2"
+     },
+     {
+      "name": "Plaza de Castilla",
+      "km": "5.3"
+     },
+     {
+      "name": "Chamartin",
+      "km": "6"
+     },
+     {
+      "name": "Barajas",
+      "km": "14.2"
+     }
+    ],
+    "listed": 9,
+    "total": 9,
+    "pinned": 8
+   }
+  },
+  {
+   "why": "Madrid, coarse, zoom 14 asked: lowered to 13",
+   "center": "40.42,-3.70",
+   "zoom": 14,
+   "coarse": true,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Puerta del Sol\", \"pos\": \"40.41694,-3.70351\"}",
+    "{\"name\": \"Retiro\", \"pos\": \"40.41531,-3.68446\"}",
+    "{\"name\": \"Atocha\", \"pos\": \"40.40653,-3.68927\"}",
+    "{\"name\": \"Plaza de Castilla\", \"pos\": \"40.46659,-3.68894\"}",
+    "{\"name\": \"Chamartin\", \"pos\": \"40.47212,-3.68240\"}",
+    "{\"name\": \"Barajas\", \"pos\": \"40.49830,-3.56760\"}",
+    "{\"name\": \"Somewhere\", \"pos\": \"unknown\"}",
+    "not json",
+    "{\"pos\": \"40.4,-3.7\"}",
+    "{\"name\": \"No position\"}",
+    "{\"name\": \"Twin A\", \"pos\": \"40.42,-3.71\"}",
+    "{\"name\": \"Twin B\", \"pos\": \"40.42,-3.71\"}"
+   ],
+   "want": {
+    "zoom": 13,
+    "tiles": [
+     "https://tiles.example/13/4010/3087.png",
+     "https://tiles.example/13/4011/3087.png",
+     "https://tiles.example/13/4012/3087.png",
+     "https://tiles.example/13/4010/3088.png",
+     "https://tiles.example/13/4011/3088.png",
+     "https://tiles.example/13/4012/3088.png",
+     "https://tiles.example/13/4010/3089.png",
+     "https://tiles.example/13/4011/3089.png",
+     "https://tiles.example/13/4012/3089.png"
+    ],
+    "list": [
+     {
+      "name": "Puerta del Sol",
+      "km": "0.5"
+     },
+     {
+      "name": "Twin A",
+      "km": "0.8"
+     },
+     {
+      "name": "Twin B",
+      "km": "0.8"
+     },
+     {
+      "name": "Retiro",
+      "km": "1.4"
+     },
+     {
+      "name": "Atocha",
+      "km": "1.8"
+     },
+     {
+      "name": "",
+      "km": "2.2"
+     },
+     {
+      "name": "Plaza de Castilla",
+      "km": "5.3"
+     },
+     {
+      "name": "Chamartin",
+      "km": "6"
+     },
+     {
+      "name": "Barajas",
+      "km": "14.2"
+     }
+    ],
+    "listed": 9,
+    "total": 9,
+    "pinned": 8
+   }
+  },
+  {
+   "why": "Madrid, coarse, zoom 5",
+   "center": "40.42,-3.70",
+   "zoom": 5,
+   "coarse": true,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Puerta del Sol\", \"pos\": \"40.41694,-3.70351\"}",
+    "{\"name\": \"Retiro\", \"pos\": \"40.41531,-3.68446\"}",
+    "{\"name\": \"Atocha\", \"pos\": \"40.40653,-3.68927\"}",
+    "{\"name\": \"Plaza de Castilla\", \"pos\": \"40.46659,-3.68894\"}",
+    "{\"name\": \"Chamartin\", \"pos\": \"40.47212,-3.68240\"}",
+    "{\"name\": \"Barajas\", \"pos\": \"40.49830,-3.56760\"}",
+    "{\"name\": \"Somewhere\", \"pos\": \"unknown\"}",
+    "not json",
+    "{\"pos\": \"40.4,-3.7\"}",
+    "{\"name\": \"No position\"}",
+    "{\"name\": \"Twin A\", \"pos\": \"40.42,-3.71\"}",
+    "{\"name\": \"Twin B\", \"pos\": \"40.42,-3.71\"}"
+   ],
+   "want": {
+    "zoom": 5,
+    "tiles": [
+     "https://tiles.example/5/14/11.png",
+     "https://tiles.example/5/15/11.png",
+     "https://tiles.example/5/16/11.png",
+     "https://tiles.example/5/14/12.png",
+     "https://tiles.example/5/15/12.png",
+     "https://tiles.example/5/16/12.png",
+     "https://tiles.example/5/14/13.png",
+     "https://tiles.example/5/15/13.png",
+     "https://tiles.example/5/16/13.png"
+    ],
+    "list": [
+     {
+      "name": "Puerta del Sol",
+      "km": "0.5"
+     },
+     {
+      "name": "Twin A",
+      "km": "0.8"
+     },
+     {
+      "name": "Twin B",
+      "km": "0.8"
+     },
+     {
+      "name": "Retiro",
+      "km": "1.4"
+     },
+     {
+      "name": "Atocha",
+      "km": "1.8"
+     },
+     {
+      "name": "",
+      "km": "2.2"
+     },
+     {
+      "name": "Plaza de Castilla",
+      "km": "5.3"
+     },
+     {
+      "name": "Chamartin",
+      "km": "6"
+     },
+     {
+      "name": "Barajas",
+      "km": "14.2"
+     }
+    ],
+    "listed": 9,
+    "total": 9,
+    "pinned": 9
+   }
+  },
+  {
+   "why": "Madrid, a fine position at zoom 14",
+   "center": "40.41694,-3.70351",
+   "zoom": 14,
+   "coarse": false,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Puerta del Sol\", \"pos\": \"40.41694,-3.70351\"}",
+    "{\"name\": \"Retiro\", \"pos\": \"40.41531,-3.68446\"}",
+    "{\"name\": \"Atocha\", \"pos\": \"40.40653,-3.68927\"}",
+    "{\"name\": \"Plaza de Castilla\", \"pos\": \"40.46659,-3.68894\"}",
+    "{\"name\": \"Chamartin\", \"pos\": \"40.47212,-3.68240\"}",
+    "{\"name\": \"Barajas\", \"pos\": \"40.49830,-3.56760\"}",
+    "{\"name\": \"Somewhere\", \"pos\": \"unknown\"}",
+    "not json",
+    "{\"pos\": \"40.4,-3.7\"}",
+    "{\"name\": \"No position\"}",
+    "{\"name\": \"Twin A\", \"pos\": \"40.42,-3.71\"}",
+    "{\"name\": \"Twin B\", \"pos\": \"40.42,-3.71\"}"
+   ],
+   "want": {
+    "zoom": 14,
+    "tiles": [
+     "https://tiles.example/14/8022/6176.png",
+     "https://tiles.example/14/8023/6176.png",
+     "https://tiles.example/14/8024/6176.png",
+     "https://tiles.example/14/8022/6177.png",
+     "https://tiles.example/14/8023/6177.png",
+     "https://tiles.example/14/8024/6177.png",
+     "https://tiles.example/14/8022/6178.png",
+     "https://tiles.example/14/8023/6178.png",
+     "https://tiles.example/14/8024/6178.png"
+    ],
+    "list": [
+     {
+      "name": "Puerta del Sol",
+      "km": "0"
+     },
+     {
+      "name": "Twin A",
+      "km": "0.6"
+     },
+     {
+      "name": "Twin B",
+      "km": "0.6"
+     },
+     {
+      "name": "Retiro",
+      "km": "1.6"
+     },
+     {
+      "name": "Atocha",
+      "km": "1.7"
+     },
+     {
+      "name": "",
+      "km": "1.9"
+     },
+     {
+      "name": "Plaza de Castilla",
+      "km": "5.7"
+     },
+     {
+      "name": "Chamartin",
+      "km": "6.4"
+     },
+     {
+      "name": "Barajas",
+      "km": "14.6"
+     }
+    ],
+    "listed": 9,
+    "total": 9,
+    "pinned": 6
+   }
+  },
+  {
+   "why": "Madrid, fine, zoom 19",
+   "center": "40.41694,-3.70351",
+   "zoom": 19,
+   "coarse": false,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Puerta del Sol\", \"pos\": \"40.41694,-3.70351\"}",
+    "{\"name\": \"Retiro\", \"pos\": \"40.41531,-3.68446\"}",
+    "{\"name\": \"Atocha\", \"pos\": \"40.40653,-3.68927\"}",
+    "{\"name\": \"Plaza de Castilla\", \"pos\": \"40.46659,-3.68894\"}",
+    "{\"name\": \"Chamartin\", \"pos\": \"40.47212,-3.68240\"}",
+    "{\"name\": \"Barajas\", \"pos\": \"40.49830,-3.56760\"}",
+    "{\"name\": \"Somewhere\", \"pos\": \"unknown\"}",
+    "not json",
+    "{\"pos\": \"40.4,-3.7\"}",
+    "{\"name\": \"No position\"}",
+    "{\"name\": \"Twin A\", \"pos\": \"40.42,-3.71\"}",
+    "{\"name\": \"Twin B\", \"pos\": \"40.42,-3.71\"}"
+   ],
+   "want": {
+    "zoom": 19,
+    "tiles": [
+     "https://tiles.example/19/256749/197688.png",
+     "https://tiles.example/19/256750/197688.png",
+     "https://tiles.example/19/256751/197688.png",
+     "https://tiles.example/19/256749/197689.png",
+     "https://tiles.example/19/256750/197689.png",
+     "https://tiles.example/19/256751/197689.png",
+     "https://tiles.example/19/256749/197690.png",
+     "https://tiles.example/19/256750/197690.png",
+     "https://tiles.example/19/256751/197690.png"
+    ],
+    "list": [
+     {
+      "name": "Puerta del Sol",
+      "km": "0"
+     },
+     {
+      "name": "Twin A",
+      "km": "0.6"
+     },
+     {
+      "name": "Twin B",
+      "km": "0.6"
+     },
+     {
+      "name": "Retiro",
+      "km": "1.6"
+     },
+     {
+      "name": "Atocha",
+      "km": "1.7"
+     },
+     {
+      "name": "",
+      "km": "1.9"
+     },
+     {
+      "name": "Plaza de Castilla",
+      "km": "5.7"
+     },
+     {
+      "name": "Chamartin",
+      "km": "6.4"
+     },
+     {
+      "name": "Barajas",
+      "km": "14.6"
+     }
+    ],
+    "listed": 9,
+    "total": 9,
+    "pinned": 1
+   }
+  },
+  {
+   "why": "Madrid, fine, zoom 0: one tile",
+   "center": "40.41694,-3.70351",
+   "zoom": 0,
+   "coarse": false,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Puerta del Sol\", \"pos\": \"40.41694,-3.70351\"}",
+    "{\"name\": \"Retiro\", \"pos\": \"40.41531,-3.68446\"}",
+    "{\"name\": \"Atocha\", \"pos\": \"40.40653,-3.68927\"}",
+    "{\"name\": \"Plaza de Castilla\", \"pos\": \"40.46659,-3.68894\"}",
+    "{\"name\": \"Chamartin\", \"pos\": \"40.47212,-3.68240\"}",
+    "{\"name\": \"Barajas\", \"pos\": \"40.49830,-3.56760\"}",
+    "{\"name\": \"Somewhere\", \"pos\": \"unknown\"}",
+    "not json",
+    "{\"pos\": \"40.4,-3.7\"}",
+    "{\"name\": \"No position\"}",
+    "{\"name\": \"Twin A\", \"pos\": \"40.42,-3.71\"}",
+    "{\"name\": \"Twin B\", \"pos\": \"40.42,-3.71\"}"
+   ],
+   "want": {
+    "zoom": 0,
+    "tiles": [
+     "https://tiles.example/0/0/0.png"
+    ],
+    "list": [
+     {
+      "name": "Puerta del Sol",
+      "km": "0"
+     },
+     {
+      "name": "Twin A",
+      "km": "0.6"
+     },
+     {
+      "name": "Twin B",
+      "km": "0.6"
+     },
+     {
+      "name": "Retiro",
+      "km": "1.6"
+     },
+     {
+      "name": "Atocha",
+      "km": "1.7"
+     },
+     {
+      "name": "",
+      "km": "1.9"
+     },
+     {
+      "name": "Plaza de Castilla",
+      "km": "5.7"
+     },
+     {
+      "name": "Chamartin",
+      "km": "6.4"
+     },
+     {
+      "name": "Barajas",
+      "km": "14.6"
+     }
+    ],
+    "listed": 9,
+    "total": 9,
+    "pinned": 9
+   }
+  },
+  {
+   "why": "the equator and the meridian, zoom 0",
+   "center": "0,0",
+   "zoom": 0,
+   "coarse": false,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Puerta del Sol\", \"pos\": \"40.41694,-3.70351\"}",
+    "{\"name\": \"Retiro\", \"pos\": \"40.41531,-3.68446\"}",
+    "{\"name\": \"Atocha\", \"pos\": \"40.40653,-3.68927\"}",
+    "{\"name\": \"Plaza de Castilla\", \"pos\": \"40.46659,-3.68894\"}",
+    "{\"name\": \"Chamartin\", \"pos\": \"40.47212,-3.68240\"}",
+    "{\"name\": \"Barajas\", \"pos\": \"40.49830,-3.56760\"}",
+    "{\"name\": \"Somewhere\", \"pos\": \"unknown\"}",
+    "not json",
+    "{\"pos\": \"40.4,-3.7\"}",
+    "{\"name\": \"No position\"}",
+    "{\"name\": \"Twin A\", \"pos\": \"40.42,-3.71\"}",
+    "{\"name\": \"Twin B\", \"pos\": \"40.42,-3.71\"}"
+   ],
+   "want": {
+    "zoom": 0,
+    "tiles": [
+     "https://tiles.example/0/0/0.png"
+    ],
+    "list": [
+     {
+      "name": "",
+      "km": "4507.9"
+     },
+     {
+      "name": "Atocha",
+      "km": "4508.5"
+     },
+     {
+      "name": "Retiro",
+      "km": "4509.4"
+     },
+     {
+      "name": "Puerta del Sol",
+      "km": "4509.8"
+     },
+     {
+      "name": "Twin A",
+      "km": "4510.2"
+     },
+     {
+      "name": "Twin B",
+      "km": "4510.2"
+     },
+     {
+      "name": "Plaza de Castilla",
+      "km": "4515.1"
+     },
+     {
+      "name": "Chamartin",
+      "km": "4515.7"
+     },
+     {
+      "name": "Barajas",
+      "km": "4517.6"
+     }
+    ],
+    "listed": 9,
+    "total": 9,
+    "pinned": 9
+   }
+  },
+  {
+   "why": "the equator and the meridian, zoom 1: four tiles, the others wrap",
+   "center": "0,0",
+   "zoom": 1,
+   "coarse": false,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Puerta del Sol\", \"pos\": \"40.41694,-3.70351\"}",
+    "{\"name\": \"Retiro\", \"pos\": \"40.41531,-3.68446\"}",
+    "{\"name\": \"Atocha\", \"pos\": \"40.40653,-3.68927\"}",
+    "{\"name\": \"Plaza de Castilla\", \"pos\": \"40.46659,-3.68894\"}",
+    "{\"name\": \"Chamartin\", \"pos\": \"40.47212,-3.68240\"}",
+    "{\"name\": \"Barajas\", \"pos\": \"40.49830,-3.56760\"}",
+    "{\"name\": \"Somewhere\", \"pos\": \"unknown\"}",
+    "not json",
+    "{\"pos\": \"40.4,-3.7\"}",
+    "{\"name\": \"No position\"}",
+    "{\"name\": \"Twin A\", \"pos\": \"40.42,-3.71\"}",
+    "{\"name\": \"Twin B\", \"pos\": \"40.42,-3.71\"}"
+   ],
+   "want": {
+    "zoom": 1,
+    "tiles": [
+     "https://tiles.example/1/0/0.png",
+     "https://tiles.example/1/1/0.png",
+     "https://tiles.example/1/0/1.png",
+     "https://tiles.example/1/1/1.png"
+    ],
+    "list": [
+     {
+      "name": "",
+      "km": "4507.9"
+     },
+     {
+      "name": "Atocha",
+      "km": "4508.5"
+     },
+     {
+      "name": "Retiro",
+      "km": "4509.4"
+     },
+     {
+      "name": "Puerta del Sol",
+      "km": "4509.8"
+     },
+     {
+      "name": "Twin A",
+      "km": "4510.2"
+     },
+     {
+      "name": "Twin B",
+      "km": "4510.2"
+     },
+     {
+      "name": "Plaza de Castilla",
+      "km": "4515.1"
+     },
+     {
+      "name": "Chamartin",
+      "km": "4515.7"
+     },
+     {
+      "name": "Barajas",
+      "km": "4517.6"
+     }
+    ],
+    "listed": 9,
+    "total": 9,
+    "pinned": 9
+   }
+  },
+  {
+   "why": "the equator and the meridian, zoom 2",
+   "center": "0,0",
+   "zoom": 2,
+   "coarse": false,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Puerta del Sol\", \"pos\": \"40.41694,-3.70351\"}",
+    "{\"name\": \"Retiro\", \"pos\": \"40.41531,-3.68446\"}",
+    "{\"name\": \"Atocha\", \"pos\": \"40.40653,-3.68927\"}",
+    "{\"name\": \"Plaza de Castilla\", \"pos\": \"40.46659,-3.68894\"}",
+    "{\"name\": \"Chamartin\", \"pos\": \"40.47212,-3.68240\"}",
+    "{\"name\": \"Barajas\", \"pos\": \"40.49830,-3.56760\"}",
+    "{\"name\": \"Somewhere\", \"pos\": \"unknown\"}",
+    "not json",
+    "{\"pos\": \"40.4,-3.7\"}",
+    "{\"name\": \"No position\"}",
+    "{\"name\": \"Twin A\", \"pos\": \"40.42,-3.71\"}",
+    "{\"name\": \"Twin B\", \"pos\": \"40.42,-3.71\"}"
+   ],
+   "want": {
+    "zoom": 2,
+    "tiles": [
+     "https://tiles.example/2/1/1.png",
+     "https://tiles.example/2/2/1.png",
+     "https://tiles.example/2/3/1.png",
+     "https://tiles.example/2/1/2.png",
+     "https://tiles.example/2/2/2.png",
+     "https://tiles.example/2/3/2.png",
+     "https://tiles.example/2/1/3.png",
+     "https://tiles.example/2/2/3.png",
+     "https://tiles.example/2/3/3.png"
+    ],
+    "list": [
+     {
+      "name": "",
+      "km": "4507.9"
+     },
+     {
+      "name": "Atocha",
+      "km": "4508.5"
+     },
+     {
+      "name": "Retiro",
+      "km": "4509.4"
+     },
+     {
+      "name": "Puerta del Sol",
+      "km": "4509.8"
+     },
+     {
+      "name": "Twin A",
+      "km": "4510.2"
+     },
+     {
+      "name": "Twin B",
+      "km": "4510.2"
+     },
+     {
+      "name": "Plaza de Castilla",
+      "km": "4515.1"
+     },
+     {
+      "name": "Chamartin",
+      "km": "4515.7"
+     },
+     {
+      "name": "Barajas",
+      "km": "4517.6"
+     }
+    ],
+    "listed": 9,
+    "total": 9,
+    "pinned": 9
+   }
+  },
+  {
+   "why": "just east of the date line, zoom 5: the columns wrap round to the west",
+   "center": "10,179.99",
+   "zoom": 5,
+   "coarse": false,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Puerta del Sol\", \"pos\": \"40.41694,-3.70351\"}",
+    "{\"name\": \"Retiro\", \"pos\": \"40.41531,-3.68446\"}",
+    "{\"name\": \"Atocha\", \"pos\": \"40.40653,-3.68927\"}",
+    "{\"name\": \"Plaza de Castilla\", \"pos\": \"40.46659,-3.68894\"}",
+    "{\"name\": \"Chamartin\", \"pos\": \"40.47212,-3.68240\"}",
+    "{\"name\": \"Barajas\", \"pos\": \"40.49830,-3.56760\"}",
+    "{\"name\": \"Somewhere\", \"pos\": \"unknown\"}",
+    "not json",
+    "{\"pos\": \"40.4,-3.7\"}",
+    "{\"name\": \"No position\"}",
+    "{\"name\": \"Twin A\", \"pos\": \"40.42,-3.71\"}",
+    "{\"name\": \"Twin B\", \"pos\": \"40.42,-3.71\"}"
+   ],
+   "want": {
+    "zoom": 5,
+    "tiles": [
+     "https://tiles.example/5/30/14.png",
+     "https://tiles.example/5/31/14.png",
+     "https://tiles.example/5/0/14.png",
+     "https://tiles.example/5/30/15.png",
+     "https://tiles.example/5/31/15.png",
+     "https://tiles.example/5/0/15.png",
+     "https://tiles.example/5/30/16.png",
+     "https://tiles.example/5/31/16.png",
+     "https://tiles.example/5/0/16.png"
+    ],
+    "list": [
+     {
+      "name": "Barajas",
+      "km": "14388"
+     },
+     {
+      "name": "Chamartin",
+      "km": "14390.2"
+     },
+     {
+      "name": "Plaza de Castilla",
+      "km": "14390.7"
+     },
+     {
+      "name": "Twin A",
+      "km": "14395.8"
+     },
+     {
+      "name": "Twin B",
+      "km": "14395.8"
+     },
+     {
+      "name": "Puerta del Sol",
+      "km": "14396.1"
+     },
+     {
+      "name": "Retiro",
+      "km": "14396.4"
+     },
+     {
+      "name": "Atocha",
+      "km": "14397.4"
+     },
+     {
+      "name": "",
+      "km": "14398"
+     }
+    ],
+    "listed": 9,
+    "total": 9,
+    "pinned": 0
+   }
+  },
+  {
+   "why": "exactly the date line east, zoom 4: the last column",
+   "center": "10,180",
+   "zoom": 4,
+   "coarse": false,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Puerta del Sol\", \"pos\": \"40.41694,-3.70351\"}",
+    "{\"name\": \"Retiro\", \"pos\": \"40.41531,-3.68446\"}",
+    "{\"name\": \"Atocha\", \"pos\": \"40.40653,-3.68927\"}",
+    "{\"name\": \"Plaza de Castilla\", \"pos\": \"40.46659,-3.68894\"}",
+    "{\"name\": \"Chamartin\", \"pos\": \"40.47212,-3.68240\"}",
+    "{\"name\": \"Barajas\", \"pos\": \"40.49830,-3.56760\"}",
+    "{\"name\": \"Somewhere\", \"pos\": \"unknown\"}",
+    "not json",
+    "{\"pos\": \"40.4,-3.7\"}",
+    "{\"name\": \"No position\"}",
+    "{\"name\": \"Twin A\", \"pos\": \"40.42,-3.71\"}",
+    "{\"name\": \"Twin B\", \"pos\": \"40.42,-3.71\"}"
+   ],
+   "want": {
+    "zoom": 4,
+    "tiles": [
+     "https://tiles.example/4/14/6.png",
+     "https://tiles.example/4/15/6.png",
+     "https://tiles.example/4/0/6.png",
+     "https://tiles.example/4/14/7.png",
+     "https://tiles.example/4/15/7.png",
+     "https://tiles.example/4/0/7.png",
+     "https://tiles.example/4/14/8.png",
+     "https://tiles.example/4/15/8.png",
+     "https://tiles.example/4/0/8.png"
+    ],
+    "list": [
+     {
+      "name": "Barajas",
+      "km": "14388"
+     },
+     {
+      "name": "Chamartin",
+      "km": "14390.1"
+     },
+     {
+      "name": "Plaza de Castilla",
+      "km": "14390.7"
+     },
+     {
+      "name": "Twin A",
+      "km": "14395.7"
+     },
+     {
+      "name": "Twin B",
+      "km": "14395.7"
+     },
+     {
+      "name": "Puerta del Sol",
+      "km": "14396.1"
+     },
+     {
+      "name": "Retiro",
+      "km": "14396.4"
+     },
+     {
+      "name": "Atocha",
+      "km": "14397.3"
+     },
+     {
+      "name": "",
+      "km": "14398"
+     }
+    ],
+    "listed": 9,
+    "total": 9,
+    "pinned": 0
+   }
+  },
+  {
+   "why": "exactly the date line west, zoom 4: the first column",
+   "center": "10,-180",
+   "zoom": 4,
+   "coarse": false,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Puerta del Sol\", \"pos\": \"40.41694,-3.70351\"}",
+    "{\"name\": \"Retiro\", \"pos\": \"40.41531,-3.68446\"}",
+    "{\"name\": \"Atocha\", \"pos\": \"40.40653,-3.68927\"}",
+    "{\"name\": \"Plaza de Castilla\", \"pos\": \"40.46659,-3.68894\"}",
+    "{\"name\": \"Chamartin\", \"pos\": \"40.47212,-3.68240\"}",
+    "{\"name\": \"Barajas\", \"pos\": \"40.49830,-3.56760\"}",
+    "{\"name\": \"Somewhere\", \"pos\": \"unknown\"}",
+    "not json",
+    "{\"pos\": \"40.4,-3.7\"}",
+    "{\"name\": \"No position\"}",
+    "{\"name\": \"Twin A\", \"pos\": \"40.42,-3.71\"}",
+    "{\"name\": \"Twin B\", \"pos\": \"40.42,-3.71\"}"
+   ],
+   "want": {
+    "zoom": 4,
+    "tiles": [
+     "https://tiles.example/4/15/6.png",
+     "https://tiles.example/4/0/6.png",
+     "https://tiles.example/4/1/6.png",
+     "https://tiles.example/4/15/7.png",
+     "https://tiles.example/4/0/7.png",
+     "https://tiles.example/4/1/7.png",
+     "https://tiles.example/4/15/8.png",
+     "https://tiles.example/4/0/8.png",
+     "https://tiles.example/4/1/8.png"
+    ],
+    "list": [
+     {
+      "name": "Barajas",
+      "km": "14388"
+     },
+     {
+      "name": "Chamartin",
+      "km": "14390.1"
+     },
+     {
+      "name": "Plaza de Castilla",
+      "km": "14390.7"
+     },
+     {
+      "name": "Twin A",
+      "km": "14395.7"
+     },
+     {
+      "name": "Twin B",
+      "km": "14395.7"
+     },
+     {
+      "name": "Puerta del Sol",
+      "km": "14396.1"
+     },
+     {
+      "name": "Retiro",
+      "km": "14396.4"
+     },
+     {
+      "name": "Atocha",
+      "km": "14397.3"
+     },
+     {
+      "name": "",
+      "km": "14398"
+     }
+    ],
+    "listed": 9,
+    "total": 9,
+    "pinned": 0
+   }
+  },
+  {
+   "why": "southern and western hemisphere, zoom 12",
+   "center": "-33.8688,-70.6693",
+   "zoom": 12,
+   "coarse": false,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Santiago centre\", \"pos\": \"-33.4489,-70.6693\"}",
+    "{\"name\": \"Valparaiso\", \"pos\": \"-33.0472,-71.6127\"}"
+   ],
+   "want": {
+    "zoom": 12,
+    "tiles": [
+     "https://tiles.example/12/1242/2456.png",
+     "https://tiles.example/12/1243/2456.png",
+     "https://tiles.example/12/1244/2456.png",
+     "https://tiles.example/12/1242/2457.png",
+     "https://tiles.example/12/1243/2457.png",
+     "https://tiles.example/12/1244/2457.png",
+     "https://tiles.example/12/1242/2458.png",
+     "https://tiles.example/12/1243/2458.png",
+     "https://tiles.example/12/1244/2458.png"
+    ],
+    "list": [
+     {
+      "name": "Santiago centre",
+      "km": "46.7"
+     },
+     {
+      "name": "Valparaiso",
+      "km": "126.5"
+     }
+    ],
+    "listed": 2,
+    "total": 2,
+    "pinned": 0
+   }
+  },
+  {
+   "why": "latitude 80, coarse, zoom 13: lowered to 12",
+   "center": "80,10",
+   "zoom": 13,
+   "coarse": true,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Puerta del Sol\", \"pos\": \"40.41694,-3.70351\"}",
+    "{\"name\": \"Retiro\", \"pos\": \"40.41531,-3.68446\"}",
+    "{\"name\": \"Atocha\", \"pos\": \"40.40653,-3.68927\"}",
+    "{\"name\": \"Plaza de Castilla\", \"pos\": \"40.46659,-3.68894\"}",
+    "{\"name\": \"Chamartin\", \"pos\": \"40.47212,-3.68240\"}",
+    "{\"name\": \"Barajas\", \"pos\": \"40.49830,-3.56760\"}",
+    "{\"name\": \"Somewhere\", \"pos\": \"unknown\"}",
+    "not json",
+    "{\"pos\": \"40.4,-3.7\"}",
+    "{\"name\": \"No position\"}",
+    "{\"name\": \"Twin A\", \"pos\": \"40.42,-3.71\"}",
+    "{\"name\": \"Twin B\", \"pos\": \"40.42,-3.71\"}"
+   ],
+   "want": {
+    "zoom": 12,
+    "tiles": [
+     "https://tiles.example/12/2160/458.png",
+     "https://tiles.example/12/2161/458.png",
+     "https://tiles.example/12/2162/458.png",
+     "https://tiles.example/12/2160/459.png",
+     "https://tiles.example/12/2161/459.png",
+     "https://tiles.example/12/2162/459.png",
+     "https://tiles.example/12/2160/460.png",
+     "https://tiles.example/12/2161/460.png",
+     "https://tiles.example/12/2162/460.png"
+    ],
+    "list": [
+     {
+      "name": "Barajas",
+      "km": "4429.2"
+     },
+     {
+      "name": "Chamartin",
+      "km": "4432.7"
+     },
+     {
+      "name": "Plaza de Castilla",
+      "km": "4433.3"
+     },
+     {
+      "name": "Twin A",
+      "km": "4438.6"
+     },
+     {
+      "name": "Twin B",
+      "km": "4438.6"
+     },
+     {
+      "name": "Puerta del Sol",
+      "km": "4438.9"
+     },
+     {
+      "name": "Retiro",
+      "km": "4439"
+     },
+     {
+      "name": "Atocha",
+      "km": "4440"
+     },
+     {
+      "name": "",
+      "km": "4440.8"
+     }
+    ],
+    "listed": 9,
+    "total": 9,
+    "pinned": 0
+   }
+  },
+  {
+   "why": "latitude 84, coarse, zoom 13: lowered to 11",
+   "center": "84,10",
+   "zoom": 13,
+   "coarse": true,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Puerta del Sol\", \"pos\": \"40.41694,-3.70351\"}",
+    "{\"name\": \"Retiro\", \"pos\": \"40.41531,-3.68446\"}",
+    "{\"name\": \"Atocha\", \"pos\": \"40.40653,-3.68927\"}",
+    "{\"name\": \"Plaza de Castilla\", \"pos\": \"40.46659,-3.68894\"}",
+    "{\"name\": \"Chamartin\", \"pos\": \"40.47212,-3.68240\"}",
+    "{\"name\": \"Barajas\", \"pos\": \"40.49830,-3.56760\"}",
+    "{\"name\": \"Somewhere\", \"pos\": \"unknown\"}",
+    "not json",
+    "{\"pos\": \"40.4,-3.7\"}",
+    "{\"name\": \"No position\"}",
+    "{\"name\": \"Twin A\", \"pos\": \"40.42,-3.71\"}",
+    "{\"name\": \"Twin B\", \"pos\": \"40.42,-3.71\"}"
+   ],
+   "want": {
+    "zoom": 11,
+    "tiles": [
+     "https://tiles.example/11/1079/61.png",
+     "https://tiles.example/11/1080/61.png",
+     "https://tiles.example/11/1081/61.png",
+     "https://tiles.example/11/1079/62.png",
+     "https://tiles.example/11/1080/62.png",
+     "https://tiles.example/11/1081/62.png",
+     "https://tiles.example/11/1079/63.png",
+     "https://tiles.example/11/1080/63.png",
+     "https://tiles.example/11/1081/63.png"
+    ],
+    "list": [
+     {
+      "name": "Barajas",
+      "km": "4857.7"
+     },
+     {
+      "name": "Chamartin",
+      "km": "4860.9"
+     },
+     {
+      "name": "Plaza de Castilla",
+      "km": "4861.6"
+     },
+     {
+      "name": "Twin A",
+      "km": "4866.8"
+     },
+     {
+      "name": "Twin B",
+      "km": "4866.8"
+     },
+     {
+      "name": "Puerta del Sol",
+      "km": "4867.1"
+     },
+     {
+      "name": "Retiro",
+      "km": "4867.2"
+     },
+     {
+      "name": "Atocha",
+      "km": "4868.2"
+     },
+     {
+      "name": "",
+      "km": "4869"
+     }
+    ],
+    "listed": 9,
+    "total": 9,
+    "pinned": 0
+   }
+  },
+  {
+   "why": "latitude 76, coarse, zoom 13: still 13",
+   "center": "76,10",
+   "zoom": 13,
+   "coarse": true,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Puerta del Sol\", \"pos\": \"40.41694,-3.70351\"}",
+    "{\"name\": \"Retiro\", \"pos\": \"40.41531,-3.68446\"}",
+    "{\"name\": \"Atocha\", \"pos\": \"40.40653,-3.68927\"}",
+    "{\"name\": \"Plaza de Castilla\", \"pos\": \"40.46659,-3.68894\"}",
+    "{\"name\": \"Chamartin\", \"pos\": \"40.47212,-3.68240\"}",
+    "{\"name\": \"Barajas\", \"pos\": \"40.49830,-3.56760\"}",
+    "{\"name\": \"Somewhere\", \"pos\": \"unknown\"}",
+    "not json",
+    "{\"pos\": \"40.4,-3.7\"}",
+    "{\"name\": \"No position\"}",
+    "{\"name\": \"Twin A\", \"pos\": \"40.42,-3.71\"}",
+    "{\"name\": \"Twin B\", \"pos\": \"40.42,-3.71\"}"
+   ],
+   "want": {
+    "zoom": 13,
+    "tiles": [
+     "https://tiles.example/13/4322/1360.png",
+     "https://tiles.example/13/4323/1360.png",
+     "https://tiles.example/13/4324/1360.png",
+     "https://tiles.example/13/4322/1361.png",
+     "https://tiles.example/13/4323/1361.png",
+     "https://tiles.example/13/4324/1361.png",
+     "https://tiles.example/13/4322/1362.png",
+     "https://tiles.example/13/4323/1362.png",
+     "https://tiles.example/13/4324/1362.png"
+    ],
+    "list": [
+     {
+      "name": "Barajas",
+      "km": "4003.6"
+     },
+     {
+      "name": "Chamartin",
+      "km": "4007.4"
+     },
+     {
+      "name": "Plaza de Castilla",
+      "km": "4008.1"
+     },
+     {
+      "name": "Twin A",
+      "km": "4013.4"
+     },
+     {
+      "name": "Twin B",
+      "km": "4013.4"
+     },
+     {
+      "name": "Puerta del Sol",
+      "km": "4013.7"
+     },
+     {
+      "name": "Retiro",
+      "km": "4013.7"
+     },
+     {
+      "name": "Atocha",
+      "km": "4014.7"
+     },
+     {
+      "name": "",
+      "km": "4015.6"
+     }
+    ],
+    "listed": 9,
+    "total": 9,
+    "pinned": 0
+   }
+  },
+  {
+   "why": "latitude 76.5, coarse, zoom 13: 12",
+   "center": "76.5,10",
+   "zoom": 13,
+   "coarse": true,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Puerta del Sol\", \"pos\": \"40.41694,-3.70351\"}",
+    "{\"name\": \"Retiro\", \"pos\": \"40.41531,-3.68446\"}",
+    "{\"name\": \"Atocha\", \"pos\": \"40.40653,-3.68927\"}",
+    "{\"name\": \"Plaza de Castilla\", \"pos\": \"40.46659,-3.68894\"}",
+    "{\"name\": \"Chamartin\", \"pos\": \"40.47212,-3.68240\"}",
+    "{\"name\": \"Barajas\", \"pos\": \"40.49830,-3.56760\"}",
+    "{\"name\": \"Somewhere\", \"pos\": \"unknown\"}",
+    "not json",
+    "{\"pos\": \"40.4,-3.7\"}",
+    "{\"name\": \"No position\"}",
+    "{\"name\": \"Twin A\", \"pos\": \"40.42,-3.71\"}",
+    "{\"name\": \"Twin B\", \"pos\": \"40.42,-3.71\"}"
+   ],
+   "want": {
+    "zoom": 12,
+    "tiles": [
+     "https://tiles.example/12/2160/655.png",
+     "https://tiles.example/12/2161/655.png",
+     "https://tiles.example/12/2162/655.png",
+     "https://tiles.example/12/2160/656.png",
+     "https://tiles.example/12/2161/656.png",
+     "https://tiles.example/12/2162/656.png",
+     "https://tiles.example/12/2160/657.png",
+     "https://tiles.example/12/2161/657.png",
+     "https://tiles.example/12/2162/657.png"
+    ],
+    "list": [
+     {
+      "name": "Barajas",
+      "km": "4056.6"
+     },
+     {
+      "name": "Chamartin",
+      "km": "4060.4"
+     },
+     {
+      "name": "Plaza de Castilla",
+      "km": "4061.1"
+     },
+     {
+      "name": "Twin A",
+      "km": "4066.4"
+     },
+     {
+      "name": "Twin B",
+      "km": "4066.4"
+     },
+     {
+      "name": "Puerta del Sol",
+      "km": "4066.7"
+     },
+     {
+      "name": "Retiro",
+      "km": "4066.7"
+     },
+     {
+      "name": "Atocha",
+      "km": "4067.7"
+     },
+     {
+      "name": "",
+      "km": "4068.5"
+     }
+    ],
+    "listed": 9,
+    "total": 9,
+    "pinned": 0
+   }
+  },
+  {
+   "why": "latitude 85, fine, zoom 3: the top row only above, none beyond the pole",
+   "center": "85,10",
+   "zoom": 3,
+   "coarse": false,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Puerta del Sol\", \"pos\": \"40.41694,-3.70351\"}",
+    "{\"name\": \"Retiro\", \"pos\": \"40.41531,-3.68446\"}",
+    "{\"name\": \"Atocha\", \"pos\": \"40.40653,-3.68927\"}",
+    "{\"name\": \"Plaza de Castilla\", \"pos\": \"40.46659,-3.68894\"}",
+    "{\"name\": \"Chamartin\", \"pos\": \"40.47212,-3.68240\"}",
+    "{\"name\": \"Barajas\", \"pos\": \"40.49830,-3.56760\"}",
+    "{\"name\": \"Somewhere\", \"pos\": \"unknown\"}",
+    "not json",
+    "{\"pos\": \"40.4,-3.7\"}",
+    "{\"name\": \"No position\"}",
+    "{\"name\": \"Twin A\", \"pos\": \"40.42,-3.71\"}",
+    "{\"name\": \"Twin B\", \"pos\": \"40.42,-3.71\"}"
+   ],
+   "want": {
+    "zoom": 3,
+    "tiles": [
+     "https://tiles.example/3/3/0.png",
+     "https://tiles.example/3/4/0.png",
+     "https://tiles.example/3/5/0.png",
+     "https://tiles.example/3/3/1.png",
+     "https://tiles.example/3/4/1.png",
+     "https://tiles.example/3/5/1.png"
+    ],
+    "list": [
+     {
+      "name": "Barajas",
+      "km": "4965.2"
+     },
+     {
+      "name": "Chamartin",
+      "km": "4968.4"
+     },
+     {
+      "name": "Plaza de Castilla",
+      "km": "4969"
+     },
+     {
+      "name": "Twin A",
+      "km": "4974.2"
+     },
+     {
+      "name": "Twin B",
+      "km": "4974.2"
+     },
+     {
+      "name": "Puerta del Sol",
+      "km": "4974.5"
+     },
+     {
+      "name": "Retiro",
+      "km": "4974.7"
+     },
+     {
+      "name": "Atocha",
+      "km": "4975.7"
+     },
+     {
+      "name": "",
+      "km": "4976.4"
+     }
+    ],
+    "listed": 9,
+    "total": 9,
+    "pinned": 0
+   }
+  },
+  {
+   "why": "latitude -85, fine, zoom 3",
+   "center": "-85,10",
+   "zoom": 3,
+   "coarse": false,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Puerta del Sol\", \"pos\": \"40.41694,-3.70351\"}",
+    "{\"name\": \"Retiro\", \"pos\": \"40.41531,-3.68446\"}",
+    "{\"name\": \"Atocha\", \"pos\": \"40.40653,-3.68927\"}",
+    "{\"name\": \"Plaza de Castilla\", \"pos\": \"40.46659,-3.68894\"}",
+    "{\"name\": \"Chamartin\", \"pos\": \"40.47212,-3.68240\"}",
+    "{\"name\": \"Barajas\", \"pos\": \"40.49830,-3.56760\"}",
+    "{\"name\": \"Somewhere\", \"pos\": \"unknown\"}",
+    "not json",
+    "{\"pos\": \"40.4,-3.7\"}",
+    "{\"name\": \"No position\"}",
+    "{\"name\": \"Twin A\", \"pos\": \"40.42,-3.71\"}",
+    "{\"name\": \"Twin B\", \"pos\": \"40.42,-3.71\"}"
+   ],
+   "want": {
+    "zoom": 3,
+    "tiles": [
+     "https://tiles.example/3/3/6.png",
+     "https://tiles.example/3/4/6.png",
+     "https://tiles.example/3/5/6.png",
+     "https://tiles.example/3/3/7.png",
+     "https://tiles.example/3/4/7.png",
+     "https://tiles.example/3/5/7.png"
+    ],
+    "list": [
+     {
+      "name": "",
+      "km": "13958.6"
+     },
+     {
+      "name": "Atocha",
+      "km": "13959.3"
+     },
+     {
+      "name": "Retiro",
+      "km": "13960.3"
+     },
+     {
+      "name": "Puerta del Sol",
+      "km": "13960.5"
+     },
+     {
+      "name": "Twin A",
+      "km": "13960.9"
+     },
+     {
+      "name": "Twin B",
+      "km": "13960.9"
+     },
+     {
+      "name": "Plaza de Castilla",
+      "km": "13966"
+     },
+     {
+      "name": "Chamartin",
+      "km": "13966.6"
+     },
+     {
+      "name": "Barajas",
+      "km": "13969.3"
+     }
+    ],
+    "listed": 9,
+    "total": 9,
+    "pinned": 0
+   }
+  },
+  {
+   "why": "latitude 85.2 is beyond the tiles: nothing",
+   "center": "85.2,10",
+   "zoom": 3,
+   "coarse": false,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Puerta del Sol\", \"pos\": \"40.41694,-3.70351\"}",
+    "{\"name\": \"Retiro\", \"pos\": \"40.41531,-3.68446\"}",
+    "{\"name\": \"Atocha\", \"pos\": \"40.40653,-3.68927\"}",
+    "{\"name\": \"Plaza de Castilla\", \"pos\": \"40.46659,-3.68894\"}",
+    "{\"name\": \"Chamartin\", \"pos\": \"40.47212,-3.68240\"}",
+    "{\"name\": \"Barajas\", \"pos\": \"40.49830,-3.56760\"}",
+    "{\"name\": \"Somewhere\", \"pos\": \"unknown\"}",
+    "not json",
+    "{\"pos\": \"40.4,-3.7\"}",
+    "{\"name\": \"No position\"}",
+    "{\"name\": \"Twin A\", \"pos\": \"40.42,-3.71\"}",
+    "{\"name\": \"Twin B\", \"pos\": \"40.42,-3.71\"}"
+   ],
+   "want": {
+    "zoom": 3,
+    "tiles": [],
+    "list": [],
+    "listed": 0,
+    "total": 0,
+    "pinned": 0
+   }
+  },
+  {
+   "why": "a centre that is not a position",
+   "center": "abc",
+   "zoom": 13,
+   "coarse": false,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Puerta del Sol\", \"pos\": \"40.41694,-3.70351\"}",
+    "{\"name\": \"Retiro\", \"pos\": \"40.41531,-3.68446\"}",
+    "{\"name\": \"Atocha\", \"pos\": \"40.40653,-3.68927\"}",
+    "{\"name\": \"Plaza de Castilla\", \"pos\": \"40.46659,-3.68894\"}",
+    "{\"name\": \"Chamartin\", \"pos\": \"40.47212,-3.68240\"}",
+    "{\"name\": \"Barajas\", \"pos\": \"40.49830,-3.56760\"}",
+    "{\"name\": \"Somewhere\", \"pos\": \"unknown\"}",
+    "not json",
+    "{\"pos\": \"40.4,-3.7\"}",
+    "{\"name\": \"No position\"}",
+    "{\"name\": \"Twin A\", \"pos\": \"40.42,-3.71\"}",
+    "{\"name\": \"Twin B\", \"pos\": \"40.42,-3.71\"}"
+   ],
+   "want": {
+    "zoom": 13,
+    "tiles": [],
+    "list": [],
+    "listed": 0,
+    "total": 0,
+    "pinned": 0
+   }
+  },
+  {
+   "why": "an empty centre",
+   "center": "",
+   "zoom": 13,
+   "coarse": false,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Puerta del Sol\", \"pos\": \"40.41694,-3.70351\"}",
+    "{\"name\": \"Retiro\", \"pos\": \"40.41531,-3.68446\"}",
+    "{\"name\": \"Atocha\", \"pos\": \"40.40653,-3.68927\"}",
+    "{\"name\": \"Plaza de Castilla\", \"pos\": \"40.46659,-3.68894\"}",
+    "{\"name\": \"Chamartin\", \"pos\": \"40.47212,-3.68240\"}",
+    "{\"name\": \"Barajas\", \"pos\": \"40.49830,-3.56760\"}",
+    "{\"name\": \"Somewhere\", \"pos\": \"unknown\"}",
+    "not json",
+    "{\"pos\": \"40.4,-3.7\"}",
+    "{\"name\": \"No position\"}",
+    "{\"name\": \"Twin A\", \"pos\": \"40.42,-3.71\"}",
+    "{\"name\": \"Twin B\", \"pos\": \"40.42,-3.71\"}"
+   ],
+   "want": {
+    "zoom": 13,
+    "tiles": [],
+    "list": [],
+    "listed": 0,
+    "total": 0,
+    "pinned": 0
+   }
+  },
+  {
+   "why": "a latitude of 91",
+   "center": "91,0",
+   "zoom": 13,
+   "coarse": false,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Puerta del Sol\", \"pos\": \"40.41694,-3.70351\"}",
+    "{\"name\": \"Retiro\", \"pos\": \"40.41531,-3.68446\"}",
+    "{\"name\": \"Atocha\", \"pos\": \"40.40653,-3.68927\"}",
+    "{\"name\": \"Plaza de Castilla\", \"pos\": \"40.46659,-3.68894\"}",
+    "{\"name\": \"Chamartin\", \"pos\": \"40.47212,-3.68240\"}",
+    "{\"name\": \"Barajas\", \"pos\": \"40.49830,-3.56760\"}",
+    "{\"name\": \"Somewhere\", \"pos\": \"unknown\"}",
+    "not json",
+    "{\"pos\": \"40.4,-3.7\"}",
+    "{\"name\": \"No position\"}",
+    "{\"name\": \"Twin A\", \"pos\": \"40.42,-3.71\"}",
+    "{\"name\": \"Twin B\", \"pos\": \"40.42,-3.71\"}"
+   ],
+   "want": {
+    "zoom": 13,
+    "tiles": [],
+    "list": [],
+    "listed": 0,
+    "total": 0,
+    "pinned": 0
+   }
+  },
+  {
+   "why": "an address with the parts in another order and a query",
+   "center": "40.42,-3.70",
+   "zoom": 13,
+   "coarse": true,
+   "template": "https://t.example/{y}/{x}/{z}.png?k=1",
+   "rows": [
+    "{\"name\": \"Puerta del Sol\", \"pos\": \"40.41694,-3.70351\"}",
+    "{\"name\": \"Retiro\", \"pos\": \"40.41531,-3.68446\"}",
+    "{\"name\": \"Atocha\", \"pos\": \"40.40653,-3.68927\"}",
+    "{\"name\": \"Plaza de Castilla\", \"pos\": \"40.46659,-3.68894\"}",
+    "{\"name\": \"Chamartin\", \"pos\": \"40.47212,-3.68240\"}",
+    "{\"name\": \"Barajas\", \"pos\": \"40.49830,-3.56760\"}",
+    "{\"name\": \"Somewhere\", \"pos\": \"unknown\"}",
+    "not json",
+    "{\"pos\": \"40.4,-3.7\"}",
+    "{\"name\": \"No position\"}",
+    "{\"name\": \"Twin A\", \"pos\": \"40.42,-3.71\"}",
+    "{\"name\": \"Twin B\", \"pos\": \"40.42,-3.71\"}"
+   ],
+   "want": {
+    "zoom": 13,
+    "tiles": [
+     "https://t.example/3087/4010/13.png?k=1",
+     "https://t.example/3087/4011/13.png?k=1",
+     "https://t.example/3087/4012/13.png?k=1",
+     "https://t.example/3088/4010/13.png?k=1",
+     "https://t.example/3088/4011/13.png?k=1",
+     "https://t.example/3088/4012/13.png?k=1",
+     "https://t.example/3089/4010/13.png?k=1",
+     "https://t.example/3089/4011/13.png?k=1",
+     "https://t.example/3089/4012/13.png?k=1"
+    ],
+    "list": [
+     {
+      "name": "Puerta del Sol",
+      "km": "0.5"
+     },
+     {
+      "name": "Twin A",
+      "km": "0.8"
+     },
+     {
+      "name": "Twin B",
+      "km": "0.8"
+     },
+     {
+      "name": "Retiro",
+      "km": "1.4"
+     },
+     {
+      "name": "Atocha",
+      "km": "1.8"
+     },
+     {
+      "name": "",
+      "km": "2.2"
+     },
+     {
+      "name": "Plaza de Castilla",
+      "km": "5.3"
+     },
+     {
+      "name": "Chamartin",
+      "km": "6"
+     },
+     {
+      "name": "Barajas",
+      "km": "14.2"
+     }
+    ],
+    "listed": 9,
+    "total": 9,
+    "pinned": 8
+   }
+  },
+  {
+   "why": "a path on the page's own origin",
+   "center": "40.42,-3.70",
+   "zoom": 13,
+   "coarse": true,
+   "template": "./tiles/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Puerta del Sol\", \"pos\": \"40.41694,-3.70351\"}",
+    "{\"name\": \"Retiro\", \"pos\": \"40.41531,-3.68446\"}",
+    "{\"name\": \"Atocha\", \"pos\": \"40.40653,-3.68927\"}",
+    "{\"name\": \"Plaza de Castilla\", \"pos\": \"40.46659,-3.68894\"}",
+    "{\"name\": \"Chamartin\", \"pos\": \"40.47212,-3.68240\"}",
+    "{\"name\": \"Barajas\", \"pos\": \"40.49830,-3.56760\"}",
+    "{\"name\": \"Somewhere\", \"pos\": \"unknown\"}",
+    "not json",
+    "{\"pos\": \"40.4,-3.7\"}",
+    "{\"name\": \"No position\"}",
+    "{\"name\": \"Twin A\", \"pos\": \"40.42,-3.71\"}",
+    "{\"name\": \"Twin B\", \"pos\": \"40.42,-3.71\"}"
+   ],
+   "want": {
+    "zoom": 13,
+    "tiles": [
+     "./tiles/13/4010/3087.png",
+     "./tiles/13/4011/3087.png",
+     "./tiles/13/4012/3087.png",
+     "./tiles/13/4010/3088.png",
+     "./tiles/13/4011/3088.png",
+     "./tiles/13/4012/3088.png",
+     "./tiles/13/4010/3089.png",
+     "./tiles/13/4011/3089.png",
+     "./tiles/13/4012/3089.png"
+    ],
+    "list": [
+     {
+      "name": "Puerta del Sol",
+      "km": "0.5"
+     },
+     {
+      "name": "Twin A",
+      "km": "0.8"
+     },
+     {
+      "name": "Twin B",
+      "km": "0.8"
+     },
+     {
+      "name": "Retiro",
+      "km": "1.4"
+     },
+     {
+      "name": "Atocha",
+      "km": "1.8"
+     },
+     {
+      "name": "",
+      "km": "2.2"
+     },
+     {
+      "name": "Plaza de Castilla",
+      "km": "5.3"
+     },
+     {
+      "name": "Chamartin",
+      "km": "6"
+     },
+     {
+      "name": "Barajas",
+      "km": "14.2"
+     }
+    ],
+    "listed": 9,
+    "total": 9,
+    "pinned": 8
+   }
+  },
+  {
+   "why": "no places",
+   "center": "40.42,-3.70",
+   "zoom": 13,
+   "coarse": true,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [],
+   "want": {
+    "zoom": 13,
+    "tiles": [
+     "https://tiles.example/13/4010/3087.png",
+     "https://tiles.example/13/4011/3087.png",
+     "https://tiles.example/13/4012/3087.png",
+     "https://tiles.example/13/4010/3088.png",
+     "https://tiles.example/13/4011/3088.png",
+     "https://tiles.example/13/4012/3088.png",
+     "https://tiles.example/13/4010/3089.png",
+     "https://tiles.example/13/4011/3089.png",
+     "https://tiles.example/13/4012/3089.png"
+    ],
+    "list": [],
+    "listed": 0,
+    "total": 0,
+    "pinned": 0
+   }
+  },
+  {
+   "why": "205 places: 200 listed, 50 pinned at most",
+   "center": "40.41,-3.70",
+   "zoom": 13,
+   "coarse": false,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"P000\", \"pos\": \"40.40000,-3.70000\"}",
+    "{\"name\": \"P001\", \"pos\": \"40.40050,-3.69970\"}",
+    "{\"name\": \"P002\", \"pos\": \"40.40100,-3.69940\"}",
+    "{\"name\": \"P003\", \"pos\": \"40.40150,-3.69910\"}",
+    "{\"name\": \"P004\", \"pos\": \"40.40200,-3.69880\"}",
+    "{\"name\": \"P005\", \"pos\": \"40.40250,-3.69850\"}",
+    "{\"name\": \"P006\", \"pos\": \"40.40300,-3.69820\"}",
+    "{\"name\": \"P007\", \"pos\": \"40.40350,-3.69790\"}",
+    "{\"name\": \"P008\", \"pos\": \"40.40400,-3.69760\"}",
+    "{\"name\": \"P009\", \"pos\": \"40.40450,-3.69730\"}",
+    "{\"name\": \"P010\", \"pos\": \"40.40500,-3.69700\"}",
+    "{\"name\": \"P011\", \"pos\": \"40.40550,-3.69670\"}",
+    "{\"name\": \"P012\", \"pos\": \"40.40600,-3.69640\"}",
+    "{\"name\": \"P013\", \"pos\": \"40.40650,-3.69610\"}",
+    "{\"name\": \"P014\", \"pos\": \"40.40700,-3.69580\"}",
+    "{\"name\": \"P015\", \"pos\": \"40.40750,-3.69550\"}",
+    "{\"name\": \"P016\", \"pos\": \"40.40800,-3.69520\"}",
+    "{\"name\": \"P017\", \"pos\": \"40.40850,-3.70000\"}",
+    "{\"name\": \"P018\", \"pos\": \"40.40900,-3.69970\"}",
+    "{\"name\": \"P019\", \"pos\": \"40.40950,-3.69940\"}",
+    "{\"name\": \"P020\", \"pos\": \"40.41000,-3.69910\"}",
+    "{\"name\": \"P021\", \"pos\": \"40.41050,-3.69880\"}",
+    "{\"name\": \"P022\", \"pos\": \"40.41100,-3.69850\"}",
+    "{\"name\": \"P023\", \"pos\": \"40.41150,-3.69820\"}",
+    "{\"name\": \"P024\", \"pos\": \"40.41200,-3.69790\"}",
+    "{\"name\": \"P025\", \"pos\": \"40.41250,-3.69760\"}",
+    "{\"name\": \"P026\", \"pos\": \"40.41300,-3.69730\"}",
+    "{\"name\": \"P027\", \"pos\": \"40.41350,-3.69700\"}",
+    "{\"name\": \"P028\", \"pos\": \"40.41400,-3.69670\"}",
+    "{\"name\": \"P029\", \"pos\": \"40.41450,-3.69640\"}",
+    "{\"name\": \"P030\", \"pos\": \"40.41500,-3.69610\"}",
+    "{\"name\": \"P031\", \"pos\": \"40.41550,-3.69580\"}",
+    "{\"name\": \"P032\", \"pos\": \"40.41600,-3.69550\"}",
+    "{\"name\": \"P033\", \"pos\": \"40.41650,-3.69520\"}",
+    "{\"name\": \"P034\", \"pos\": \"40.41700,-3.70000\"}",
+    "{\"name\": \"P035\", \"pos\": \"40.41750,-3.69970\"}",
+    "{\"name\": \"P036\", \"pos\": \"40.41800,-3.69940\"}",
+    "{\"name\": \"P037\", \"pos\": \"40.41850,-3.69910\"}",
+    "{\"name\": \"P038\", \"pos\": \"40.41900,-3.69880\"}",
+    "{\"name\": \"P039\", \"pos\": \"40.41950,-3.69850\"}",
+    "{\"name\": \"P040\", \"pos\": \"40.42000,-3.69820\"}",
+    "{\"name\": \"P041\", \"pos\": \"40.42050,-3.69790\"}",
+    "{\"name\": \"P042\", \"pos\": \"40.42100,-3.69760\"}",
+    "{\"name\": \"P043\", \"pos\": \"40.42150,-3.69730\"}",
+    "{\"name\": \"P044\", \"pos\": \"40.42200,-3.69700\"}",
+    "{\"name\": \"P045\", \"pos\": \"40.42250,-3.69670\"}",
+    "{\"name\": \"P046\", \"pos\": \"40.42300,-3.69640\"}",
+    "{\"name\": \"P047\", \"pos\": \"40.42350,-3.69610\"}",
+    "{\"name\": \"P048\", \"pos\": \"40.42400,-3.69580\"}",
+    "{\"name\": \"P049\", \"pos\": \"40.42450,-3.69550\"}",
+    "{\"name\": \"P050\", \"pos\": \"40.42500,-3.69520\"}",
+    "{\"name\": \"P051\", \"pos\": \"40.42550,-3.70000\"}",
+    "{\"name\": \"P052\", \"pos\": \"40.42600,-3.69970\"}",
+    "{\"name\": \"P053\", \"pos\": \"40.42650,-3.69940\"}",
+    "{\"name\": \"P054\", \"pos\": \"40.42700,-3.69910\"}",
+    "{\"name\": \"P055\", \"pos\": \"40.42750,-3.69880\"}",
+    "{\"name\": \"P056\", \"pos\": \"40.42800,-3.69850\"}",
+    "{\"name\": \"P057\", \"pos\": \"40.42850,-3.69820\"}",
+    "{\"name\": \"P058\", \"pos\": \"40.42900,-3.69790\"}",
+    "{\"name\": \"P059\", \"pos\": \"40.42950,-3.69760\"}",
+    "{\"name\": \"P060\", \"pos\": \"40.43000,-3.69730\"}",
+    "{\"name\": \"P061\", \"pos\": \"40.43050,-3.69700\"}",
+    "{\"name\": \"P062\", \"pos\": \"40.43100,-3.69670\"}",
+    "{\"name\": \"P063\", \"pos\": \"40.43150,-3.69640\"}",
+    "{\"name\": \"P064\", \"pos\": \"40.43200,-3.69610\"}",
+    "{\"name\": \"P065\", \"pos\": \"40.43250,-3.69580\"}",
+    "{\"name\": \"P066\", \"pos\": \"40.43300,-3.69550\"}",
+    "{\"name\": \"P067\", \"pos\": \"40.43350,-3.69520\"}",
+    "{\"name\": \"P068\", \"pos\": \"40.43400,-3.70000\"}",
+    "{\"name\": \"P069\", \"pos\": \"40.43450,-3.69970\"}",
+    "{\"name\": \"P070\", \"pos\": \"40.43500,-3.69940\"}",
+    "{\"name\": \"P071\", \"pos\": \"40.43550,-3.69910\"}",
+    "{\"name\": \"P072\", \"pos\": \"40.43600,-3.69880\"}",
+    "{\"name\": \"P073\", \"pos\": \"40.43650,-3.69850\"}",
+    "{\"name\": \"P074\", \"pos\": \"40.43700,-3.69820\"}",
+    "{\"name\": \"P075\", \"pos\": \"40.43750,-3.69790\"}",
+    "{\"name\": \"P076\", \"pos\": \"40.43800,-3.69760\"}",
+    "{\"name\": \"P077\", \"pos\": \"40.43850,-3.69730\"}",
+    "{\"name\": \"P078\", \"pos\": \"40.43900,-3.69700\"}",
+    "{\"name\": \"P079\", \"pos\": \"40.43950,-3.69670\"}",
+    "{\"name\": \"P080\", \"pos\": \"40.44000,-3.69640\"}",
+    "{\"name\": \"P081\", \"pos\": \"40.44050,-3.69610\"}",
+    "{\"name\": \"P082\", \"pos\": \"40.44100,-3.69580\"}",
+    "{\"name\": \"P083\", \"pos\": \"40.44150,-3.69550\"}",
+    "{\"name\": \"P084\", \"pos\": \"40.44200,-3.69520\"}",
+    "{\"name\": \"P085\", \"pos\": \"40.44250,-3.70000\"}",
+    "{\"name\": \"P086\", \"pos\": \"40.44300,-3.69970\"}",
+    "{\"name\": \"P087\", \"pos\": \"40.44350,-3.69940\"}",
+    "{\"name\": \"P088\", \"pos\": \"40.44400,-3.69910\"}",
+    "{\"name\": \"P089\", \"pos\": \"40.44450,-3.69880\"}",
+    "{\"name\": \"P090\", \"pos\": \"40.44500,-3.69850\"}",
+    "{\"name\": \"P091\", \"pos\": \"40.44550,-3.69820\"}",
+    "{\"name\": \"P092\", \"pos\": \"40.44600,-3.69790\"}",
+    "{\"name\": \"P093\", \"pos\": \"40.44650,-3.69760\"}",
+    "{\"name\": \"P094\", \"pos\": \"40.44700,-3.69730\"}",
+    "{\"name\": \"P095\", \"pos\": \"40.44750,-3.69700\"}",
+    "{\"name\": \"P096\", \"pos\": \"40.44800,-3.69670\"}",
+    "{\"name\": \"P097\", \"pos\": \"40.44850,-3.69640\"}",
+    "{\"name\": \"P098\", \"pos\": \"40.44900,-3.69610\"}",
+    "{\"name\": \"P099\", \"pos\": \"40.44950,-3.69580\"}",
+    "{\"name\": \"P100\", \"pos\": \"40.45000,-3.69550\"}",
+    "{\"name\": \"P101\", \"pos\": \"40.45050,-3.69520\"}",
+    "{\"name\": \"P102\", \"pos\": \"40.45100,-3.70000\"}",
+    "{\"name\": \"P103\", \"pos\": \"40.45150,-3.69970\"}",
+    "{\"name\": \"P104\", \"pos\": \"40.45200,-3.69940\"}",
+    "{\"name\": \"P105\", \"pos\": \"40.45250,-3.69910\"}",
+    "{\"name\": \"P106\", \"pos\": \"40.45300,-3.69880\"}",
+    "{\"name\": \"P107\", \"pos\": \"40.45350,-3.69850\"}",
+    "{\"name\": \"P108\", \"pos\": \"40.45400,-3.69820\"}",
+    "{\"name\": \"P109\", \"pos\": \"40.45450,-3.69790\"}",
+    "{\"name\": \"P110\", \"pos\": \"40.45500,-3.69760\"}",
+    "{\"name\": \"P111\", \"pos\": \"40.45550,-3.69730\"}",
+    "{\"name\": \"P112\", \"pos\": \"40.45600,-3.69700\"}",
+    "{\"name\": \"P113\", \"pos\": \"40.45650,-3.69670\"}",
+    "{\"name\": \"P114\", \"pos\": \"40.45700,-3.69640\"}",
+    "{\"name\": \"P115\", \"pos\": \"40.45750,-3.69610\"}",
+    "{\"name\": \"P116\", \"pos\": \"40.45800,-3.69580\"}",
+    "{\"name\": \"P117\", \"pos\": \"40.45850,-3.69550\"}",
+    "{\"name\": \"P118\", \"pos\": \"40.45900,-3.69520\"}",
+    "{\"name\": \"P119\", \"pos\": \"40.45950,-3.70000\"}",
+    "{\"name\": \"P120\", \"pos\": \"40.46000,-3.69970\"}",
+    "{\"name\": \"P121\", \"pos\": \"40.46050,-3.69940\"}",
+    "{\"name\": \"P122\", \"pos\": \"40.46100,-3.69910\"}",
+    "{\"name\": \"P123\", \"pos\": \"40.46150,-3.69880\"}",
+    "{\"name\": \"P124\", \"pos\": \"40.46200,-3.69850\"}",
+    "{\"name\": \"P125\", \"pos\": \"40.46250,-3.69820\"}",
+    "{\"name\": \"P126\", \"pos\": \"40.46300,-3.69790\"}",
+    "{\"name\": \"P127\", \"pos\": \"40.46350,-3.69760\"}",
+    "{\"name\": \"P128\", \"pos\": \"40.46400,-3.69730\"}",
+    "{\"name\": \"P129\", \"pos\": \"40.46450,-3.69700\"}",
+    "{\"name\": \"P130\", \"pos\": \"40.46500,-3.69670\"}",
+    "{\"name\": \"P131\", \"pos\": \"40.46550,-3.69640\"}",
+    "{\"name\": \"P132\", \"pos\": \"40.46600,-3.69610\"}",
+    "{\"name\": \"P133\", \"pos\": \"40.46650,-3.69580\"}",
+    "{\"name\": \"P134\", \"pos\": \"40.46700,-3.69550\"}",
+    "{\"name\": \"P135\", \"pos\": \"40.46750,-3.69520\"}",
+    "{\"name\": \"P136\", \"pos\": \"40.46800,-3.70000\"}",
+    "{\"name\": \"P137\", \"pos\": \"40.46850,-3.69970\"}",
+    "{\"name\": \"P138\", \"pos\": \"40.46900,-3.69940\"}",
+    "{\"name\": \"P139\", \"pos\": \"40.46950,-3.69910\"}",
+    "{\"name\": \"P140\", \"pos\": \"40.47000,-3.69880\"}",
+    "{\"name\": \"P141\", \"pos\": \"40.47050,-3.69850\"}",
+    "{\"name\": \"P142\", \"pos\": \"40.47100,-3.69820\"}",
+    "{\"name\": \"P143\", \"pos\": \"40.47150,-3.69790\"}",
+    "{\"name\": \"P144\", \"pos\": \"40.47200,-3.69760\"}",
+    "{\"name\": \"P145\", \"pos\": \"40.47250,-3.69730\"}",
+    "{\"name\": \"P146\", \"pos\": \"40.47300,-3.69700\"}",
+    "{\"name\": \"P147\", \"pos\": \"40.47350,-3.69670\"}",
+    "{\"name\": \"P148\", \"pos\": \"40.47400,-3.69640\"}",
+    "{\"name\": \"P149\", \"pos\": \"40.47450,-3.69610\"}",
+    "{\"name\": \"P150\", \"pos\": \"40.47500,-3.69580\"}",
+    "{\"name\": \"P151\", \"pos\": \"40.47550,-3.69550\"}",
+    "{\"name\": \"P152\", \"pos\": \"40.47600,-3.69520\"}",
+    "{\"name\": \"P153\", \"pos\": \"40.47650,-3.70000\"}",
+    "{\"name\": \"P154\", \"pos\": \"40.47700,-3.69970\"}",
+    "{\"name\": \"P155\", \"pos\": \"40.47750,-3.69940\"}",
+    "{\"name\": \"P156\", \"pos\": \"40.47800,-3.69910\"}",
+    "{\"name\": \"P157\", \"pos\": \"40.47850,-3.69880\"}",
+    "{\"name\": \"P158\", \"pos\": \"40.47900,-3.69850\"}",
+    "{\"name\": \"P159\", \"pos\": \"40.47950,-3.69820\"}",
+    "{\"name\": \"P160\", \"pos\": \"40.48000,-3.69790\"}",
+    "{\"name\": \"P161\", \"pos\": \"40.48050,-3.69760\"}",
+    "{\"name\": \"P162\", \"pos\": \"40.48100,-3.69730\"}",
+    "{\"name\": \"P163\", \"pos\": \"40.48150,-3.69700\"}",
+    "{\"name\": \"P164\", \"pos\": \"40.48200,-3.69670\"}",
+    "{\"name\": \"P165\", \"pos\": \"40.48250,-3.69640\"}",
+    "{\"name\": \"P166\", \"pos\": \"40.48300,-3.69610\"}",
+    "{\"name\": \"P167\", \"pos\": \"40.48350,-3.69580\"}",
+    "{\"name\": \"P168\", \"pos\": \"40.48400,-3.69550\"}",
+    "{\"name\": \"P169\", \"pos\": \"40.48450,-3.69520\"}",
+    "{\"name\": \"P170\", \"pos\": \"40.48500,-3.70000\"}",
+    "{\"name\": \"P171\", \"pos\": \"40.48550,-3.69970\"}",
+    "{\"name\": \"P172\", \"pos\": \"40.48600,-3.69940\"}",
+    "{\"name\": \"P173\", \"pos\": \"40.48650,-3.69910\"}",
+    "{\"name\": \"P174\", \"pos\": \"40.48700,-3.69880\"}",
+    "{\"name\": \"P175\", \"pos\": \"40.48750,-3.69850\"}",
+    "{\"name\": \"P176\", \"pos\": \"40.48800,-3.69820\"}",
+    "{\"name\": \"P177\", \"pos\": \"40.48850,-3.69790\"}",
+    "{\"name\": \"P178\", \"pos\": \"40.48900,-3.69760\"}",
+    "{\"name\": \"P179\", \"pos\": \"40.48950,-3.69730\"}",
+    "{\"name\": \"P180\", \"pos\": \"40.49000,-3.69700\"}",
+    "{\"name\": \"P181\", \"pos\": \"40.49050,-3.69670\"}",
+    "{\"name\": \"P182\", \"pos\": \"40.49100,-3.69640\"}",
+    "{\"name\": \"P183\", \"pos\": \"40.49150,-3.69610\"}",
+    "{\"name\": \"P184\", \"pos\": \"40.49200,-3.69580\"}",
+    "{\"name\": \"P185\", \"pos\": \"40.49250,-3.69550\"}",
+    "{\"name\": \"P186\", \"pos\": \"40.49300,-3.69520\"}",
+    "{\"name\": \"P187\", \"pos\": \"40.49350,-3.70000\"}",
+    "{\"name\": \"P188\", \"pos\": \"40.49400,-3.69970\"}",
+    "{\"name\": \"P189\", \"pos\": \"40.49450,-3.69940\"}",
+    "{\"name\": \"P190\", \"pos\": \"40.49500,-3.69910\"}",
+    "{\"name\": \"P191\", \"pos\": \"40.49550,-3.69880\"}",
+    "{\"name\": \"P192\", \"pos\": \"40.49600,-3.69850\"}",
+    "{\"name\": \"P193\", \"pos\": \"40.49650,-3.69820\"}",
+    "{\"name\": \"P194\", \"pos\": \"40.49700,-3.69790\"}",
+    "{\"name\": \"P195\", \"pos\": \"40.49750,-3.69760\"}",
+    "{\"name\": \"P196\", \"pos\": \"40.49800,-3.69730\"}",
+    "{\"name\": \"P197\", \"pos\": \"40.49850,-3.69700\"}",
+    "{\"name\": \"P198\", \"pos\": \"40.49900,-3.69670\"}",
+    "{\"name\": \"P199\", \"pos\": \"40.49950,-3.69640\"}",
+    "{\"name\": \"P200\", \"pos\": \"40.50000,-3.69610\"}",
+    "{\"name\": \"P201\", \"pos\": \"40.50050,-3.69580\"}",
+    "{\"name\": \"P202\", \"pos\": \"40.50100,-3.69550\"}",
+    "{\"name\": \"P203\", \"pos\": \"40.50150,-3.69520\"}",
+    "{\"name\": \"P204\", \"pos\": \"40.50200,-3.70000\"}"
+   ],
+   "want": {
+    "zoom": 13,
+    "tiles": [
+     "https://tiles.example/13/4010/3088.png",
+     "https://tiles.example/13/4011/3088.png",
+     "https://tiles.example/13/4012/3088.png",
+     "https://tiles.example/13/4010/3089.png",
+     "https://tiles.example/13/4011/3089.png",
+     "https://tiles.example/13/4012/3089.png",
+     "https://tiles.example/13/4010/3090.png",
+     "https://tiles.example/13/4011/3090.png",
+     "https://tiles.example/13/4012/3090.png"
+    ],
+    "list": [
+     {
+      "name": "P019",
+      "km": "0.1"
+     },
+     {
+      "name": "P020",
+      "km": "0.1"
+     },
+     {
+      "name": "P018",
+      "km": "0.1"
+     },
+     {
+      "name": "P021",
+      "km": "0.1"
+     },
+     {
+      "name": "P017",
+      "km": "0.2"
+     },
+     {
+      "name": "P022",
+      "km": "0.2"
+     },
+     {
+      "name": "P023",
+      "km": "0.2"
+     },
+     {
+      "name": "P024",
+      "km": "0.3"
+     },
+     {
+      "name": "P025",
+      "km": "0.3"
+     },
+     {
+      "name": "P026",
+      "km": "0.4"
+     },
+     {
+      "name": "P016",
+      "km": "0.5"
+     },
+     {
+      "name": "P027",
+      "km": "0.5"
+     },
+     {
+      "name": "P015",
+      "km": "0.5"
+     },
+     {
+      "name": "P014",
+      "km": "0.5"
+     },
+     {
+      "name": "P013",
+      "km": "0.5"
+     },
+     {
+      "name": "P028",
+      "km": "0.5"
+     },
+     {
+      "name": "P012",
+      "km": "0.5"
+     },
+     {
+      "name": "P011",
+      "km": "0.6"
+     },
+     {
+      "name": "P029",
+      "km": "0.6"
+     },
+     {
+      "name": "P010",
+      "km": "0.6"
+     },
+     {
+      "name": "P030",
+      "km": "0.6"
+     },
+     {
+      "name": "P009",
+      "km": "0.7"
+     },
+     {
+      "name": "P008",
+      "km": "0.7"
+     },
+     {
+      "name": "P031",
+      "km": "0.7"
+     },
+     {
+      "name": "P007",
+      "km": "0.7"
+     },
+     {
+      "name": "P032",
+      "km": "0.8"
+     },
+     {
+      "name": "P034",
+      "km": "0.8"
+     },
+     {
+      "name": "P006",
+      "km": "0.8"
+     },
+     {
+      "name": "P033",
+      "km": "0.8"
+     },
+     {
+      "name": "P035",
+      "km": "0.8"
+     },
+     {
+      "name": "P005",
+      "km": "0.8"
+     },
+     {
+      "name": "P036",
+      "km": "0.9"
+     },
+     {
+      "name": "P004",
+      "km": "0.9"
+     },
+     {
+      "name": "P037",
+      "km": "0.9"
+     },
+     {
+      "name": "P003",
+      "km": "0.9"
+     },
+     {
+      "name": "P002",
+      "km": "1"
+     },
+     {
+      "name": "P038",
+      "km": "1"
+     },
+     {
+      "name": "P001",
+      "km": "1.1"
+     },
+     {
+      "name": "P039",
+      "km": "1.1"
+     },
+     {
+      "name": "P000",
+      "km": "1.1"
+     },
+     {
+      "name": "P040",
+      "km": "1.1"
+     },
+     {
+      "name": "P041",
+      "km": "1.2"
+     },
+     {
+      "name": "P042",
+      "km": "1.2"
+     },
+     {
+      "name": "P043",
+      "km": "1.3"
+     },
+     {
+      "name": "P044",
+      "km": "1.4"
+     },
+     {
+      "name": "P045",
+      "km": "1.4"
+     },
+     {
+      "name": "P046",
+      "km": "1.5"
+     },
+     {
+      "name": "P047",
+      "km": "1.5"
+     },
+     {
+      "name": "P048",
+      "km": "1.6"
+     },
+     {
+      "name": "P049",
+      "km": "1.7"
+     },
+     {
+      "name": "P050",
+      "km": "1.7"
+     },
+     {
+      "name": "P051",
+      "km": "1.7"
+     },
+     {
+      "name": "P052",
+      "km": "1.8"
+     },
+     {
+      "name": "P053",
+      "km": "1.8"
+     },
+     {
+      "name": "P054",
+      "km": "1.9"
+     },
+     {
+      "name": "P055",
+      "km": "1.9"
+     },
+     {
+      "name": "P056",
+      "km": "2"
+     },
+     {
+      "name": "P057",
+      "km": "2.1"
+     },
+     {
+      "name": "P058",
+      "km": "2.1"
+     },
+     {
+      "name": "P059",
+      "km": "2.2"
+     },
+     {
+      "name": "P060",
+      "km": "2.2"
+     },
+     {
+      "name": "P061",
+      "km": "2.3"
+     },
+     {
+      "name": "P062",
+      "km": "2.4"
+     },
+     {
+      "name": "P063",
+      "km": "2.4"
+     },
+     {
+      "name": "P064",
+      "km": "2.5"
+     },
+     {
+      "name": "P065",
+      "km": "2.5"
+     },
+     {
+      "name": "P066",
+      "km": "2.6"
+     },
+     {
+      "name": "P067",
+      "km": "2.6"
+     },
+     {
+      "name": "P068",
+      "km": "2.7"
+     },
+     {
+      "name": "P069",
+      "km": "2.7"
+     },
+     {
+      "name": "P070",
+      "km": "2.8"
+     },
+     {
+      "name": "P071",
+      "km": "2.8"
+     },
+     {
+      "name": "P072",
+      "km": "2.9"
+     },
+     {
+      "name": "P073",
+      "km": "2.9"
+     },
+     {
+      "name": "P074",
+      "km": "3"
+     },
+     {
+      "name": "P075",
+      "km": "3.1"
+     },
+     {
+      "name": "P076",
+      "km": "3.1"
+     },
+     {
+      "name": "P077",
+      "km": "3.2"
+     },
+     {
+      "name": "P078",
+      "km": "3.2"
+     },
+     {
+      "name": "P079",
+      "km": "3.3"
+     },
+     {
+      "name": "P080",
+      "km": "3.3"
+     },
+     {
+      "name": "P081",
+      "km": "3.4"
+     },
+     {
+      "name": "P082",
+      "km": "3.5"
+     },
+     {
+      "name": "P083",
+      "km": "3.5"
+     },
+     {
+      "name": "P084",
+      "km": "3.6"
+     },
+     {
+      "name": "P085",
+      "km": "3.6"
+     },
+     {
+      "name": "P086",
+      "km": "3.7"
+     },
+     {
+      "name": "P087",
+      "km": "3.7"
+     },
+     {
+      "name": "P088",
+      "km": "3.8"
+     },
+     {
+      "name": "P089",
+      "km": "3.8"
+     },
+     {
+      "name": "P090",
+      "km": "3.9"
+     },
+     {
+      "name": "P091",
+      "km": "4"
+     },
+     {
+      "name": "P092",
+      "km": "4"
+     },
+     {
+      "name": "P093",
+      "km": "4.1"
+     },
+     {
+      "name": "P094",
+      "km": "4.1"
+     },
+     {
+      "name": "P095",
+      "km": "4.2"
+     },
+     {
+      "name": "P096",
+      "km": "4.2"
+     },
+     {
+      "name": "P097",
+      "km": "4.3"
+     },
+     {
+      "name": "P098",
+      "km": "4.3"
+     },
+     {
+      "name": "P099",
+      "km": "4.4"
+     },
+     {
+      "name": "P100",
+      "km": "4.5"
+     },
+     {
+      "name": "P101",
+      "km": "4.5"
+     },
+     {
+      "name": "P102",
+      "km": "4.6"
+     },
+     {
+      "name": "P103",
+      "km": "4.6"
+     },
+     {
+      "name": "P104",
+      "km": "4.7"
+     },
+     {
+      "name": "P105",
+      "km": "4.7"
+     },
+     {
+      "name": "P106",
+      "km": "4.8"
+     },
+     {
+      "name": "P107",
+      "km": "4.8"
+     },
+     {
+      "name": "P108",
+      "km": "4.9"
+     },
+     {
+      "name": "P109",
+      "km": "5"
+     },
+     {
+      "name": "P110",
+      "km": "5"
+     },
+     {
+      "name": "P111",
+      "km": "5.1"
+     },
+     {
+      "name": "P112",
+      "km": "5.1"
+     },
+     {
+      "name": "P113",
+      "km": "5.2"
+     },
+     {
+      "name": "P114",
+      "km": "5.2"
+     },
+     {
+      "name": "P115",
+      "km": "5.3"
+     },
+     {
+      "name": "P116",
+      "km": "5.3"
+     },
+     {
+      "name": "P117",
+      "km": "5.4"
+     },
+     {
+      "name": "P118",
+      "km": "5.5"
+     },
+     {
+      "name": "P119",
+      "km": "5.5"
+     },
+     {
+      "name": "P120",
+      "km": "5.6"
+     },
+     {
+      "name": "P121",
+      "km": "5.6"
+     },
+     {
+      "name": "P122",
+      "km": "5.7"
+     },
+     {
+      "name": "P123",
+      "km": "5.7"
+     },
+     {
+      "name": "P124",
+      "km": "5.8"
+     },
+     {
+      "name": "P125",
+      "km": "5.8"
+     },
+     {
+      "name": "P126",
+      "km": "5.9"
+     },
+     {
+      "name": "P127",
+      "km": "6"
+     },
+     {
+      "name": "P128",
+      "km": "6"
+     },
+     {
+      "name": "P129",
+      "km": "6.1"
+     },
+     {
+      "name": "P130",
+      "km": "6.1"
+     },
+     {
+      "name": "P131",
+      "km": "6.2"
+     },
+     {
+      "name": "P132",
+      "km": "6.2"
+     },
+     {
+      "name": "P133",
+      "km": "6.3"
+     },
+     {
+      "name": "P134",
+      "km": "6.3"
+     },
+     {
+      "name": "P135",
+      "km": "6.4"
+     },
+     {
+      "name": "P136",
+      "km": "6.4"
+     },
+     {
+      "name": "P137",
+      "km": "6.5"
+     },
+     {
+      "name": "P138",
+      "km": "6.6"
+     },
+     {
+      "name": "P139",
+      "km": "6.6"
+     },
+     {
+      "name": "P140",
+      "km": "6.7"
+     },
+     {
+      "name": "P141",
+      "km": "6.7"
+     },
+     {
+      "name": "P142",
+      "km": "6.8"
+     },
+     {
+      "name": "P143",
+      "km": "6.8"
+     },
+     {
+      "name": "P144",
+      "km": "6.9"
+     },
+     {
+      "name": "P145",
+      "km": "7"
+     },
+     {
+      "name": "P146",
+      "km": "7"
+     },
+     {
+      "name": "P147",
+      "km": "7.1"
+     },
+     {
+      "name": "P148",
+      "km": "7.1"
+     },
+     {
+      "name": "P149",
+      "km": "7.2"
+     },
+     {
+      "name": "P150",
+      "km": "7.2"
+     },
+     {
+      "name": "P151",
+      "km": "7.3"
+     },
+     {
+      "name": "P152",
+      "km": "7.4"
+     },
+     {
+      "name": "P153",
+      "km": "7.4"
+     },
+     {
+      "name": "P154",
+      "km": "7.5"
+     },
+     {
+      "name": "P155",
+      "km": "7.5"
+     },
+     {
+      "name": "P156",
+      "km": "7.6"
+     },
+     {
+      "name": "P157",
+      "km": "7.6"
+     },
+     {
+      "name": "P158",
+      "km": "7.7"
+     },
+     {
+      "name": "P159",
+      "km": "7.7"
+     },
+     {
+      "name": "P160",
+      "km": "7.8"
+     },
+     {
+      "name": "P161",
+      "km": "7.8"
+     },
+     {
+      "name": "P162",
+      "km": "7.9"
+     },
+     {
+      "name": "P163",
+      "km": "8"
+     },
+     {
+      "name": "P164",
+      "km": "8"
+     },
+     {
+      "name": "P165",
+      "km": "8.1"
+     },
+     {
+      "name": "P166",
+      "km": "8.1"
+     },
+     {
+      "name": "P167",
+      "km": "8.2"
+     },
+     {
+      "name": "P168",
+      "km": "8.2"
+     },
+     {
+      "name": "P169",
+      "km": "8.3"
+     },
+     {
+      "name": "P170",
+      "km": "8.3"
+     },
+     {
+      "name": "P171",
+      "km": "8.4"
+     },
+     {
+      "name": "P172",
+      "km": "8.5"
+     },
+     {
+      "name": "P173",
+      "km": "8.5"
+     },
+     {
+      "name": "P174",
+      "km": "8.6"
+     },
+     {
+      "name": "P175",
+      "km": "8.6"
+     },
+     {
+      "name": "P176",
+      "km": "8.7"
+     },
+     {
+      "name": "P177",
+      "km": "8.7"
+     },
+     {
+      "name": "P178",
+      "km": "8.8"
+     },
+     {
+      "name": "P179",
+      "km": "8.8"
+     },
+     {
+      "name": "P180",
+      "km": "8.9"
+     },
+     {
+      "name": "P181",
+      "km": "9"
+     },
+     {
+      "name": "P182",
+      "km": "9"
+     },
+     {
+      "name": "P183",
+      "km": "9.1"
+     },
+     {
+      "name": "P184",
+      "km": "9.1"
+     },
+     {
+      "name": "P185",
+      "km": "9.2"
+     },
+     {
+      "name": "P186",
+      "km": "9.2"
+     },
+     {
+      "name": "P187",
+      "km": "9.3"
+     },
+     {
+      "name": "P188",
+      "km": "9.3"
+     },
+     {
+      "name": "P189",
+      "km": "9.4"
+     },
+     {
+      "name": "P190",
+      "km": "9.5"
+     },
+     {
+      "name": "P191",
+      "km": "9.5"
+     },
+     {
+      "name": "P192",
+      "km": "9.6"
+     },
+     {
+      "name": "P193",
+      "km": "9.6"
+     },
+     {
+      "name": "P194",
+      "km": "9.7"
+     },
+     {
+      "name": "P195",
+      "km": "9.7"
+     },
+     {
+      "name": "P196",
+      "km": "9.8"
+     },
+     {
+      "name": "P197",
+      "km": "9.8"
+     },
+     {
+      "name": "P198",
+      "km": "9.9"
+     },
+     {
+      "name": "P199",
+      "km": "10"
+     }
+    ],
+    "listed": 200,
+    "total": 205,
+    "pinned": 50
+   }
+  },
+  {
+   "why": "places far away are listed and not pinned",
+   "center": "40.4168,-3.7038",
+   "zoom": 13,
+   "coarse": false,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"Barcelona\", \"pos\": \"41.3874,2.1686\"}",
+    "{\"name\": \"Madrid\", \"pos\": \"40.4168,-3.7038\"}",
+    "{\"name\": \"Tokyo\", \"pos\": \"35.6762,139.6503\"}"
+   ],
+   "want": {
+    "zoom": 13,
+    "tiles": [
+     "https://tiles.example/13/4010/3087.png",
+     "https://tiles.example/13/4011/3087.png",
+     "https://tiles.example/13/4012/3087.png",
+     "https://tiles.example/13/4010/3088.png",
+     "https://tiles.example/13/4011/3088.png",
+     "https://tiles.example/13/4012/3088.png",
+     "https://tiles.example/13/4010/3089.png",
+     "https://tiles.example/13/4011/3089.png",
+     "https://tiles.example/13/4012/3089.png"
+    ],
+    "list": [
+     {
+      "name": "Madrid",
+      "km": "0"
+     },
+     {
+      "name": "Barcelona",
+      "km": "505.1"
+     },
+     {
+      "name": "Tokyo",
+      "km": "10761.7"
+     }
+    ],
+    "listed": 3,
+    "total": 3,
+    "pinned": 1
+   }
+  },
+  {
+   "why": "places across the date line are near",
+   "center": "0,179.99",
+   "zoom": 10,
+   "coarse": false,
+   "template": "https://tiles.example/{z}/{x}/{y}.png",
+   "rows": [
+    "{\"name\": \"West\", \"pos\": \"0,-179.99\"}",
+    "{\"name\": \"East\", \"pos\": \"0,179.95\"}"
+   ],
+   "want": {
+    "zoom": 10,
+    "tiles": [
+     "https://tiles.example/10/1022/511.png",
+     "https://tiles.example/10/1023/511.png",
+     "https://tiles.example/10/0/511.png",
+     "https://tiles.example/10/1022/512.png",
+     "https://tiles.example/10/1023/512.png",
+     "https://tiles.example/10/0/512.png",
+     "https://tiles.example/10/1022/513.png",
+     "https://tiles.example/10/1023/513.png",
+     "https://tiles.example/10/0/513.png"
+    ],
+    "list": [
+     {
+      "name": "West",
+      "km": "2.2"
+     },
+     {
+      "name": "East",
+      "km": "4.4"
+     }
+    ],
+    "listed": 2,
+    "total": 2,
+    "pinned": 2
+   }
+  }
+ ]
+}

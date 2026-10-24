@@ -370,6 +370,9 @@ pub(crate) fn emit_view_node(
                 ));
                 return out;
             }
+            if matches!(kind, IrElementKind::Map) {
+                return crate::map::emit(indent, &var, parent_var, accessibility, bindings, params);
+            }
             if matches!(kind, IrElementKind::SortList) {
                 return crate::sortlist::emit(
                     indent,

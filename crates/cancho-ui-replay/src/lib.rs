@@ -10,6 +10,7 @@ mod eval;
 mod geo;
 mod locale;
 mod machine;
+mod map;
 mod number;
 mod report;
 mod router;
@@ -33,6 +34,7 @@ pub use eval::{
     page_count, sort_key_order_json, text_builtin_json,
 };
 pub use geo::{distance_km, parse_position};
+pub use map::{Plan as MapPlan, plan as map_plan};
 pub use number::{delivered as number_delivered, parse_number};
 pub use report::{
     Failure, FiredJson, HUMAN_VALUE_BOUND, IssuedJson, NOT_CLAIMED, REPORT_SCHEMA, REPORT_VERSION,
@@ -731,6 +733,7 @@ fn run_step(
         charts: m.charts(),
         stream: m.stream_report(),
         sortlists: m.sortlists_report(),
+        maps: m.maps_report(),
         document: locale_used(comp)
             .then(|| serde_json::json!({"lang": m.locale.lang, "dir": m.locale.dir()})),
         history: routes_used(comp).then(|| {
@@ -786,7 +789,12 @@ fn check_expectations(
     for (key, expected) in &step.expect {
         report.checks += 1;
         // `ticks`, `routes` and `charts` are absent from a step in which none fell due, none was heard or none is in the page: that is the empty list.
-        let absent = if key == "ticks" || key == "routes" || key == "charts" || key == "sortlists" {
+        let absent = if key == "ticks"
+            || key == "routes"
+            || key == "charts"
+            || key == "sortlists"
+            || key == "maps"
+        {
             Json::Array(Vec::new())
         } else {
             Json::Null

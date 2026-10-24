@@ -13,10 +13,10 @@ const BACKGROUND: [u8; 3] = [0x1f, 0x6f, 0xeb];
 const MARK: [u8; 3] = [0xff, 0xff, 0xff];
 
 /// Everything `--pwa` writes for a program compiled to `js`, named `name`.
-pub fn generate(js: &str, name: &str) -> PwaFiles {
+pub fn generate(js: &str, name: &str, img_src: Option<&str>) -> PwaFiles {
     let mut files: PwaFiles = vec![
         ("app.js", js.as_bytes().to_vec()),
-        ("index.html", index_html(name, true).into_bytes()),
+        ("index.html", index_html(name, true, img_src).into_bytes()),
         ("manifest.webmanifest", manifest(name).into_bytes()),
         ("icon-192.png", icon_png(192)),
         ("icon-512.png", icon_png(512)),
@@ -29,10 +29,10 @@ pub fn generate(js: &str, name: &str) -> PwaFiles {
 /// What `--page` writes for a program compiled to `js`, named `name`: a web page and its script, and nothing that makes it an app
 /// (no manifest, no icons, no service worker, no `theme-color`), so a browser has nothing to offer to install and nothing
 /// caches it behind the author's back (docs/mobile-backend.md section 5.2).
-pub fn generate_page(js: &str, name: &str) -> PwaFiles {
+pub fn generate_page(js: &str, name: &str, img_src: Option<&str>) -> PwaFiles {
     vec![
         ("app.js", js.as_bytes().to_vec()),
-        ("index.html", index_html(name, false).into_bytes()),
+        ("index.html", index_html(name, false, img_src).into_bytes()),
     ]
 }
 
@@ -54,14 +54,14 @@ fn html_escape(s: &str) -> String {
 }
 
 /// The page; `installable` adds what makes it an app (`--pwa`), and leaves it out for a plain page (`--page`).
-fn index_html(name: &str, installable: bool) -> String {
+fn index_html(name: &str, installable: bool, img_src: Option<&str>) -> String {
     let title = html_escape(name);
     let mut html = String::from(
         r##"<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+@CSP@<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 @APP_THEME@<title>@TITLE@</title>
 @APP_LINKS@<style>
 /* A default so a program is usable on a phone; the page owns presentation, replace it freely. */
@@ -110,7 +110,16 @@ button, input, textarea { min-height: 44px; min-width: 44px; font: inherit; }
 </html>
 "##,
     );
-    html = html.replace("@TITLE@", &title);
+    // A page with a map lets images in from its own origin and the tile hosts the program declared, and from nowhere else (docs/maps.md). The policy comes
+    // first, before anything that could ask for an image.
+    let csp = match img_src {
+        Some(sources) => format!(
+            "<meta http-equiv=\"Content-Security-Policy\" content=\"img-src {}\">\n",
+            html_escape(sources)
+        ),
+        None => String::new(),
+    };
+    html = html.replace("@CSP@", &csp).replace("@TITLE@", &title);
     let (theme, links, register) = if installable {
         (
             "<meta name=\"theme-color\" content=\"#1f6feb\">\n",
@@ -329,7 +338,7 @@ mod tests {
 
     #[test]
     fn a_name_is_escaped_in_the_page_and_in_the_manifest() {
-        let files = generate("//", "A \"b\" <c> & d");
+        let files = generate("//", "A \"b\" <c> & d", None);
         let html = String::from_utf8(files[1].1.clone()).unwrap();
         assert!(html.contains("<title>A &quot;b&quot; &lt;c&gt; &amp; d</title>"));
         let manifest: serde_json::Value = serde_json::from_slice(&files[2].1).unwrap();
@@ -339,7 +348,7 @@ mod tests {
     #[test]
     fn a_page_is_not_an_app() {
         // `--page` (docs/mobile-backend.md section 5.2): the script and the page, and nothing a browser installs from.
-        let files = generate_page("//", "Demo");
+        let files = generate_page("//", "Demo", None);
         let names: Vec<&str> = files.iter().map(|(n, _)| *n).collect();
         assert_eq!(names, ["app.js", "index.html"]);
         let html = String::from_utf8(files[1].1.clone()).unwrap();
@@ -358,24 +367,24 @@ mod tests {
             "still a page for a phone"
         );
         // The page of `--pwa` is the same page plus those lines.
-        let app = String::from_utf8(generate("//", "Demo")[1].1.clone()).unwrap();
+        let app = String::from_utf8(generate("//", "Demo", None)[1].1.clone()).unwrap();
         assert!(app.contains("manifest") && app.contains("serviceWorker"));
     }
 
     #[test]
     fn the_worker_version_follows_every_byte_it_caches() {
-        let a = generate("one", "x");
-        let b = generate("two", "x");
+        let a = generate("one", "x", None);
+        let b = generate("two", "x", None);
         let sw = |f: &PwaFiles| String::from_utf8(f.last().unwrap().1.clone()).unwrap();
         assert_ne!(sw(&a), sw(&b));
-        assert_eq!(sw(&a), sw(&generate("one", "x")));
+        assert_eq!(sw(&a), sw(&generate("one", "x", None)));
     }
 
     #[test]
     fn the_maskable_icon_keeps_its_mark_inside_the_safe_zone() {
         // #67: the manifest has a maskable entry for each icon, and the mark of that icon lies inside the circle of radius
         // 40% of the image, whatever the size, so a circular mask cuts nothing of it.
-        let files = generate("//", "x");
+        let files = generate("//", "x", None);
         let manifest: serde_json::Value = serde_json::from_slice(&files[2].1).unwrap();
         let icons = manifest["icons"].as_array().unwrap();
         for size in [192u32, 512] {

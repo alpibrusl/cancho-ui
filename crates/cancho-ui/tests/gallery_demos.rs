@@ -96,6 +96,10 @@ fn no_demo_is_an_app() {
         let dir = root().join("docs/demo").join(id);
         let mut names = files(&dir);
         names.retain(|f| !f.starts_with("api/"));
+        // what a tile says it copies beside the page (the stand-in tiles of the map) is data, not an app
+        if let Some(copy) = t["copy"].as_object() {
+            names.retain(|f| !copy.keys().any(|k| f.starts_with(&format!("{k}/"))));
+        }
         assert_eq!(names, ["app.js", "index.html"], "docs/demo/{id}/");
         let html = std::fs::read_to_string(dir.join("index.html")).expect("the page");
         for banned in [

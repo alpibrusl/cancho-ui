@@ -22,6 +22,7 @@ pub mod i18n;
 pub mod i18n_data;
 pub mod ir;
 pub mod lower;
+pub mod map;
 pub mod messages;
 pub mod routing;
 pub mod serialize;

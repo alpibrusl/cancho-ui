@@ -1,0 +1,170 @@
+{
+ "schema": "cancho-ui-trace",
+ "version": "0.1.0",
+ "component": "Places",
+ "note": "Two centres: the nine tiles the page asks for around each, the places nearest first with their km, and how many of them fall inside the picture. Computed outside the program. docs/maps.md.",
+ "steps": [
+  {
+   "event": "AtSol",
+   "state": {
+    "here": "40.41694,-3.70351"
+   },
+   "expect": {
+    "maps": [
+     {
+      "label": "Places near the centre",
+      "zoom": 13,
+      "tiles": [
+       "./tiles/13/4010/3087.png",
+       "./tiles/13/4011/3087.png",
+       "./tiles/13/4012/3087.png",
+       "./tiles/13/4010/3088.png",
+       "./tiles/13/4011/3088.png",
+       "./tiles/13/4012/3088.png",
+       "./tiles/13/4010/3089.png",
+       "./tiles/13/4011/3089.png",
+       "./tiles/13/4012/3089.png"
+      ],
+      "list": [
+       {
+        "name": "Puerta del Sol",
+        "km": "0"
+       },
+       {
+        "name": "Retiro",
+        "km": "1.6"
+       },
+       {
+        "name": "Atocha",
+        "km": "1.7"
+       },
+       {
+        "name": "Plaza de Castilla",
+        "km": "5.7"
+       },
+       {
+        "name": "Chamartin",
+        "km": "6.4"
+       },
+       {
+        "name": "Barajas",
+        "km": "14.6"
+       }
+      ],
+      "listed": 6,
+      "total": 6,
+      "pinned": 5
+     }
+    ]
+   }
+  },
+  {
+   "event": "AtAirport",
+   "state": {
+    "here": "40.49830,-3.56760"
+   },
+   "expect": {
+    "maps": [
+     {
+      "label": "Places near the centre",
+      "zoom": 13,
+      "tiles": [
+       "./tiles/13/4013/3085.png",
+       "./tiles/13/4014/3085.png",
+       "./tiles/13/4015/3085.png",
+       "./tiles/13/4013/3086.png",
+       "./tiles/13/4014/3086.png",
+       "./tiles/13/4015/3086.png",
+       "./tiles/13/4013/3087.png",
+       "./tiles/13/4014/3087.png",
+       "./tiles/13/4015/3087.png"
+      ],
+      "list": [
+       {
+        "name": "Barajas",
+        "km": "0"
+       },
+       {
+        "name": "Chamartin",
+        "km": "10.1"
+       },
+       {
+        "name": "Plaza de Castilla",
+        "km": "10.9"
+       },
+       {
+        "name": "Retiro",
+        "km": "13.5"
+       },
+       {
+        "name": "Atocha",
+        "km": "14.5"
+       },
+       {
+        "name": "Puerta del Sol",
+        "km": "14.6"
+       }
+      ],
+      "listed": 6,
+      "total": 6,
+      "pinned": 1
+     }
+    ]
+   }
+  },
+  {
+   "event": "AtSol",
+   "state": {
+    "here": "40.41694,-3.70351"
+   },
+   "expect": {
+    "maps": [
+     {
+      "label": "Places near the centre",
+      "zoom": 13,
+      "tiles": [
+       "./tiles/13/4010/3087.png",
+       "./tiles/13/4011/3087.png",
+       "./tiles/13/4012/3087.png",
+       "./tiles/13/4010/3088.png",
+       "./tiles/13/4011/3088.png",
+       "./tiles/13/4012/3088.png",
+       "./tiles/13/4010/3089.png",
+       "./tiles/13/4011/3089.png",
+       "./tiles/13/4012/3089.png"
+      ],
+      "list": [
+       {
+        "name": "Puerta del Sol",
+        "km": "0"
+       },
+       {
+        "name": "Retiro",
+        "km": "1.6"
+       },
+       {
+        "name": "Atocha",
+        "km": "1.7"
+       },
+       {
+        "name": "Plaza de Castilla",
+        "km": "5.7"
+       },
+       {
+        "name": "Chamartin",
+        "km": "6.4"
+       },
+       {
+        "name": "Barajas",
+        "km": "14.6"
+       }
+      ],
+      "listed": 6,
+      "total": 6,
+      "pinned": 5
+     }
+    ]
+   }
+  }
+ ]
+}
