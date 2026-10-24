@@ -351,7 +351,7 @@ a 380 px frame. Measured standalone, in desktop Chromium with the Pixel 7 profil
 client width, over 10 s): **412 px: 0; 380 px: 3 px; 375 px: 7 px; 360 px: 22 px; 320 px: 62 px.** The console's table has a minimum width of about
 382 px. `scripts/check-mobile-demos.js` runs at 412 px only (its profile is one phone), so it could not see this, and nothing in this document claimed
 "no sideways scroll" (the 44 px claim above is about size and still holds). It is a defect of the demo on a narrow phone, filed as #144; the
-probe reports the overflow with the viewport width so that a device run shows it too. It was **not** fixed here.
+probe reports the overflow with the viewport width so that a device run shows it too. It was **not** fixed in the probe's PR. *(Fixed in the PR for #144: the table scrolls in its own box, `presentation.md` section 4b; `scripts/check-overflow.js` measures all 13 demos at 320, 360, 375, 380 and 412 px, with no page overflow at any of the 65.)*
 
 **The probe's own logic can fail.** `scripts/breaks/probe.json`: 18 deliberate breaks (iPad detection, the zoom threshold twice, the target rule, the 44 px
 default and the 44 px used by the console line, installed read wrongly two ways, offline start proven too early three ways, the manual steps dropped, a beacon, a

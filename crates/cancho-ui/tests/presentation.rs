@@ -243,6 +243,36 @@ fn the_page_has_a_real_table_with_header_cells_and_a_cell_around_a_button() {
 }
 
 #[test]
+fn a_table_scrolls_in_its_own_named_focusable_box() {
+    // issue #144: a table wider than the page must scroll in a box, not the page
+    let js = built(TABLE, "table_scroll_js");
+    for part in [
+        "classList.add('cui-table-scroll')",
+        "setAttribute('tabindex', '0')",
+        "setAttribute('role', 'region')",
+        "_scroll.setAttribute('aria-label', \"Names\")",
+    ] {
+        assert!(js.contains(part), "{part}: {js}");
+    }
+    // the box holds the table, and the box (not the table) goes into the parent
+    assert!(js.contains("_scroll.appendChild("), "{js}");
+    // a program with no table has no box
+    let none = built("            Text { \"a\" }", "no_table_js");
+    assert!(!none.contains("cui-table-scroll"), "{none}");
+    // the baseline stylesheet gives the box its scrolling
+    let file = scratch("scroll.cui", &program(TABLE));
+    let out = scratch("scroll.cui", "").with_file_name("scroll_out");
+    let _ = std::fs::remove_dir_all(&out);
+    let (code, _, stderr) = run(&["build", p(&file), "--pwa", "-o", p(&out)]);
+    assert_eq!(code, 0, "{stderr}");
+    let html = std::fs::read_to_string(out.join("index.html")).expect("the page");
+    assert!(
+        html.contains(".cui-table-scroll { overflow-x: auto; max-width: 100%; }"),
+        "{html}"
+    );
+}
+
+#[test]
 fn the_page_says_tone_gap_width_and_label() {
     let js = built(
         "            Text { role: status tone: tone \"x\" }\n            Text { tone: \"warn\" \"y\" }\n            Row { gap: 3 Text { \"a\" } }\n            Column { max_width: 60 Text { \"b\" } }\n            TextField { label: \"Search\" value: q on: Q }",

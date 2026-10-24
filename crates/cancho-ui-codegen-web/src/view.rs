@@ -984,6 +984,28 @@ pub(crate) fn emit_view_node(
                     parent_var,
                     js_string(&var)
                 ));
+            } else if matches!(kind, IrElementKind::Table) {
+                // A table that is wider than a narrow phone scrolls inside its own box, not the page (issue #144, docs/presentation.md
+                // section 4a). The box is a keyboard-focusable region named like the table, so a keyboard user can scroll it.
+                let name = match (&accessibility.label, &accessibility.label_expr) {
+                    (Some(l), _) => Some(js_string(l)),
+                    (None, Some(_)) => Some(label_var.clone()),
+                    _ => None,
+                };
+                out.push_str(&format!(
+                    "{0}const {1}_scroll = document.createElement('div');\n{0}{1}_scroll.classList.add('cui-table-scroll');\n{0}{1}_scroll.setAttribute('tabindex', '0');\n",
+                    indent, var
+                ));
+                if let Some(n) = name {
+                    out.push_str(&format!(
+                        "{0}{1}_scroll.setAttribute('role', 'region');\n{0}{1}_scroll.setAttribute('aria-label', {2});\n",
+                        indent, var, n
+                    ));
+                }
+                out.push_str(&format!(
+                    "{0}{1}_scroll.appendChild({1});\n{0}{2}.appendChild({1}_scroll);\n",
+                    indent, var, parent_var
+                ));
             } else {
                 out.push_str(&format!(
                     "{0}{2}.appendChild({1});\n",

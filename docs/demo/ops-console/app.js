@@ -775,7 +775,13 @@ function mount_OpsConsole(root) {
                             __n14.appendChild(__n19);
                         __n7_body.appendChild(__n14);
                     }
-                __n0.appendChild(__n7);
+                const __n7_scroll = document.createElement('div');
+                __n7_scroll.classList.add('cui-table-scroll');
+                __n7_scroll.setAttribute('tabindex', '0');
+                __n7_scroll.setAttribute('role', 'region');
+                __n7_scroll.setAttribute('aria-label', "Machines");
+                __n7_scroll.appendChild(__n7);
+                __n0.appendChild(__n7_scroll);
                 const __n21 = document.createElement('div');
                 __n21.classList.add('cui-row');
                     const __n22 = document.createElement('button');
