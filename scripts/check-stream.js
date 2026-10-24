@@ -118,21 +118,15 @@ async function fresh(browser, url, opts = {}) {
   const problems = [];
   page.on('pageerror', (e) => problems.push(`pageerror ${e}`));
   if (opts.init) { await page.addInitScript(opts.init); }
-  if (opts.clock !== false) { await page.clock.install({ time: 0 }); }
+  if (opts.clock !== false) {
+    await page.clock.install({ time: 0 });
+    // The clock keeps running in real time after install and `pauseAt` cannot go back, so a time read from the page and paused at a little
+    // ahead (`now + 1`, or a retry of `now + 100 * k`) is a race (the same cause as check-schedules.js, #74). Pause at a time the clock cannot
+    // have reached, before the page exists, so that only `runFor` moves time.
+    await page.clock.pauseAt(60000);
+  }
   await page.goto(url);
   await page.waitForSelector('#root *');
-  if (opts.clock !== false) {
-    // the clock runs on from install; pause it a little ahead of now, so that only `runFor` moves time from here on
-    for (let k = 1; k <= 6; k++) {
-      try {
-        const now = await page.evaluate(() => Date.now());
-        await page.clock.pauseAt(now + 100 * k);
-        break;
-      } catch (e) {
-        if (k === 6) { throw e; }
-      }
-    }
-  }
   return { ctx, page, problems };
 }
 // the text of the page's Text node
@@ -744,13 +738,12 @@ mount_Secured(document.getElementById('root')${creds});
     const problems = [];
     page.on('pageerror', (e) => problems.push(String(e)));
     await page.clock.install({ time: 0 });
+    await page.clock.pauseAt(60000); // before the page exists: a time read back and paused at `now + 1` is a race
     await page.goto(`http://localhost:${port}/`);
     await page.waitForSelector('#root *');
     await page.evaluate(() => navigator.serviceWorker.ready);
     await page.reload();
     check('G: the service worker controls the page', await page.evaluate(() => !!navigator.serviceWorker.controller));
-    const now = await page.evaluate(() => Date.now());
-    await page.clock.pauseAt(now + 1);
     check('G: through the worker the stream opens', !!(await until(async () => (await exLink(page)) === 'open')));
     s.tick();
     check('G: a reading written after the headers arrives before the response ends', !!(await until(async () => (await exCount(page)) === 1)));

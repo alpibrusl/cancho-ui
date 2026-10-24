@@ -15,6 +15,8 @@ const { createServer, machines } = require('./ops-console-server.js');
 const ROOT = path.join(__dirname, '..');
 const CANCHO_UI = process.argv[2] || path.join(ROOT, 'target', 'debug', 'cancho-ui');
 const failures = [];
+// a run that does not end by itself is a failure, not a hang: the whole check takes about 10 s
+const watchdog = setTimeout(() => { console.log('FAIL watchdog: the check did not finish in 5 minutes'); process.exit(1); }, 5 * 60 * 1000);
 function check(label, ok, detail) {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${label}${detail ? `: ${detail}` : ''}`);
   if (!ok) { failures.push(label); }
@@ -35,6 +37,11 @@ function check(label, ok, detail) {
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   await page.clock.install({ time: 0 });
+  // Playwright's clock keeps running in real time after install, and `pauseAt` cannot go back: reading `Date.now()` in the page and pausing at
+  // `now + 1` failed with "Cannot fast-forward to the past" whenever more than 1 ms passed in between (2 runs in 20 with six busy loops on four
+  // cores; the same cause as check-schedules.js, #74). Pause at a time the clock cannot have reached yet, before the page exists, and move time
+  // with `runFor` only.
+  await page.clock.pauseAt(60000);
 
   // the tone of the status text that shows the result of a write: its attribute, the prefix the stylesheet draws, its colour
   const toneOf = async (pg) => pg.evaluate(() => {
@@ -129,8 +136,6 @@ function check(label, ok, detail) {
   check('a setpoint that is not a number is sent as written: the page does not validate (400)', await until(async () => (await texts()).some((t) => t.startsWith('result: 400'))), String(log.posts.length));
 
   // the refresh timer, and a hidden page
-  const now = await page.evaluate(() => Date.now());
-  await page.clock.pauseAt(now + 1);
   const setVisibility = (state) => page.evaluate((st) => {
     Object.defineProperty(document, 'visibilityState', { value: st, configurable: true });
     document.dispatchEvent(new Event('visibilitychange'));
@@ -312,11 +317,11 @@ function check(label, ok, detail) {
   // ---------------------------------------------------------------- phase 3: typing while the timer refreshes (fake clock)
   const p3 = await browser.newPage({ viewport: { width: 420, height: 900 } });
   await p3.clock.install({ time: 0 });
+  await p3.clock.pauseAt(60000); // before the page exists, as above
   await p3.goto(url);
   await p3.waitForSelector('#root span');
   const total3 = async () => p3.evaluate(() => (Array.from(document.querySelectorAll('#root span')).map((e) => e.textContent).find((t) => /machines, page/.test(t))));
   for (let t = 0; t < 4000 && (await total3()) !== '23 of 23 machines, page 1 of 5'; t += 40) { await p3.waitForTimeout(40); }
-  await p3.clock.pauseAt((await p3.evaluate(() => Date.now())) + 1);
   await p3.focus('input[aria-label="Search by name"]');
   await p3.keyboard.type('Fur', { delay: 20 });
   const g3 = log.gets;
@@ -352,6 +357,7 @@ function check(label, ok, detail) {
 
   await browser.close();
   console.log(`screenshots: ${shots}`);
+  clearTimeout(watchdog);
   console.log(failures.length ? `\n${failures.length} check(s) failed` : '\nall checks passed');
   process.exit(failures.length ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
