@@ -1,6 +1,6 @@
 // examples/theme/theme.cui — a program with its own colours and font (docs/theme.md).
 // The palette is the one of the home page of alpibrusl/cancho-www at commit 0579a80 (assets/site.css, `:root` and its dark override), the
-// 16 tokens of each scheme; the compiler checks the contrast of 13 pairs per scheme and writes the dark mode from the `dark` block.
+// 16 colour tokens of each scheme plus the two art colours of its code boxes (18); the compiler checks the contrast of 14 pairs per scheme and writes the dark mode from the `dark` block.
 // The font is JetBrains Mono (SIL OFL 1.1, fonts/OFL-JetBrainsMono.txt), a file of this program, declared with its SHA-256.
 // A theme is presentation: replay (`cancho-ui test`) does not read it and `requires` is unchanged.
 
@@ -22,6 +22,8 @@ theme {
         warn_line: "#d9a441";
         bad: "#b91c1c";
         bad_bg: "#fdeceb";
+        code_bg: "#12151a";
+        code_fg: "#d6dde8";
     }
     dark {
         bg: "#0b1016";
@@ -40,6 +42,8 @@ theme {
         warn_line: "#7e6126";
         bad: "#ff7a72";
         bad_bg: "#2a1413";
+        code_bg: "#12151a";
+        code_fg: "#d6dde8";
     }
     font body {
         family: "JetBrains Mono";

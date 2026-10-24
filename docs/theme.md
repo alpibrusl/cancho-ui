@@ -11,8 +11,8 @@
 theme {
     light { bg: "#f7f4eb"; fg: "#121417"; muted: "#4f545b"; line: "#e2ddd0"; surface: "#ffffff"; soft: "#efece1"; ink: "#16283b";
             accent: "#185fa5"; accent_fg: "#ffffff"; accent_soft: "#ebf3fc"; good: "#0f7b5f"; warn: "#8a4b0a"; warn_bg: "#f9efd9";
-            warn_line: "#d9a441"; bad: "#b91c1c"; bad_bg: "#fdeceb"; }
-    dark  { .. the same sixteen tokens .. }
+            warn_line: "#d9a441"; bad: "#b91c1c"; bad_bg: "#fdeceb"; code_bg: "#12151a"; code_fg: "#d6dde8"; }
+    dark  { .. the same eighteen tokens .. }
     font body { family: "JetBrains Mono"; file: "fonts/jetbrains-mono-latin-wght-normal.woff2"; sha256: ".."; licence: "OFL-1.1"; weight: "100 800"; }
 }
 ```
@@ -20,7 +20,7 @@ theme {
 * `theme` is a keyword only at the top of a file, followed by `{`; **one per program**, in the entry file (`theme-duplicate`).
 * A colour is `"#rrggbb"`, six hex digits, either case, and nothing else: no name, no three digits, no alpha, no function (`theme-colour-invalid`). The value is therefore never CSS the
   author wrote: a value such as `"#fff;}body{display:none"` is a refusal, not a rule (a case of the corpus).
-* **Both schemes, all sixteen tokens.** `light` and `dark` are both required and each holds every token (`theme-scheme-missing`): the compiler writes the dark mode from the `dark` block, so there
+* **Both schemes, all eighteen tokens.** `light` and `dark` are both required and each holds every token (`theme-scheme-missing`): the compiler writes the dark mode from the `dark` block, so there
   is nothing to fall back on and nothing to guess. A token is written once (`theme-token-unknown`). **A token written with a dash is two tokens and a minus**: the names have underscores
   (`accent_fg`), and `accent-fg` is a `parse-unexpected-token`.
 * Fonts: roles `body`, `mono`, `hand`; keys `family`, `file`, `sha256`, `licence`, optional `weight`. Section 5.
@@ -36,6 +36,7 @@ theme {
 | `accent_fg`, `accent_soft` | not used by the baseline yet: exported as custom properties for a host page, checked against `accent` |
 | `good`, `warn`, `warn_bg`, `bad`, `bad_bg` | the colour (and for `warn` and `error`, the background) of a `Text { tone: .. }` |
 | `line` | the lines under the cells of a `Table` |
+| `code_bg`, `code_fg` | the box a code block is drawn in and its text (added 2026-10-24, [`www.md`](www.md) 5.2b item 11; the page's code boxes are dark in the light scheme too, so the two are the same colours in both schemes of the site's palette). Used by `Code` once it exists; until then only exported as custom properties |
 | `soft`, `ink`, `warn_line` | **decoration**: written as custom properties, used by nothing the baseline draws, and in no checked pair except `soft` as the background of `muted` |
 
 Every token is written to the page as a custom property, `--cui-bg`, `--cui-accent-fg`, ..., so a host page or an island ([`www.md`](www.md) section 6) can read the colours. The
@@ -45,7 +46,7 @@ Every token is written to the page as a custom property, `--cui-bg`, `--cui-acce
 
 | rule tag | refused |
 |---|---|
-| `theme-token-unknown` | a scheme other than `light`/`dark`; a token not among the sixteen; a font role other than `body`/`mono`/`hand`; a font key other than the five; any of these written twice |
+| `theme-token-unknown` | a scheme other than `light`/`dark`; a token not among the eighteen; a font role other than `body`/`mono`/`hand`; a font key other than the five; any of these written twice |
 | `theme-colour-invalid` | a value that is not `"#rrggbb"` |
 | `theme-scheme-missing` | no `light` or no `dark`; or a scheme that lacks a token (the message lists them) |
 | `theme-contrast` | a checked pair under 4.5:1 in either scheme; the message names **every** failing pair as `scheme: text on background is R:1` |
@@ -62,14 +63,14 @@ family and path cannot carry CSS, and that a theme is one per program each neede
 
 ## 4. The contrast check
 
-**Thirteen pairs per scheme**, text on background, each at least **4.5:1** (WCAG 2.x 1.4.3): `fg` on `bg` and on `surface`; `muted` on `bg`, `surface` and `soft`; `accent` on `bg`,
-`surface` and `accent_soft`; `accent_fg` on `accent`; `good` on `bg`; `warn` on `warn_bg`; `bad` on `bad_bg` and on `bg`. (`www.md` 2.4 said "15 pairs"; that counted two pairs of the
+**Fourteen pairs per scheme**, text on background, each at least **4.5:1** (WCAG 2.x 1.4.3): `fg` on `bg` and on `surface`; `muted` on `bg`, `surface` and `soft`; `accent` on `bg`,
+`surface` and `accent_soft`; `accent_fg` on `accent`; `good` on `bg`; `warn` on `warn_bg`; `bad` on `bad_bg` and on `bg`; `code_fg` on `code_bg`. (`www.md` 2.4 said "15 pairs"; that counted two pairs of the
 site's art palette, `term-fg` on `term-bg` and `map-ink` on `map-paper`, which are not tokens. Corrected there.) The ratio is the WCAG relative-luminance formula; it is **cut, not
 rounded**, to two decimals when shown, so a colour that reaches 4.4776 is shown as 4.47 and never as the limit it did not reach. A pair is never rounded up to pass: the comparison is on
 the unrounded number.
 
-**Measured on the palette of the cancho-www home page** (commit `0579a80`, vendored in `tests/theme_corpus.json`): all 26 pairs (13 x 2) pass, the lowest being light `good` on
-`bg`, 4.75:1. **Independently computed:** `scripts/theme-oracle.js` (Node, its own implementation: the 0.03928 knee and the 0.2126, 0.7152, 0.0722 weights as WCAG writes them; the compiler
+**Measured on the palette of the cancho-www home page** (commit `0579a80`, vendored in `tests/theme_corpus.json`): all 28 pairs (14 x 2) pass, the lowest being light `good` on
+`bg`, 4.75:1; `code_fg` on `code_bg` is 13.39:1 (the `--term-fg` on `--term-bg` of the same file). **Independently computed:** `scripts/theme-oracle.js` (Node, its own implementation: the 0.03928 knee and the 0.2126, 0.7152, 0.0722 weights as WCAG writes them; the compiler
 uses the 0.04045 knee, and no 8-bit channel lies between the two, so they agree) writes the ratios and, for each failing case, the failing pairs into the corpus; `cargo test` compares
 the compiler's arithmetic with those to 0.001 and the refusal messages pair for pair. The boundary is in the corpus: `#767676` on white (4.54:1) passes, `#777777` (4.4776:1, shown as
 4.47) is refused. **Moving `muted` of the light scheme to `#9a9a9a` is `theme-contrast`**: `light: muted on bg is 2.55:1; muted on surface is 2.81:1; muted on soft is 2.37:1`.
@@ -104,10 +105,10 @@ or the outline's width or style. So:
 
 * **The 44 px targets** (`button, input, textarea { min-height: 44px; min-width: 44px; .. }`) are the baseline's, and the theme block comes after it and does not mention them.
 * **The focus ring** is the compiler's: 3 px, solid, in the accent. A token can change its *colour*, and the accent has 4.5:1 against the page by the checks above; nothing can remove it.
-* Proved, not asserted, two ways. `no_token_can_remove_the_44_px_targets_or_the_focus_ring` (Rust): every one of the 16 tokens of both schemes at four extreme values (`#000000`, `#ffffff`,
-  `#ff00ff`, `#808080`) = 128 programs; 71 are refused, all by `theme-contrast`; the 57 that compile each have the baseline rule once, a theme block whose properties are all in a short allow list
-  and none of `min-height`, `min-width`, `outline-width`, `outline-style`, `outline: none`, and the exact ring rule; each of the 16 tokens built at least once. `scripts/check-theme.js` runs the same
-  128 in Chromium: for the 57 that compile, every `button` and `input` is at least 44 x 44 CSS px and a keyboard-focused control has `outline: solid 3px` in the accent colour.
+* Proved, not asserted, two ways. `no_token_can_remove_the_44_px_targets_or_the_focus_ring` (Rust): every one of the 18 tokens of both schemes at four extreme values (`#000000`, `#ffffff`,
+  `#ff00ff`, `#808080`) = 144 programs; 79 are refused, all by `theme-contrast`; the 65 that compile each have the baseline rule once, a theme block whose properties are all in a short allow list
+  and none of `min-height`, `min-width`, `outline-width`, `outline-style`, `outline: none`, and the exact ring rule; each of the 18 tokens built at least once. `scripts/check-theme.js` runs the same
+  144 in Chromium: for the 65 that compile, every `button` and `input` is at least 44 x 44 CSS px and a keyboard-focused control has `outline: solid 3px` in the accent colour.
 * **Dark mode:** the compiler writes `@media (prefers-color-scheme: dark) { :root { .. } }` from the `dark` block. There is **no `data-theme` switch**: no need for one was measured (the page
   follows the system, which is what the cancho-www page does in practice: its manual `data-theme="light"` hook is set by nothing in its HTML or JavaScript, counted in `www.md` 2.4). Measured:
   both schemes drawn in Chromium with `colorScheme` emulated; the body, a button, a field and the three tones are the colours of the scheme the browser is in.
@@ -126,14 +127,14 @@ or the outline's width or style. So:
 ## 8. Checked
 
 * `cargo test` (`crates/cancho-ui/tests/theme.rs`, 13 tests; the unit tests of `cancho_ui_ir::theme` and of the SHA-256): the palette passes and its ratios are the oracle's; every case of
-  `tests/theme_corpus.json` (22) is refused by its tag with the oracle's pairs, or accepted; the boundary and the cut; `theme-duplicate` in one file and across an import; 16 font cases and two keys;
+  `tests/theme_corpus.json` (26) is refused by its tag with the oracle's pairs, or accepted; the boundary and the cut; `theme-duplicate` in one file and across an import; 16 font cases and two keys;
   the tampered font; the themed page, its font copied and no address; no theme, same bytes; no authority and replay; `diff`; every token cannot remove the targets or the ring; a malformed theme is a
   parse refusal.
 * `node scripts/theme-oracle.js`: the corpus has the numbers an independent implementation computes. `node scripts/check-theme.js` (5-minute watchdog): section 6, and no request to another host.
-* `scripts/breaks/theme.json`: **24 deliberate breaks, each caught by a check failing on its own** (none `HUNG`, none `BUILD`): the limit 4.0, a wrong luminance weight, a wrong knee, a pair swapped,
+* `scripts/breaks/theme.json`: **26 deliberate breaks, each caught by a check failing on its own** (none `HUNG`, none `BUILD`): the limit 4.0, a wrong luminance weight, a wrong knee, a pair swapped,
   the dark scheme left unchecked, a ratio rounded and not cut, a missing token unnoticed, an alpha accepted, an address not remote, a quote allowed in a family, no licence needed, a second theme
   unnoticed, the font hash not compared, a wrong SHA-256 constant, the dark block repeating the light, a height set by the theme, the focus ring removed, the focus ring in the text colour, the font
-  not swapped, a remote `@import`, the font not copied into a page, not precached by an app, a theme change not counted by `diff`, a theme change that widens authority. The first run left one uncaught
+  not swapped, a remote `@import`, the font not copied into a page, not precached by an app, a theme change not counted by `diff`, a theme change that widens authority, the code pair judged on the page background, a code token that repeats another. The first run left one uncaught
   (the quote case's family had other forbidden characters too, so allowing the quote changed nothing); a family that is only a quote in the middle was added and the break re-run.
 
 ## 9. Not measured, not done

@@ -1,5 +1,5 @@
 {
- "source": "alpibrusl/cancho-www at commit 0579a80, assets/site.css: the `:root` block (light) and its `prefers-color-scheme: dark` override. A vendored fixture: nothing reads the network or that repository.",
+ "source": "alpibrusl/cancho-www at commit 0579a80, assets/site.css: the `:root` block (light) and its `prefers-color-scheme: dark` override. `code_bg` and `code_fg` are the two art colours `--term-bg` and `--term-fg` of the same file, the same in both schemes (the page draws its code boxes dark in the light scheme too). A vendored fixture: nothing reads the network or that repository.",
  "min_ratio": 4.5,
  "tokens": [
   "bg",
@@ -17,7 +17,9 @@
   "warn_bg",
   "warn_line",
   "bad",
-  "bad_bg"
+  "bad_bg",
+  "code_bg",
+  "code_fg"
  ],
  "pairs": [
   [
@@ -71,6 +73,10 @@
   [
    "bad",
    "bg"
+  ],
+  [
+   "code_fg",
+   "code_bg"
   ]
  ],
  "palette": {
@@ -90,7 +96,9 @@
    "warn_bg": "#f9efd9",
    "warn_line": "#d9a441",
    "bad": "#b91c1c",
-   "bad_bg": "#fdeceb"
+   "bad_bg": "#fdeceb",
+   "code_bg": "#12151a",
+   "code_fg": "#d6dde8"
   },
   "dark": {
    "bg": "#0b1016",
@@ -108,7 +116,9 @@
    "warn_bg": "#1c1810",
    "warn_line": "#7e6126",
    "bad": "#ff7a72",
-   "bad_bg": "#2a1413"
+   "bad_bg": "#2a1413",
+   "code_bg": "#12151a",
+   "code_fg": "#d6dde8"
   }
  },
  "cases": [
@@ -290,6 +300,40 @@
    "name": "no light scheme",
    "drop_scheme": "light",
    "code": "theme-scheme-missing"
+  },
+  {
+   "name": "code text on its box in the dark scheme at #2a2a2a",
+   "set": {
+    "dark.code_fg": "#2a2a2a"
+   },
+   "code": "theme-contrast",
+   "expect_fails": [
+    "dark: code_fg on code_bg is 1.27:1"
+   ]
+  },
+  {
+   "name": "a code box as pale as the page, in the light scheme",
+   "set": {
+    "light.code_bg": "#f7f4eb"
+   },
+   "code": "theme-contrast",
+   "expect_fails": [
+    "light: code_fg on code_bg is 1.24:1"
+   ]
+  },
+  {
+   "name": "the code box missing from the light scheme",
+   "drop": [
+    "light.code_bg"
+   ],
+   "code": "theme-scheme-missing"
+  },
+  {
+   "name": "the code text missing from the dark scheme",
+   "drop": [
+    "dark.code_fg"
+   ],
+   "code": "theme-scheme-missing"
   }
  ],
  "ratios": {
@@ -306,7 +350,8 @@
    "good/bg": 4.7514,
    "warn/warn_bg": 5.9443,
    "bad/bad_bg": 5.6611,
-   "bad/bg": 5.883
+   "bad/bg": 5.883,
+   "code_fg/code_bg": 13.3871
   },
   "dark": {
    "fg/bg": 16.122,
@@ -321,7 +366,8 @@
    "good/bg": 9.997,
    "warn/warn_bg": 10.9414,
    "bad/bad_bg": 6.8538,
-   "bad/bg": 7.5266
+   "bad/bg": 7.5266,
+   "code_fg/code_bg": 13.3871
   }
  }
 }
