@@ -165,6 +165,10 @@ pub fn compile_to_ir(file: &Path) -> Result<cancho_ui_ir::ir::IrFile, PipelineEr
 /// resolved first, a file already on the resolution stack is a
 /// cycle (`import-cycle`), and the entry file comes last so the
 /// merged IR's auto-mount stays the entry's own last component.
+/// How long a chain of imports may be (docs/nesting.md section 5): each file imports the next. Resolution is recursive, so an unbounded chain is an
+/// unbounded stack (2,000 files overflowed a 2 MiB thread).
+const MAX_IMPORT_DEPTH: usize = 32;
+
 struct ResolvedFile {
     path: std::path::PathBuf,
     ast: cancho_ui_syntax::ast::File,
@@ -232,6 +236,20 @@ fn resolve_imports(
             msg_span,
             file,
             None,
+        )));
+    }
+    if stack.len() >= MAX_IMPORT_DEPTH {
+        let (span, subject) = match ast.imports.last() {
+            Some(i) => (i.span, format!("{}.{}", i.module, i.component)),
+            None => (ast.span, "file".to_string()),
+        };
+        return Err(PipelineError::refused(import_diag(
+            "import-chain-too-deep",
+            subject,
+            format!("the import chain is more than {MAX_IMPORT_DEPTH} files long; a file that imports a file that imports a file ... is resolved recursively"),
+            span,
+            file,
+            Some("Import from fewer levels of files: a component can import any sibling module directly.".to_string()),
         )));
     }
     stack.push(canon.clone());
@@ -1036,12 +1054,17 @@ fn parse_to_diag(e: ParseError, file: &Path) -> Diagnostic {
             format!("unexpected end of file; expected {}", expected),
             None,
         ),
-        ParseError::TooDeep { max, line, column } => (
+        ParseError::TooDeep {
+            what,
+            max,
+            line,
+            column,
+        } => (
             "parse-nesting-too-deep",
             Severity::Error,
             Tier::Static,
             Subject::Internal,
-            format!("statements are nested more than {max} deep; split the handler into blocks"),
+            format!("{what} are nested more than {max} deep; split them up (docs/nesting.md)"),
             Some(Span::new(
                 cancho_ui_syntax::Position {
                     line: *line,
@@ -1698,6 +1721,7 @@ fn block_remediation(code: &str) -> String {
         "block-duplicate" => "Give each block of a component its own name.".to_string(),
         "block-name-conflict" => "A block, a state field and an event share one namespace in a component: rename the block.".to_string(),
         "block-cycle" => "A block may run other blocks but not itself, directly or through them: break the cycle, or use a state field the handler checks with `if`.".to_string(),
+        "block-expansion-too-deep" => "Blocks that run blocks, and `if`s inside them, may nest 32 deep once the `run`s are replaced: flatten the chain, or have one block do the work.".to_string(),
         "block-expansion-too-large" => "Every `run` is replaced by the block's statements, so blocks that run blocks several times multiply: run each block once where you can.".to_string(),
         _ => "See docs/handler-sequences.md.".to_string(),
     }
