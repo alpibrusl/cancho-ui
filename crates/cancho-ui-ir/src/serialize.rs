@@ -72,6 +72,20 @@ impl Serialize for IrFile {
         if let Some(t) = &self.theme {
             s.serialize_field("theme", &crate::theme::to_json(t))?;
         }
+        if !self.assets.is_empty() {
+            s.serialize_field("assets", &self.assets)?;
+        }
+        s.end()
+    }
+}
+
+impl Serialize for IrAsset {
+    fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut s = ser.serialize_struct("IrAsset", 3)?;
+        s.serialize_field("path", &self.path)?;
+        s.serialize_field("sha256", &self.sha256)?;
+        s.serialize_field("bytes", &self.bytes)?;
         s.end()
     }
 }
@@ -645,6 +659,9 @@ impl Serialize for IrElementKind {
             IrElementKind::InlineCode => {
                 ser.serialize_unit_variant("IrElementKind", 36, "InlineCode")
             }
+            IrElementKind::Image => ser.serialize_unit_variant("IrElementKind", 37, "Image"),
+            IrElementKind::Media => ser.serialize_unit_variant("IrElementKind", 38, "Media"),
+            IrElementKind::Grid => ser.serialize_unit_variant("IrElementKind", 39, "Grid"),
             IrElementKind::Table => ser.serialize_unit_variant("IrElementKind", 5, "Table"),
             IrElementKind::TableRow => ser.serialize_unit_variant("IrElementKind", 6, "TableRow"),
             IrElementKind::Cell => ser.serialize_unit_variant("IrElementKind", 7, "Cell"),

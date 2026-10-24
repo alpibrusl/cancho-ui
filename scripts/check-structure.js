@@ -10,7 +10,11 @@
 //   E. the copy button of a Code: nothing is written to the clipboard until it is tapped, a tap writes the text of the box once and the page never reads it, and with the
 //      clipboard refused or absent the text is selected;
 //   C. a screen that appears (an `If`) hands the focus to its `Heading`, as it does to a `Text { role: heading }`;
-//   D. with a theme, a link of each appearance is drawn at a contrast of at least 4.5:1 in both colour schemes (the oracle's formula).
+//   D. with a theme, a link of each appearance is drawn at a contrast of at least 4.5:1 in both colour schemes (the oracle's formula);
+//   F. Image, Media and Grid (docs/structure.md section 10) in Chromium: the number of columns of a Grid against a formula written here, the
+//      width of the columns of a weighted Grid (the ratio, the width at which it stacks), the space an Image holds before its file arrives, the
+//      crop of a ratio, the accessible name of a picture and of a decorative one, a video's attributes (no autoplay, controls, described by
+//      its caption), no horizontal scroll at 320 px, and no request to any origin but the page's.
 //   node scripts/check-structure.js
 'use strict';
 const fs = require('fs');
@@ -34,6 +38,34 @@ const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms));
 
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'structure-'));
 fs.mkdirSync(path.join(work, 'site'), { recursive: true });
+// the files the corpus names: the first bytes of each format (the compiler reads no more), written beside every program
+function magic(file) {
+  const ext = file.split('.').pop();
+  const head = { png: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], jpg: [0xff, 0xd8, 0xff, 0xe0], gif: [0x47, 0x49, 0x46, 0x38, 0x39, 0x61],
+    webp: [0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50], avif: [0, 0, 0, 0x1c, 0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69, 0x66],
+    mp4: [0, 0, 0, 0x1c, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d], webm: [0x1a, 0x45, 0xdf, 0xa3] }[ext];
+  return Buffer.from([...head, ...new Array(16).fill(0)]);
+}
+for (const f of corpus.assets.ok) {
+  fs.mkdirSync(path.dirname(path.join(work, f)), { recursive: true });
+  fs.writeFileSync(path.join(work, f), magic(f));
+}
+// a PNG that Chromium can decode, written here (zlib is in node; the CRC is the one of the PNG specification)
+function png(w, h, rgb) {
+  const zlib = require('zlib');
+  const crcTable = new Int32Array(256).map((_, n) => { let c = n; for (let k = 0; k < 8; k++) { c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; } return c; });
+  const crc = (b) => { let c = -1; for (const x of b) { c = crcTable[(c ^ x) & 255] ^ (c >>> 8); } return (c ^ -1) >>> 0; };
+  const chunk = (type, data) => { const len = Buffer.alloc(4); len.writeUInt32BE(data.length); const td = Buffer.concat([Buffer.from(type), data]); const c = Buffer.alloc(4); c.writeUInt32BE(crc(td)); return Buffer.concat([len, td, c]); };
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = 2;
+  const row = Buffer.concat([Buffer.from([0]), Buffer.from(new Array(w).fill(rgb).flat())]);
+  const raw = Buffer.concat(new Array(h).fill(row));
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
+}
+fs.writeFileSync(path.join(work, 'assets', 'real.png'), png(64, 48, [200, 80, 40]));
+fs.writeFileSync(path.join(work, 'assets', 'real2.png'), png(80, 60, [40, 80, 200]));
+// a video Chromium can play (VP8, 0.5 s, 64 x 48): tests/fixtures/tiny.webm, made by
+//   ffmpeg -f lavfi -i color=c=0x2060c0:s=64x48:d=0.5:r=10 -c:v libvpx -b:v 30k -an tiny.webm
+fs.copyFileSync(path.join(ROOT, 'tests', 'fixtures', 'tiny.webm'), path.join(work, 'assets', 'tiny.webm'));
 let nextBuild = 0;
 function build(sourceFile, extra = []) {
   const id = `b${nextBuild++}`;
@@ -226,6 +258,137 @@ const SERIALISE = `(function () {
       check(`E: with the clipboard ${name}, the button says "${want}" and the text is selected`, got.label === want && got.selected.includes('cargo build'), JSON.stringify(got));
       await c2.close();
     }
+  }
+
+  // F. Image, Media and Grid
+  {
+    const src = `component C {
+    view {
+        Column {
+            Grid { min: 17 gap: 3 Text { "a" } Text { "b" } Text { "c" } Text { "d" } Text { "e" } }
+            Grid { min: 18 gap: 3 weights: [1, 1.75] Column { Text { "code" } } Column { Text { "text" } } }
+            Grid { min: 10 gap: 3 weights: [1, 2, 4] Column { Text { "a" } } Column { Text { "b" } } Column { Text { "c" } } }
+            Grid { min: 22 gap: 3 Column { Text { "a" } } Column { Text { "b" } } }
+            Image { src: "assets/real.png" alt: "A crop" width: 1024 height: 768 ratio: "16:9" }
+            Image { src: "assets/real2.png" alt: "Blue squares" width: 400 height: 300 }
+            Image { src: "assets/real.png" decorative: true width: 100 height: 100 }
+            Image { src: "assets/real.png" alt: "Hero" width: 100 height: 100 priority: true }
+            Figure {
+                Media { label: "The demo" kind: "video" src: ["assets/v.mp4", "assets/v.webm"] poster: "assets/real.png" ratio: "16:9" caption: "cap" transcript: "tr" }
+                Caption { id: "cap" "One minute of the demo." }
+            }
+            Figure {
+                Media { label: "A playable clip" kind: "video" src: "assets/tiny.webm" caption: "cap2" }
+                Caption { id: "cap2" "Half a second of blue." }
+            }
+            Details { id: "tr" summary: "As text" Rich { "what is said" } }
+        }
+    }
+}
+`;
+    const b = buildText(src);
+    check('F: the page of pictures, video and grids builds', b.code === 0, b.err.slice(0, 200));
+    const ctx = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block' });
+    const page = await ctx.newPage();
+    const origins = new Set();
+    page.on('request', (r) => origins.add(new URL(r.url()).origin));
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(String(e)));
+    // the second picture arrives late: the space it will fill must already be held
+    await page.route('**/real2.png', async (route) => { await sleep(1200); await route.continue(); });
+    await page.goto(`${base}/${b.id}/`, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => document.querySelectorAll('picture').length === 4);
+    const before = await page.evaluate(() => { const p = document.querySelectorAll('picture')[1]; const r = p.getBoundingClientRect(); return { h: r.height, w: r.width, done: p.querySelector('img').complete }; });
+    await page.waitForFunction(() => document.querySelectorAll('picture')[1].querySelector('img').complete, null, { timeout: 10000 });
+    const after = await page.evaluate(() => { const p = document.querySelectorAll('picture')[1]; const r = p.getBoundingClientRect(); return { h: r.height, w: r.width, nat: p.querySelector('img').naturalWidth }; });
+    check('F: an image holds its space before its file arrives (width and height attributes): no layout shift', !before.done && after.nat === 80 && Math.abs(before.h - after.h) <= 1 && before.h > 50, JSON.stringify({ before, after }));
+    check('F: an image is never drawn wider than its file size says', await page.evaluate(() => [...document.querySelectorAll('picture')].every((p) => p.getBoundingClientRect().width <= parseFloat(p.style.maxWidth) + 0.5)));
+    const crop = await page.evaluate(() => { const p = document.querySelectorAll('picture')[0]; const r = p.getBoundingClientRect(); const i = p.querySelector('img').getBoundingClientRect(); return { ratio: r.width / r.height, imgRatio: i.width / i.height, fit: getComputedStyle(p.querySelector('img')).objectFit }; });
+    check('F: ratio: "16:9" crops the picture to 16:9 and the file is covered, not stretched', Math.abs(crop.ratio - 16 / 9) < 0.01 && Math.abs(crop.imgRatio - 16 / 9) < 0.01 && crop.fit === 'cover', JSON.stringify(crop));
+    check('F: priority loads at once; the others are lazy and decode asynchronously', await page.evaluate(() => { const imgs = [...document.querySelectorAll('picture img')]; return imgs[3].loading === 'eager' && imgs[3].getAttribute('fetchpriority') === 'high' && imgs.slice(0, 3).every((i) => i.loading === 'lazy' && i.decoding === 'async'); }));
+    const cdp = await ctx.newCDPSession(page);
+    const ax = (await cdp.send('Accessibility.getFullAXTree')).nodes.filter((n) => !n.ignored);
+    const role = (n) => n.role && n.role.value;
+    const nm = (n) => (n.name && n.name.value) || '';
+    const imgs = ax.filter((n) => role(n) === 'image' || role(n) === 'img');
+    check('F: a picture with alt is an image named by its alt, a decorative one is not in the accessibility tree', imgs.some((n) => nm(n) === 'A crop') && imgs.some((n) => nm(n) === 'Blue squares') && imgs.some((n) => nm(n) === 'Hero') && imgs.length === 3, imgs.map(nm).join(' | '));
+    // the video
+    const vid = await page.evaluate(() => { const v = document.querySelector('video'); return { autoplay: v.autoplay, hasAutoplay: v.hasAttribute('autoplay'), paused: v.paused, controls: v.controls, playsinline: v.hasAttribute('playsinline'), preload: v.preload, describedby: v.getAttribute('aria-describedby'), details: v.getAttribute('aria-details'), sources: [...v.querySelectorAll('source')].map((s) => s.getAttribute('type')), fallback: v.querySelector('a').textContent, poster: v.getAttribute('poster'), ratio: v.getBoundingClientRect().width / v.getBoundingClientRect().height }; });
+    check('F: a video has controls, plays inline, loads only its metadata, and does not play by itself', vid.controls && vid.playsinline && vid.preload === 'metadata' && !vid.autoplay && !vid.hasAutoplay && vid.paused, JSON.stringify(vid));
+    check('F: the video is described by its caption and has the transcript as its details; its sources are typed; its fallback names it', vid.describedby === 'cap' && vid.details === 'tr' && vid.sources.join() === 'video/mp4,video/webm' && vid.fallback === 'The demo' && vid.poster === 'assets/real.png', JSON.stringify(vid));
+    check('F: a video of ratio 16:9 is drawn 16:9', Math.abs(vid.ratio - 16 / 9) < 0.02, String(vid.ratio));
+    // a video that cannot load is named by Chromium "Unable to play media." (measured), so the name is read on the clip that plays
+    await page.waitForFunction(() => { const v = document.querySelectorAll('video')[1]; return v.readyState >= 1; }, null, { timeout: 10000 });
+    await sleep(1000);
+    const ax2 = (await cdp.send('Accessibility.getFullAXTree')).nodes.filter((n) => !n.ignored);
+    const vnodes = ax2.filter((n) => /^video$/i.test(String(role(n))));
+    const playable = vnodes.find((n) => nm(n) === 'A playable clip');
+    check('F: the accessibility tree names a video by its label and gives it the caption as its description', !!playable && playable.description && playable.description.value === 'Half a second of blue.', JSON.stringify(vnodes.map((n) => [nm(n), n.description && n.description.value])));
+    const played = await page.evaluate(() => { const v = document.querySelectorAll('video')[1]; return { paused: v.paused, t: v.currentTime, ready: v.readyState, w: v.videoWidth }; });
+    check('F: a video with its metadata loaded has not started by itself', played.paused && played.t === 0 && played.w === 64, JSON.stringify(played));
+
+    // Grid: columns against a formula written here (the CSS grid algorithm for repeat(auto-fit, minmax(min(100%, M), 1fr)) with five items)
+    function columnsFormula(W, gapPx, minPx, items) {
+      const m = Math.min(W, minPx);
+      const n = Math.max(1, Math.floor((W + gapPx) / (m + gapPx)));
+      return Math.min(n, items);
+    }
+    const widths = [320, 360, 375, 412, 480, 600, 700, 768, 900, 1024, 1280, 1440];
+    let gridOk = true; const gridDetail = [];
+    let weightOk = true; const weightDetail = [];
+    for (const w of widths) {
+      await page.setViewportSize({ width: w, height: 900 });
+      const m = await page.evaluate(() => {
+        const grids = [...document.querySelectorAll('.cui-grid')];
+        const info = (g) => ({ W: g.clientWidth, gap: parseFloat(getComputedStyle(g).columnGap), kids: [...g.children].map((c) => { const r = c.getBoundingClientRect(); return { left: Math.round(r.left), top: Math.round(r.top), w: r.width }; }) });
+        return { a: info(grids[0]), b: info(grids[1]), c: info(grids[2]), e: info(grids[3]), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+      });
+      const cols = new Set(m.a.kids.map((k) => k.left)).size;
+      const want = columnsFormula(m.a.W, m.a.gap, 17 * 16, 5);
+      if (cols !== want) { gridOk = false; gridDetail.push(`${w}: ${cols} columns, formula ${want}`); }
+      // weights [1, 1.75] at min 18: side by side when the line holds 2.75 x 18 rem and the gap
+      const side = m.b.W >= 2.75 * 18 * 16 + m.b.gap;
+      const [k1, k2] = m.b.kids;
+      if (side) {
+        const ok = Math.abs(k2.w - 1.75 * k1.w) <= 1.75 && Math.abs(k1.w + k2.w + m.b.gap - m.b.W) <= 1 && k1.top === k2.top;
+        if (!ok) { weightOk = false; weightDetail.push(`${w}: ${k1.w.toFixed(1)} + ${k2.w.toFixed(1)} in ${m.b.W}`); }
+      } else {
+        const ok = Math.abs(k1.w - m.b.W) <= 1 && Math.abs(k2.w - m.b.W) <= 1 && k2.top > k1.top;
+        if (!ok) { weightOk = false; weightDetail.push(`${w}: stacked expected, ${k1.w.toFixed(1)} and ${k2.w.toFixed(1)} in ${m.b.W}, tops ${k1.top} ${k2.top}`); }
+      }
+      // two items in a Grid of min 22 (the page's .videos): as many columns as fit, never more than there are items, and the row is filled; a column
+      // is never wider than the box, at 320 px too (the minimum is `min(100%, 22rem)`)
+      {
+        const per = columnsFormula(m.e.W, m.e.gap, 22 * 16, 2);
+        const lefts = new Set(m.e.kids.map((k) => k.left)).size;
+        const rowWidth = m.e.kids.slice(0, per).reduce((t, k) => t + k.w, 0) + (per - 1) * m.e.gap;
+        if (lefts !== per || Math.abs(rowWidth - m.e.W) > 1 || m.e.kids.some((k) => k.w > m.e.W + 1)) { gridOk = false; gridDetail.push(`${w}: two items in min 22: ${lefts} columns (formula ${per}), row ${rowWidth.toFixed(1)} of ${m.e.W}`); }
+      }
+      if (m.overflow > 0) { gridOk = false; gridDetail.push(`${w}: scrolls sideways by ${m.overflow}px`); }
+      // three weights [1, 2, 4], min 10: all on a line when it holds 7 x 10 rem plus two gaps: then the widths are 1 : 2 : 4
+      const [c1, c2, c3] = m.c.kids;
+      if (m.c.W >= 7 * 10 * 16 + 2 * m.c.gap) {
+        const ok = Math.abs(c2.w - 2 * c1.w) <= 2 && Math.abs(c3.w - 4 * c1.w) <= 4 && c1.top === c3.top;
+        if (!ok) { weightOk = false; weightDetail.push(`${w}: 1:2:4 expected, ${c1.w.toFixed(1)} ${c2.w.toFixed(1)} ${c3.w.toFixed(1)}`); }
+      }
+    }
+    check(`F: a Grid has the columns the formula says at ${widths.length} widths from 320 to 1440, and the page never scrolls sideways`, gridOk, gridDetail.join('; '));
+    check('F: a Grid with weights is 1 : 1.75 (within 2 px) side by side, and stacked, each the full width, below the width the formula says', weightOk, weightDetail.join('; '));
+    // the breakpoint of the weighted grid, found by looking: the width at which the two columns come to one line
+    let lo = 320, hi = 1440;
+    const sideBySide = async (w) => { await page.setViewportSize({ width: w, height: 900 }); return page.evaluate(() => { const g = document.querySelectorAll('.cui-grid')[1]; const [a, b] = g.children; return a.getBoundingClientRect().top === b.getBoundingClientRect().top; }); };
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (await sideBySide(mid)) { hi = mid; } else { lo = mid; } }
+    const gridW = await page.evaluate(() => document.querySelectorAll('.cui-grid')[1].clientWidth);
+    const wantAt = 2.75 * 18 * 16 + 16 + (hi - gridW); // the viewport at which the grid is as wide as the formula says
+    check('F: the weighted grid changes from stacked to side by side at the width the formula says (within 1 px)', Math.abs(2.75 * 18 * 16 + 16 - gridW) <= 1, JSON.stringify({ viewport: hi, gridWidth: gridW, formula: 2.75 * 18 * 16 + 16, wantAt }));
+    // 320 px: an Image of 1024 px, a 16:9 video, and a Grid hold the page to the width of the screen
+    await page.setViewportSize({ width: 320, height: 900 });
+    check('F: at 320 px nothing is wider than the screen', await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth));
+    // the weights are not pixels of the program: a Grid in a narrow column keeps its rule
+    const foreign = [...origins].filter((o) => o !== base);
+    check('F: the page asked nothing of any origin but its own', foreign.length === 0, foreign.join(' '));
+    check('F: no script error', errors.length === 0, errors.join(' | '));
+    await ctx.close();
   }
 
   await browser.close();

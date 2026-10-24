@@ -1,0 +1,319 @@
+{
+  "checks": [
+    {
+      "name": "cargo test structure",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "structure"
+      ]
+    },
+    {
+      "name": "check-structure.js",
+      "argv": [
+        "node",
+        "scripts/check-structure.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "a priority image is lazy",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": ".attr(\"loading\", if priority { \"eager\" } else { \"lazy\" })",
+      "to": ".attr(\"loading\", \"lazy\")"
+    },
+    {
+      "name": "an image has no width and height attributes",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": ".attr(\"width\", n(\"width\").to_string())",
+      "to": ".attr(\"data-width\", n(\"width\").to_string())"
+    },
+    {
+      "name": "a decorative image is given alt text",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "        String::new()\n    } else {\n        s(\"alt\")",
+      "to": "        \"image\".to_string()\n    } else {\n        s(\"alt\")"
+    },
+    {
+      "name": "an image may be drawn wider than its file",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "pic = pic.attr(\"style\", format!(\"max-width: {}px;\", n(\"width\")));",
+      "to": "pic = pic.attr(\"data-style\", format!(\"max-width: {}px;\", n(\"width\")));"
+    },
+    {
+      "name": "a webp is declared as a png",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "(\"webp\", \"image/webp\"),",
+      "to": "(\"webp\", \"image/png\"),"
+    },
+    {
+      "name": "an image does not decode asynchronously",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": ".attr(\"decoding\", \"async\")",
+      "to": ".attr(\"data-decoding\", \"async\")"
+    },
+    {
+      "name": "a video plays by itself",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": ".attr(\"preload\", \"metadata\");",
+      "to": ".attr(\"preload\", \"metadata\")\n        .attr(\"autoplay\", \"\");"
+    },
+    {
+      "name": "a video loads all of itself",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": ".attr(\"preload\", \"metadata\");",
+      "to": ".attr(\"preload\", \"auto\");"
+    },
+    {
+      "name": "a video does not play inline",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": ".attr(\"playsinline\", \"\")",
+      "to": ".attr(\"data-playsinline\", \"\")"
+    },
+    {
+      "name": "a video has no name",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": ".attr(\"aria-label\", label.clone())",
+      "to": ".attr(\"data-label\", label.clone())"
+    },
+    {
+      "name": "a caption describes by another attribute",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "v = v.attr(\"aria-describedby\", c);",
+      "to": "v = v.attr(\"aria-labelledby\", c);"
+    },
+    {
+      "name": "a transcript is not linked",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "v = v.attr(\"aria-details\", t);",
+      "to": "v = v.attr(\"data-details\", t);"
+    },
+    {
+      "name": "the fallback link goes to the last source",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "sources.first().cloned()",
+      "to": "sources.last().cloned()"
+    },
+    {
+      "name": "a Grid with weights has no class for them",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "weights_of(bindings).is_some())",
+      "to": "weights_of(bindings).is_some() && false)"
+    },
+    {
+      "name": "a Grid minimum is in px",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "format!(\"--cui-min: {min}rem;\")",
+      "to": "format!(\"--cui-min: {min}px;\")"
+    },
+    {
+      "name": "a Grid drops its weights",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "for (i, w) in weights_of(bindings).unwrap_or_default().iter().enumerate() {",
+      "to": "for (i, w) in Vec::<f64>::new().iter().enumerate() {"
+    },
+    {
+      "name": "a gap of a Grid is left to nobody",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "is_media(kind) && keys(kind).contains(&key) && key != \"gap\"",
+      "to": "is_media(kind) && keys(kind).contains(&key)"
+    },
+    {
+      "name": "a picture needs no alt",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "(false, false) => {",
+      "to": "(false, false) if false => {"
+    },
+    {
+      "name": "alt and decorative together are fine",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "(true, true) => {",
+      "to": "(true, true) if false => {"
+    },
+    {
+      "name": "a size is optional",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "if !has(\"width\") || !has(\"height\") {",
+      "to": "if !has(\"width\") && !has(\"height\") && false {"
+    },
+    {
+      "name": "an svg is a picture",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "(\"avif\", \"image/avif\"),",
+      "to": "(\"avif\", \"image/avif\"),\n    (\"svg\", \"image/svg+xml\"),"
+    },
+    {
+      "name": "a path may go up",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "seg.is_empty() || seg == \".\" || seg == \"..\"",
+      "to": "seg.is_empty() || seg == \".\""
+    },
+    {
+      "name": "a path may be absolute or hold empty segments",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": ".any(|seg| seg.is_empty() || seg == \".\" || seg == \"..\")",
+      "to": ".any(|seg| seg == \".\" || seg == \"..\")"
+    },
+    {
+      "name": "an address of another host gets the general message",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "if lower.starts_with(\"http:\") || lower.starts_with(\"https:\") || path.starts_with(\"//\") {",
+      "to": "if false {"
+    },
+    {
+      "name": "any ratio is fine",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "Some(s) if RATIOS.contains(&s) => Ok(true),",
+      "to": "Some(_) => Ok(true),"
+    },
+    {
+      "name": "a video of any kind",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "Some(\"video\") => Ok(true),",
+      "to": "Some(_) => Ok(true),"
+    },
+    {
+      "name": "eight sources",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "pub const SOURCES_MAX: usize = 4;",
+      "to": "pub const SOURCES_MAX: usize = 8;"
+    },
+    {
+      "name": "a source named twice",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "if list[..i].contains(s) {",
+      "to": "if false {"
+    },
+    {
+      "name": "a video with no text alternative",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "if !has(\"caption\") && !has(\"transcript\") {",
+      "to": "if false && !has(\"caption\") && !has(\"transcript\") {"
+    },
+    {
+      "name": "a video with no label",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "if accessibility\n                .label\n                .as_deref()\n                .is_none_or(|l| l.trim().is_empty())\n            {",
+      "to": "if false {"
+    },
+    {
+      "name": "a Grid with any minimum",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "Some(n) if (GRID_MIN.0..=GRID_MIN.1).contains(&n) => Ok(true),",
+      "to": "Some(n) if n > 0 => Ok(true),"
+    },
+    {
+      "name": "a weight of any size",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "(WEIGHT_RANGE.0..=WEIGHT_RANGE.1).contains(x)",
+      "to": "true"
+    },
+    {
+      "name": "weights for the wrong number of children",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "if !direct || children.len() != w.len() {",
+      "to": "if !direct {"
+    },
+    {
+      "name": "a caption may be any element",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "Some((_, k)) if *is_caption && !matches!(k, IrElementKind::Caption) => {",
+      "to": "Some((_, k)) if false && *is_caption && !matches!(k, IrElementKind::Caption) => {"
+    },
+    {
+      "name": "a reference to no element is fine",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": ".extend(crate::media::references(kind, bindings));",
+      "to": ".extend(Vec::<(bool, String, Span)>::new());"
+    },
+    {
+      "name": "a gap on a Grid is refused",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "let grid_gap = matches!(kind, IrElementKind::Grid) && b.key == \"gap\";",
+      "to": "let grid_gap = false && matches!(kind, IrElementKind::Grid) && b.key == \"gap\";"
+    },
+    {
+      "name": "a png is any file",
+      "file": "crates/cancho-ui/src/assets.rs",
+      "from": "\"png\" => b.starts_with(&[0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a]),",
+      "to": "\"png\" => true,"
+    },
+    {
+      "name": "a file of any size",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "pub const ASSET_MAX_BYTES: u64 = 20 * 1024 * 1024;",
+      "to": "pub const ASSET_MAX_BYTES: u64 = 200 * 1024 * 1024;"
+    },
+    {
+      "name": "a link out of the directory is a file of the site",
+      "file": "crates/cancho-ui/src/assets.rs",
+      "from": "(Some(r), Ok(f)) => f.starts_with(r),",
+      "to": "(Some(_), Ok(_)) => true,"
+    },
+    {
+      "name": "a changed file is not a change",
+      "file": "crates/cancho-ui-diff/src/lib.rs",
+      "from": "        .filter(|k| b.get(*k) != c.get(*k))\n        .map(|k| AssetChange {",
+      "to": "        .filter(|k| b.get(*k).is_none() != c.get(*k).is_none())\n        .map(|k| AssetChange {"
+    },
+    {
+      "name": "a video is kept offline",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": ".filter(|(name, _)| !(name.ends_with(\".mp4\") || name.ends_with(\".webm\")))",
+      "to": ".filter(|_| true)"
+    },
+    {
+      "name": "a build copies no files",
+      "file": "crates/cancho-ui/src/main.rs",
+      "from": "let site = match ir.as_ref() {",
+      "to": "let site = match ir.as_ref().filter(|_| false) {"
+    },
+    {
+      "name": "a lowered Image is a Media",
+      "file": "crates/cancho-ui-ir/src/lower.rs",
+      "from": "ElementKind::Image => IrElementKind::Image,",
+      "to": "ElementKind::Image => IrElementKind::Media,"
+    },
+    {
+      "name": "the second weight does not grow",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": ".cui-grid-w > :nth-child(2) { flex: var(--cui-w2) 1",
+      "to": ".cui-grid-w > :nth-child(2) { flex: 1 1"
+    },
+    {
+      "name": "a Grid fills its tracks instead of collapsing the empty ones",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "repeat(auto-fit, minmax(min(100%, var(--cui-min)), 1fr))",
+      "to": "repeat(auto-fill, minmax(min(100%, var(--cui-min)), 1fr))"
+    },
+    {
+      "name": "a Grid column may be wider than the screen",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "minmax(min(100%, var(--cui-min)), 1fr)",
+      "to": "minmax(var(--cui-min), 1fr)"
+    },
+    {
+      "name": "a ratio stretches the picture",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": ".cui-img[data-ratio] img { height: 100%; object-fit: cover; }",
+      "to": ".cui-img[data-ratio] img { height: 100%; object-fit: fill; }"
+    },
+    {
+      "name": "16:9 is 16:10",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "[data-ratio=\"16:9\"] { aspect-ratio: 16 / 9; }",
+      "to": "[data-ratio=\"16:9\"] { aspect-ratio: 16 / 10; }"
+    },
+    {
+      "name": "an image is its file width",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": ".cui-img img { display: block; width: 100%; height: auto; }",
+      "to": ".cui-img img { display: block; height: auto; }"
+    }
+  ]
+}

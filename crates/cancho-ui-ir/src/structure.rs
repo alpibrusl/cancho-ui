@@ -720,6 +720,10 @@ pub fn summary(bindings: &[IrBinding]) -> Option<String> {
 
 struct Walk<'a> {
     ids: Vec<(&'a str, Span)>,
+    /// the kind of the element each id is on
+    id_kinds: Vec<(&'a str, IrElementKind)>,
+    /// a `Media`'s `caption:` (true) and `transcript:` (false): the id, and where it is written
+    media_refs: Vec<(bool, String, Span)>,
     anchors: Vec<(&'a str, Span)>,
     mains: Vec<Span>,
     navs: Vec<(bool, Span)>,
@@ -745,6 +749,7 @@ fn walk<'a>(
                     && let Some(s) = string_of(b)
                 {
                     w.ids.push((s, b.span));
+                    w.id_kinds.push((s, kind.clone()));
                 }
                 if b.key == "to"
                     && matches!(kind, IrElementKind::Link)
@@ -753,6 +758,8 @@ fn walk<'a>(
                     w.anchors.push((frag, b.span));
                 }
             }
+            w.media_refs
+                .extend(crate::media::references(kind, bindings));
             if let Some(p) = parent
                 && is_inline_container(p)
                 && !inline_child_ok(p, kind)
@@ -859,6 +866,8 @@ fn walk<'a>(
 pub fn check_program(ir: &IrFile) -> Result<(), LowerError> {
     let mut w = Walk {
         ids: Vec::new(),
+        id_kinds: Vec::new(),
+        media_refs: Vec::new(),
         anchors: Vec::new(),
         mains: Vec::new(),
         navs: Vec::new(),
@@ -877,6 +886,31 @@ pub fn check_program(ir: &IrFile) -> Result<(), LowerError> {
                 ),
                 *span,
             ));
+        }
+    }
+    for (is_caption, id, span) in &w.media_refs {
+        let key = if *is_caption { "caption" } else { "transcript" };
+        match w.id_kinds.iter().find(|(i, _)| i == id) {
+            None => {
+                return Err(refuse(
+                    "media-reference-invalid",
+                    format!(
+                        "`{key}: \"{id}\"` points at an element with `id: \"{id}\"`, and no element of this program has it"
+                    ),
+                    *span,
+                ));
+            }
+            Some((_, k)) if *is_caption && !matches!(k, IrElementKind::Caption) => {
+                return Err(refuse(
+                    "media-reference-invalid",
+                    format!(
+                        "`caption: \"{id}\"` names {}, and a caption is a `Caption`: write the description in a `Caption {{ id: \"{id}\" .. }}`",
+                        name(k)
+                    ),
+                    *span,
+                ));
+            }
+            _ => {}
         }
     }
     for (frag, span) in &w.anchors {

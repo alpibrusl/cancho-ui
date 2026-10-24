@@ -495,12 +495,19 @@ fn compile_inner(
             Some("Keep the theme in the entry file and delete the other.".to_string()),
         )));
     }
-    let merged = cancho_ui_ir::merge_ir_files(&irs);
+    let mut merged = cancho_ui_ir::merge_ir_files(&irs);
     // the font files a theme declares exist and are the files it names (relative to the entry file's directory)
     if let Some(t) = &merged.theme {
         let dir = file.parent().unwrap_or_else(|| Path::new(""));
         crate::theme::load_fonts(t, dir, file).map_err(PipelineError::Refused)?;
     }
+    // the pictures and videos the views name exist, are the formats they say, and are hashed for `diff` (docs/structure.md section 10)
+    merged.assets = crate::assets::verify(
+        &merged,
+        file.parent().unwrap_or_else(|| Path::new("")),
+        file,
+    )
+    .map_err(PipelineError::Refused)?;
     Ok((merged, file.to_path_buf()))
 }
 
@@ -1759,6 +1766,13 @@ fn control_remediation(code: &str) -> String {
         "submit-event-invalid" => "Name an event of this component that takes no parameters: `submit: Apply` with `on Apply { ... }`.".to_string(),
         "disabled-not-bool" => "Write `disabled: true`, `disabled: false` or `disabled: sending` where `sending` is a `state sending: Bool`.".to_string(),
         c if c.starts_with("theme-") || c.starts_with("font-") => crate::theme::remediation(c),
+        c if c.starts_with("image-")
+            || c.starts_with("media-")
+            || c.starts_with("grid-")
+            || c.starts_with("ratio-") =>
+        {
+            "See docs/structure.md section 10.".to_string()
+        }
         _ => "See docs/controls.md.".to_string(),
     }
 }

@@ -15,6 +15,14 @@ body {
 }
 .cui-col { display: flex; flex-direction: column; gap: 0.5rem; }
 .cui-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+/* Grid (docs/structure.md section 10): as many columns as fit at `min`, equal; with weights, one flex line whose cells grow in proportion and wrap, one under another, when the line cannot hold them */
+.cui-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--cui-min)), 1fr)); gap: 0.5rem; }
+.cui-grid.cui-grid-w { display: flex; flex-wrap: wrap; }
+.cui-grid-w > * { min-width: 0; }
+.cui-grid-w > :nth-child(1) { flex: var(--cui-w1) 1 min(100%, calc(var(--cui-min) * var(--cui-w1))); }
+.cui-grid-w > :nth-child(2) { flex: var(--cui-w2) 1 min(100%, calc(var(--cui-min) * var(--cui-w2))); }
+.cui-grid-w > :nth-child(3) { flex: var(--cui-w3) 1 min(100%, calc(var(--cui-min) * var(--cui-w3))); }
+.cui-grid-w > :nth-child(4) { flex: var(--cui-w4) 1 min(100%, calc(var(--cui-min) * var(--cui-w4))); }
 /* gap: 0..4 on a Row or Column (docs/presentation.md section 2) */
 .cui-gap-0 { gap: 0; } .cui-gap-1 { gap: 0.25rem; } .cui-gap-2 { gap: 0.5rem; } .cui-gap-3 { gap: 1rem; } .cui-gap-4 { gap: 2rem; }
 /* a TextField with a label: the label is shown above the field */
@@ -62,6 +70,13 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 .cui-code code { font: inherit; }
 .cui-code[data-copy] pre { padding-right: 5.5rem; }
 .cui-copy { position: absolute; top: 0.45rem; right: 0.45rem; }
+/* Image and Media (docs/structure.md section 10): never wider than the file or the column; a `ratio` crops to the shape */
+.cui-img { display: block; overflow: hidden; border-radius: 12px; }
+.cui-img img { display: block; width: 100%; height: auto; }
+.cui-img[data-ratio] img { height: 100%; object-fit: cover; }
+.cui-media { display: block; width: 100%; max-width: 100%; height: auto; border-radius: 12px; background: #000; }
+[data-ratio="1:1"] { aspect-ratio: 1 / 1; } [data-ratio="4:3"] { aspect-ratio: 4 / 3; } [data-ratio="3:2"] { aspect-ratio: 3 / 2; }
+[data-ratio="16:9"] { aspect-ratio: 16 / 9; } [data-ratio="21:9"] { aspect-ratio: 21 / 9; } [data-ratio="3:4"] { aspect-ratio: 3 / 4; } [data-ratio="2:3"] { aspect-ratio: 2 / 3; }
 </style>
 </head>
 <body>

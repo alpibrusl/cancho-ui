@@ -30,7 +30,51 @@ fn scratch(name: &str, text: &str) -> PathBuf {
     std::fs::create_dir_all(&dir).expect("a scratch directory");
     let path = dir.join(name);
     std::fs::write(&path, text).expect("a scratch file");
+    write_assets(&dir);
     path
+}
+
+/// The first bytes of a file of each format the corpus names: enough for the compiler to see the format, and no more.
+fn magic(path: &str) -> Vec<u8> {
+    let ext = path.rsplit('.').next().expect("an extension");
+    let mut b: Vec<u8> = match ext {
+        "png" => vec![0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a],
+        "jpg" => vec![0xff, 0xd8, 0xff, 0xe0],
+        "gif" => b"GIF89a".to_vec(),
+        "webp" => b"RIFF\0\0\0\0WEBP".to_vec(),
+        "avif" => b"\0\0\0\x1cftypavif".to_vec(),
+        "mp4" => b"\0\0\0\x1cftypisom".to_vec(),
+        "webm" => vec![0x1a, 0x45, 0xdf, 0xa3],
+        other => panic!("no magic for {other}"),
+    };
+    b.extend_from_slice(&[0; 16]);
+    b
+}
+
+/// The files the corpus names, in a directory: real formats by their first bytes, one over the size bound (a sparse file), one that is not
+/// what its extension says.
+fn write_assets(dir: &Path) {
+    let c = corpus();
+    for kind in ["ok", "big", "fake"] {
+        for f in c["assets"][kind].as_array().expect("assets") {
+            let rel = f.as_str().expect("a path");
+            let path = dir.join(rel);
+            std::fs::create_dir_all(path.parent().expect("a directory")).expect("a directory");
+            let bytes = if kind == "fake" {
+                b"<html>not a png</html>".to_vec()
+            } else {
+                magic(rel)
+            };
+            std::fs::write(&path, bytes).expect("an asset");
+            if kind == "big" {
+                let file = std::fs::OpenOptions::new()
+                    .write(true)
+                    .open(&path)
+                    .expect("open");
+                file.set_len(20 * 1024 * 1024 + 1).expect("a sparse file");
+            }
+        }
+    }
 }
 
 fn p(path: &Path) -> &str {
@@ -130,6 +174,27 @@ fn every_refusal_of_the_corpus_is_refused_by_its_tag() {
         "code-child-invalid",
         "clipboard-not-declared",
         "capability-unused",
+        "image-src-invalid",
+        "image-alt-missing",
+        "image-alt-conflict",
+        "image-size-missing",
+        "image-size-invalid",
+        "image-child-invalid",
+        "image-priority-invalid",
+        "ratio-invalid",
+        "media-kind-invalid",
+        "media-src-invalid",
+        "media-poster-invalid",
+        "media-label-missing",
+        "media-text-alternative-missing",
+        "media-reference-invalid",
+        "media-child-invalid",
+        "grid-min-invalid",
+        "grid-weights-invalid",
+        "layout-value-invalid",
+        "asset-missing",
+        "asset-too-large",
+        "asset-type-mismatch",
     ] {
         assert!(tags.contains(tag), "no case reaches {tag}");
     }
@@ -217,6 +282,7 @@ fn the_nesting_bound_of_32_applies_to_the_new_elements() {
         ("Article { Text { \"x\" } }", 3),
         ("Rich { \"a \" Strong { Em { \"x\" } } }", 4),
         ("Code { \"x\" }", 2),
+        ("Grid { min: 12 Text { \"x\" } }", 3),
     ] {
         assert_eq!(
             codes(&nested(32 - d, inner)),
@@ -293,6 +359,26 @@ fn garbage_is_a_refusal_and_not_a_panic() {
         "Details { Summary { Summary { \"x\" } } }",
         "Heading { level: 9223372036854775807 \"x\" }",
         "Heading { level: -1 \"x\" }",
+        "Image {",
+        "Image { src: }",
+        "Image { src: \"assets/a.webp\" alt: \"unterminated }",
+        "Image { src: \"\\u{0}.webp\" alt: \"x\" width: 1 height: 1 }",
+        "Image { src: \"assets/a.webp\" alt: \"x\" width: 99999999999999999999 height: 1 }",
+        "Image { src: \"assets/a.webp\" alt: \"x\" width: -1 height: 1 }",
+        "Image { src: \"assets/a.webp\" src: \"assets/a.jpg\" alt: \"x\" width: 1 height: 1 }",
+        "Media { src: [ }",
+        "Media { src: [\"a.mp4\", ] }",
+        "Media { src: [1, 2] kind: \"video\" }",
+        "Media { src: [[\"assets/v.mp4\"]] kind: \"video\" }",
+        "Media { caption: \"cap\" caption: \"cap\" }",
+        "Grid { weights: [ }",
+        "Grid { min: 18 weights: [1, 2,] Text { \"a\" } Text { \"b\" } }",
+        "Grid { min: 18 weights: [] Text { \"a\" } }",
+        "Grid { min: 18 weights: [1e999, 1] Text { \"a\" } Text { \"b\" } }",
+        "Grid { min: 18 weights: [-1, 1] Text { \"a\" } Text { \"b\" } }",
+        "Grid { min: 99999999999999999999 Text { \"a\" } }",
+        "Grid { min: 18 min: 19 Text { \"a\" } }",
+        "Grid { min: 18 Grid { min: 18 Grid { min: 18 Text { \"a\" } } } }",
     ] {
         let (code, got) = codes(&program(&c, view));
         assert!(code == 1 || code == 0, "{view}: exit {code}");
@@ -300,4 +386,237 @@ fn garbage_is_a_refusal_and_not_a_panic() {
             assert!(!got.is_empty(), "{view}");
         }
     }
+}
+
+fn site(name: &str, text: &str) -> PathBuf {
+    scratch(name, text)
+}
+
+const PICTURES: &str = "component C {\n    view { Column { Image { src: \"assets/a.webp\" fallback: \"assets/a.jpg\" alt: \"A field\" width: 1024 height: 768 } Figure { Media { label: \"Demo\" kind: \"video\" src: [\"assets/v.mp4\", \"assets/v.webm\"] poster: \"assets/p.jpg\" caption: \"cap\" } Caption { id: \"cap\" \"One minute.\" } } Grid { min: 17 Text { \"a\" } Text { \"b\" } } } }\n}\n";
+
+#[test]
+fn pictures_video_and_grids_ask_for_no_authority() {
+    // a program with the same text and no pictures, and the one with them: the same `requires`, the same effects, and `diff` says unchanged
+    let none = "component C {\n    view { Column { Text { \"a\" } } }\n}\n";
+    let (fa, fb) = (site("a.cui", none), site("b.cui", PICTURES));
+    let (code, out, _) = run(&["inspect", "effects", p(&fb), "C"]);
+    assert_eq!(code, 0, "{out}");
+    let v: Value = serde_json::from_str(&out).expect("JSON");
+    assert_eq!(v["requires"], serde_json::json!([]));
+    assert_eq!(v["reachable_effects"], serde_json::json!([]));
+    let (_, js, _) = run(&["diff", p(&fa), p(&fb), "--output", "json"]);
+    let v: Value = serde_json::from_str(&js).expect("JSON");
+    assert_eq!(v["authority"], "unchanged", "{js}");
+    // and the built module asks the network for nothing: no `fetch`, no address of another host
+    let (code, built, _) = run(&["build", p(&fb)]);
+    assert_eq!(code, 0);
+    assert!(
+        !built.contains("fetch(") && !built.contains("http://") && !built.contains("https://"),
+        "no request in the module"
+    );
+}
+
+#[test]
+fn a_changed_file_is_a_change_of_the_program_and_the_same_bytes_are_not() {
+    let a = site("a.cui", PICTURES);
+    let dir = a.parent().expect("a directory").to_path_buf();
+    // the same program in a second directory with the same files: nothing differs
+    let b = site("b.cui", PICTURES);
+    let (code, out, _) = run(&["diff", p(&a), p(&b)]);
+    assert_eq!(code, 0, "{out}");
+    // a file with other bytes (same format, same size): one changed file, named, with the first twelve digits of each SHA-256
+    let other = b.parent().expect("a directory").join("assets/a.webp");
+    let mut bytes = std::fs::read(&other).expect("read");
+    let last = bytes.len() - 1;
+    bytes[last] = 1;
+    std::fs::write(&other, bytes).expect("write");
+    let (code, human, _) = run(&["diff", p(&a), p(&b)]);
+    assert_eq!(code, 5, "{human}");
+    assert!(human.contains("~ file assets/a.webp: "), "{human}");
+    let (_, js, _) = run(&["diff", p(&a), p(&b), "--output", "json"]);
+    let v: Value = serde_json::from_str(&js).expect("JSON");
+    assert_eq!(v["authority"], "unchanged");
+    assert_eq!(v["change_count"], 1, "{js}");
+    let changed = &v["assets"][0];
+    assert_eq!(changed["path"], "assets/a.webp");
+    assert_eq!(changed["base"].as_str().map(str::len), Some(64));
+    assert_ne!(changed["base"], changed["candidate"]);
+    // a file removed from the program is a removed file
+    let none = scratch_in(
+        &dir,
+        "none.cui",
+        "component C {\n    view { Text { \"a\" } }\n}\n",
+    );
+    let (_, js, _) = run(&["diff", p(&a), p(&none), "--output", "json"]);
+    let v: Value = serde_json::from_str(&js).expect("JSON");
+    let removed: Vec<&str> = v["assets"]
+        .as_array()
+        .expect("assets")
+        .iter()
+        .filter(|c| c["candidate"].is_null())
+        .map(|c| c["path"].as_str().expect("path"))
+        .collect();
+    assert_eq!(
+        removed,
+        vec![
+            "assets/a.jpg",
+            "assets/a.webp",
+            "assets/p.jpg",
+            "assets/v.mp4",
+            "assets/v.webm"
+        ],
+        "{js}"
+    );
+    // two programs with no files have no `assets` key at all
+    let (_, js, _) = run(&["diff", p(&none), p(&none), "--output", "json"]);
+    assert!(!js.contains("\"assets\""), "{js}");
+}
+
+fn scratch_in(dir: &Path, name: &str, text: &str) -> PathBuf {
+    let path = dir.join(name);
+    std::fs::write(&path, text).expect("a file");
+    path
+}
+
+#[test]
+fn a_build_copies_the_files_and_the_offline_cache_keeps_pictures_and_not_video() {
+    let a = site("a.cui", PICTURES);
+    let out = a.parent().expect("a directory").join("out");
+    let (code, _, err) = run(&["build", p(&a), "--page", "-o", p(&out)]);
+    assert_eq!(code, 0, "{err}");
+    for f in [
+        "assets/a.webp",
+        "assets/a.jpg",
+        "assets/p.jpg",
+        "assets/v.mp4",
+        "assets/v.webm",
+    ] {
+        assert!(out.join(f).is_file(), "{f} is copied into the build");
+    }
+    assert!(
+        !out.join("assets/b.png").exists(),
+        "a file no view names is not copied"
+    );
+    // --pwa: the worker precaches the pictures and the poster, not the videos, and the cache version changes when a picture changes
+    let app = a.parent().expect("a directory").join("app");
+    let (code, _, err) = run(&["build", p(&a), "--pwa", "-o", p(&app)]);
+    assert_eq!(code, 0, "{err}");
+    let sw = std::fs::read_to_string(app.join("sw.js")).expect("sw.js");
+    for f in ["./assets/a.webp", "./assets/a.jpg", "./assets/p.jpg"] {
+        assert!(sw.contains(&format!("\"{f}\"")), "{f} is precached");
+    }
+    for f in ["./assets/v.mp4", "./assets/v.webm"] {
+        assert!(!sw.contains(f), "{f} is not precached");
+    }
+    assert!(app.join("assets/v.mp4").is_file(), "but it is in the build");
+    let version = |s: &str| {
+        s.lines()
+            .find(|l| l.contains("const CACHE"))
+            .map(str::to_string)
+    };
+    let before = version(&sw);
+    let webp = a.parent().expect("a directory").join("assets/a.webp");
+    let mut bytes = std::fs::read(&webp).expect("read");
+    let last = bytes.len() - 1;
+    bytes[last] = 7;
+    std::fs::write(&webp, bytes).expect("write");
+    let (code, _, err) = run(&["build", p(&a), "--pwa", "-o", p(&app)]);
+    assert_eq!(code, 0, "{err}");
+    let sw2 = std::fs::read_to_string(app.join("sw.js")).expect("sw.js");
+    assert_ne!(
+        before,
+        version(&sw2),
+        "the cache name moves with the picture"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_link_out_of_the_directory_is_not_a_file_of_the_site() {
+    let a = site(
+        "a.cui",
+        "component C {\n    view { Image { src: \"assets/out.png\" alt: \"x\" width: 1 height: 1 } }\n}\n",
+    );
+    let dir = a.parent().expect("a directory").to_path_buf();
+    // a real PNG elsewhere, linked into the directory of the program
+    let elsewhere =
+        std::env::temp_dir().join(format!("cancho-ui-elsewhere-{}.png", std::process::id()));
+    std::fs::write(&elsewhere, magic("x.png")).expect("a file");
+    std::os::unix::fs::symlink(&elsewhere, dir.join("assets/out.png")).expect("a link");
+    let (code, got) = codes_of(&a);
+    assert_eq!((code, got), (1, vec!["asset-missing".to_string()]));
+    // the same file copied in is fine
+    std::fs::remove_file(dir.join("assets/out.png")).expect("remove");
+    std::fs::copy(&elsewhere, dir.join("assets/out.png")).expect("copy");
+    assert_eq!(codes_of(&a), (0, vec![]));
+    std::fs::remove_file(&elsewhere).expect("remove");
+}
+
+fn codes_of(file: &Path) -> (i32, Vec<String>) {
+    let (code, out, _) = run(&["check", p(file), "--output", "json"]);
+    let diags: Vec<Value> = if out.trim().is_empty() {
+        Vec::new()
+    } else {
+        serde_json::from_str(&out).expect("diagnostics are JSON")
+    };
+    (
+        code,
+        diags
+            .iter()
+            .map(|d| d["code"].as_str().expect("code").to_string())
+            .collect(),
+    )
+}
+
+#[test]
+fn an_image_inside_a_directory_of_files_with_odd_names_is_still_a_refusal_and_not_a_panic() {
+    // a name the compiler does not take is refused before any file is looked at; a directory named like the file is not a file
+    let a = site(
+        "a.cui",
+        "component C {\n    view { Image { src: \"assets/dir.png\" alt: \"x\" width: 1 height: 1 } }\n}\n",
+    );
+    let dir = a.parent().expect("a directory").join("assets/dir.png");
+    std::fs::create_dir_all(&dir).expect("a directory named like a file");
+    assert_eq!(codes_of(&a), (1, vec!["asset-missing".to_string()]));
+    // an empty file is not a png
+    std::fs::remove_dir_all(&dir).expect("remove");
+    std::fs::write(&dir, b"").expect("an empty file");
+    assert_eq!(codes_of(&a), (1, vec!["asset-type-mismatch".to_string()]));
+}
+
+#[test]
+fn a_refusal_of_a_picture_says_what_to_change() {
+    // the message is what a person reads: an address of another host is told that a page makes no request to one, and a missing file is named
+    let remote = site(
+        "r.cui",
+        "component C {\n    view { Image { src: \"https://example.org/a.webp\" alt: \"x\" width: 1 height: 1 } }\n}\n",
+    );
+    let (_, out, _) = run(&["check", p(&remote), "--output", "json"]);
+    let v: Value = serde_json::from_str(&out).expect("JSON");
+    let message = v[0]["message"].as_str().expect("message");
+    assert!(
+        message.contains("makes no request to another host"),
+        "{message}"
+    );
+    assert!(
+        v[0]["remediation"]["description"]
+            .as_str()
+            .is_some_and(|d| d.contains("structure.md")),
+        "{out}"
+    );
+    let missing = site(
+        "m.cui",
+        "component C {\n    view { Image { src: \"assets/nope.webp\" alt: \"x\" width: 1 height: 1 } }\n}\n",
+    );
+    let (_, out, _) = run(&["check", p(&missing), "--output", "json"]);
+    let v: Value = serde_json::from_str(&out).expect("JSON");
+    let message = v[0]["message"].as_str().expect("message");
+    assert!(message.contains("assets/nope.webp"), "{message}");
+    // and a refusal of an asset points at the line of the element that asked for it
+    assert!(
+        v[0]["span"]["start"]["line"]
+            .as_u64()
+            .is_some_and(|l| l == 2),
+        "{out}"
+    );
 }

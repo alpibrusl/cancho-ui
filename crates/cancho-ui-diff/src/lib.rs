@@ -72,6 +72,10 @@ pub struct DiffReport {
     /// `authority` is unaffected. Absent from the JSON when the themes are equal.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub theme: Vec<ThemeChange>,
+    /// The files the views name (`Image`, `Media`; docs/structure.md section 10) that were added, removed or changed (a different SHA-256).
+    /// Absent from the JSON when they are the same files.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub assets: Vec<AssetChange>,
     pub not_compared: Vec<&'static str>,
 }
 
@@ -82,6 +86,34 @@ pub struct ThemeChange {
     pub setting: String,
     pub base: Option<String>,
     pub candidate: Option<String>,
+}
+
+/// One file a view names: `base` and `candidate` are its SHA-256, `None` when the side does not use it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct AssetChange {
+    pub path: String,
+    pub base: Option<String>,
+    pub candidate: Option<String>,
+}
+
+fn diff_assets(base: &IrFile, candidate: &IrFile) -> Vec<AssetChange> {
+    let map = |f: &IrFile| -> BTreeMap<String, String> {
+        f.assets
+            .iter()
+            .map(|a| (a.path.clone(), a.sha256.clone()))
+            .collect()
+    };
+    let (b, c) = (map(base), map(candidate));
+    let mut keys: BTreeSet<&String> = b.keys().collect();
+    keys.extend(c.keys());
+    keys.into_iter()
+        .filter(|k| b.get(*k) != c.get(*k))
+        .map(|k| AssetChange {
+            path: k.clone(),
+            base: b.get(k).cloned(),
+            candidate: c.get(k).cloned(),
+        })
+        .collect()
 }
 
 fn diff_theme(base: &IrFile, candidate: &IrFile) -> Vec<ThemeChange> {
@@ -616,10 +648,12 @@ pub fn diff_ir(
     caps.removed.sort();
 
     let theme = diff_theme(base, candidate);
+    let assets = diff_assets(base, candidate);
     let change_count = components.added.len()
         + components.removed.len()
         + components.changed.iter().map(leaf_count).sum::<usize>()
-        + theme.len();
+        + theme.len()
+        + assets.len();
     DiffReport {
         schema: SCHEMA,
         version: VERSION,
@@ -631,6 +665,7 @@ pub fn diff_ir(
         capabilities: caps,
         components,
         theme,
+        assets,
         not_compared: NOT_COMPARED.to_vec(),
     }
 }

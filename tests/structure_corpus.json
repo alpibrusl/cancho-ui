@@ -92,6 +92,61 @@
    "name": "a code block with a brace and an interpolation",
    "view": "Code { \"\\{\\\"k\\\": \\{n\\}\\} = {n}\" }",
    "html": "<div class=\"cui-col\"><div class=\"cui-code\"><pre tabindex=\"0\"><code>{\"k\": {n}} = 0</code></pre></div></div>"
+  },
+  {
+   "name": "an image with a webp, a jpg to fall back on, and a ratio",
+   "view": "Image { src: \"assets/a.webp\" fallback: \"assets/a.jpg\" alt: \"A field\" width: 1024 height: 768 ratio: \"4:3\" }",
+   "html": "<div class=\"cui-col\"><picture class=\"cui-img\" data-ratio=\"4:3\" style=\"max-width: 1024px;\"><source srcset=\"assets/a.webp\" type=\"image/webp\"></source><img alt=\"A field\" decoding=\"async\" height=\"768\" loading=\"lazy\" src=\"assets/a.jpg\" width=\"1024\"></img></picture></div>"
+  },
+  {
+   "name": "a single png with no ratio is a picture around an img, lazy",
+   "view": "Image { src: \"assets/b.png\" alt: \"A chart\" width: 640 height: 480 }",
+   "html": "<div class=\"cui-col\"><picture class=\"cui-img\" style=\"max-width: 640px;\"><img alt=\"A chart\" decoding=\"async\" height=\"480\" loading=\"lazy\" src=\"assets/b.png\" width=\"640\"></img></picture></div>"
+  },
+  {
+   "name": "a decorative image has an empty alt",
+   "view": "Image { src: \"assets/c.avif\" fallback: \"assets/d.gif\" decorative: true width: 100 height: 50 ratio: \"21:9\" }",
+   "html": "<div class=\"cui-col\"><picture class=\"cui-img\" data-ratio=\"21:9\" style=\"max-width: 100px;\"><source srcset=\"assets/c.avif\" type=\"image/avif\"></source><img alt=\"\" decoding=\"async\" height=\"50\" loading=\"lazy\" src=\"assets/d.gif\" width=\"100\"></img></picture></div>"
+  },
+  {
+   "name": "a priority image loads at once and says so",
+   "view": "Image { src: \"assets/b.png\" alt: \"Hero\" width: 1200 height: 600 priority: true }",
+   "html": "<div class=\"cui-col\"><picture class=\"cui-img\" style=\"max-width: 1200px;\"><img alt=\"Hero\" decoding=\"async\" fetchpriority=\"high\" height=\"600\" loading=\"eager\" src=\"assets/b.png\" width=\"1200\"></img></picture></div>"
+  },
+  {
+   "name": "a priority: false image is lazy as any other",
+   "view": "Image { src: \"assets/b.png\" alt: \"x\" width: 2 height: 1 priority: false }",
+   "html": "<div class=\"cui-col\"><picture class=\"cui-img\" style=\"max-width: 2px;\"><img alt=\"x\" decoding=\"async\" height=\"1\" loading=\"lazy\" src=\"assets/b.png\" width=\"2\"></img></picture></div>"
+  },
+  {
+   "name": "a video with two sources, a poster, a ratio, a caption and a transcript",
+   "view": "Figure { Media { label: \"Demo\" kind: \"video\" src: [\"assets/v.mp4\", \"assets/v.webm\"] poster: \"assets/p.jpg\" ratio: \"16:9\" caption: \"cap\" transcript: \"tr\" } Caption { id: \"cap\" \"One minute.\" } } Details { id: \"tr\" summary: \"As text\" Rich { \"x\" } }",
+   "html": "<div class=\"cui-col\"><figure><video aria-describedby=\"cap\" aria-details=\"tr\" aria-label=\"Demo\" class=\"cui-media\" controls=\"\" data-ratio=\"16:9\" playsinline=\"\" poster=\"assets/p.jpg\" preload=\"metadata\"><source src=\"assets/v.mp4\" type=\"video/mp4\"></source><source src=\"assets/v.webm\" type=\"video/webm\"></source><a href=\"assets/v.mp4\">Demo</a></video><figcaption id=\"cap\">One minute.</figcaption></figure><details id=\"tr\"><summary>As text</summary><p>x</p></details></div>"
+  },
+  {
+   "name": "a video with one source and only a caption",
+   "view": "Figure { Media { label: \"Clip\" kind: \"video\" src: \"assets/w.mp4\" caption: \"c1\" } Caption { id: \"c1\" \"A clip.\" } }",
+   "html": "<div class=\"cui-col\"><figure><video aria-describedby=\"c1\" aria-label=\"Clip\" class=\"cui-media\" controls=\"\" playsinline=\"\" preload=\"metadata\"><source src=\"assets/w.mp4\" type=\"video/mp4\"></source><a href=\"assets/w.mp4\">Clip</a></video><figcaption id=\"c1\">A clip.</figcaption></figure></div>"
+  },
+  {
+   "name": "a video with only a transcript",
+   "view": "Media { label: \"Talk\" kind: \"video\" src: [\"assets/v.webm\"] transcript: \"t1\" } Section { id: \"t1\" Rich { \"what is said\" } }",
+   "html": "<div class=\"cui-col\"><video aria-details=\"t1\" aria-label=\"Talk\" class=\"cui-media\" controls=\"\" playsinline=\"\" preload=\"metadata\"><source src=\"assets/v.webm\" type=\"video/webm\"></source><a href=\"assets/v.webm\">Talk</a></video><section id=\"t1\"><p>what is said</p></section></div>"
+  },
+  {
+   "name": "a grid with a minimum and a gap",
+   "view": "Grid { min: 17 gap: 3 Text { \"a\" } Text { \"b\" } Text { \"c\" } }",
+   "html": "<div class=\"cui-col\"><div class=\"cui-grid cui-gap-3\" style=\"--cui-min: 17rem;\"><span>a</span><span>b</span><span>c</span></div></div>"
+  },
+  {
+   "name": "a grid with weights has the cells of its columns and a class for them",
+   "view": "Grid { min: 18 weights: [1, 1.75] Text { \"code\" } Text { \"text\" } }",
+   "html": "<div class=\"cui-col\"><div class=\"cui-grid cui-grid-w\" style=\"--cui-min: 18rem; --cui-w1: 1; --cui-w2: 1.75;\"><span>code</span><span>text</span></div></div>"
+  },
+  {
+   "name": "a grid of three weights, and a For in a grid with no weights",
+   "view": "Grid { min: 10 weights: [1, 2, 4] Text { \"a\" } Text { \"b\" } Text { \"c\" } } Grid { min: 9 For { over: items as: i Text { i } } }",
+   "html": "<div class=\"cui-col\"><div class=\"cui-grid cui-grid-w\" style=\"--cui-min: 10rem; --cui-w1: 1; --cui-w2: 2; --cui-w3: 4;\"><span>a</span><span>b</span><span>c</span></div><div class=\"cui-grid\" style=\"--cui-min: 9rem;\"><span>a</span></div></div>"
   }
  ],
  "refusals": [
@@ -570,6 +625,380 @@
    "name": "a style that is not one on a Rich",
    "view": "Rich { style: \"huge\" \"x\" }",
    "code": "text-style-invalid"
+  },
+  {
+   "name": "an image with no src",
+   "view": "Image { alt: \"x\" width: 10 height: 10 }",
+   "code": "image-src-invalid"
+  },
+  {
+   "name": "an image from another host",
+   "view": "Image { src: \"https://example.org/a.webp\" alt: \"x\" width: 10 height: 10 }",
+   "code": "image-src-invalid"
+  },
+  {
+   "name": "an image whose path goes up",
+   "view": "Image { src: \"assets/../a.webp\" alt: \"x\" width: 10 height: 10 }",
+   "code": "image-src-invalid"
+  },
+  {
+   "name": "an image whose path is absolute",
+   "view": "Image { src: \"/assets/a.webp\" alt: \"x\" width: 10 height: 10 }",
+   "code": "image-src-invalid"
+  },
+  {
+   "name": "an svg is not an image of this element",
+   "view": "Image { src: \"assets/a.svg\" alt: \"x\" width: 10 height: 10 }",
+   "code": "image-src-invalid"
+  },
+  {
+   "name": "an image whose src is a state field is a parse error: the value is a literal",
+   "view": "Image { src: items alt: \"x\" width: 10 height: 10 }",
+   "code": "parse-unexpected-token"
+  },
+  {
+   "name": "an image whose path has a space",
+   "view": "Image { src: \"assets/a b.webp\" alt: \"x\" width: 10 height: 10 }",
+   "code": "image-src-invalid"
+  },
+  {
+   "name": "a fallback that is the src",
+   "view": "Image { src: \"assets/a.webp\" fallback: \"assets/a.webp\" alt: \"x\" width: 10 height: 10 }",
+   "code": "image-src-invalid"
+  },
+  {
+   "name": "a fallback in the same format",
+   "view": "Image { src: \"assets/a.webp\" fallback: \"assets/b.webp\" alt: \"x\" width: 10 height: 10 }",
+   "code": "image-src-invalid"
+  },
+  {
+   "name": "a fallback that is a video",
+   "view": "Image { src: \"assets/a.webp\" fallback: \"assets/v.mp4\" alt: \"x\" width: 10 height: 10 }",
+   "code": "image-src-invalid"
+  },
+  {
+   "name": "an image with neither alt nor decorative",
+   "view": "Image { src: \"assets/a.webp\" width: 10 height: 10 }",
+   "code": "image-alt-missing"
+  },
+  {
+   "name": "an image with an empty alt",
+   "view": "Image { src: \"assets/a.webp\" alt: \"  \" width: 10 height: 10 }",
+   "code": "image-alt-missing"
+  },
+  {
+   "name": "decorative: false is no alt",
+   "view": "Image { src: \"assets/a.webp\" decorative: false width: 10 height: 10 }",
+   "code": "image-alt-missing"
+  },
+  {
+   "name": "an image with alt and decorative",
+   "view": "Image { src: \"assets/a.webp\" alt: \"x\" decorative: true width: 10 height: 10 }",
+   "code": "image-alt-conflict"
+  },
+  {
+   "name": "an image with no size",
+   "view": "Image { src: \"assets/a.webp\" alt: \"x\" }",
+   "code": "image-size-missing"
+  },
+  {
+   "name": "an image with a width and no height",
+   "view": "Image { src: \"assets/a.webp\" alt: \"x\" width: 10 }",
+   "code": "image-size-missing"
+  },
+  {
+   "name": "an image of width 0",
+   "view": "Image { src: \"assets/a.webp\" alt: \"x\" width: 0 height: 10 }",
+   "code": "image-size-invalid"
+  },
+  {
+   "name": "an image of height 10001",
+   "view": "Image { src: \"assets/a.webp\" alt: \"x\" width: 10 height: 10001 }",
+   "code": "image-size-invalid"
+  },
+  {
+   "name": "an image whose width is a text",
+   "view": "Image { src: \"assets/a.webp\" alt: \"x\" width: \"10\" height: 10 }",
+   "code": "image-size-invalid"
+  },
+  {
+   "name": "an image with a child",
+   "view": "Image { src: \"assets/a.webp\" alt: \"x\" width: 10 height: 10 Text { \"x\" } }",
+   "code": "image-child-invalid"
+  },
+  {
+   "name": "an image with a label",
+   "view": "Image { label: \"x\" src: \"assets/a.webp\" alt: \"x\" width: 10 height: 10 }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "an image with a gap",
+   "view": "Image { src: \"assets/a.webp\" alt: \"x\" width: 10 height: 10 gap: 1 }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "an image with a ratio that is not in the set",
+   "view": "Image { src: \"assets/a.webp\" alt: \"x\" width: 10 height: 10 ratio: \"5:4\" }",
+   "code": "ratio-invalid"
+  },
+  {
+   "name": "an image with a ratio that is a number",
+   "view": "Image { src: \"assets/a.webp\" alt: \"x\" width: 10 height: 10 ratio: 2 }",
+   "code": "ratio-invalid"
+  },
+  {
+   "name": "a priority that is a text",
+   "view": "Image { src: \"assets/a.webp\" alt: \"x\" width: 10 height: 10 priority: \"yes\" }",
+   "code": "image-priority-invalid"
+  },
+  {
+   "name": "a media of kind audio",
+   "view": "Media { label: \"V\" kind: \"audio\" src: \"assets/v.mp4\" caption: \"c1\" } Caption { id: \"c1\" \"x\" }",
+   "code": "media-kind-invalid"
+  },
+  {
+   "name": "a media with no kind",
+   "view": "Media { label: \"V\" src: \"assets/v.mp4\" caption: \"c1\" } Caption { id: \"c1\" \"x\" }",
+   "code": "media-kind-invalid"
+  },
+  {
+   "name": "a media with no src",
+   "view": "Media { label: \"V\" kind: \"video\" caption: \"c1\" } Caption { id: \"c1\" \"x\" }",
+   "code": "media-src-invalid"
+  },
+  {
+   "name": "a media with an ogg",
+   "view": "Media { label: \"V\" kind: \"video\" src: \"assets/v.ogg\" caption: \"c1\" } Caption { id: \"c1\" \"x\" }",
+   "code": "media-src-invalid"
+  },
+  {
+   "name": "a media with five sources",
+   "view": "Media { label: \"V\" kind: \"video\" src: [\"assets/v.mp4\", \"assets/v.webm\", \"assets/w.mp4\", \"assets/x.mp4\", \"assets/y.mp4\"] caption: \"c1\" } Caption { id: \"c1\" \"x\" }",
+   "code": "media-src-invalid"
+  },
+  {
+   "name": "a media with an empty list of sources",
+   "view": "Media { label: \"V\" kind: \"video\" src: [] caption: \"c1\" } Caption { id: \"c1\" \"x\" }",
+   "code": "media-src-invalid"
+  },
+  {
+   "name": "a media naming one file twice",
+   "view": "Media { label: \"V\" kind: \"video\" src: [\"assets/v.mp4\", \"assets/v.mp4\"] caption: \"c1\" } Caption { id: \"c1\" \"x\" }",
+   "code": "media-src-invalid"
+  },
+  {
+   "name": "a media whose src is a state field is a parse error: the value is a literal",
+   "view": "Media { label: \"V\" kind: \"video\" src: items caption: \"c1\" } Caption { id: \"c1\" \"x\" }",
+   "code": "parse-unexpected-token"
+  },
+  {
+   "name": "a media from another host",
+   "view": "Media { label: \"V\" kind: \"video\" src: \"https://example.org/v.mp4\" caption: \"c1\" } Caption { id: \"c1\" \"x\" }",
+   "code": "media-src-invalid"
+  },
+  {
+   "name": "a poster that is a video",
+   "view": "Media { label: \"V\" kind: \"video\" src: \"assets/v.mp4\" poster: \"assets/w.mp4\" caption: \"c1\" } Caption { id: \"c1\" \"x\" }",
+   "code": "media-poster-invalid"
+  },
+  {
+   "name": "a media with no label",
+   "view": "Media { kind: \"video\" src: \"assets/v.mp4\" caption: \"c1\" } Caption { id: \"c1\" \"x\" }",
+   "code": "media-label-missing"
+  },
+  {
+   "name": "a media with no text alternative",
+   "view": "Media { label: \"V\" kind: \"video\" src: \"assets/v.mp4\" }",
+   "code": "media-text-alternative-missing"
+  },
+  {
+   "name": "a caption that no element has",
+   "view": "Media { label: \"V\" kind: \"video\" src: \"assets/v.mp4\" caption: \"nope\" }",
+   "code": "media-reference-invalid"
+  },
+  {
+   "name": "a caption that is not a Caption",
+   "view": "Media { label: \"V\" kind: \"video\" src: \"assets/v.mp4\" caption: \"d1\" } Details { id: \"d1\" summary: \"s\" Text { \"x\" } }",
+   "code": "media-reference-invalid"
+  },
+  {
+   "name": "a transcript that no element has",
+   "view": "Media { label: \"V\" kind: \"video\" src: \"assets/v.mp4\" transcript: \"nope\" }",
+   "code": "media-reference-invalid"
+  },
+  {
+   "name": "a caption that is not an id",
+   "view": "Media { label: \"V\" kind: \"video\" src: \"assets/v.mp4\" caption: 3 }",
+   "code": "media-reference-invalid"
+  },
+  {
+   "name": "a media with a child",
+   "view": "Media { label: \"V\" kind: \"video\" src: \"assets/v.mp4\" caption: \"c1\" Text { \"x\" } } Caption { id: \"c1\" \"x\" }",
+   "code": "media-child-invalid"
+  },
+  {
+   "name": "a media with a ratio that is not in the set",
+   "view": "Media { label: \"V\" kind: \"video\" src: \"assets/v.mp4\" caption: \"c1\" ratio: \"7:5\" } Caption { id: \"c1\" \"x\" }",
+   "code": "ratio-invalid"
+  },
+  {
+   "name": "a media with a gap",
+   "view": "Media { label: \"V\" kind: \"video\" src: \"assets/v.mp4\" caption: \"c1\" gap: 1 } Caption { id: \"c1\" \"x\" }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "a grid with no min",
+   "view": "Grid { Text { \"x\" } }",
+   "code": "grid-min-invalid"
+  },
+  {
+   "name": "a grid with a min of 7",
+   "view": "Grid { min: 7 Text { \"x\" } }",
+   "code": "grid-min-invalid"
+  },
+  {
+   "name": "a grid with a min of 61",
+   "view": "Grid { min: 61 Text { \"x\" } }",
+   "code": "grid-min-invalid"
+  },
+  {
+   "name": "a grid whose min is a text",
+   "view": "Grid { min: \"18\" Text { \"x\" } }",
+   "code": "grid-min-invalid"
+  },
+  {
+   "name": "a grid with one weight",
+   "view": "Grid { min: 18 weights: [1] Text { \"x\" } }",
+   "code": "grid-weights-invalid"
+  },
+  {
+   "name": "a grid with five weights",
+   "view": "Grid { min: 18 weights: [1, 1, 1, 1, 1] Text { \"a\" } Text { \"b\" } Text { \"c\" } Text { \"d\" } Text { \"e\" } }",
+   "code": "grid-weights-invalid"
+  },
+  {
+   "name": "a weight under 1",
+   "view": "Grid { min: 18 weights: [0.5, 1] Text { \"a\" } Text { \"b\" } }",
+   "code": "grid-weights-invalid"
+  },
+  {
+   "name": "a weight over 4",
+   "view": "Grid { min: 18 weights: [1, 5] Text { \"a\" } Text { \"b\" } }",
+   "code": "grid-weights-invalid"
+  },
+  {
+   "name": "a weight of three decimals",
+   "view": "Grid { min: 18 weights: [1, 1.234] Text { \"a\" } Text { \"b\" } }",
+   "code": "grid-weights-invalid"
+  },
+  {
+   "name": "a weight that is a text",
+   "view": "Grid { min: 18 weights: [1, \"2\"] Text { \"a\" } Text { \"b\" } }",
+   "code": "grid-weights-invalid"
+  },
+  {
+   "name": "weights for two columns and three children",
+   "view": "Grid { min: 18 weights: [1, 2] Text { \"a\" } Text { \"b\" } Text { \"c\" } }",
+   "code": "grid-weights-invalid"
+  },
+  {
+   "name": "weights and a For",
+   "view": "Grid { min: 18 weights: [1, 2] For { over: items as: i Text { i } } Text { \"b\" } }",
+   "code": "grid-weights-invalid"
+  },
+  {
+   "name": "a grid with a max_width",
+   "view": "Grid { min: 18 max_width: 40 Text { \"a\" } }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "a grid with a gap of 9",
+   "view": "Grid { min: 18 gap: 9 Text { \"a\" } }",
+   "code": "layout-value-invalid"
+  },
+  {
+   "name": "a grid with a tone",
+   "view": "Grid { min: 18 tone: \"ok\" Text { \"a\" } }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "a grid with a label",
+   "view": "Grid { label: \"x\" min: 18 Text { \"a\" } }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "alt on a column",
+   "view": "Column { alt: \"x\" Text { \"a\" } }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "min on a row",
+   "view": "Row { min: 3 Text { \"a\" } }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "weights on a row",
+   "view": "Row { weights: [1, 2] Text { \"a\" } }",
+   "code": "parse-unexpected-token"
+  },
+  {
+   "name": "src on a link",
+   "view": "Link { to: \"#a\" src: \"assets/a.webp\" \"x\" }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "an image whose file is not there",
+   "program": "component C {\n    view { Image { src: \"assets/nope.webp\" alt: \"x\" width: 10 height: 10 } }\n}\n",
+   "code": "asset-missing"
+  },
+  {
+   "name": "a fallback whose file is not there",
+   "program": "component C {\n    view { Image { src: \"assets/a.webp\" fallback: \"assets/nope.jpg\" alt: \"x\" width: 10 height: 10 } }\n}\n",
+   "code": "asset-missing"
+  },
+  {
+   "name": "a video whose file is not there",
+   "program": "component C {\n    view { Column { Media { label: \"V\" kind: \"video\" src: \"assets/nope.mp4\" transcript: \"t\" } Section { id: \"t\" Rich { \"x\" } } } }\n}\n",
+   "code": "asset-missing"
+  },
+  {
+   "name": "a poster whose file is not there",
+   "program": "component C {\n    view { Column { Media { label: \"V\" kind: \"video\" src: \"assets/v.mp4\" poster: \"assets/nope.jpg\" transcript: \"t\" } Section { id: \"t\" Rich { \"x\" } } } }\n}\n",
+   "code": "asset-missing"
+  },
+  {
+   "name": "a file over 20 MB",
+   "program": "component C {\n    view { Column { Media { label: \"V\" kind: \"video\" src: \"assets/big.mp4\" transcript: \"t\" } Section { id: \"t\" Rich { \"x\" } } } }\n}\n",
+   "code": "asset-too-large"
+  },
+  {
+   "name": "a png that is not one",
+   "program": "component C {\n    view { Image { src: \"assets/fake.png\" alt: \"x\" width: 10 height: 10 } }\n}\n",
+   "code": "asset-type-mismatch"
+  },
+  {
+   "name": "an image whose path has an empty segment",
+   "view": "Image { src: \"assets//a.webp\" alt: \"x\" width: 10 height: 10 }",
+   "code": "image-src-invalid"
   }
- ]
+ ],
+ "assets": {
+  "ok": [
+   "assets/a.webp",
+   "assets/a.jpg",
+   "assets/b.png",
+   "assets/c.avif",
+   "assets/d.gif",
+   "assets/p.jpg",
+   "assets/v.mp4",
+   "assets/v.webm",
+   "assets/w.mp4"
+  ],
+  "big": [
+   "assets/big.mp4"
+  ],
+  "fake": [
+   "assets/fake.png"
+  ]
+ }
 }

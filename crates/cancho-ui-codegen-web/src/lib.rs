@@ -21,6 +21,7 @@ mod expr;
 mod i18n;
 mod lists;
 mod map;
+mod media;
 mod number;
 mod sortlist;
 mod stream;

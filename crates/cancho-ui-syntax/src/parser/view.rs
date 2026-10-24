@@ -292,6 +292,9 @@ impl Parser {
             "Break" => ElementKind::Break,
             "Summary" => ElementKind::Summary,
             "Code" => ElementKind::Code,
+            "Image" => ElementKind::Image,
+            "Media" => ElementKind::Media,
+            "Grid" => ElementKind::Grid,
             other => ElementKind::Named(other.to_string()),
         };
 
@@ -634,6 +637,32 @@ impl Parser {
                         found: other,
                         line: tok.span.start.line,
                         column: tok.span.start.column,
+                    }),
+                }
+            }
+            "src" | "weights"
+                if matches!(
+                    (key, kind),
+                    ("src", ElementKind::Media) | ("weights", ElementKind::Grid)
+                ) =>
+            {
+                // A list literal (`["a.mp4", "a.webm"]`), or for a `Media` a single text; the checks say what each may hold
+                // (docs/structure.md section 10).
+                match self.peek().token.clone() {
+                    Token::LBracket => Ok(BindingValue::Prop(self.parse_list_lit()?)),
+                    Token::StringLit(s) if key == "src" => {
+                        let tok = self.bump();
+                        Ok(BindingValue::String(static_text(s, tok.span)?))
+                    }
+                    other => Err(ParseError::Unexpected {
+                        expected: if key == "src" {
+                            "a text literal or a list literal of text literals"
+                        } else {
+                            "a list literal of numbers"
+                        },
+                        found: other,
+                        line: self.peek().span.start.line,
+                        column: self.peek().span.start.column,
                     }),
                 }
             }

@@ -203,6 +203,7 @@ pub fn lower_file(file: &File) -> Result<IrFile, LowerError> {
         module: file.module.as_ref().map(|m| m.name.clone()),
         components,
         theme,
+        assets: Vec::new(),
     };
     crate::controls::check_controls(&ir)?;
     crate::conditions::check_conditions(&ir)?;
@@ -225,6 +226,7 @@ pub fn merge_ir_files(files: &[IrFile]) -> IrFile {
             module: None,
             components: Vec::new(),
             theme: None,
+            assets: Vec::new(),
         };
     };
     IrFile {
@@ -234,6 +236,7 @@ pub fn merge_ir_files(files: &[IrFile]) -> IrFile {
         components: files.iter().flat_map(|f| f.components.clone()).collect(),
         // one theme per program (the pipeline refuses two): the last file's, which is the entry's when it has one
         theme: files.iter().rev().find_map(|f| f.theme.clone()),
+        assets: Vec::new(),
     }
 }
 
@@ -1193,6 +1196,9 @@ fn lower_kind(k: &ElementKind) -> IrElementKind {
         ElementKind::Break => IrElementKind::Break,
         ElementKind::Summary => IrElementKind::Summary,
         ElementKind::Code => IrElementKind::Code,
+        ElementKind::Image => IrElementKind::Image,
+        ElementKind::Media => IrElementKind::Media,
+        ElementKind::Grid => IrElementKind::Grid,
         ElementKind::Named(s) => IrElementKind::Named(s.clone()),
     }
 }

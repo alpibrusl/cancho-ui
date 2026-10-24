@@ -15,6 +15,17 @@ pub struct IrFile {
     pub components: Vec<IrComponent>,
     /// `theme { .. }` (docs/theme.md): the colours of the two schemes and the fonts, checked.
     pub theme: Option<IrTheme>,
+    /// The files the views ask for (`Image`, `Media`; docs/structure.md section 10), with their size and SHA-256: empty after lowering, filled by the
+    /// pipeline, which is the part that reads files. `diff` reports a changed file.
+    pub assets: Vec<IrAsset>,
+}
+
+/// A file of the site a view names, as the build found it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IrAsset {
+    pub path: String,
+    pub sha256: String,
+    pub bytes: u64,
 }
 
 /// A checked theme: both schemes with all sixteen tokens as `#rrggbb`, the fonts by role.
@@ -608,6 +619,12 @@ pub enum IrElementKind {
     Code,
     /// Inline content and code (docs/structure.md section 7): `InlineCode`, a `<code>` (a `Code` is a box around a `<pre>`; an `InlineCode` is a `Code` inside inline content).
     InlineCode,
+    /// Pictures, video and grids (docs/structure.md section 10): `Image`, a `<picture>` around an `<img>`.
+    Image,
+    /// Pictures, video and grids (docs/structure.md section 10): `Media`, a `<video>`.
+    Media,
+    /// Pictures, video and grids (docs/structure.md section 10): `Grid`, a `<div>` of responsive columns.
+    Grid,
     /// `Table { .. }` (docs/presentation.md section 4) and what lowering makes of its descendants: a `Row` of a table is
     /// a `TableRow`, a `Text` of that row a `Cell` (a `HeaderCell` with `role: columnheader`), and any other element of
     /// it is wrapped in a `Cell`.
@@ -652,6 +669,9 @@ impl IrElementKind {
             IrElementKind::Summary => "summary",
             IrElementKind::Code => "div",
             IrElementKind::InlineCode => "code",
+            IrElementKind::Image => "picture",
+            IrElementKind::Media => "video",
+            IrElementKind::Grid => "div",
             IrElementKind::SortList => "ul",
             IrElementKind::Map => "figure",
             IrElementKind::Table => "table",
@@ -703,6 +723,7 @@ impl IrElementKind {
         match self {
             IrElementKind::Column => Some("cui-col"),
             IrElementKind::Row => Some("cui-row"),
+            IrElementKind::Grid => Some("cui-grid"),
             IrElementKind::Table => Some("cui-table"),
             _ => None,
         }
