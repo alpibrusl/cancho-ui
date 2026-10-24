@@ -163,7 +163,7 @@ component Install {
 
 ## 9. Checked (B2)
 
-* `tests/structure_corpus.json` now has 18 valid views with the DOM each must become (10 added for B2, all equal in Chromium) and 95 refusals (34 added; every tag of this section is reached); 7 new rule tags in
+* `tests/structure_corpus.json` now has 18 valid views with the DOM each must become (10 added for B2, all equal in Chromium) and 95 refusals (33 added; every tag of this section is reached); 7 new rule tags in
   `spec/diagnostics/README.md`.
 * `scripts/check-structure.js` part E: the clipboard behaviour above; part D adds the code box (13.39:1 in both schemes with the site's palette).
 * `scripts/breaks/structure-b2.json`: 20 deliberate breaks, **each caught by a check failing on its own, on the first run** (none `HUNG`, none `BUILD`): a `Rich` as a `div`, a `Strong` as a `b`, a `Break` as an `hr`,
