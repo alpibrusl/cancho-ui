@@ -1,0 +1,43 @@
+{
+  "checks": [
+    {
+      "name": "cargo test value_literal",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "value_literal"
+      ]
+    },
+    {
+      "name": "check-value-literal.js",
+      "argv": [
+        "node",
+        "scripts/check-value-literal.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "the literal is written as it is, unquoted",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "input_value = Some(js_string(s));",
+      "to": "input_value = Some(s.clone());"
+    },
+    {
+      "name": "the literal is quoted and not escaped",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "input_value = Some(js_string(s));",
+      "to": "input_value = Some(format!(\"\\\"{s}\\\"\"));"
+    },
+    {
+      "name": "the literal is dropped",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "input_value = Some(js_string(s));",
+      "to": "input_value = Some(\"\\\"\\\"\".to_string());"
+    }
+  ]
+}
