@@ -1,0 +1,107 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "component": "Near",
+  "note": "A position arrives and the five nearest places are listed with their distance; a refusal leaves no list; a position at the airport reorders it; a position the program cannot read lists nothing. docs/maps.md section 3.1.",
+  "steps": [
+    {
+      "event": "Find",
+      "state": {
+        "status": "locating"
+      },
+      "expect": {
+        "outcome": "suspended",
+        "issued": [
+          {
+            "request": 1,
+            "effect": "location.current",
+            "args": []
+          }
+        ],
+        "pending": [
+          1
+        ]
+      }
+    },
+    {
+      "resolve": 1,
+      "with": {
+        "Ok": "40.41694,-3.70351"
+      },
+      "state": {
+        "status": "done",
+        "pos": "40.41694,-3.70351",
+        "nearest": [
+          "Puerta del Sol, 0 km",
+          "Retiro, 1.6 km",
+          "Atocha, 1.7 km",
+          "Plaza de Castilla, 5.7 km",
+          "Chamartin, 6.4 km"
+        ]
+      }
+    },
+    {
+      "event": "Find",
+      "expect": {
+        "pending": [
+          2
+        ]
+      }
+    },
+    {
+      "resolve": 2,
+      "with": {
+        "Err": "permission denied"
+      },
+      "state": {
+        "status": "error: permission denied",
+        "pos": "",
+        "nearest": []
+      }
+    },
+    {
+      "event": "Find",
+      "expect": {
+        "pending": [
+          3
+        ]
+      }
+    },
+    {
+      "resolve": 3,
+      "with": {
+        "Ok": "40.4983,-3.5676"
+      },
+      "state": {
+        "status": "done",
+        "pos": "40.4983,-3.5676",
+        "nearest": [
+          "Barajas, 0 km",
+          "Chamartin, 10.1 km",
+          "Plaza de Castilla, 10.9 km",
+          "Retiro, 13.5 km",
+          "Atocha, 14.5 km"
+        ]
+      }
+    },
+    {
+      "event": "Find",
+      "expect": {
+        "pending": [
+          4
+        ]
+      }
+    },
+    {
+      "resolve": 4,
+      "with": {
+        "Ok": "not a position"
+      },
+      "state": {
+        "status": "done",
+        "pos": "not a position",
+        "nearest": []
+      }
+    }
+  ]
+}

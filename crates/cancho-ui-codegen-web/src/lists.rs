@@ -142,6 +142,29 @@ function __cui_move(list, from, to) {
 }
 ";
 
+/// `distance(a, b, default)` (docs/maps.md section 3.1): kilometres between two `"lat,lon"` texts, haversine on a 6371.0088 km sphere;
+/// `default` when either is not a position (exactly one comma, each part a JSON number, latitude within 90, longitude within 180).
+const DISTANCE_JS: &str = "\
+function __cui_position(text) {
+    if (typeof text !== 'string') { return null; }
+    const parts = text.split(',');
+    const number = /^-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][+-]?[0-9]+)?$/;
+    if (parts.length !== 2 || !number.test(parts[0]) || !number.test(parts[1])) { return null; }
+    const lat = Number(parts[0]);
+    const lon = Number(parts[1]);
+    return Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? [lat, lon] : null;
+}
+function __cui_distance(a, b, fallback) {
+    const p = __cui_position(a);
+    const q = __cui_position(b);
+    if (p === null || q === null) { return fallback; }
+    const rad = Math.PI / 180;
+    const h = Math.pow(Math.sin((q[0] - p[0]) * rad / 2), 2)
+        + Math.cos(p[0] * rad) * Math.cos(q[0] * rad) * Math.pow(Math.sin((q[1] - p[1]) * rad / 2), 2);
+    return 2 * 6371.0088 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+";
+
 pub fn helpers_used(emitted: &str) -> String {
     let mut out = String::new();
     // A helper shared by two calls (take and skip) is listed once: a module may not declare a function twice.
@@ -156,6 +179,7 @@ pub fn helpers_used(emitted: &str) -> String {
         (&["__cui_take(", "__cui_skip("][..], PAGING_JS),
         (&["__cui_concat("][..], CONCAT_JS),
         (&["__cui_move("][..], MOVE_JS),
+        (&["__cui_distance("][..], DISTANCE_JS),
         (
             &[
                 "__cui_min(",

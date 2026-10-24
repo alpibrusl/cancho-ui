@@ -1,0 +1,53 @@
+// examples/near/near.cui — places near me (docs/maps.md section 3.1): the position comes from `location.current()`, the distance
+// from `distance(a, b, default)` (kilometres between two "lat,lon" texts), and the list is the nearest five, nearest first.
+// `Location("fine")`, not the bare form: a position rounded to 1 km changes which place is first in 92 % of lists of places within
+// 10 km (docs/maps.md section 2). A place whose position cannot be read is not listed (its distance is the default, -1).
+
+component Near {
+    requires Location("fine");
+
+    state status: String = "idle";
+    state pos: String = "";
+    state places: List[String] = [
+        "\{\"name\":\"Puerta del Sol\",\"pos\":\"40.41694,-3.70351\"\}",
+        "\{\"name\":\"Retiro\",\"pos\":\"40.41531,-3.68446\"\}",
+        "\{\"name\":\"Atocha\",\"pos\":\"40.40653,-3.68927\"\}",
+        "\{\"name\":\"Plaza de Castilla\",\"pos\":\"40.46659,-3.68894\"\}",
+        "\{\"name\":\"Chamartin\",\"pos\":\"40.47212,-3.68240\"\}",
+        "\{\"name\":\"Barajas\",\"pos\":\"40.49830,-3.56760\"\}",
+        "\{\"name\":\"Somewhere\",\"pos\":\"unknown\"\}"
+    ];
+    state nearest: List[String] = [];
+    state r: Result[String, String] = Ok("");
+
+    on Find {
+        status = "locating";
+        r = await(location.current());
+        status = match r {
+            Ok(_) => { "done" }
+            Err(why) => { "error: {why}" }
+            Cancelled => { "cancelled" }
+        };
+        pos = match r {
+            Ok(p) => { p }
+            Err(_) => { "" }
+            Cancelled => { "" }
+        };
+        nearest = take(map(sort(filter(places, x => distance(pos, json.get(x, "pos", ""), -1) >= 0), x => distance(pos, json.get(x, "pos", ""), -1)), x => json.get(x, "name", "") + ", " + round(distance(pos, json.get(x, "pos", ""), -1) * 10) / 10 + " km"), 5);
+    }
+
+    view {
+        Column {
+            Button { label: "Find places near me" on: Find }
+            Text {
+                role: status
+                "{status}"
+            }
+            For {
+                over: nearest
+                as: n
+                Text { "{n}" }
+            }
+        }
+    }
+}

@@ -1683,6 +1683,11 @@ const PURE_BUILTINS: &[(&str, usize, &str)] = &[
     ("skip", 2, "exactly two arguments: skip(list, n)"),
     ("concat", 2, "exactly two arguments: concat(a, b)"),
     ("move", 3, "exactly three arguments: move(list, from, to)"),
+    (
+        "distance",
+        3,
+        "exactly three arguments: distance(a, b, default)",
+    ),
     ("min", 2, "exactly two arguments: min(a, b)"),
     ("max", 2, "exactly two arguments: max(a, b)"),
     ("abs", 1, "exactly one argument: abs(n)"),

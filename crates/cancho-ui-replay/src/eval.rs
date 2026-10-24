@@ -749,6 +749,26 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                 span,
             )),
         },
+        ("distance", 3) => {
+            let a = eval(ctx, &args[0])?;
+            let b = eval(ctx, &args[1])?;
+            let default = eval(ctx, &args[2])?;
+            match (&a, &b, &default) {
+                (Value::Str(a), Value::Str(b), Value::Num(d)) => {
+                    Ok(Value::Num(crate::geo::distance_km(a, b, *d)))
+                }
+                _ => Err(fault(
+                    "replay-type-error",
+                    format!(
+                        "`distance` needs two Strings (\"lat,lon\") and a number default, got {}, {} and {}",
+                        describe(&a),
+                        describe(&b),
+                        describe(&default)
+                    ),
+                    span,
+                )),
+            }
+        }
         ("move", 3) => {
             let list = eval(ctx, &args[0])?;
             let from = eval(ctx, &args[1])?;
@@ -952,10 +972,10 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
             | "net.delete" | "location.current" | "sleep" | "storage.get" | "storage.set"
             | "router.go" | "router.replace" | "credential.set" | "credential.clear" | "json.get"
             | "json.items" | "json.quote" | "reverse" | "contains" | "lower" | "fold" | "num"
-            | "take" | "skip" | "concat" | "move" | "min" | "max" | "abs" | "floor" | "ceil"
-            | "round" | "lines" | "split" | "join" | "trim" | "upper" | "starts_with" | "ends_with"
-            | "t" | "fmt.number" | "fmt.percent" | "fmt.date" | "fmt.time" | "locale.current"
-            | "locale.set",
+            | "take" | "skip" | "concat" | "move" | "distance" | "min" | "max" | "abs" | "floor"
+            | "ceil" | "round" | "lines" | "split" | "join" | "trim" | "upper" | "starts_with"
+            | "ends_with" | "t" | "fmt.number" | "fmt.percent" | "fmt.date" | "fmt.time"
+            | "locale.current" | "locale.set",
             n,
         ) => Err(fault(
             "replay-type-error",

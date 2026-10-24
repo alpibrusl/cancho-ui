@@ -1,0 +1,100 @@
+{
+  "checks": [
+    {
+      "name": "cargo test distance",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "distance"
+      ]
+    },
+    {
+      "name": "check-near.js",
+      "argv": [
+        "node",
+        "scripts/check-near.js"
+      ]
+    },
+    {
+      "name": "the example's trace",
+      "argv": [
+        "./target/debug/cancho-ui",
+        "test",
+        "examples/near/near.cui",
+        "examples/near/near.trace.json"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "the page's radius is 6371 km",
+      "file": "crates/cancho-ui-codegen-web/src/lists.rs",
+      "from": "return 2 * 6371.0088 *",
+      "to": "return 2 * 6371 *"
+    },
+    {
+      "name": "replay's radius is 6371 km",
+      "file": "crates/cancho-ui-replay/src/geo.rs",
+      "from": "const EARTH_KM: f64 = 6371.0088;",
+      "to": "const EARTH_KM: f64 = 6371.0;"
+    },
+    {
+      "name": "the page accepts a latitude of 91",
+      "file": "crates/cancho-ui-codegen-web/src/lists.rs",
+      "from": "return Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? [lat, lon] : null;",
+      "to": "return Math.abs(lat) <= 91 && Math.abs(lon) <= 180 ? [lat, lon] : null;"
+    },
+    {
+      "name": "replay accepts any latitude",
+      "file": "crates/cancho-ui-replay/src/geo.rs",
+      "from": "(lat.abs() <= 90.0 && lon.abs() <= 180.0).then_some((lat, lon))",
+      "to": "(lon.abs() <= 180.0).then_some((lat, lon))"
+    },
+    {
+      "name": "replay trims the text",
+      "file": "crates/cancho-ui-replay/src/geo.rs",
+      "from": "let mut parts = text.split(',');",
+      "to": "let mut parts = text.trim().split(',');"
+    },
+    {
+      "name": "the page answers 0, not the default, for a text that is no position",
+      "file": "crates/cancho-ui-codegen-web/src/lists.rs",
+      "from": "if (p === null || q === null) { return fallback; }",
+      "to": "if (p === null || q === null) { return 0; }"
+    },
+    {
+      "name": "the page takes three parts",
+      "file": "crates/cancho-ui-codegen-web/src/lists.rs",
+      "from": "if (parts.length !== 2 ||",
+      "to": "if (parts.length < 2 ||"
+    },
+    {
+      "name": "distance takes two arguments",
+      "file": "crates/cancho-ui-ir/src/lower.rs",
+      "from": "        \"distance\",\n        3,",
+      "to": "        \"distance\",\n        2,"
+    },
+    {
+      "name": "the page does not carry the function",
+      "file": "crates/cancho-ui-codegen-web/src/lists.rs",
+      "from": "        (&[\"__cui_distance(\"][..], DISTANCE_JS),\n",
+      "to": ""
+    },
+    {
+      "name": "the example lists a place it cannot read",
+      "file": "examples/near/near.cui",
+      "from": "filter(places, x => distance(pos, json.get(x, \"pos\", \"\"), -1) >= 0)",
+      "to": "filter(places, x => true)"
+    },
+    {
+      "name": "the example asks for a coarse position",
+      "file": "examples/near/near.cui",
+      "from": "requires Location(\"fine\");\n\n    state status",
+      "to": "requires Location;\n\n    state status"
+    }
+  ]
+}
