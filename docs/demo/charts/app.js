@@ -206,12 +206,10 @@ function __cui_at(root, path) {
 // A heading is a text with `role: heading` or a `Heading` element (docs/structure.md): both take the focus of a new screen.
 const __cui_heading_sel = '[role="heading"], h1, h2, h3, h4';
 function __cui_is_heading(n) { return n.getAttribute('role') === 'heading' || /^H[1-4]$/.test(n.tagName); }
-// The screens that just appeared (the nodes each `If` that became true drew, as [parent, from, to]): the place of the first heading in
-// them, or null when none of them has one (docs/screen-focus.md section 3).
+// The nodes each `If` that became true drew (docs/screen-focus.md section 3): the place of the first heading in them, or null.
 function __cui_appeared(root, drawn) {
     for (const d of drawn) {
-        for (let i = d[1]; i < d[2]; i++) {
-            const n = d[0].childNodes[i];
+        for (const n of d) {
             if (n.nodeType !== 1) { continue; }
             const h = __cui_is_heading(n) ? n : n.querySelector(__cui_heading_sel);
             if (h) { return __cui_path(root, h); }
@@ -236,6 +234,23 @@ function __cui_screen(root, move, routed, seen) {
         const t = h ? h.textContent.trim() : '';
         document.title = t ? (__cui_title0 ? t + ' \u2013 ' + __cui_title0 : t) : __cui_title0;
     }
+}
+
+function __cui_marks_of(root) {
+    const marks = {};
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        const d = n.data;
+        if (d.indexOf('cui:') === 0) { (marks[d.slice(4)] = marks[d.slice(4)] || {}).start = n; }
+        else if (d.indexOf('/cui:') === 0) { (marks[d.slice(5)] = marks[d.slice(5)] || {}).end = n; }
+    }
+    return marks;
+}
+function __cui_fill(marks, id, fragment) {
+    const m = marks[id];
+    if (!m || !m.start || !m.end) { return; }
+    while (m.start.nextSibling && m.start.nextSibling !== m.end) { m.start.parentNode.removeChild(m.start.nextSibling); }
+    m.end.parentNode.insertBefore(fragment, m.end);
 }
 
 // Arithmetic (docs/semantics.md, "Arithmetic"): + - * / never answer Infinity or NaN. A result that is not finite throws, the
@@ -271,6 +286,8 @@ function __cui_round(n) { return Math.round(__cui_num_arg(n)); }
 // Component: Charts (id 0)
 function mount_Charts(root) {
     (function () {
+        if (root.getAttribute('data-cui-skeleton') !== "3d65cbe75d4f3383") { console.error('cancho-ui: this page does not carry the markup this script was built for; it is left as it is'); return; }
+        const __cui_marks = __cui_marks_of(root);
         let __state_readings = [18.5, 19.2, 21, 22.4, 21.8, 20.1];
         let __state_hours = ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00"];
         let __state_count = 6;
@@ -323,45 +340,58 @@ function mount_Charts(root) {
             const __cui_ifs_now = {};
             const __focus = __cui_focus_save(root);
             __cui_status_begin(root);
-            root.textContent = '';
-            const __n0 = document.createElement('div');
-            __n0.setAttribute('class', "cui-col");
-                const __n1 = document.createElement('span');
-                __n1.setAttribute('role', "heading");
-                __n1.appendChild(document.createTextNode("Temperature"));
-                __n0.appendChild(__n1);
-                const __n2 = document.createElement('figure');
-                __n2.classList.add('cui-chart');
-                __cui_chart(__n2, "Temperature over the day", "line", __state_readings, __state_hours, "\u00b0C");
-                __n0.appendChild(__n2);
-                const __n3 = document.createElement('figure');
-                __n3.classList.add('cui-chart');
-                __cui_chart(__n3, "The same readings as bars", "bar", __state_readings, __state_hours, "\u00b0C");
-                __n0.appendChild(__n3);
-                const __n4 = document.createElement('span');
-                __n4.setAttribute('role', "status");
-                __n4.appendChild(document.createTextNode(String(__state_count)));
-                __n4.appendChild(document.createTextNode(" readings"));
-                __n0.appendChild(__cui_status(root, "__n4", __n4));
-                const __n5 = document.createElement('div');
-                __n5.setAttribute('class', "cui-row");
-                    const __n6 = document.createElement('button');
-                    __n6.setAttribute('aria-label', "Add a reading");
-                    __n6.appendChild(document.createTextNode("Add a reading"));
-                    __n5.appendChild(__n6);
-                    __n6.addEventListener('click', __on_Add);
-                    const __n7 = document.createElement('button');
-                    __n7.setAttribute('aria-label', "Double them");
-                    __n7.appendChild(document.createTextNode("Double them"));
-                    __n5.appendChild(__n7);
-                    __n7.addEventListener('click', __on_Double);
-                    const __n8 = document.createElement('button');
-                    __n8.setAttribute('aria-label', "Reset");
-                    __n8.appendChild(document.createTextNode("Reset"));
-                    __n5.appendChild(__n8);
-                    __n8.addEventListener('click', __on_Reset);
-                __n0.appendChild(__n5);
-            root.appendChild(__n0);
+            {
+                const __h = document.createDocumentFragment();
+                const __n0 = document.createElement('figure');
+                __n0.classList.add('cui-chart');
+                __cui_chart(__n0, "Temperature over the day", "line", __state_readings, __state_hours, "\u00b0C");
+                __h.appendChild(__n0);
+                __cui_fill(__cui_marks, 0, __h);
+            }
+            {
+                const __h = document.createDocumentFragment();
+                const __n1 = document.createElement('figure');
+                __n1.classList.add('cui-chart');
+                __cui_chart(__n1, "The same readings as bars", "bar", __state_readings, __state_hours, "\u00b0C");
+                __h.appendChild(__n1);
+                __cui_fill(__cui_marks, 1, __h);
+            }
+            {
+                const __h = document.createDocumentFragment();
+                const __n2 = document.createElement('span');
+                __n2.setAttribute('role', "status");
+                __n2.appendChild(document.createTextNode(String(__state_count)));
+                __n2.appendChild(document.createTextNode(" readings"));
+                __h.appendChild(__cui_status(root, "__n2", __n2));
+                __cui_fill(__cui_marks, 2, __h);
+            }
+            {
+                const __h = document.createDocumentFragment();
+                const __n3 = document.createElement('button');
+                __n3.setAttribute('aria-label', "Add a reading");
+                __n3.appendChild(document.createTextNode("Add a reading"));
+                __h.appendChild(__n3);
+                __n3.addEventListener('click', __on_Add);
+                __cui_fill(__cui_marks, 3, __h);
+            }
+            {
+                const __h = document.createDocumentFragment();
+                const __n4 = document.createElement('button');
+                __n4.setAttribute('aria-label', "Double them");
+                __n4.appendChild(document.createTextNode("Double them"));
+                __h.appendChild(__n4);
+                __n4.addEventListener('click', __on_Double);
+                __cui_fill(__cui_marks, 4, __h);
+            }
+            {
+                const __h = document.createDocumentFragment();
+                const __n5 = document.createElement('button');
+                __n5.setAttribute('aria-label', "Reset");
+                __n5.appendChild(document.createTextNode("Reset"));
+                __h.appendChild(__n5);
+                __n5.addEventListener('click', __on_Reset);
+                __cui_fill(__cui_marks, 5, __h);
+            }
             __cui_status_end(root);
             if (!__cui_focus_restore(root, __focus) && __focus) { __cui_screen(root, true, false, __cui_screen_of); }
         }

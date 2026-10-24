@@ -329,12 +329,10 @@ function __cui_at(root, path) {
 // A heading is a text with `role: heading` or a `Heading` element (docs/structure.md): both take the focus of a new screen.
 const __cui_heading_sel = '[role="heading"], h1, h2, h3, h4';
 function __cui_is_heading(n) { return n.getAttribute('role') === 'heading' || /^H[1-4]$/.test(n.tagName); }
-// The screens that just appeared (the nodes each `If` that became true drew, as [parent, from, to]): the place of the first heading in
-// them, or null when none of them has one (docs/screen-focus.md section 3).
+// The nodes each `If` that became true drew (docs/screen-focus.md section 3): the place of the first heading in them, or null.
 function __cui_appeared(root, drawn) {
     for (const d of drawn) {
-        for (let i = d[1]; i < d[2]; i++) {
-            const n = d[0].childNodes[i];
+        for (const n of d) {
             if (n.nodeType !== 1) { continue; }
             const h = __cui_is_heading(n) ? n : n.querySelector(__cui_heading_sel);
             if (h) { return __cui_path(root, h); }
@@ -359,6 +357,23 @@ function __cui_screen(root, move, routed, seen) {
         const t = h ? h.textContent.trim() : '';
         document.title = t ? (__cui_title0 ? t + ' \u2013 ' + __cui_title0 : t) : __cui_title0;
     }
+}
+
+function __cui_marks_of(root) {
+    const marks = {};
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        const d = n.data;
+        if (d.indexOf('cui:') === 0) { (marks[d.slice(4)] = marks[d.slice(4)] || {}).start = n; }
+        else if (d.indexOf('/cui:') === 0) { (marks[d.slice(5)] = marks[d.slice(5)] || {}).end = n; }
+    }
+    return marks;
+}
+function __cui_fill(marks, id, fragment) {
+    const m = marks[id];
+    if (!m || !m.start || !m.end) { return; }
+    while (m.start.nextSibling && m.start.nextSibling !== m.end) { m.start.parentNode.removeChild(m.start.nextSibling); }
+    m.end.parentNode.insertBefore(fragment, m.end);
 }
 
 // Arithmetic (docs/semantics.md, "Arithmetic"): + - * / never answer Infinity or NaN. A result that is not finite throws, the
@@ -513,6 +528,8 @@ function __cui_json_items(text, path) {
 // Component: OpsConsole (id 0)
 function mount_OpsConsole(root) {
     return (function () {
+        if (root.getAttribute('data-cui-skeleton') !== "b3c59a5c6a816efc") { console.error('cancho-ui: this page does not carry the markup this script was built for; it is left as it is'); return; }
+        const __cui_marks = __cui_marks_of(root);
         let __state_rows = [];
         let __state_shown = [];
         let __state_paged = [];
@@ -693,167 +710,199 @@ function mount_OpsConsole(root) {
             const __cui_ifs_now = {};
             const __focus = __cui_focus_save(root);
             __cui_status_begin(root);
-            root.textContent = '';
-            const __n0 = document.createElement('div');
-            __n0.setAttribute('class', "cui-col");
-            __n0.setAttribute('style', "max-width: 90ch; margin-inline: auto;");
-                const __n1 = document.createElement('span');
-                __n1.setAttribute('role', "heading");
-                __n1.appendChild(document.createTextNode("Machines"));
-                __n0.appendChild(__n1);
-                const __n2 = document.createElement('span');
-                __n2.setAttribute('role', "status");
-                __n2.appendChild(document.createTextNode("status: "));
-                __n2.appendChild(document.createTextNode(String(__state_note)));
-                __n0.appendChild(__cui_status(root, "__n2", __n2));
+            {
+                const __h = document.createDocumentFragment();
+                const __n0 = document.createElement('span');
+                __n0.setAttribute('role', "status");
+                __n0.appendChild(document.createTextNode("status: "));
+                __n0.appendChild(document.createTextNode(String(__state_note)));
+                __h.appendChild(__cui_status(root, "__n0", __n0));
+                __cui_fill(__cui_marks, 0, __h);
+            }
+            {
+                const __h = document.createDocumentFragment();
+                const __n1 = document.createElement('button');
+                __n1.setAttribute('aria-label', "Refresh");
+                __n1.appendChild(document.createTextNode("Refresh"));
+                __h.appendChild(__n1);
+                __n1.addEventListener('click', __on_Refresh);
+                __cui_fill(__cui_marks, 1, __h);
+            }
+            {
+                const __h = document.createDocumentFragment();
+                const __n2 = document.createElement('input');
+                __n2.setAttribute('aria-label', "Search by name");
+                __n2.setAttribute("placeholder", "e.g. press");
+                __n2.setAttribute('type', 'text');
+                __n2.value = __state_q;
+                const __n2_field = document.createElement('label');
+                __n2_field.classList.add('cui-field');
+                __n2_field.appendChild(document.createTextNode("Search by name"));
+                __n2_field.appendChild(__n2);
+                __h.appendChild(__n2_field);
+                __n2.addEventListener('input', function (e) { __on_Query(e.target.value); });
+                __cui_fill(__cui_marks, 2, __h);
+            }
+            {
+                const __h = document.createDocumentFragment();
                 const __n3 = document.createElement('button');
-                __n3.setAttribute('aria-label', "Refresh");
-                __n3.appendChild(document.createTextNode("Refresh"));
-                __n0.appendChild(__n3);
-                __n3.addEventListener('click', __on_Refresh);
-                const __n4 = document.createElement('input');
-                __n4.setAttribute('aria-label', "Search by name");
-                __n4.setAttribute("placeholder", "e.g. press");
-                __n4.setAttribute('type', 'text');
-                __n4.value = __state_q;
-                const __n4_field = document.createElement('label');
-                __n4_field.classList.add('cui-field');
-                __n4_field.appendChild(document.createTextNode("Search by name"));
-                __n4_field.appendChild(__n4);
-                __n0.appendChild(__n4_field);
-                __n4.addEventListener('input', function (e) { __on_Query(e.target.value); });
-                const __n5 = document.createElement('button');
-                __n5.setAttribute('aria-label', "Sort by temperature, other direction");
-                __n5.appendChild(document.createTextNode("Sort by temperature, other direction"));
-                __n0.appendChild(__n5);
-                __n5.addEventListener('click', __on_Flip);
-                const __n6 = document.createElement('span');
-                __n6.appendChild(document.createTextNode(String((__state_shown).length)));
-                __n6.appendChild(document.createTextNode(" of "));
-                __n6.appendChild(document.createTextNode(String((__state_rows).length)));
-                __n6.appendChild(document.createTextNode(" machines, page "));
-                __n6.appendChild(document.createTextNode(String(__cui_add(__state_page, 1))));
-                __n6.appendChild(document.createTextNode(" of "));
-                __n6.appendChild(document.createTextNode(String(__state_pages)));
-                __n0.appendChild(__n6);
-                const __n7 = document.createElement('table');
-                __n7.classList.add('cui-table');
-                __n7.setAttribute('aria-label', "Machines");
-                const __n7_body = document.createElement('tbody');
-                __n7.appendChild(__n7_body);
-                    const __n8 = document.createElement('tr');
+                __n3.setAttribute('aria-label', "Sort by temperature, other direction");
+                __n3.appendChild(document.createTextNode("Sort by temperature, other direction"));
+                __h.appendChild(__n3);
+                __n3.addEventListener('click', __on_Flip);
+                __cui_fill(__cui_marks, 3, __h);
+            }
+            {
+                const __h = document.createDocumentFragment();
+                const __n4 = document.createElement('span');
+                __n4.appendChild(document.createTextNode(String((__state_shown).length)));
+                __n4.appendChild(document.createTextNode(" of "));
+                __n4.appendChild(document.createTextNode(String((__state_rows).length)));
+                __n4.appendChild(document.createTextNode(" machines, page "));
+                __n4.appendChild(document.createTextNode(String(__cui_add(__state_page, 1))));
+                __n4.appendChild(document.createTextNode(" of "));
+                __n4.appendChild(document.createTextNode(String(__state_pages)));
+                __h.appendChild(__n4);
+                __cui_fill(__cui_marks, 4, __h);
+            }
+            {
+                const __h = document.createDocumentFragment();
+                const __n5 = document.createElement('table');
+                __n5.classList.add('cui-table');
+                __n5.setAttribute('aria-label', "Machines");
+                const __n5_body = document.createElement('tbody');
+                __n5.appendChild(__n5_body);
+                    const __n6 = document.createElement('tr');
+                        const __n7 = document.createElement('th');
+                        __n7.setAttribute('role', "columnheader");
+                        __n7.setAttribute('scope', 'col');
+                        __n7.appendChild(document.createTextNode("id"));
+                        __n6.appendChild(__n7);
+                        const __n8 = document.createElement('th');
+                        __n8.setAttribute('role', "columnheader");
+                        __n8.setAttribute('scope', 'col');
+                        __n8.appendChild(document.createTextNode("name"));
+                        __n6.appendChild(__n8);
                         const __n9 = document.createElement('th');
                         __n9.setAttribute('role', "columnheader");
                         __n9.setAttribute('scope', 'col');
-                        __n9.appendChild(document.createTextNode("id"));
-                        __n8.appendChild(__n9);
+                        __n9.appendChild(document.createTextNode("state"));
+                        __n6.appendChild(__n9);
                         const __n10 = document.createElement('th');
                         __n10.setAttribute('role', "columnheader");
                         __n10.setAttribute('scope', 'col');
-                        __n10.appendChild(document.createTextNode("name"));
-                        __n8.appendChild(__n10);
+                        __n10.appendChild(document.createTextNode("temperature (C)"));
+                        __n6.appendChild(__n10);
                         const __n11 = document.createElement('th');
                         __n11.setAttribute('role', "columnheader");
                         __n11.setAttribute('scope', 'col');
-                        __n11.appendChild(document.createTextNode("state"));
-                        __n8.appendChild(__n11);
-                        const __n12 = document.createElement('th');
-                        __n12.setAttribute('role', "columnheader");
-                        __n12.setAttribute('scope', 'col');
-                        __n12.appendChild(document.createTextNode("temperature (C)"));
-                        __n8.appendChild(__n12);
-                        const __n13 = document.createElement('th');
-                        __n13.setAttribute('role', "columnheader");
-                        __n13.setAttribute('scope', 'col');
-                        __n13.appendChild(document.createTextNode("select"));
-                        __n8.appendChild(__n13);
-                    __n7_body.appendChild(__n8);
+                        __n11.appendChild(document.createTextNode("select"));
+                        __n6.appendChild(__n11);
+                    __n5_body.appendChild(__n6);
                     for (const m of __state_paged) {
-                        const __n14 = document.createElement('tr');
+                        const __n12 = document.createElement('tr');
+                            const __n13 = document.createElement('td');
+                            __n13.appendChild(document.createTextNode(String(__cui_json_get(m, "id", "?"))));
+                            __n12.appendChild(__n13);
+                            const __n14 = document.createElement('td');
+                            __n14.appendChild(document.createTextNode(String(__cui_json_get(m, "name", "?"))));
+                            __n12.appendChild(__n14);
                             const __n15 = document.createElement('td');
-                            __n15.appendChild(document.createTextNode(String(__cui_json_get(m, "id", "?"))));
-                            __n14.appendChild(__n15);
+                            __n15.appendChild(document.createTextNode(String(__cui_json_get(m, "state", "?"))));
+                            __n12.appendChild(__n15);
                             const __n16 = document.createElement('td');
-                            __n16.appendChild(document.createTextNode(String(__cui_json_get(m, "name", "?"))));
-                            __n14.appendChild(__n16);
+                            __n16.appendChild(document.createTextNode(String(__cui_json_get(m, "temp", "no reading"))));
+                            __n12.appendChild(__n16);
                             const __n17 = document.createElement('td');
-                            __n17.appendChild(document.createTextNode(String(__cui_json_get(m, "state", "?"))));
-                            __n14.appendChild(__n17);
-                            const __n18 = document.createElement('td');
-                            __n18.appendChild(document.createTextNode(String(__cui_json_get(m, "temp", "no reading"))));
-                            __n14.appendChild(__n18);
-                            const __n19 = document.createElement('td');
-                                const __n20 = document.createElement('button');
-                                const __n20_label = String(__cui_add("Select ", __cui_json_get(m, "id", "?")));
-                                __n20.setAttribute('aria-label', __n20_label);
-                                const __n20_arg0 = __cui_json_get(m, "id", "");
-                                __n20.appendChild(document.createTextNode(__n20_label));
-                                __n19.appendChild(__n20);
-                                __n20.addEventListener('click', function () { __on_Pick(__n20_arg0); });
-                            __n14.appendChild(__n19);
-                        __n7_body.appendChild(__n14);
+                                const __n18 = document.createElement('button');
+                                const __n18_label = String(__cui_add("Select ", __cui_json_get(m, "id", "?")));
+                                __n18.setAttribute('aria-label', __n18_label);
+                                const __n18_arg0 = __cui_json_get(m, "id", "");
+                                __n18.appendChild(document.createTextNode(__n18_label));
+                                __n17.appendChild(__n18);
+                                __n18.addEventListener('click', function () { __on_Pick(__n18_arg0); });
+                            __n12.appendChild(__n17);
+                        __n5_body.appendChild(__n12);
                     }
-                const __n7_scroll = document.createElement('div');
-                __n7_scroll.classList.add('cui-table-scroll');
-                __n7_scroll.setAttribute('tabindex', '0');
-                __n7_scroll.setAttribute('role', 'region');
-                __n7_scroll.setAttribute('aria-label', "Machines");
-                __n7_scroll.appendChild(__n7);
-                __n0.appendChild(__n7_scroll);
-                const __n21 = document.createElement('div');
-                __n21.setAttribute('class', "cui-row");
-                    const __n22 = document.createElement('button');
-                    __n22.setAttribute('aria-label', "Previous page");
-                    __n22.appendChild(document.createTextNode("Previous page"));
-                    __n21.appendChild(__n22);
-                    __n22.addEventListener('click', __on_Prev);
-                    const __n23 = document.createElement('button');
-                    __n23.setAttribute('aria-label', "Next page");
-                    __n23.appendChild(document.createTextNode("Next page"));
-                    __n21.appendChild(__n23);
-                    __n23.addEventListener('click', __on_Next);
-                __n0.appendChild(__n21);
+                const __n5_scroll = document.createElement('div');
+                __n5_scroll.classList.add('cui-table-scroll');
+                __n5_scroll.setAttribute('tabindex', '0');
+                __n5_scroll.setAttribute('role', 'region');
+                __n5_scroll.setAttribute('aria-label', "Machines");
+                __n5_scroll.appendChild(__n5);
+                __h.appendChild(__n5_scroll);
+                __cui_fill(__cui_marks, 5, __h);
+            }
+            {
+                const __h = document.createDocumentFragment();
+                const __n19 = document.createElement('button');
+                __n19.setAttribute('aria-label', "Previous page");
+                __n19.appendChild(document.createTextNode("Previous page"));
+                __h.appendChild(__n19);
+                __n19.addEventListener('click', __on_Prev);
+                __cui_fill(__cui_marks, 6, __h);
+            }
+            {
+                const __h = document.createDocumentFragment();
+                const __n20 = document.createElement('button');
+                __n20.setAttribute('aria-label', "Next page");
+                __n20.appendChild(document.createTextNode("Next page"));
+                __h.appendChild(__n20);
+                __n20.addEventListener('click', __on_Next);
+                __cui_fill(__cui_marks, 7, __h);
+            }
+            {
+                const __h = document.createDocumentFragment();
+                const __n21 = document.createElement('input');
+                __n21.setAttribute('aria-label', "Machine id");
+                __n21.setAttribute("placeholder", "e.g. M-101");
+                __n21.setAttribute('type', 'text');
+                __n21.value = __state_target;
+                const __n21_field = document.createElement('label');
+                __n21_field.classList.add('cui-field');
+                __n21_field.appendChild(document.createTextNode("Machine id"));
+                __n21_field.appendChild(__n21);
+                __h.appendChild(__n21_field);
+                __n21.addEventListener('input', function (e) { __on_SetTarget(e.target.value); });
+                __cui_fill(__cui_marks, 8, __h);
+            }
+            {
+                const __h = document.createDocumentFragment();
+                const __n22 = document.createElement('input');
+                __n22.setAttribute('aria-label', "Setpoint");
+                __n22.setAttribute("placeholder", "degrees C");
+                __n22.setAttribute('type', 'text');
+                __n22.value = __state_setpoint;
+                const __n22_field = document.createElement('label');
+                __n22_field.classList.add('cui-field');
+                __n22_field.appendChild(document.createTextNode("Setpoint"));
+                __n22_field.appendChild(__n22);
+                __h.appendChild(__n22_field);
+                __n22.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing && !e.repeat) { e.preventDefault(); if (!(__submit_blocked.Apply && __submit_blocked.Apply())) { __on_Apply(); } } });
+                __n22.addEventListener('input', function (e) { __on_SetSetpoint(e.target.value); });
+                __cui_fill(__cui_marks, 9, __h);
+            }
+            {
+                const __h = document.createDocumentFragment();
+                const __n23 = document.createElement('button');
+                __n23.setAttribute('aria-label', "Apply");
+                __n23.disabled = !!__state_sending;
+                __n23.appendChild(document.createTextNode("Apply"));
+                __h.appendChild(__n23);
+                __n23.addEventListener('click', __on_Apply);
+                __cui_fill(__cui_marks, 10, __h);
+            }
+            {
+                const __h = document.createDocumentFragment();
                 const __n24 = document.createElement('span');
-                __n24.setAttribute('role', "heading");
-                __n24.appendChild(document.createTextNode("Change a setpoint"));
-                __n0.appendChild(__n24);
-                const __n25 = document.createElement('input');
-                __n25.setAttribute('aria-label', "Machine id");
-                __n25.setAttribute("placeholder", "e.g. M-101");
-                __n25.setAttribute('type', 'text');
-                __n25.value = __state_target;
-                const __n25_field = document.createElement('label');
-                __n25_field.classList.add('cui-field');
-                __n25_field.appendChild(document.createTextNode("Machine id"));
-                __n25_field.appendChild(__n25);
-                __n0.appendChild(__n25_field);
-                __n25.addEventListener('input', function (e) { __on_SetTarget(e.target.value); });
-                const __n26 = document.createElement('input');
-                __n26.setAttribute('aria-label', "Setpoint");
-                __n26.setAttribute("placeholder", "degrees C");
-                __n26.setAttribute('type', 'text');
-                __n26.value = __state_setpoint;
-                const __n26_field = document.createElement('label');
-                __n26_field.classList.add('cui-field');
-                __n26_field.appendChild(document.createTextNode("Setpoint"));
-                __n26_field.appendChild(__n26);
-                __n0.appendChild(__n26_field);
-                __n26.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing && !e.repeat) { e.preventDefault(); if (!(__submit_blocked.Apply && __submit_blocked.Apply())) { __on_Apply(); } } });
-                __n26.addEventListener('input', function (e) { __on_SetSetpoint(e.target.value); });
-                const __n27 = document.createElement('button');
-                __n27.setAttribute('aria-label', "Apply");
-                __n27.disabled = !!__state_sending;
-                __n27.appendChild(document.createTextNode("Apply"));
-                __n0.appendChild(__n27);
-                __n27.addEventListener('click', __on_Apply);
-                const __n28 = document.createElement('span');
-                __n28.setAttribute('role', "status");
-                __n28.setAttribute('data-tone', String(__state_tone));
-                __n28.appendChild(document.createTextNode("result: "));
-                __n28.appendChild(document.createTextNode(String(__state_outcome)));
-                if (!__n28.textContent.trim()) { __n28.removeAttribute('data-tone'); }
-                __n0.appendChild(__cui_status(root, "__n28", __n28));
-            root.appendChild(__n0);
+                __n24.setAttribute('role', "status");
+                __n24.setAttribute('data-tone', String(__state_tone));
+                __n24.appendChild(document.createTextNode("result: "));
+                __n24.appendChild(document.createTextNode(String(__state_outcome)));
+                if (!__n24.textContent.trim()) { __n24.removeAttribute('data-tone'); }
+                __h.appendChild(__cui_status(root, "__n24", __n24));
+                __cui_fill(__cui_marks, 11, __h);
+            }
             __cui_status_end(root);
             if (!__cui_focus_restore(root, __focus) && __focus) { __cui_screen(root, true, false, __cui_screen_of); }
         }

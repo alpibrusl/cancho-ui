@@ -231,7 +231,11 @@ fn root_block(prerender: Option<&Prerender>) -> String {
     const HASH: &str = "<script>var h=decodeURIComponent(location.hash.slice(1)),e=h&&document.getElementById(h);if(e)e.scrollIntoView()</script>\n";
     match prerender {
         Some(p) if p.content => format!(
-            "<div id=\"root\">{}</div>\n{}{}",
+            "<div id=\"root\"{}>{}</div>\n{}{}",
+            // a skeleton says which one it is, and the script built for it checks (docs/prerender.md)
+            p.hash
+                .as_ref()
+                .map_or(String::new(), |h| format!(" data-cui-skeleton=\"{h}\"")),
             p.html,
             if p.ids > 0 { HASH } else { "" },
             if p.holes.is_empty() {

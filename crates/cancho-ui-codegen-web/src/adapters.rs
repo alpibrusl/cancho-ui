@@ -186,12 +186,10 @@ function __cui_at(root, path) {
 // A heading is a text with `role: heading` or a `Heading` element (docs/structure.md): both take the focus of a new screen.
 const __cui_heading_sel = '[role="heading"], h1, h2, h3, h4';
 function __cui_is_heading(n) { return n.getAttribute('role') === 'heading' || /^H[1-4]$/.test(n.tagName); }
-// The screens that just appeared (the nodes each `If` that became true drew, as [parent, from, to]): the place of the first heading in
-// them, or null when none of them has one (docs/screen-focus.md section 3).
+// The nodes each `If` that became true drew (docs/screen-focus.md section 3): the place of the first heading in them, or null.
 function __cui_appeared(root, drawn) {
     for (const d of drawn) {
-        for (let i = d[1]; i < d[2]; i++) {
-            const n = d[0].childNodes[i];
+        for (const n of d) {
             if (n.nodeType !== 1) { continue; }
             const h = __cui_is_heading(n) ? n : n.querySelector(__cui_heading_sel);
             if (h) { return __cui_path(root, h); }
@@ -804,5 +802,25 @@ function __cui_chart(fig, label, kind, values, labels, unit) {
     }
     fig.appendChild(svg);
     const cap3 = document.createElement('figcaption'); cap3.textContent = label; fig.appendChild(cap3);
+}
+"#;
+
+/// Hydration (docs/prerender.md): the markers a skeleton has where each hole goes, and the fill of one. A static node is never in a hole, so it is
+/// never removed: a text selection, an opened `details`, a scrolled `pre` and the focus of a link survive the script and every render after it.
+pub(crate) const HYDRATE_ADAPTER_JS: &str = r#"function __cui_marks_of(root) {
+    const marks = {};
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        const d = n.data;
+        if (d.indexOf('cui:') === 0) { (marks[d.slice(4)] = marks[d.slice(4)] || {}).start = n; }
+        else if (d.indexOf('/cui:') === 0) { (marks[d.slice(5)] = marks[d.slice(5)] || {}).end = n; }
+    }
+    return marks;
+}
+function __cui_fill(marks, id, fragment) {
+    const m = marks[id];
+    if (!m || !m.start || !m.end) { return; }
+    while (m.start.nextSibling && m.start.nextSibling !== m.end) { m.start.parentNode.removeChild(m.start.nextSibling); }
+    m.end.parentNode.insertBefore(fragment, m.end);
 }
 "#;

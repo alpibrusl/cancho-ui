@@ -105,12 +105,10 @@ function __cui_at(root, path) {
 // A heading is a text with `role: heading` or a `Heading` element (docs/structure.md): both take the focus of a new screen.
 const __cui_heading_sel = '[role="heading"], h1, h2, h3, h4';
 function __cui_is_heading(n) { return n.getAttribute('role') === 'heading' || /^H[1-4]$/.test(n.tagName); }
-// The screens that just appeared (the nodes each `If` that became true drew, as [parent, from, to]): the place of the first heading in
-// them, or null when none of them has one (docs/screen-focus.md section 3).
+// The nodes each `If` that became true drew (docs/screen-focus.md section 3): the place of the first heading in them, or null.
 function __cui_appeared(root, drawn) {
     for (const d of drawn) {
-        for (let i = d[1]; i < d[2]; i++) {
-            const n = d[0].childNodes[i];
+        for (const n of d) {
             if (n.nodeType !== 1) { continue; }
             const h = __cui_is_heading(n) ? n : n.querySelector(__cui_heading_sel);
             if (h) { return __cui_path(root, h); }
@@ -137,9 +135,28 @@ function __cui_screen(root, move, routed, seen) {
     }
 }
 
+function __cui_marks_of(root) {
+    const marks = {};
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        const d = n.data;
+        if (d.indexOf('cui:') === 0) { (marks[d.slice(4)] = marks[d.slice(4)] || {}).start = n; }
+        else if (d.indexOf('/cui:') === 0) { (marks[d.slice(5)] = marks[d.slice(5)] || {}).end = n; }
+    }
+    return marks;
+}
+function __cui_fill(marks, id, fragment) {
+    const m = marks[id];
+    if (!m || !m.start || !m.end) { return; }
+    while (m.start.nextSibling && m.start.nextSibling !== m.end) { m.start.parentNode.removeChild(m.start.nextSibling); }
+    m.end.parentNode.insertBefore(fragment, m.end);
+}
+
 // Component: Notes (id 0)
 function mount_Notes(root) {
     (function () {
+        if (root.getAttribute('data-cui-skeleton') !== "d7a52c66e6692a85") { console.error('cancho-ui: this page does not carry the markup this script was built for; it is left as it is'); return; }
+        const __cui_marks = __cui_marks_of(root);
         let __state_draft = "";
         const __cui_storage_ns = "";
         async function __on_Change(value) {
@@ -171,36 +188,45 @@ function mount_Notes(root) {
         function __render() {
             const __cui_ifs_now = {};
             const __focus = __cui_focus_save(root);
-            root.textContent = '';
-            const __n0 = document.createElement('div');
-            __n0.setAttribute('class', "cui-col");
-                const __n1 = document.createElement('input');
-                __n1.setAttribute('aria-label', "Note");
-                __n1.setAttribute('type', 'text');
-                __n1.value = __state_draft;
-                const __n1_field = document.createElement('label');
-                __n1_field.classList.add('cui-field');
-                __n1_field.appendChild(document.createTextNode("Note"));
-                __n1_field.appendChild(__n1);
-                __n0.appendChild(__n1_field);
-                __n1.addEventListener('input', function (e) { __on_Change(e.target.value); });
+            {
+                const __h = document.createDocumentFragment();
+                const __n0 = document.createElement('input');
+                __n0.setAttribute('aria-label', "Note");
+                __n0.setAttribute('type', 'text');
+                __n0.value = __state_draft;
+                const __n0_field = document.createElement('label');
+                __n0_field.classList.add('cui-field');
+                __n0_field.appendChild(document.createTextNode("Note"));
+                __n0_field.appendChild(__n0);
+                __h.appendChild(__n0_field);
+                __n0.addEventListener('input', function (e) { __on_Change(e.target.value); });
+                __cui_fill(__cui_marks, 0, __h);
+            }
+            {
+                const __h = document.createDocumentFragment();
+                const __n1 = document.createElement('button');
+                __n1.setAttribute('aria-label', "Save");
+                __n1.appendChild(document.createTextNode("Save"));
+                __h.appendChild(__n1);
+                __n1.addEventListener('click', __on_Save);
+                __cui_fill(__cui_marks, 1, __h);
+            }
+            {
+                const __h = document.createDocumentFragment();
                 const __n2 = document.createElement('button');
-                __n2.setAttribute('aria-label', "Save");
-                __n2.appendChild(document.createTextNode("Save"));
-                __n0.appendChild(__n2);
-                __n2.addEventListener('click', __on_Save);
-                const __n3 = document.createElement('button');
-                __n3.setAttribute('aria-label', "Restore");
-                __n3.appendChild(document.createTextNode("Restore"));
-                __n0.appendChild(__n3);
-                __n3.addEventListener('click', __on_Restore);
-                const __n4 = document.createElement('span');
-                __n4.appendChild(document.createTextNode("Saved note:"));
-                __n0.appendChild(__n4);
-                const __n5 = document.createElement('span');
-                __n5.appendChild(document.createTextNode(String(__cui_storage_get("note", "nothing yet", __cui_storage_ns))));
-                __n0.appendChild(__n5);
-            root.appendChild(__n0);
+                __n2.setAttribute('aria-label', "Restore");
+                __n2.appendChild(document.createTextNode("Restore"));
+                __h.appendChild(__n2);
+                __n2.addEventListener('click', __on_Restore);
+                __cui_fill(__cui_marks, 2, __h);
+            }
+            {
+                const __h = document.createDocumentFragment();
+                const __n3 = document.createElement('span');
+                __n3.appendChild(document.createTextNode(String(__cui_storage_get("note", "nothing yet", __cui_storage_ns))));
+                __h.appendChild(__n3);
+                __cui_fill(__cui_marks, 3, __h);
+            }
             if (!__cui_focus_restore(root, __focus) && __focus) { __cui_screen(root, true, false, __cui_screen_of); }
         }
         __render();

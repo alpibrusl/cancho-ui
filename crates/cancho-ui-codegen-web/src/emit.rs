@@ -35,11 +35,18 @@ pub struct EmitOptions {
     /// Mount the last component into `#root` when the module is imported (the default). `false` keeps the export and
     /// omits the side effect.
     pub auto_mount: bool,
+    /// The page that hosts the module carries the skeleton of the mounted component (`recipe::hydrating`, docs/prerender.md): the script then builds
+    /// only the holes, and leaves every static node as the page has it. Only `build --page` and `--pwa` set it; a module built for another page
+    /// builds everything.
+    pub hydrate: bool,
 }
 
 impl Default for EmitOptions {
     fn default() -> Self {
-        EmitOptions { auto_mount: true }
+        EmitOptions {
+            auto_mount: true,
+            hydrate: false,
+        }
     }
 }
 
@@ -277,14 +284,27 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
     }
 
     let component_names: Vec<String> = ir.components.iter().map(|c| c.name.clone()).collect();
+    let hydrating = if options.hydrate && options.auto_mount {
+        cancho_ui_ir::recipe::hydrating(ir)
+    } else {
+        None
+    };
+    if hydrating.is_some() {
+        out.push_str(HYDRATE_ADAPTER_JS);
+        out.push('\n');
+    }
     let adapters_end = out.len();
-    for c in &ir.components {
+    for (i, c) in ir.components.iter().enumerate() {
         out.push_str(&emit_component(
             c,
             &component_names,
             &prop_consumers,
             keep_focus,
             any_credential,
+            hydrating
+                .as_ref()
+                .filter(|(idx, _)| *idx == i)
+                .map(|(_, sk)| sk),
         ));
         out.push('\n');
     }
@@ -539,6 +559,7 @@ fn emit_component(
     prop_consumers: &[String],
     keep_focus: bool,
     module_credentials: bool,
+    hydrate: Option<&cancho_ui_ir::recipe::Prerender>,
 ) -> String {
     // the state fields the comparisons of this component are typed by (docs/comparisons.md section 6)
     crate::expr::set_state(&c.state);
@@ -590,6 +611,13 @@ fn emit_component(
         out.push_str("return ");
     }
     out.push_str("(function () {\n");
+    // docs/prerender.md: a page that carries the skeleton this script was built for is hydrated; any other page is left as it is
+    if let Some(sk) = hydrate {
+        out.push_str(&format!(
+            "        if (root.getAttribute('data-cui-skeleton') !== {}) {{ console.error('cancho-ui: this page does not carry the markup this script was built for; it is left as it is'); return; }}\n        const __cui_marks = __cui_marks_of(root);\n",
+            js_string(sk.hash.as_deref().unwrap_or(""))
+        ));
+    }
 
     // docs/i18n.md: the language in use is the component's, chosen at mount from the browser's languages; the page's `lang` and `dir` follow it.
     if c.reachable_effects.iter().any(|e| e.capability == "Locale") {
@@ -827,20 +855,63 @@ fn emit_component(
     if view_has_status(&c.view.body) {
         out.push_str("            __cui_status_begin(root);\n");
     }
-    out.push_str("            root.textContent = '';\n");
     let mut node_id = 0u32;
-    let view_body = emit_view_node(
-        &mut node_id,
-        "            ",
-        &c.view.body,
-        "root",
-        &[],
-        component_names,
-        prop_consumers,
-        has_instances,
-        "\"\"",
-        None,
-    );
+    let view_body = match hydrate {
+        // only the holes are built, each between its markers; no static node is created or touched
+        Some(sk) => {
+            let mut b = String::new();
+            for h in &sk.holes {
+                if h.copy_button {
+                    // the button of a code box the page already has: it goes between the markers after the box's `pre`
+                    b.push_str("            {\n                const __h = document.createDocumentFragment();\n");
+                    b.push_str(&crate::code::copy_button(
+                        "                ",
+                        "__b",
+                        &format!("__cui_marks[{}].start.previousElementSibling", h.id),
+                        "__h",
+                    ));
+                    b.push_str(&format!(
+                        "                __cui_fill(__cui_marks, {}, __h);\n            }}\n",
+                        h.id
+                    ));
+                } else if let Some(node) = cancho_ui_ir::recipe::node_at(&c.view.body, &h.path) {
+                    b.push_str("            {\n                const __h = document.createDocumentFragment();\n");
+                    b.push_str(&emit_view_node(
+                        &mut node_id,
+                        "                ",
+                        node,
+                        "__h",
+                        &[],
+                        component_names,
+                        prop_consumers,
+                        has_instances,
+                        "\"\"",
+                        None,
+                    ));
+                    b.push_str(&format!(
+                        "                __cui_fill(__cui_marks, {}, __h);\n            }}\n",
+                        h.id
+                    ));
+                }
+            }
+            b
+        }
+        None => {
+            out.push_str("            root.textContent = '';\n");
+            emit_view_node(
+                &mut node_id,
+                "            ",
+                &c.view.body,
+                "root",
+                &[],
+                component_names,
+                prop_consumers,
+                has_instances,
+                "\"\"",
+                None,
+            )
+        }
+    };
     out.push_str(&view_body);
     if view_has_status(&c.view.body) {
         out.push_str("            __cui_status_end(root);\n");

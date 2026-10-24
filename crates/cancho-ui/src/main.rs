@@ -159,6 +159,8 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
     for file in &opts.files {
         let emit = cancho_ui_codegen_web::EmitOptions {
             auto_mount: !opts.no_auto_mount,
+            // a page or an app carries the skeleton of what the module mounts, so the module builds only what the skeleton leaves to it
+            hydrate: opts.pwa || opts.page,
         };
         match pipeline::compile_to_js(file, opts.target.as_deref(), &emit) {
             Ok(out) if opts.pwa || opts.page => {
@@ -201,9 +203,14 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
                 let prerender = if opts.no_auto_mount {
                     None
                 } else {
-                    ir.as_ref()
-                        .and_then(|i| i.components.last())
-                        .map(|c| cancho_ui_ir::recipe::prerender(&c.view.body))
+                    match ir.as_ref().and_then(cancho_ui_ir::recipe::hydrating) {
+                        // the page carries the skeleton and the module hydrates it (the same function decided in the module)
+                        Some((_, skeleton)) => Some(skeleton),
+                        None => ir
+                            .as_ref()
+                            .and_then(|i| i.components.last())
+                            .map(|c| cancho_ui_ir::recipe::prerender(&c.view.body)),
+                    }
                 };
                 let files = if opts.pwa {
                     pwa::generate(
@@ -309,6 +316,8 @@ fn run_inspect(args: &[String]) -> Result<ExitCode, CliError> {
                 "component": name,
                 // only the last component of the entry file is mounted into the page
                 "mounted": idx + 1 == ir.components.len(),
+                // whether `build --page` hydrates this page (the script builds only the holes) or builds all of it
+                "hydrates": cancho_ui_ir::recipe::hydrating(&ir).is_some_and(|(i, _)| i == idx),
                 "static_elements": p.static_elements,
                 "content": p.content,
                 "html_bytes": p.html.len(),
