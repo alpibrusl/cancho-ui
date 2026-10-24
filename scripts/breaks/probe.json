@@ -1,0 +1,121 @@
+{
+  "checks": [
+    {
+      "name": "check-probe.js",
+      "argv": [
+        "node",
+        "scripts/check-probe.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "an iPad that reports itself as a Mac is read as a Mac",
+      "file": "docs/probe/probe.js",
+      "from": "/Macintosh/.test(ua) && maxTouchPoints > 1",
+      "to": "/Macintosh/.test(ua) && maxTouchPoints > 99"
+    },
+    {
+      "name": "a zoom is only a scale change above 0.5",
+      "file": "docs/probe/probe.js",
+      "from": "zoomed: d > 0.01",
+      "to": "zoomed: d > 0.5"
+    },
+    {
+      "name": "any scale change at all is a zoom",
+      "file": "docs/probe/probe.js",
+      "from": "zoomed: d > 0.01",
+      "to": "zoomed: d !== 0"
+    },
+    {
+      "name": "a target is small only if both sides are small",
+      "file": "docs/probe/probe.js",
+      "from": "r.width < min || r.height < min",
+      "to": "r.width < min && r.height < min"
+    },
+    {
+      "name": "the target minimum defaults to 40",
+      "file": "docs/probe/probe.js",
+      "from": "min = min || 44;",
+      "to": "min = min || 40;"
+    },
+    {
+      "name": "the ops console is judged against 40, not 44",
+      "file": "docs/probe/probe.js",
+      "from": "var v = targetVerdict(t.rects, 44);",
+      "to": "var v = targetVerdict(t.rects, 40);"
+    },
+    {
+      "name": "installed needs both display-mode and navigator.standalone",
+      "file": "docs/probe/probe.js",
+      "from": "var standalone = !!(f.display && (f.display.standalone || f.display.navigatorStandalone));",
+      "to": "var standalone = !!(f.display && (f.display.standalone && f.display.navigatorStandalone));"
+    },
+    {
+      "name": "running installed is read the wrong way round",
+      "file": "docs/probe/probe.js",
+      "from": "row(standalone ? STATUS.yes : STATUS.no, standalone",
+      "to": "row(standalone ? STATUS.no : STATUS.yes, standalone"
+    },
+    {
+      "name": "offline start is proven on the first visit",
+      "file": "docs/probe/probe.js",
+      "from": "h.visit > 1 && h.onLine === false",
+      "to": "h.onLine === false"
+    },
+    {
+      "name": "offline start is proven with the network on",
+      "file": "docs/probe/probe.js",
+      "from": "h.visit > 1 && h.onLine === false && h.controller === true",
+      "to": "h.visit > 1 && h.controller === true"
+    },
+    {
+      "name": "offline start is proven without the worker in control",
+      "file": "docs/probe/probe.js",
+      "from": "h.onLine === false && h.controller === true",
+      "to": "h.onLine === false"
+    },
+    {
+      "name": "the manual steps are dropped from the report",
+      "file": "docs/probe/probe.js",
+      "from": "manualSteps: MANUAL,",
+      "to": "manualSteps: [],"
+    },
+    {
+      "name": "a beacon is sent",
+      "file": "docs/probe/probe.js",
+      "from": "    var STATUS = { yes: 'yes', no: 'no', unsupported: 'unsupported', tap: 'needs a tap', manual: 'manual step', unknown: 'not measured' };",
+      "to": "    var STATUS = { yes: 'yes', no: 'no', unsupported: 'unsupported', tap: 'needs a tap', manual: 'manual step', unknown: 'not measured' };\n    try { navigator.sendBeacon('https://example.test/', 'x'); } catch (e) { /* none */ }"
+    },
+    {
+      "name": "a second fetch, to another host",
+      "file": "docs/probe/probe.js",
+      "from": "    var STATUS = { yes: 'yes', no: 'no', unsupported: 'unsupported', tap: 'needs a tap', manual: 'manual step', unknown: 'not measured' };",
+      "to": "    var STATUS = { yes: 'yes', no: 'no', unsupported: 'unsupported', tap: 'needs a tap', manual: 'manual step', unknown: 'not measured' };\n    try { fetch('https://example.test/x'); } catch (e) { /* none */ }"
+    },
+    {
+      "name": "notification permission is asked at load",
+      "file": "docs/probe/probe.js",
+      "from": "    var STATUS = { yes: 'yes', no: 'no', unsupported: 'unsupported', tap: 'needs a tap', manual: 'manual step', unknown: 'not measured' };",
+      "to": "    var STATUS = { yes: 'yes', no: 'no', unsupported: 'unsupported', tap: 'needs a tap', manual: 'manual step', unknown: 'not measured' };\n    try { Notification.requestPermission(); } catch (e) { /* none */ }"
+    },
+    {
+      "name": "persistent storage is asked at load",
+      "file": "docs/probe/probe.js",
+      "from": "    var STATUS = { yes: 'yes', no: 'no', unsupported: 'unsupported', tap: 'needs a tap', manual: 'manual step', unknown: 'not measured' };",
+      "to": "    var STATUS = { yes: 'yes', no: 'no', unsupported: 'unsupported', tap: 'needs a tap', manual: 'manual step', unknown: 'not measured' };\n    try { navigator.storage.persist(); } catch (e) { /* none */ }"
+    },
+    {
+      "name": "the worker answers cross-origin GETs too",
+      "file": "docs/probe/sw.js",
+      "from": "|| new URL(request.url).origin !== self.location.origin",
+      "to": "|| false"
+    },
+    {
+      "name": "the page's own script is left out of the precache",
+      "file": "docs/probe/sw.js",
+      "from": "'./index.html', './probe.js', ",
+      "to": "'./index.html', "
+    }
+  ]
+}
