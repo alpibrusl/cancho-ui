@@ -64,11 +64,14 @@ impl From<cancho_ui_syntax::span::Position> for IrPosition {
 impl Serialize for IrFile {
     fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
-        let mut s = ser.serialize_struct("IrFile", 4)?;
+        let mut s = ser.serialize_struct("IrFile", 5)?;
         s.serialize_field("schema", &self.schema)?;
         s.serialize_field("version", &self.version)?;
         s.serialize_field("module", &self.module)?;
         s.serialize_field("components", &self.components)?;
+        if let Some(t) = &self.theme {
+            s.serialize_field("theme", &crate::theme::to_json(t))?;
+        }
         s.end()
     }
 }

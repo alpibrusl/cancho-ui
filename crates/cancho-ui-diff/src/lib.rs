@@ -61,7 +61,41 @@ pub struct DiffReport {
     pub change_count: usize,
     pub capabilities: CapabilityChanges,
     pub components: ComponentChanges,
+    /// The settings of the program's `theme { .. }` that differ (docs/theme.md section 7): one entry per colour token, font key, or whole
+    /// scheme added or removed. A recolour is a change of the program and is reported as its own line; it has no authority, so
+    /// `authority` is unaffected. Absent from the JSON when the themes are equal.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub theme: Vec<ThemeChange>,
     pub not_compared: Vec<&'static str>,
+}
+
+/// One setting of a theme: `light.accent`, `dark.bg`, `font.body.sha256`. `base` is `None` when the candidate adds it, `candidate` is `None`
+/// when it removes it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ThemeChange {
+    pub setting: String,
+    pub base: Option<String>,
+    pub candidate: Option<String>,
+}
+
+fn diff_theme(base: &IrFile, candidate: &IrFile) -> Vec<ThemeChange> {
+    let flat = |f: &IrFile| -> BTreeMap<String, String> {
+        f.theme
+            .as_ref()
+            .map(|t| cancho_ui_ir::theme::flatten(t).into_iter().collect())
+            .unwrap_or_default()
+    };
+    let (b, c) = (flat(base), flat(candidate));
+    let mut keys: BTreeSet<&String> = b.keys().collect();
+    keys.extend(c.keys());
+    keys.into_iter()
+        .filter(|k| b.get(*k) != c.get(*k))
+        .map(|k| ThemeChange {
+            setting: k.clone(),
+            base: b.get(k).cloned(),
+            candidate: c.get(k).cloned(),
+        })
+        .collect()
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -562,9 +596,11 @@ pub fn diff_ir(
     caps.added.sort();
     caps.removed.sort();
 
+    let theme = diff_theme(base, candidate);
     let change_count = components.added.len()
         + components.removed.len()
-        + components.changed.iter().map(leaf_count).sum::<usize>();
+        + components.changed.iter().map(leaf_count).sum::<usize>()
+        + theme.len();
     DiffReport {
         schema: SCHEMA,
         version: VERSION,
@@ -575,6 +611,7 @@ pub fn diff_ir(
         change_count,
         capabilities: caps,
         components,
+        theme,
         not_compared: NOT_COMPARED.to_vec(),
     }
 }

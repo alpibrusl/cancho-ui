@@ -29,6 +29,7 @@ pub mod serialize;
 pub mod sortlist;
 pub mod stream;
 pub mod table;
+pub mod theme;
 
 pub use ir::*;
 pub use lower::{LowerError, ir_expr_suspends, lower_file, merge_ir_files};

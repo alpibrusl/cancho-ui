@@ -25,6 +25,46 @@ pub struct File {
     /// happens in the CLI pipeline, not here.
     pub imports: Vec<ImportDecl>,
     pub components: Vec<Component>,
+    /// `theme { light { .. } dark { .. } font body { .. } }` (docs/theme.md): the declared themes, in source order. More than one is
+    /// refused when the file is lowered (`theme-duplicate`).
+    pub themes: Vec<ThemeDecl>,
+    pub span: Span,
+}
+
+/// `theme { .. }`: the colours of the two schemes and the fonts of a program.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ThemeDecl {
+    pub blocks: Vec<ThemeBlock>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ThemeBlock {
+    /// `light { bg: "#f7f4eb"; .. }`: the name is whatever was written; lowering accepts `light` and `dark`.
+    Scheme(ThemeScheme),
+    /// `font body { family: ".."; file: ".."; sha256: ".."; licence: ".."; }`.
+    Font(ThemeFont),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ThemeScheme {
+    pub name: String,
+    pub entries: Vec<ThemeEntry>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ThemeFont {
+    pub role: String,
+    pub entries: Vec<ThemeEntry>,
+    pub span: Span,
+}
+
+/// `key: "value";` inside a scheme or a font.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ThemeEntry {
+    pub key: String,
+    pub value: String,
     pub span: Span,
 }
 
