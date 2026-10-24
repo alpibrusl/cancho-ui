@@ -356,7 +356,7 @@ comment, so the "fine" build was not fine. The replacement now targets the decla
 
 The language has no way to read a position's parts, so `"lat,lon"` is only displayable or forwardable (11.1). A
 real consumer (distance, a map) needs a typed record or a list index; neither exists, and that is the next
-language question the adapters raise, not an adapter one.
+language question the adapters raise, not an adapter one. *(Corrected 2026-10-24, `maps.md` section 2: the parse is possible today with `take`, `skip`, `join` and `num`; what is missing is a square root and trigonometry, so a distance in km, not a position.)*
 
 ---
 
