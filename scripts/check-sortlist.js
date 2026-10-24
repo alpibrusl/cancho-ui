@@ -92,7 +92,13 @@ ${extra}
   const status = (page) => page.evaluate(() => document.querySelector('#root [role=status]').textContent);
   const active = (page) => page.evaluate(() => { const a = document.activeElement; return a === document.body ? 'BODY' : (a.getAttribute('aria-label') || a.textContent); });
   const live = (page) => page.evaluate(() => (document.getElementById('cui-sort-live') || { textContent: '' }).textContent);
-  const handleBox = async (page, i) => (await page.locator('#root ul.cui-sort li').nth(i).locator('.cui-handle').boundingBox());
+  // read in the page, in one task: the 'ticker' program draws the page again every 100 ms, and a locator that resolved a handle and then asked for its box
+  // found null when the rebuild fell between the two (7 runs in 25, with the compiler of main as well, #106)
+  const handleBox = (page, i) => page.evaluate((n) => {
+    const h = document.querySelectorAll('#root ul.cui-sort li')[n].querySelector('.cui-handle');
+    const r = h.getBoundingClientRect();
+    return { x: r.x, y: r.y, width: r.width, height: r.height };
+  }, i);
   const center = (b) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
   async function mouseDrag(page, from, to, hold = 0) {
     const a = center(await handleBox(page, from));
