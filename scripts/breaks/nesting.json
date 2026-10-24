@@ -1,0 +1,84 @@
+{
+  "checks": [
+    {
+      "name": "cargo test nesting",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "nesting"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "expressions are not counted",
+      "file": "crates/cancho-ui-syntax/src/parser.rs",
+      "from": "    fn parse_unary(&mut self) -> Result<Expr, ParseError> {\n        self.enter_nest()?;",
+      "to": "    fn parse_unary(&mut self) -> Result<Expr, ParseError> {\n        self.nest += 0;"
+    },
+    {
+      "name": "a chain of operators is not counted",
+      "file": "crates/cancho-ui-syntax/src/parser.rs",
+      "from": "            if self.nest + links > MAX_NEST_DEPTH {",
+      "to": "            if false && self.nest + links > MAX_NEST_DEPTH {"
+    },
+    {
+      "name": "view elements are not counted",
+      "file": "crates/cancho-ui-syntax/src/parser/view.rs",
+      "from": "    fn parse_element_node(&mut self) -> Result<ViewNode, ParseError> {\n        self.enter_nest()?;",
+      "to": "    fn parse_element_node(&mut self) -> Result<ViewNode, ParseError> {\n        self.nest += 0;"
+    },
+    {
+      "name": "types are not counted",
+      "file": "crates/cancho-ui-syntax/src/parser.rs",
+      "from": "    fn parse_type(&mut self) -> Result<Type, ParseError> {\n        self.enter_nest()?;",
+      "to": "    fn parse_type(&mut self) -> Result<Type, ParseError> {\n        self.nest += 0;"
+    },
+    {
+      "name": "else if is not counted",
+      "file": "crates/cancho-ui-syntax/src/parser.rs",
+      "from": "                self.enter_nest()?;\n                let nested = self.parse_if();",
+      "to": "                let nested = self.parse_if();"
+    },
+    {
+      "name": "the limit is 1000",
+      "file": "crates/cancho-ui-syntax/src/parser.rs",
+      "from": "pub const MAX_NEST_DEPTH: usize = 32;",
+      "to": "pub const MAX_NEST_DEPTH: usize = 1000;"
+    },
+    {
+      "name": "an interpolation starts counting again",
+      "file": "crates/cancho-ui-syntax/src/parser.rs",
+      "from": "                depth: 0,\n                nest,\n            };",
+      "to": "                depth: 0,\n                nest: 0,\n            };"
+    },
+    {
+      "name": "a refusal inside an interpolation is another tag",
+      "file": "crates/cancho-ui-syntax/src/parser.rs",
+      "from": "                too_deep @ ParseError::TooDeep { .. } => too_deep,\n",
+      "to": ""
+    },
+    {
+      "name": "the expansion depth is not checked",
+      "file": "crates/cancho-ui-ir/src/blocks.rs",
+      "from": "    if depth > MAX_EXPANSION_DEPTH {\n        return Err(too_deep(owner));\n    }\n",
+      "to": ""
+    },
+    {
+      "name": "the cycle walk is not bounded",
+      "file": "crates/cancho-ui-ir/src/blocks.rs",
+      "from": "        if path.len() >= MAX_EXPANSION_DEPTH {\n            return Err(too_deep(*span));\n        }\n",
+      "to": ""
+    },
+    {
+      "name": "the import chain is not bounded",
+      "file": "crates/cancho-ui/src/pipeline.rs",
+      "from": "    if stack.len() >= MAX_IMPORT_DEPTH {",
+      "to": "    if false && stack.len() >= MAX_IMPORT_DEPTH {"
+    }
+  ]
+}
