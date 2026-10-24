@@ -1,0 +1,109 @@
+{
+  "checks": [
+    {
+      "name": "cargo test number",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "number"
+      ]
+    },
+    {
+      "name": "check-number.js",
+      "argv": [
+        "node",
+        "scripts/check-number.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "the page reads a point in Spanish",
+      "file": "crates/cancho-ui-codegen-web/src/number.rs",
+      "from": "else if (dec !== '.' && lang.grp !== '.' && t[i] === '.')",
+      "to": "else if (dec !== '.' && t[i] === '.')"
+    },
+    {
+      "name": "replay reads a point in Spanish",
+      "file": "crates/cancho-ui-replay/src/number.rs",
+      "from": "let dot_ok = dec != \".\" && grp != \".\";",
+      "to": "let dot_ok = dec != \".\";"
+    },
+    {
+      "name": "the event is given the typed text",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "__on_{2}(__cui_number_text({1}.__cui_nl, e.target.value)); }});",
+      "to": "__on_{2}(e.target.value); }});"
+    },
+    {
+      "name": "the rebuilt field does not take its typed text back",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "        n.value = saved.typed;\n",
+      "to": ""
+    },
+    {
+      "name": "the field is not marked, so the focus cannot find it",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "{0}{1}.setAttribute('data-cui-number', '');\\n",
+      "to": "{0}"
+    },
+    {
+      "name": "the field shows the state as it is",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "\"{0}{1}.value = __cui_number_show({1}.__cui_nl, {2});\\n\"",
+      "to": "\"{0}{1}.value = {2};\\n\""
+    },
+    {
+      "name": "the keyboard is always decimal",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "if (!{1}.hasAttribute('inputmode')) {{ {1}.setAttribute('inputmode', 'decimal'); }}",
+      "to": "{1}.setAttribute('inputmode', 'decimal');"
+    },
+    {
+      "name": "the page does not drop the spaces around a number",
+      "file": "crates/cancho-ui-codegen-web/src/number.rs",
+      "from": ".replace(/^[ \\t\\n\\r\\u00a0\\u202f]+|[ \\t\\n\\r\\u00a0\\u202f]+$/g, '')",
+      "to": ""
+    },
+    {
+      "name": "the page does not read other digits",
+      "file": "crates/cancho-ui-codegen-web/src/number.rs",
+      "from": "t = t.replace(/[\\u0660-\\u0669\\u06f0-\\u06f9\\uff10-\\uff19]/g,",
+      "to": "t = t.replace(/[\\u0660-\\u0669]x/g,"
+    },
+    {
+      "name": "the page reads 1e21 as a number",
+      "file": "crates/cancho-ui-codegen-web/src/number.rs",
+      "from": "(n !== 0 && !(Math.abs(n) >= 1e-6 && Math.abs(n) < 1e21))",
+      "to": "false"
+    },
+    {
+      "name": "replay accepts any spelling of a number",
+      "file": "crates/cancho-ui-replay/src/lib.rs",
+      "from": "                && &plain != given\n",
+      "to": "                && false\n"
+    },
+    {
+      "name": "replay checks the text fields too",
+      "file": "crates/cancho-ui-replay/src/number.rs",
+      "from": "        f.number && !f.other",
+      "to": "        f.number || f.other"
+    },
+    {
+      "name": "replay reads every number field in English",
+      "file": "crates/cancho-ui-replay/src/number.rs",
+      "from": "            .then(|| self.locale.data())",
+      "to": "            .then(|| cancho_ui_ir::i18n::lang(\"en\").unwrap_or(self.locale.data()))"
+    },
+    {
+      "name": "number is not offered",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "\"text\", \"password\", \"email\", \"search\", \"tel\", \"url\", \"number\",",
+      "to": "\"text\", \"password\", \"email\", \"search\", \"tel\", \"url\","
+    }
+  ]
+}

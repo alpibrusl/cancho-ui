@@ -112,13 +112,14 @@ in the clear, with `type=text` in the built page (`docs/tickets.md` section 3).
 **The form.** `TextField { label: "Password" value: pass on: Pass type: "password" }`. `type:` is a binding of a `TextField`
 only (`binding-unknown` on anything else) and takes one of `text` (the default), `password`, `email`, `search`, `tel`, `url`, as
 a string literal; anything else, including a state field, is `input-type-invalid`. The emitted page sets that `type` attribute
-and nothing more: the value the handler receives is the string the browser reports, as for `text`.
+and nothing more: the value the handler receives is the string the browser reports, as for `text`. *(Corrected, #111: `number` is
+also one, and it is not an `<input type=number>`: `docs/number-input.md`.)*
 
-**Why not `number`, a date, a checkbox.** Those give the handler something other than what is on the screen, or are another
+**Why not the browser's number input, a date, a checkbox.** *(Corrected, #111: `type: "number"` is accepted since, as a text field that gives the handler the number typed: `docs/number-input.md`. What follows is why it is not the browser's input.)* Those give the handler something other than what is on the screen, or are another
 control. Measured in Chromium (`scripts/check-input-types.js`, the compiler's own text field with only its type attribute
 changed after the build): typing `1e5` key by key into a number field ends holding `5`. A number field answers `""` while what is
 typed is not yet a number, and the page draws the field again from the state at every key (`docs/semantics.md`, the view is a
-function of the state), so the half-typed text is wiped. The six types offered are all one line of text.
+function of the state), so the half-typed text is wiped. The six types offered here are all one line of text. *(The measurement was worse than written: through the redraw `1.5` ends `15`; `docs/number-input.md` section 2.)*
 
 **What each type does to the value, and what replay does.** Replay does not draw the field, and a trace gives the event its
 parameter directly, so the trace of a field gives the value *the browser would report*. Measured
@@ -348,8 +349,8 @@ them). The gallery's "Rich forms" tile, which probed `Select`, is removed: R5 re
 The done-when of #76 is a form with a password field, a checkbox, a select and a text area, with a validation message tied to a
 field, that builds, replays a trace and is checked in Chromium (values, focus, `aria-invalid`, the message announced by role), each
 refusal with a rule tag and the design with its measurements here. Sections 5 to 10 are those, one concern each, and
-`examples/tickets` has all of them in one program. **`number` is not offered** (section 5: `1e5` typed key by key ends as `5`);
-that is its own issue (#111), because making a number field safe is a change to how the page redraws a field being typed in.
+`examples/tickets` has all of them in one program. **`number` was not offered** (section 5: `1e5` typed key by key ends as `5`);
+that was its own issue (#111), built since as a text field that gives the handler the number typed (`docs/number-input.md`).
 
 ## 11a. Focus when a screen replaces the control that had it
 
@@ -364,5 +365,5 @@ A native `<input type="file">` whose chosen text file reaches the handler as one
 `disabled:` on an expression (`disabled: len(q) == 0`: the language has no `&&`, `||` or `!` and no Bool expression binding,
 issue #40), `aria-busy` for an in-flight request, a disabled state for the children of a component instance, the refusal
 `accessibility-keyboard-missing` for a form with no keyboard path, and `submit:` on anything but a `TextField` (a `Button` already
-fires on Enter and Space natively). From #76: `number`, date and the other input types (section 5). (`invalid:` and the message tied to its field are section 7.) From #91: `autocomplete`,
+fires on Enter and Space natively). From #76: date and the other input types (section 5; `number` is built, #111). (`invalid:` and the message tied to its field are section 7.) From #91: `autocomplete`,
 `maxlength`, `inputmode`, `name` (section 6, done).

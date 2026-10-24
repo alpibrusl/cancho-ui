@@ -213,6 +213,14 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
         out.push_str(crate::sortlist::ADAPTER_JS);
         out.push('\n');
     }
+    if ir
+        .components
+        .iter()
+        .any(|c| crate::number::view_has_number(&c.view.body))
+    {
+        out.push_str(crate::number::ADAPTER_JS);
+        out.push('\n');
+    }
     if ir.components.iter().any(|c| view_has_chart(&c.view.body)) {
         out.push_str(CHART_ADAPTER_JS);
         out.push('\n');

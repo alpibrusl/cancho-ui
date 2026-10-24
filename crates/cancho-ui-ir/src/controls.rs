@@ -61,8 +61,11 @@ pub const CHECKBOX_KEYS: &[&str] = &[
 pub const ROWS_RANGE: (i64, i64) = (1, 30);
 
 /// The `type:` of a `TextField` (docs/controls.md section 5): the HTML input types that hold one line of text and give the
-/// handler a string. `number` is left out on purpose (measured: `1e5` typed key by key ends as `5`).
-pub const INPUT_TYPES: &[&str] = &["text", "password", "email", "search", "tel", "url"];
+/// handler a string. `number` is not the browser's number input (measured: `1e5` typed key by key ends as `5`, `1,5` as `15`) but a text field
+/// with a decimal keyboard that gives the handler the number typed (docs/number-input.md).
+pub const INPUT_TYPES: &[&str] = &[
+    "text", "password", "email", "search", "tel", "url", "number",
+];
 
 /// The tones of a status text (docs/presentation.md section 3).
 pub const TONES: &[&str] = &["ok", "warn", "error"];
@@ -449,7 +452,7 @@ fn check_input_type(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerErro
         _ => Err(LowerError::ControlRefused {
             code: "input-type-invalid",
             message: format!(
-                "`type:` takes one of {} as a string literal; `number` is not one (a number field answers an empty string until what is typed is a number, and the page draws the field again at every key, so `1e5` typed key by key ends as `5`), and a checkbox, a choice or a date is a different control",
+                "`type:` takes one of {} as a string literal; a checkbox, a choice or a date is a different control",
                 INPUT_TYPES.join(", ")
             ),
             span: b.span,

@@ -837,17 +837,37 @@ pub(crate) fn emit_view_node(
 
             // A field: set the type (a TextField), and the initial value.
             if kind.is_field() {
+                let is_number = input_type.as_deref() == Some("number");
                 if matches!(kind, IrElementKind::TextField) {
+                    // `number` is a text field with a decimal keyboard whose event is given the number typed (docs/number-input.md): the
+                    // language it reads is the component's, kept on the element for the focus to give the typed text back.
                     out.push_str(&format!(
                         // One of `INPUT_TYPES` (`input-type-invalid`), plain lowercase words: no escaping to do.
                         "{0}{1}.setAttribute('type', '{2}');\n",
                         indent,
                         var,
-                        input_type.as_deref().unwrap_or("text")
+                        if is_number {
+                            "text"
+                        } else {
+                            input_type.as_deref().unwrap_or("text")
+                        }
                     ));
+                    if is_number {
+                        out.push_str(&format!(
+                            "{0}{1}.setAttribute('data-cui-number', '');\n{0}if (!{1}.hasAttribute('inputmode')) {{ {1}.setAttribute('inputmode', 'decimal'); }}\n{0}{1}.__cui_nl = __cui_number_lang(typeof __cui_loc === 'undefined' ? null : __cui_loc);\n",
+                            indent, var
+                        ));
+                    }
                 }
                 if let Some(ref v) = input_value {
-                    out.push_str(&format!("{0}{1}.value = {2};\n", indent, var, v));
+                    if is_number {
+                        out.push_str(&format!(
+                            "{0}{1}.value = __cui_number_show({1}.__cui_nl, {2});\n",
+                            indent, var, v
+                        ));
+                    } else {
+                        out.push_str(&format!("{0}{1}.value = {2};\n", indent, var, v));
+                    }
                 }
             }
 
@@ -1007,10 +1027,17 @@ pub(crate) fn emit_view_node(
                 ));
             }
             if let Some(event_name) = input_handler {
-                out.push_str(&format!(
-                    "{0}{1}.addEventListener('input', function (e) {{ __on_{2}(e.target.value); }});\n",
-                    indent, var, event_name
-                ));
+                if input_type.as_deref() == Some("number") {
+                    out.push_str(&format!(
+                        "{0}{1}.addEventListener('input', function (e) {{ __on_{2}(__cui_number_text({1}.__cui_nl, e.target.value)); }});\n",
+                        indent, var, event_name
+                    ));
+                } else {
+                    out.push_str(&format!(
+                        "{0}{1}.addEventListener('input', function (e) {{ __on_{2}(e.target.value); }});\n",
+                        indent, var, event_name
+                    ));
+                }
             }
 
             out
