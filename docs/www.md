@@ -297,6 +297,8 @@ sentence above.
 
 ### 5.3 Page-level
 
+> **Built 2026-10-25 ([`page.md`](page.md)); corrections measured against the real page, made here:** (1) it is **not an element `Page { .. }`**: head metadata is not view content, so it is a top-level declaration `page { .. }` like `theme` and `island`, one per program; (2) the `description` bound is **50 to 300 characters, not 50 to 160**: the page's own description is **261** (and its `og:description` **111**, a different text, so there is a `social_description:`); the 160 would have refused the real page, and no number was measured for a search engine's snippet; (3) `Header { sticky: true }` does **not** use a fixed `5rem`: the real header is 64 px at every width from 1280 to 320 (so its 5rem, 80 px, leaves 16 px), but a header of the same content in a program is 88 px at 1280 and 132 px at 320, where 5rem alone hid the first 8 px of the anchor's target; the compiler's runtime sets `scroll-padding-top` to the header's measured height + 16 px and follows a resize, and the header is sticky only where script runs (`@media (scripting: enabled)`); (4) the skip link is written by the compiler as the first link of the page, for a program that declares a `page`, and goes to the `Main`'s `id:` (`page-main-missing`, `skip-target-missing`); (5) the head the program builds is, line for line, the head `cancho-www` writes by hand (16 `<title>`, `<meta>` and `<link>` elements, compared in `cargo test` and in Chromium). The 22 hash links of the real page all resolve and none of its ids repeats (measured), which `anchor-unknown` and `anchor-duplicate` (built in B1) already check.
+
 * **`Page { title: ".." description: ".." lang: "en" canonical: ".." image: ".." alternates: [...] icon: ".." }`**: the 13 `meta`, `canonical`, `icon`,
   `apple-touch-icon`, the two `alternate` links and `<html lang>`. Tags: `page-title-missing`, `page-description-length` (outside 50..160 chars),
   `page-lang-invalid`, `page-canonical-not-https`, `page-image-size-missing` (the OG image's width and height), `anchor-unknown` (`Link { to: "#x" }` with no `Section { id: "x" }`),
@@ -461,11 +463,11 @@ If the user prefers the expected order, steps 3 and 5 swap with no other change:
 9. **The additions of 5.2b, as closed sets:** `Article`, `Figure`/`Caption`, link `appearance`, text `style`, inline content in `Heading`/`Link`/`Details` summary, `Code { max_height }`, `ratio` on `Image`/`Media`, and `weights:` on `Grid` (`min` stays). Any may be argued against by measurement in its PR. *Decided 2026-10-24 by the user.*
 10. **Order:** P0 the code tokens; B1 `Heading`, `Section`, landmarks, `Article`, `Link` (+ `appearance`, host listing), `Details`, `Figure`/`Caption`, text `style`; B2 `Rich` and `Code`; B3 `Image`, `Media`, `ratio`, `Grid` weights; then P1 prerender (design note first). *Decided 2026-10-24 by the user,* with leave to re-order if prerender must come first, reported before doing so.
 
-Step 1 is built and is the only step built.
+Steps 1, 2 (B1 to B3), 3 (islands) and 4 (page-level, [`page.md`](page.md)) are built; steps 5 and 6 are not.
 
 ## 11. Rules kept
 
 The program says what a thing is (every proposed binding is a closed set or a literal; the one drawing extension reuses `Chart`). Authority is declared in `requires` and printed
 by `authority` and `diff` (`Clipboard`, `Draw`, `Dom`, link hosts, islands). Every refusal has a rule tag (listed per primitive). Replay and the page agree on a shared corpus for
-each primitive, and an island is **reported as not replayed** rather than claimed. No new dependency (the islands are the page's own files, hashed). **Only step 1 is
-built (`theme.md`); nothing was pushed to `cancho-www`.**
+each primitive, and an island is **reported as not replayed** rather than claimed. No new dependency (the islands are the page's own files, hashed). **Steps 1 to 4 are
+built (`theme.md`, `structure.md`, `islands.md`, `page.md`); nothing was pushed to `cancho-www`.**

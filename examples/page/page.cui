@@ -1,0 +1,131 @@
+// examples/page/page.cui — the head, the skip link and the sticky header of a page (docs/page.md).
+// The `page { .. }` is the head of the home page of alpibrusl/cancho-www at commit 0579a80, value for value: tests/fixtures/page/cancho-www-head.html
+// is that head, and the test `the_head_is_the_one_cancho_www_writes_by_hand` compares what this program builds with it, line for line.
+// The palette is the one of examples/theme. The compiler writes the skip link first in the page and keeps anchors clear of the sticky header.
+
+theme {
+    light {
+        bg: "#f7f4eb";
+        fg: "#121417";
+        muted: "#4f545b";
+        line: "#e2ddd0";
+        surface: "#ffffff";
+        soft: "#efece1";
+        ink: "#16283b";
+        accent: "#185fa5";
+        accent_fg: "#ffffff";
+        accent_soft: "#ebf3fc";
+        good: "#0f7b5f";
+        warn: "#8a4b0a";
+        warn_bg: "#f9efd9";
+        warn_line: "#d9a441";
+        bad: "#b91c1c";
+        bad_bg: "#fdeceb";
+        code_bg: "#12151a";
+        code_fg: "#d6dde8";
+    }
+    dark {
+        bg: "#0b1016";
+        fg: "#e9ecf1";
+        muted: "#9aa5b4";
+        line: "#222b36";
+        surface: "#121922";
+        soft: "#172029";
+        ink: "#0a121a";
+        accent: "#6ea3ee";
+        accent_fg: "#0a1220";
+        accent_soft: "#14233a";
+        good: "#4fd1a5";
+        warn: "#f1c577";
+        warn_bg: "#1c1810";
+        warn_line: "#7e6126";
+        bad: "#ff7a72";
+        bad_bg: "#2a1413";
+        code_bg: "#12151a";
+        code_fg: "#d6dde8";
+    }
+}
+
+page {
+    title: "cancho: tools built for agents, not adapted from humans";
+    description: "cancho is a programming language and toolchain for software built by AI agents and checked by machines. Programs declare what they can do, dependencies have stable identities, and the compiler returns structured evidence other tools can read and check. Pre-1.0.";
+    social_description: "Trust without comprehension: a language where what code may do is in its type, and the ecosystem built with it.";
+    canonical: "https://alpibrusl.github.io/cancho-www/";
+    image: "https://alpibrusl.github.io/cancho-www/og.png";
+    image_width: 1200;
+    image_height: 630;
+    image_alt: "cancho: Tools built for agents. Trust without comprehension.";
+    icon: "logo-mark.png";
+    apple_icon: "logo.png";
+    alternate: "agents.md" mime: "text/markdown" title: "cancho, as an agent reads it";
+    alternate: "data/ecosystem.json" mime: "application/json" title: "The cancho ecosystem as data";
+}
+
+component Home {
+    state clicks: Int = 0;
+    on Click { clicks = clicks + 1; }
+    view {
+        Column {
+            Header {
+                sticky: true
+                Link { to: "#top" "cancho" }
+                Nav {
+                    label: "Sections"
+                    Link { to: "#try" "Try it" } Link { to: "#trust" "Trust" } Link { to: "#verifies" "Evidence" } Link { to: "#ecosystem" "Ecosystem" } Link { to: "#demo" "Demo" } Link { to: "#agents" "Agents" } 
+                }
+            }
+            Main {
+                id: "main"
+                Section {
+                    label: "Trust without comprehension"
+                    id: "top"
+                    Heading { level: 1 "Tools built for agents. Not adapted from humans." }
+                    Text { style: "lead" "The bet: you should not have to read what an agent wrote to trust it." }
+                }
+                Section {
+                    label: "Try it on a real task"
+                    id: "try"
+                    Heading { level: 2 "Try it on a real task" }
+                    Rich { "Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to." }
+                    Link { to: "#top" "Back to the top of the page" }
+                }
+                Section {
+                    label: "Trust without comprehension"
+                    id: "trust"
+                    Heading { level: 2 "Trust without comprehension" }
+                    Rich { "Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to." }
+                    Link { to: "#top" "Back to the top of the page" }
+                }
+                Section {
+                    label: "What the compiler verifies"
+                    id: "verifies"
+                    Heading { level: 2 "What the compiler verifies" }
+                    Rich { "Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to." }
+                    Link { to: "#top" "Back to the top of the page" }
+                }
+                Section {
+                    label: "The ecosystem"
+                    id: "ecosystem"
+                    Heading { level: 2 "The ecosystem" }
+                    Rich { "Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to." }
+                    Link { to: "#top" "Back to the top of the page" }
+                }
+                Section {
+                    label: "A recorded session"
+                    id: "demo"
+                    Heading { level: 2 "A recorded session" }
+                    Rich { "Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to." }
+                    Link { to: "#top" "Back to the top of the page" }
+                }
+                Section {
+                    label: "Read as an agent"
+                    id: "agents"
+                    Heading { level: 2 "Read as an agent" }
+                    Rich { "Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to. Each section is long enough that a link to it scrolls the page, which is where a sticky header can hide the first line of what it was sent to." }
+                    Link { to: "#top" "Back to the top of the page" }
+                }
+            }
+            Footer { Link { to: "agents.md" "agents.md" } Button { label: "Count a visit" on: Click } Text { "{clicks} counted" } }
+        }
+    }
+}

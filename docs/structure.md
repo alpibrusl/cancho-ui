@@ -61,7 +61,7 @@ Every refusal below has a rule tag in [`spec/diagnostics/README.md`](../spec/dia
 **Corrections to `www.md` 5.2, measured in 5.2b and built here:** there is no `section-label-missing` (the page has 5 landmarks and 0 regions: an unnamed `Section` is not a landmark); a `Link` has no `rel`
 (128 external links, 0 `target`); and `heading-level-skipped` would refuse the real page, whose first three cards are `h3`s under the `h1`.
 
-**Not built in B1, and said so:** the skip link that a `Main` was to write (a page-level element: step 3, 5.3), `sticky`, `pressed:`, `role: group` (the human/agent switch needs it: to be checked then), dynamic
+**Not built in B1, and said so** (the skip link and `sticky` are built since, in [`page.md`](page.md)): `pressed:`, `role: group` (the human/agent switch needs it: to be checked then), dynamic
 links built from data (`link-to-invalid` says so), and `landmark-misplaced` (a `Main` inside an `Article` is not refused).
 
 ## 3. Authority and `diff`

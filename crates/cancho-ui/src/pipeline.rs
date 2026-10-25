@@ -153,6 +153,17 @@ impl SpanOut {
     }
 }
 
+/// The real path of the directory a program is in. A program named without a directory (`a.cui`) has the parent `""`, which is the current
+/// directory and cannot be canonicalised: the files it names beside it were refused as missing until this was used.
+pub fn real_dir(dir: &Path) -> Option<std::path::PathBuf> {
+    let dir = if dir.as_os_str().is_empty() {
+        Path::new(".")
+    } else {
+        dir
+    };
+    dir.canonicalize().ok()
+}
+
 pub fn compile_to_ir(file: &Path) -> Result<cancho_ui_ir::ir::IrFile, PipelineError> {
     compile_inner(file).map(|(ir, _)| ir)
 }
@@ -410,6 +421,7 @@ fn compile_inner(
             components: ast.components.clone(),
             themes: ast.themes.clone(),
             islands: ast.islands.clone(),
+            pages: ast.pages.clone(),
             span: ast.span,
         },
     };
@@ -496,6 +508,22 @@ fn compile_inner(
             Some("Keep the theme in the entry file and delete the other.".to_string()),
         )));
     }
+    // one page in a program, as one theme
+    if let Some(second) = irs
+        .iter()
+        .filter(|i| i.page.is_some())
+        .nth(1)
+        .and_then(|i| i.page.as_ref())
+    {
+        return Err(PipelineError::refused(import_diag(
+            "page-duplicate",
+            String::new(),
+            "a program has one `page { .. }`; the entry file and an imported module each declare one".to_string(),
+            second.span,
+            file,
+            Some("Keep the page in the entry file and delete the other.".to_string()),
+        )));
+    }
     let mut merged = cancho_ui_ir::merge_ir_files(&irs);
     // the font files a theme declares exist and are the files it names (relative to the entry file's directory)
     if let Some(t) = &merged.theme {
@@ -516,6 +544,13 @@ fn compile_inner(
         file,
     )
     .map_err(PipelineError::Refused)?;
+    // a page needs a `Main` to skip to, and gets its skip link (docs/page.md section 4); the files it names beside the program exist
+    cancho_ui_ir::page::apply(&mut merged)
+        .map_err(|e| PipelineError::refused(lower_to_diag(&e, file)))?;
+    if let Some(p) = &merged.page {
+        crate::page::verify(p, file.parent().unwrap_or_else(|| Path::new("")), file)
+            .map_err(PipelineError::Refused)?;
+    }
     Ok((merged, file.to_path_buf()))
 }
 
@@ -1775,6 +1810,9 @@ fn control_remediation(code: &str) -> String {
         "disabled-not-bool" => "Write `disabled: true`, `disabled: false` or `disabled: sending` where `sending` is a `state sending: Bool`.".to_string(),
         c if c.starts_with("theme-") || c.starts_with("font-") => crate::theme::remediation(c),
         c if c.starts_with("island-") => "See docs/islands.md.".to_string(),
+        c if c.starts_with("page-") || c.starts_with("skip-") || c.starts_with("header-") => {
+            "See docs/page.md.".to_string()
+        }
         c if c.starts_with("image-")
             || c.starts_with("media-")
             || c.starts_with("grid-")

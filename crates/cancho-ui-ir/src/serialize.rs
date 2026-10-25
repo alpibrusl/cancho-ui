@@ -78,6 +78,9 @@ impl Serialize for IrFile {
         if !self.islands.is_empty() {
             s.serialize_field("islands", &self.islands)?;
         }
+        if let Some(p) = &self.page {
+            s.serialize_field("page", &crate::page::to_json(p))?;
+        }
         s.end()
     }
 }

@@ -190,6 +190,14 @@ pub fn render_human(r: &DiffReport) -> String {
             (None, None) => Ok(()),
         };
     }
+    for t in &r.page {
+        let _ = match (&t.base, &t.candidate) {
+            (Some(b), Some(c)) => writeln!(out, "~ page {}: {b} -> {c}", t.setting),
+            (None, Some(c)) => writeln!(out, "+ page {} = {c}", t.setting),
+            (Some(b), None) => writeln!(out, "- page {} = {b}", t.setting),
+            (None, None) => Ok(()),
+        };
+    }
     for a in &r.assets {
         let short = |h: &String| h.chars().take(12).collect::<String>();
         let _ = match (&a.base, &a.candidate) {

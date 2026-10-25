@@ -333,6 +333,15 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
             out.push_str(&crate::island::emit_open_sources(&every));
         }
     }
+    // a sticky header (docs/page.md section 5): the page keeps its anchors, and what takes focus, clear of the header's real height
+    if ir
+        .components
+        .iter()
+        .any(|c| cancho_ui_ir::structure::view_has_sticky(&c.view.body))
+    {
+        out.push_str(crate::island::STICKY_JS);
+        out.push('\n');
+    }
     let adapters_end = out.len();
     for (i, c) in ir.components.iter().enumerate() {
         out.push_str(&emit_component(
@@ -963,6 +972,9 @@ fn emit_component(
             &handlers,
             &dynamic,
         ));
+    }
+    if cancho_ui_ir::structure::view_has_sticky(&c.view.body) {
+        out.push_str("            __cui_sticky_sync();\n");
     }
     if view_has_status(&c.view.body) {
         out.push_str("            __cui_status_end(root);\n");

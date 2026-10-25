@@ -72,6 +72,10 @@ pub struct DiffReport {
     /// `authority` is unaffected. Absent from the JSON when the themes are equal.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub theme: Vec<ThemeChange>,
+    /// The settings of the program's `page { .. }` that differ (docs/page.md section 6): the title, the description, the canonical address, the preview
+    /// image, the icons, the alternates, the language. A page has no authority: `authority` is unaffected. Absent from the JSON when the pages are equal.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub page: Vec<PageChange>,
     /// The files the views name (`Image`, `Media`; docs/structure.md section 10) that were added, removed or changed (a different SHA-256).
     /// Absent from the JSON when they are the same files.
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -88,6 +92,14 @@ pub struct DiffReport {
 /// when it removes it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ThemeChange {
+    pub setting: String,
+    pub base: Option<String>,
+    pub candidate: Option<String>,
+}
+
+/// One setting of a page: `title`, `image.width`, `alternate.agents.md.mime`. `None` on the side that does not have it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct PageChange {
     pub setting: String,
     pub base: Option<String>,
     pub candidate: Option<String>,
@@ -143,6 +155,26 @@ fn diff_assets(base: &IrFile, candidate: &IrFile) -> Vec<AssetChange> {
         .filter(|k| b.get(*k) != c.get(*k))
         .map(|k| AssetChange {
             path: k.clone(),
+            base: b.get(k).cloned(),
+            candidate: c.get(k).cloned(),
+        })
+        .collect()
+}
+
+fn diff_page(base: &IrFile, candidate: &IrFile) -> Vec<PageChange> {
+    let flat = |f: &IrFile| -> BTreeMap<String, String> {
+        f.page
+            .as_ref()
+            .map(|p| cancho_ui_ir::page::flatten(p).into_iter().collect())
+            .unwrap_or_default()
+    };
+    let (b, c) = (flat(base), flat(candidate));
+    let mut keys: BTreeSet<&String> = b.keys().collect();
+    keys.extend(c.keys());
+    keys.into_iter()
+        .filter(|k| b.get(*k) != c.get(*k))
+        .map(|k| PageChange {
+            setting: k.clone(),
             base: b.get(k).cloned(),
             candidate: c.get(k).cloned(),
         })
@@ -693,12 +725,14 @@ pub fn diff_ir(
     caps.removed.sort();
 
     let theme = diff_theme(base, candidate);
+    let page = diff_page(base, candidate);
     let assets = diff_assets(base, candidate);
     let islands = diff_islands(base, candidate);
     let change_count = components.added.len()
         + components.removed.len()
         + components.changed.iter().map(leaf_count).sum::<usize>()
         + theme.len()
+        + page.len()
         + assets.len()
         + islands.len();
     DiffReport {
@@ -712,6 +746,7 @@ pub fn diff_ir(
         capabilities: caps,
         components,
         theme,
+        page,
         assets,
         islands,
         not_compared: NOT_COMPARED.to_vec(),

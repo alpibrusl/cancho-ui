@@ -21,6 +21,41 @@ pub struct IrFile {
     /// The sealed islands the program declares (docs/islands.md), in source order. Their files are read by the pipeline, which fills each
     /// island's `srcdoc`; `diff` and `inspect effects` report them.
     pub islands: Vec<IrIsland>,
+    /// `page { .. }` (docs/page.md): what the document says about itself, checked. `None` when the program declares none.
+    pub page: Option<IrPage>,
+}
+
+/// A checked `page { .. }`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IrPage {
+    pub title: String,
+    pub description: String,
+    /// The text of `og:description` when it is not the description (the page's own is 111 characters; its description 261).
+    pub social_description: Option<String>,
+    pub lang: String,
+    pub canonical: String,
+    pub image: Option<IrPageImage>,
+    pub icon: Option<String>,
+    pub apple_icon: Option<String>,
+    pub alternates: Vec<IrAlternate>,
+    /// The text of the skip link the compiler writes first in the page, when the page's language is not English.
+    pub skip: Option<String>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IrPageImage {
+    pub url: String,
+    pub width: u32,
+    pub height: u32,
+    pub alt: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IrAlternate {
+    pub href: String,
+    pub mime: String,
+    pub title: String,
 }
 
 /// A declared island (docs/islands.md section 4): the files it runs, pinned by hash, and the typed props and events that are its only way of
@@ -809,7 +844,7 @@ impl IrElementKind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct IrAccessibility {
     pub role: Option<IrRole>,
     pub label: Option<String>,

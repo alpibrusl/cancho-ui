@@ -52,7 +52,7 @@ pub fn verify(ir: &IrFile, dir: &Path, program: &Path) -> Result<Vec<IrAsset>, B
     for c in &ir.components {
         uses.extend(assets_of(&c.view.body));
     }
-    let root = dir.canonicalize().ok();
+    let root = crate::pipeline::real_dir(dir);
     let mut found: BTreeMap<String, IrAsset> = BTreeMap::new();
     for u in &uses {
         if found.contains_key(&u.path) {

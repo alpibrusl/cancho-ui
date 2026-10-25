@@ -1,0 +1,367 @@
+{
+  "checks": [
+    {
+      "name": "cargo test page",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "page"
+      ]
+    },
+    {
+      "name": "check-page.js",
+      "argv": [
+        "node",
+        "scripts/check-page.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "an unknown setting is taken",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "        if !KEYS.contains(&e.key.as_str()) {",
+      "to": "        if false && !KEYS.contains(&e.key.as_str()) {"
+    },
+    {
+      "name": "a setting written twice is taken",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "        if e.key != \"alternate\" && seen.contains(&e.key.as_str()) {",
+      "to": "        if false && e.key != \"alternate\" && seen.contains(&e.key.as_str()) {"
+    },
+    {
+      "name": "extras on a one-value setting are taken",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "        if e.key != \"alternate\" && !e.extras.is_empty() {",
+      "to": "        if false && e.key != \"alternate\" && !e.extras.is_empty() {"
+    },
+    {
+      "name": "the shortest description is 49",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "pub const DESCRIPTION: (usize, usize) = (50, 300);",
+      "to": "pub const DESCRIPTION: (usize, usize) = (49, 300);"
+    },
+    {
+      "name": "the longest description is 301",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "pub const DESCRIPTION: (usize, usize) = (50, 300);",
+      "to": "pub const DESCRIPTION: (usize, usize) = (50, 301);"
+    },
+    {
+      "name": "a social description may be any length",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "pub const SOCIAL_DESCRIPTION: (usize, usize) = (20, 300);",
+      "to": "pub const SOCIAL_DESCRIPTION: (usize, usize) = (0, 300);"
+    },
+    {
+      "name": "a title may be 121 characters",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "pub const TITLE_MAX: usize = 120;",
+      "to": "pub const TITLE_MAX: usize = 121;"
+    },
+    {
+      "name": "a language tag may have five parts",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "        && rest.len() <= 3",
+      "to": "        && rest.len() <= 4"
+    },
+    {
+      "name": "a language tag may be in capitals",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "(2..=3).contains(&p.len()) && p.chars().all(|c| c.is_ascii_lowercase())",
+      "to": "(2..=3).contains(&p.len()) && p.chars().all(|c| c.is_ascii_alphabetic())"
+    },
+    {
+      "name": "a canonical address may have a fragment",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "if !is_https(s) || s.contains('#') {",
+      "to": "if !is_https(s) {"
+    },
+    {
+      "name": "an address may have a space",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "c.is_control() || c.is_whitespace() || matches!",
+      "to": "c.is_control() || matches!"
+    },
+    {
+      "name": "an image may be beside the program",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "            if !is_https(url) {",
+      "to": "            if false && !is_https(url) {"
+    },
+    {
+      "name": "an image may be 0 pixels wide",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "pub const IMAGE_SIDE: (i64, i64) = (1, 8192);",
+      "to": "pub const IMAGE_SIDE: (i64, i64) = (0, 8192);"
+    },
+    {
+      "name": "an image may be 8193 pixels wide",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "pub const IMAGE_SIDE: (i64, i64) = (1, 8192);",
+      "to": "pub const IMAGE_SIDE: (i64, i64) = (1, 9000);"
+    },
+    {
+      "name": "a width with no image is taken",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "[\"image_width\", \"image_height\", \"image_alt\"]",
+      "to": "[\"image_alt\"]"
+    },
+    {
+      "name": "an empty image alt is taken",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "if s.trim().is_empty() || chars(s) > 420 || !one_line(s) {",
+      "to": "if chars(s) > 420 || !one_line(s) {"
+    },
+    {
+      "name": "any link is taken",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "    if is_https(s) || is_relative_file(s) {",
+      "to": "    if true || is_https(s) || is_relative_file(s) {"
+    },
+    {
+      "name": "a path may go up",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "seg != \".\" && seg != \"..\"",
+      "to": "seg != \".\""
+    },
+    {
+      "name": "a path may have an empty segment",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "!seg.is_empty() && seg != \".\"",
+      "to": "seg != \".\""
+    },
+    {
+      "name": "an alternate may carry another setting",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "|| extra_unknown.is_some()",
+      "to": "|| false"
+    },
+    {
+      "name": "nine alternates are allowed",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "pub const ALTERNATES_MAX: usize = 8;",
+      "to": "pub const ALTERNATES_MAX: usize = 9;"
+    },
+    {
+      "name": "anything is a media type",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "        _ => false,\n    }\n}\n\nfn one_line",
+      "to": "        _ => true,\n    }\n}\n\nfn one_line"
+    },
+    {
+      "name": "a page in Spanish needs no skip words",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "if skip.is_none() && lang.split('-').next() != Some(\"en\") {",
+      "to": "if false {"
+    },
+    {
+      "name": "only plain en is English",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "lang.split('-').next() != Some(\"en\")",
+      "to": "lang != \"en\""
+    },
+    {
+      "name": "skip words may be 61 characters",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "pub const SKIP_MAX: usize = 60;",
+      "to": "pub const SKIP_MAX: usize = 61;"
+    },
+    {
+      "name": "the skip words are not Skip to content",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "pub const DEFAULT_SKIP: &str = \"Skip to content\";",
+      "to": "pub const DEFAULT_SKIP: &str = \"Skip\";"
+    },
+    {
+      "name": "a page needs no Main",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "    let Some((bindings, main_span)) = found.first() else {",
+      "to": "    let Some((bindings, main_span)) = found.first().or(None) else {\n        if true {\n            return Ok(());\n        }"
+    },
+    {
+      "name": "the skip link goes last",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "IrViewNode::Element { children, .. } => children.insert(0, skip),",
+      "to": "IrViewNode::Element { children, .. } => children.push(skip),"
+    },
+    {
+      "name": "the skip link goes to #main whatever the id",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "IrBindingValue::String(format!(\"#{id}\"))",
+      "to": "IrBindingValue::String(\"#main\".to_string())"
+    },
+    {
+      "name": "the skip link has no class",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "IrBindingValue::String(\"skip\".into())",
+      "to": "IrBindingValue::String(\"quiet\".into())"
+    },
+    {
+      "name": "a sticky header has no class",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "return is_sticky(bindings).then(|| \"cui-sticky\".to_string());",
+      "to": "return None;"
+    },
+    {
+      "name": "a sticky: false header is sticky",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "IrExpr::BoolLit { value: true, .. }))\n    })\n}\n\n/// Whether a view draws a `Header",
+      "to": "IrExpr::BoolLit { .. }))\n    })\n}\n\n/// Whether a view draws a `Header"
+    },
+    {
+      "name": "any sticky value is taken",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "        \"sticky\" => match &b.value {",
+      "to": "        \"sticky\" => match &b.value {\n            _ if true => Ok(true),"
+    },
+    {
+      "name": "two sticky headers are taken",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "w.stickies.get(1)",
+      "to": "w.stickies.get(2)"
+    },
+    {
+      "name": "the page text keeps its at signs",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "html_escape(s).replace('@', \"&#64;\")",
+      "to": "html_escape(s)"
+    },
+    {
+      "name": "the title is not escaped",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "|p| esc(&p.title))",
+      "to": "|p| p.title.clone())"
+    },
+    {
+      "name": "the language is always en",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "page.map_or_else(|| \"en\".to_string(), |p| esc(&p.lang))",
+      "to": "\"en\".to_string()"
+    },
+    {
+      "name": "og:description is the description",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "esc(p.social_description.as_deref().unwrap_or(&p.description))",
+      "to": "esc(&p.description)"
+    },
+    {
+      "name": "the twitter card is always large",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "if p.image.is_some() {\n            \"summary_large_image\"\n        } else {\n            \"summary\"\n        }",
+      "to": "\"summary_large_image\""
+    },
+    {
+      "name": "an icon says no media type",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "Some(\"png\") => \" type=\\\"image/png\\\"\",",
+      "to": "Some(\"png\") => \"\","
+    },
+    {
+      "name": "the colour scheme is not declared",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "    tag(\"<meta name=\\\"color-scheme\\\" content=\\\"light dark\\\">\".to_string());\n",
+      "to": ""
+    },
+    {
+      "name": "the sticky header is sticky without script",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "@media (scripting: enabled) {",
+      "to": "@media all {"
+    },
+    {
+      "name": "the skip link is on the screen",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "left: 1rem; top: -4rem; z-index: 20;",
+      "to": "left: 1rem; top: 0; z-index: 20;"
+    },
+    {
+      "name": "the padding is the header's height alone",
+      "file": "crates/cancho-ui-codegen-web/src/island.rs",
+      "from": "getBoundingClientRect().height + 16)",
+      "to": "getBoundingClientRect().height + 0)"
+    },
+    {
+      "name": "the padding does not follow a resize",
+      "file": "crates/cancho-ui-codegen-web/src/island.rs",
+      "from": "new ResizeObserver(set).observe(h);",
+      "to": "void 0;"
+    },
+    {
+      "name": "the render does not measure the header",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "\"            __cui_sticky_sync();\\n\"",
+      "to": "\"            void 0;\\n\""
+    },
+    {
+      "name": "the files a page names are not copied",
+      "file": "crates/cancho-ui/src/main.rs",
+      "from": "site.extend(page::load(p, dir).map_err(CliError::Env)?);",
+      "to": "let _ = page::load(p, dir);"
+    },
+    {
+      "name": "the page is not applied",
+      "file": "crates/cancho-ui/src/pipeline.rs",
+      "from": "    cancho_ui_ir::page::apply(&mut merged)\n        .map_err(|e| PipelineError::refused(lower_to_diag(&e, file)))?;",
+      "to": "    let _ = &mut merged;"
+    },
+    {
+      "name": "the files a page names are not checked",
+      "file": "crates/cancho-ui/src/pipeline.rs",
+      "from": "        crate::page::verify(p, file.parent().unwrap_or_else(|| Path::new(\"\")), file)\n            .map_err(PipelineError::Refused)?;",
+      "to": "        let _ = p;"
+    },
+    {
+      "name": "a file may be 6 MB",
+      "file": "crates/cancho-ui/src/page.rs",
+      "from": "pub const FILE_MAX_BYTES: u64 = 5 * 1024 * 1024;",
+      "to": "pub const FILE_MAX_BYTES: u64 = 6 * 1024 * 1024;"
+    },
+    {
+      "name": "a program named without a directory finds nothing",
+      "file": "crates/cancho-ui/src/pipeline.rs",
+      "from": "    let dir = if dir.as_os_str().is_empty() {\n        Path::new(\".\")\n    } else {\n        dir\n    };\n    dir.canonicalize().ok()",
+      "to": "    dir.canonicalize().ok()"
+    },
+    {
+      "name": "a page-only diff is no change",
+      "file": "crates/cancho-ui-diff/src/lib.rs",
+      "from": "        + page.len()\n",
+      "to": ""
+    },
+    {
+      "name": "diff does not say the page",
+      "file": "crates/cancho-ui-diff/src/human.rs",
+      "from": "    for t in &r.page {",
+      "to": "    for t in r.page.iter().take(0) {"
+    },
+    {
+      "name": "inspect ir does not say the page",
+      "file": "crates/cancho-ui-ir/src/serialize.rs",
+      "from": "s.serialize_field(\"page\", &crate::page::to_json(p))?;",
+      "to": "let _ = p;"
+    },
+    {
+      "name": "a second page in a module is dropped",
+      "file": "crates/cancho-ui/src/pipeline.rs",
+      "from": ".filter(|i| i.page.is_some())",
+      "to": ".filter(|i| i.page.is_some() && false)"
+    },
+    {
+      "name": "every program gets the page's rules",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "let page_css = if page.page.is_some() || page.sticky {",
+      "to": "let page_css = if true || page.page.is_some() || page.sticky {"
+    },
+    {
+      "name": "a sticky header with no page gets no rules",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "page.page.is_some() || page.sticky {",
+      "to": "page.page.is_some() {"
+    }
+  ]
+}

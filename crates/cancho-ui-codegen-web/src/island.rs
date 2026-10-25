@@ -341,3 +341,8 @@ function __cui_islands_scan(root, handlers, dynamic) {
     }
 }
 "#;
+
+/// The runtime of a sticky `Header` (docs/page.md section 5): `scroll-padding-top` is the header's height now, and its height later (a wrapped menu, a
+/// larger font, a resized window), plus 1rem of air, so that an anchor and a control that takes focus are never under the header. The stylesheet
+/// has `5rem` for the first paint and for a visitor without script.
+pub(crate) const STICKY_JS: &str = "let __cui_sticky_el = null;\nfunction __cui_sticky_sync() {\n    const h = document.querySelector('header.cui-sticky');\n    if (!h || h === __cui_sticky_el) { return; }\n    __cui_sticky_el = h;\n    const set = function () { document.documentElement.style.scrollPaddingTop = (h.getBoundingClientRect().height + 16) + 'px'; };\n    set();\n    if (typeof ResizeObserver === 'function') { new ResizeObserver(set).observe(h); } else { window.addEventListener('resize', set); }\n}";

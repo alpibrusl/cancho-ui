@@ -150,6 +150,7 @@ fn keys(kind: &IrElementKind) -> &'static [&'static str] {
     match kind {
         IrElementKind::Heading => &["level", "id"],
         IrElementKind::Link => &["to", "appearance"],
+        IrElementKind::Header => &["id", "sticky"],
         IrElementKind::Details => &["summary", "id"],
         IrElementKind::Caption => &["id"],
         IrElementKind::Rich => &["style"],
@@ -303,6 +304,7 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
         "summary",
         "copy",
         "max_height",
+        "sticky",
     ];
     let structure = is_structure(kind);
     if !structure && !(NEW.contains(&b.key.as_str())) {
@@ -337,6 +339,7 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                     "summary" => "Details",
                     "style" => "Text and Rich",
                     "copy" | "max_height" => "Code",
+                    "sticky" => "Header",
                     _ => "the structure elements (Section, Article, Heading, ..)",
                 }
             ),
@@ -416,6 +419,14 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                     "`max_height:` is an integer literal from {} to {}, in rem",
                     CODE_HEIGHT.0, CODE_HEIGHT.1
                 ),
+                b.span,
+            )),
+        },
+        "sticky" => match &b.value {
+            IrBindingValue::Const { expr, .. } if matches!(**expr, IrExpr::BoolLit { .. }) => Ok(true),
+            _ => Err(refuse(
+                "header-sticky-invalid",
+                "`sticky:` is `true` or `false`: `Header { sticky: true .. }`".to_string(),
                 b.span,
             )),
         },
@@ -659,6 +670,9 @@ pub fn attrs(kind: &IrElementKind, bindings: &[IrBinding]) -> Vec<(&'static str,
 
 /// The class an element gets: a `Link` with an `appearance:`.
 pub fn class(kind: &IrElementKind, bindings: &[IrBinding]) -> Option<String> {
+    if matches!(kind, IrElementKind::Header) {
+        return is_sticky(bindings).then(|| "cui-sticky".to_string());
+    }
     if !matches!(kind, IrElementKind::Link) {
         return None;
     }
@@ -667,6 +681,33 @@ pub fn class(kind: &IrElementKind, bindings: &[IrBinding]) -> Option<String> {
         .find(|b| b.key == "appearance")
         .and_then(string_of)
         .map(|a| format!("cui-link-{a}"))
+}
+
+/// Whether a `Header` is `sticky: true`: it stays at the top of the viewport, and the page keeps its anchors clear of it (docs/page.md section 5).
+pub fn is_sticky(bindings: &[IrBinding]) -> bool {
+    bindings.iter().any(|b| {
+        b.key == "sticky"
+            && matches!(&b.value, IrBindingValue::Const { expr, .. } if matches!(**expr, IrExpr::BoolLit { value: true, .. }))
+    })
+}
+
+/// Whether a view draws a `Header { sticky: true }`.
+pub fn view_has_sticky(node: &IrViewNode) -> bool {
+    match node {
+        IrViewNode::Element {
+            kind,
+            bindings,
+            children,
+            ..
+        } => {
+            (matches!(kind, IrElementKind::Header) && is_sticky(bindings))
+                || children.iter().any(view_has_sticky)
+        }
+        IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
+            children.iter().any(view_has_sticky)
+        }
+        IrViewNode::Text { .. } => false,
+    }
 }
 
 /// The bindings the structure recipe writes (`attrs`, `class`, a `Details`' summary): the generic binding loop skips them.
@@ -727,6 +768,7 @@ struct Walk<'a> {
     anchors: Vec<(&'a str, Span)>,
     mains: Vec<Span>,
     navs: Vec<(bool, Span)>,
+    stickies: Vec<Span>,
 }
 
 fn walk<'a>(
@@ -795,6 +837,7 @@ fn walk<'a>(
             }
             match kind {
                 IrElementKind::Main => w.mains.push(*span),
+                IrElementKind::Header if is_sticky(bindings) => w.stickies.push(*span),
                 IrElementKind::Nav => w.navs.push((
                     accessibility.label.is_some() || accessibility.label_expr.is_some(),
                     *span,
@@ -871,6 +914,7 @@ pub fn check_program(ir: &IrFile) -> Result<(), LowerError> {
         anchors: Vec::new(),
         mains: Vec::new(),
         navs: Vec::new(),
+        stickies: Vec::new(),
     };
     for c in &ir.components {
         let mut last = None;
@@ -928,6 +972,13 @@ pub fn check_program(ir: &IrFile) -> Result<(), LowerError> {
         return Err(refuse(
             "landmark-duplicate",
             "a page has one Main: this is a second".to_string(),
+            *second,
+        ));
+    }
+    if let Some(second) = w.stickies.get(1) {
+        return Err(refuse(
+            "header-sticky-duplicate",
+            "one `Header` is `sticky: true`: two would stack under each other and the page cannot keep its anchors clear of both".to_string(),
             *second,
         ));
     }

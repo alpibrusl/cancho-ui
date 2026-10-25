@@ -146,7 +146,7 @@ pub fn load(ir: &mut IrFile, dir: &Path, program: &Path) -> Result<(), Box<Diagn
             ));
         }
     }
-    let root = dir.canonicalize().ok();
+    let root = crate::pipeline::real_dir(dir);
     let (shim, ready) = (sha256_hex(SHIM.as_bytes()), sha256_hex(READY.as_bytes()));
     let mut done = Vec::new();
     for island in &ir.islands {

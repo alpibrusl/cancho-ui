@@ -1,0 +1,337 @@
+{
+ "about": "Cases for `page { .. }`, the skip link and `Header { sticky: true }` (docs/page.md). A case is a `page` text and a `view`, or a whole `program`. The files are written beside the program.",
+ "files": {
+  "logo-mark.png": "png",
+  "logo.png": "png",
+  "agents.md": "# agents",
+  "data/ecosystem.json": "{}",
+  "big.bin": {
+   "fill": "x",
+   "bytes": 5242881
+  }
+ },
+ "view": "Header { sticky: true Link { to: \"#top\" \"home\" } Nav { label: \"Sections\" Link { to: \"#try\" \"Try it\" } } } Main { id: \"main\" Section { label: \"Top\" id: \"top\" Text { \"x\" } } Section { label: \"Try\" id: \"try\" Text { \"y\" } } }",
+ "valid": [
+  {
+   "name": "a full page, as the cancho-www head",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "only what is required",
+   "page": "page {\n    title: \"A page\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    canonical: \"https://example.org/\";\n}\n"
+  },
+  {
+   "name": "a page in Spanish with its skip words",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n    lang: \"es\";\n    skip: \"Saltar al contenido\";\n}\n"
+  },
+  {
+   "name": "a regional English needs no skip words",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n    lang: \"en-GB\";\n}\n"
+  },
+  {
+   "name": "the description of exactly 50 characters",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"dddddddddddddddddddddddddddddddddddddddddddddddddd\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "the description of exactly 300 characters",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "a Main with another id, the skip link goes there",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n",
+   "view": "Header { sticky: true Link { to: \"#top\" \"home\" } Nav { label: \"Sections\" Link { to: \"#try\" \"Try it\" } } } Main { id: \"content\" Section { label: \"Top\" id: \"top\" Text { \"x\" } } Section { label: \"Try\" id: \"try\" Text { \"y\" } } }"
+  },
+  {
+   "name": "an image 8192 by 1",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 8192;\n    image_height: 1;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "a sticky header that says false",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n",
+   "view": "Header { sticky: false Link { to: \"#top\" \"home\" } Nav { label: \"Sections\" Link { to: \"#try\" \"Try it\" } } } Main { id: \"main\" Section { label: \"Top\" id: \"top\" Text { \"x\" } } Section { label: \"Try\" id: \"try\" Text { \"y\" } } }"
+  },
+  {
+   "name": "no sticky header at all",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n",
+   "view": "Header { Link { to: \"#top\" \"home\" } Nav { label: \"Sections\" Link { to: \"#try\" \"Try it\" } } } Main { id: \"main\" Section { label: \"Top\" id: \"top\" Text { \"x\" } } Section { label: \"Try\" id: \"try\" Text { \"y\" } } }"
+  },
+  {
+   "name": "a title with quotes, angle brackets and an at sign",
+   "page": "page {\n    title: \"Tom & \\\"Jerry\\\" <b> @TITLE@\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  }
+ ],
+ "refusals": [
+  {
+   "name": "two pages in one file",
+   "code": "page-duplicate",
+   "program": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\npage {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\ncomponent Site {\n    view { Column { Header { sticky: true Link { to: \"#top\" \"home\" } Nav { label: \"Sections\" Link { to: \"#try\" \"Try it\" } } } Main { id: \"main\" Section { label: \"Top\" id: \"top\" Text { \"x\" } } Section { label: \"Try\" id: \"try\" Text { \"y\" } } } } }\n}\n"
+  },
+  {
+   "name": "an unknown setting",
+   "code": "page-entry-unknown",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n    robots: \"noindex\";\n}\n"
+  },
+  {
+   "name": "a setting twice",
+   "code": "page-entry-duplicate",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n    title: \"again\";\n}\n"
+  },
+  {
+   "name": "a number where text goes",
+   "code": "page-entry-type",
+   "page": "page {\n    title: 3;\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "text where a number goes",
+   "code": "page-entry-type",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: \"1200\";\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "extras on a setting that takes none",
+   "code": "page-entry-unknown",
+   "page": "page {\n    title: \"t\" mime: \"text/plain\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "no title",
+   "code": "page-title-missing",
+   "page": "page {\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "an empty title",
+   "code": "page-title-missing",
+   "page": "page {\n    title: \"  \";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "a title of 121 characters",
+   "code": "page-title-missing",
+   "page": "page {\n    title: \"ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "no description",
+   "code": "page-description-length",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "a description of 49 characters",
+   "code": "page-description-length",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"ddddddddddddddddddddddddddddddddddddddddddddddddd\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "a description of 301 characters",
+   "code": "page-description-length",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "a social description that is too short",
+   "code": "page-description-length",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"short\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "a language that is not a tag",
+   "code": "page-lang-invalid",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n    lang: \"English\";\n}\n"
+  },
+  {
+   "name": "a language tag in capitals",
+   "code": "page-lang-invalid",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n    lang: \"EN\";\n}\n"
+  },
+  {
+   "name": "a language tag with four parts after it",
+   "code": "page-lang-invalid",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n    lang: \"en-a1-b2-c3-d4\";\n}\n"
+  },
+  {
+   "name": "no canonical address",
+   "code": "page-canonical-not-https",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "an http canonical address",
+   "code": "page-canonical-not-https",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"http://example.org/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "a canonical address with a fragment",
+   "code": "page-canonical-not-https",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/#top\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "a canonical address with a space",
+   "code": "page-canonical-not-https",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/a b\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "an image beside the program",
+   "code": "page-image-not-https",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "an image at an address with no host",
+   "code": "page-image-not-https",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https:///og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "an image with no width",
+   "code": "page-image-size-missing",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "an image with no height",
+   "code": "page-image-size-missing",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "a width with no image",
+   "code": "page-image-size-missing",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image_width: 1200;\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "an image width of zero",
+   "code": "page-image-size-invalid",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 0;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "an image width of 8193",
+   "code": "page-image-size-invalid",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 8193;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "an image with no alt",
+   "code": "page-image-alt-missing",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "an empty image alt",
+   "code": "page-image-alt-missing",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "an icon that goes up a directory",
+   "code": "page-link-invalid",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"../logo.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "an icon from an absolute path",
+   "code": "page-link-invalid",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"/logo.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "an icon at a javascript address",
+   "code": "page-link-invalid",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"javascript:alert(1)\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "an icon at an http address",
+   "code": "page-link-invalid",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"http://example.org/i.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "an icon with an empty segment",
+   "code": "page-link-invalid",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"a//b.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "an apple icon with a quote",
+   "code": "page-link-invalid",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"a\\\"b.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "an alternate with no title",
+   "code": "page-alternate-invalid",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "an alternate with no media type",
+   "code": "page-alternate-invalid",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" title: \"t\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "an alternate with a media type that is not one",
+   "code": "page-alternate-invalid",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"markdown\" title: \"t\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "an alternate with a setting of another kind",
+   "code": "page-alternate-invalid",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"t\" rel: \"x\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "nine alternates",
+   "code": "page-alternate-invalid",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"t0\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"t1\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"t2\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"t3\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"t4\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"t5\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"t6\";\n}\n"
+  },
+  {
+   "name": "a page in Spanish with no skip words",
+   "code": "page-skip-text-missing",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n    lang: \"es\";\n}\n"
+  },
+  {
+   "name": "empty skip words",
+   "code": "page-skip-text-invalid",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n    skip: \"\";\n}\n"
+  },
+  {
+   "name": "skip words of 61 characters",
+   "code": "page-skip-text-invalid",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n    skip: \"sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\";\n}\n"
+  },
+  {
+   "name": "a page with no Main",
+   "code": "page-main-missing",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n",
+   "view": "Header { Link { to: \"#top\" \"home\" } } Section { label: \"Top\" id: \"top\" Text { \"x\" } }"
+  },
+  {
+   "name": "a Main with no id",
+   "code": "skip-target-missing",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n",
+   "view": "Header { sticky: true Link { to: \"#top\" \"home\" } Nav { label: \"Sections\" Link { to: \"#try\" \"Try it\" } } } Main { Section { label: \"Top\" id: \"top\" Text { \"x\" } } Section { label: \"Try\" id: \"try\" Text { \"y\" } } }"
+  },
+  {
+   "name": "a file that is not there",
+   "code": "page-file-missing",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"nowhere.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "an alternate that is not there",
+   "code": "page-file-missing",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"nowhere.md\" mime: \"text/markdown\" title: \"t\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "a file over 5 MB",
+   "code": "page-file-too-large",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"big.bin\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n"
+  },
+  {
+   "name": "a sticky that is not true or false",
+   "code": "header-sticky-invalid",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n",
+   "view": "Header { sticky: \"yes\" Link { to: \"#top\" \"home\" } Nav { label: \"Sections\" Link { to: \"#try\" \"Try it\" } } } Main { id: \"main\" Section { label: \"Top\" id: \"top\" Text { \"x\" } } Section { label: \"Try\" id: \"try\" Text { \"y\" } } }"
+  },
+  {
+   "name": "a sticky that is a number",
+   "code": "header-sticky-invalid",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n",
+   "view": "Header { sticky: 1 Link { to: \"#top\" \"home\" } Nav { label: \"Sections\" Link { to: \"#try\" \"Try it\" } } } Main { id: \"main\" Section { label: \"Top\" id: \"top\" Text { \"x\" } } Section { label: \"Try\" id: \"try\" Text { \"y\" } } }"
+  },
+  {
+   "name": "a sticky on a Section",
+   "code": "binding-unknown",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n",
+   "view": "Header { Link { to: \"#top\" \"home\" } } Main { id: \"main\" Section { label: \"Top\" id: \"top\" sticky: true Text { \"x\" } } }"
+  },
+  {
+   "name": "two sticky headers",
+   "code": "header-sticky-duplicate",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n",
+   "view": "Header { sticky: true Link { to: \"#top\" \"home\" } Nav { label: \"Sections\" Link { to: \"#try\" \"Try it\" } } } Header { sticky: true Link { to: \"#top\" \"again\" } } Main { id: \"main\" Section { label: \"Top\" id: \"top\" Text { \"x\" } } Section { label: \"Try\" id: \"try\" Text { \"y\" } } }"
+  },
+  {
+   "name": "an anchor to nothing, with a page",
+   "code": "anchor-unknown",
+   "page": "page {\n    title: \"cancho: tools built for agents\";\n    description: \"cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.\";\n    social_description: \"Trust without comprehension.\";\n    canonical: \"https://example.org/cancho/\";\n    image: \"https://example.org/cancho/og.png\";\n    image_width: 1200;\n    image_height: 630;\n    image_alt: \"cancho: Tools built for agents.\";\n    icon: \"logo-mark.png\";\n    apple_icon: \"logo.png\";\n    alternate: \"agents.md\" mime: \"text/markdown\" title: \"cancho, as an agent reads it\";\n    alternate: \"data/ecosystem.json\" mime: \"application/json\" title: \"The ecosystem as data\";\n}\n",
+   "view": "Header { sticky: true Link { to: \"#top\" \"home\" } Nav { label: \"Sections\" Link { to: \"#nowhere\" \"Try it\" } } } Main { id: \"main\" Section { label: \"Top\" id: \"top\" Text { \"x\" } } Section { label: \"Try\" id: \"try\" Text { \"y\" } } }"
+  }
+ ]
+}

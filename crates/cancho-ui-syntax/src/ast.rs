@@ -30,7 +30,33 @@ pub struct File {
     pub themes: Vec<ThemeDecl>,
     /// `island Name { script: ".."  sha256: ".."; .. }` (docs/islands.md): the sealed islands declared in this file, in source order.
     pub islands: Vec<IslandDecl>,
+    /// `page { title: ".."; description: ".."; .. }` (docs/page.md): the declared pages, in source order. More than one is refused when the
+    /// file is lowered (`page-duplicate`).
+    pub pages: Vec<PageDecl>,
     pub span: Span,
+}
+
+/// `page { .. }`: what the document says about itself to a browser, a search engine, a link preview and an agent. What the entries mean, and which
+/// are refused, is decided when the file is lowered.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PageDecl {
+    pub entries: Vec<PageEntry>,
+    pub span: Span,
+}
+
+/// `key: "value";`, `key: 1200;`, or `alternate: "agents.md" mime: "text/markdown" title: "..";` (the extras after the first value).
+#[derive(Debug, Clone, PartialEq)]
+pub struct PageEntry {
+    pub key: String,
+    pub value: PageValue,
+    pub extras: Vec<(String, String, Span)>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum PageValue {
+    Text(String),
+    Int(i64),
 }
 
 /// `island Name { .. }`: a piece of the page that is not written in cancho-ui, declared with the hash of every file it runs (docs/islands.md).

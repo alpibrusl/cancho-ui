@@ -6,12 +6,20 @@
 
 use std::path::Path;
 
+use cancho_ui_ir::ir::IrPage;
 use cancho_ui_ir::recipe::Prerender;
 
 /// The files of one PWA, in the order they are written: `(file name, bytes)`.
 pub type PwaFiles = Vec<(String, Vec<u8>)>;
 
 /// What a theme adds to a page (docs/theme.md): its stylesheet, and the font files it declared, as `(path, bytes)`.
+/// What the page of a program says, for the head and the stylesheet: its `page { .. }`, and whether a `Header` is `sticky`.
+#[derive(Clone, Copy, Default)]
+pub struct PageInfo<'a> {
+    pub page: Option<&'a IrPage>,
+    pub sticky: bool,
+}
+
 pub struct ThemeAssets {
     pub css: String,
     pub fonts: Vec<(String, Vec<u8>)>,
@@ -28,12 +36,13 @@ pub fn generate(
     theme: Option<&ThemeAssets>,
     site: &[(String, Vec<u8>)],
     prerender: Option<&Prerender>,
+    page: PageInfo,
 ) -> PwaFiles {
     let mut files: PwaFiles = vec![
         ("app.js".into(), js.as_bytes().to_vec()),
         (
             "index.html".into(),
-            index_html(name, true, csp, theme, prerender).into_bytes(),
+            index_html(name, true, csp, theme, prerender, page).into_bytes(),
         ),
         ("manifest.webmanifest".into(), manifest(name).into_bytes()),
         ("icon-192.png".into(), icon_png(192)),
@@ -56,12 +65,13 @@ pub fn generate_page(
     theme: Option<&ThemeAssets>,
     site: &[(String, Vec<u8>)],
     prerender: Option<&Prerender>,
+    page: PageInfo,
 ) -> PwaFiles {
     let mut files: PwaFiles = vec![
         ("app.js".into(), js.as_bytes().to_vec()),
         (
             "index.html".into(),
-            index_html(name, false, csp, theme, prerender).into_bytes(),
+            index_html(name, false, csp, theme, prerender, page).into_bytes(),
         ),
     ];
     files.extend(theme.iter().flat_map(|t| t.fonts.iter().cloned()));
@@ -83,6 +93,109 @@ pub fn write_all(dir: &Path, files: &PwaFiles) -> Result<(), String> {
     Ok(())
 }
 
+/// What a page adds to the baseline stylesheet (docs/page.md sections 4 and 5): the skip link, and a sticky header. A program with neither gets the
+/// stylesheet it always had.
+const PAGE_CSS: &str = r#"/* a page (docs/page.md): the skip link is off the screen until it has focus; a sticky header stays at the top and its anchors clear it (5rem until the script has measured it) */
+a.cui-link-skip { position: absolute; left: 1rem; top: -4rem; z-index: 20; display: inline-flex; align-items: center; min-height: 44px; padding: 0 1rem; border-radius: 8px; background: LinkText; color: Canvas; font-weight: 600; text-decoration: none; }
+a.cui-link-skip:focus { top: 0.5rem; }
+/* sticky only where the script that measures the header runs: its height is not known here, and 5rem alone hid an anchor under an 88 px header (docs/page.md section 5) */
+@media (scripting: enabled) {
+    header.cui-sticky { position: sticky; top: 0; z-index: 10; background: Canvas; color: CanvasText; }
+    html:has(.cui-sticky) { scroll-padding-top: 5rem; }
+}
+"#;
+
+/// Text that came from the program, for the page: escaped, and with no `@` that a later token replacement could take for its own.
+fn esc(s: &str) -> String {
+    html_escape(s).replace('@', "&#64;")
+}
+
+/// The head a `page { .. }` writes (docs/page.md section 3): the description, the Open Graph and Twitter tags, the canonical address, the colour scheme,
+/// the icons and the alternates.
+fn page_meta(p: &IrPage) -> String {
+    let mut o = String::new();
+    let mut tag = |s: String| {
+        o.push_str(&s);
+        o.push('\n');
+    };
+    tag(format!(
+        "<meta name=\"description\" content=\"{}\">",
+        esc(&p.description)
+    ));
+    tag(format!(
+        "<meta property=\"og:title\" content=\"{}\">",
+        esc(&p.title)
+    ));
+    tag(format!(
+        "<meta property=\"og:description\" content=\"{}\">",
+        esc(p.social_description.as_deref().unwrap_or(&p.description))
+    ));
+    tag("<meta property=\"og:type\" content=\"website\">".to_string());
+    tag(format!(
+        "<meta property=\"og:url\" content=\"{}\">",
+        esc(&p.canonical)
+    ));
+    if let Some(i) = &p.image {
+        tag(format!(
+            "<meta property=\"og:image\" content=\"{}\">",
+            esc(&i.url)
+        ));
+        tag(format!(
+            "<meta property=\"og:image:width\" content=\"{}\">",
+            i.width
+        ));
+        tag(format!(
+            "<meta property=\"og:image:height\" content=\"{}\">",
+            i.height
+        ));
+        tag(format!(
+            "<meta property=\"og:image:alt\" content=\"{}\">",
+            esc(&i.alt)
+        ));
+    }
+    tag(format!(
+        "<meta name=\"twitter:card\" content=\"{}\">",
+        if p.image.is_some() {
+            "summary_large_image"
+        } else {
+            "summary"
+        }
+    ));
+    tag(format!(
+        "<link rel=\"canonical\" href=\"{}\">",
+        esc(&p.canonical)
+    ));
+    tag("<meta name=\"color-scheme\" content=\"light dark\">".to_string());
+    if let Some(i) = &p.icon {
+        // the media type of an icon is said when the extension says it; a browser takes the kind from it before it has fetched the file
+        let kind = match i.rsplit('.').next().map(str::to_ascii_lowercase).as_deref() {
+            Some("png") => " type=\"image/png\"",
+            Some("svg") => " type=\"image/svg+xml\"",
+            Some("ico") => " type=\"image/x-icon\"",
+            Some("jpg" | "jpeg") => " type=\"image/jpeg\"",
+            Some("webp") => " type=\"image/webp\"",
+            Some("gif") => " type=\"image/gif\"",
+            _ => "",
+        };
+        tag(format!("<link rel=\"icon\"{kind} href=\"{}\">", esc(i)));
+    }
+    if let Some(i) = &p.apple_icon {
+        tag(format!(
+            "<link rel=\"apple-touch-icon\" href=\"{}\">",
+            esc(i)
+        ));
+    }
+    for a in &p.alternates {
+        tag(format!(
+            "<link rel=\"alternate\" type=\"{}\" href=\"{}\" title=\"{}\">",
+            esc(&a.mime),
+            esc(&a.href),
+            esc(&a.title)
+        ));
+    }
+    o
+}
+
 fn html_escape(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
@@ -97,16 +210,19 @@ fn index_html(
     csp: Option<&str>,
     theme: Option<&ThemeAssets>,
     prerender: Option<&Prerender>,
+    page: PageInfo,
 ) -> String {
-    let title = html_escape(name);
+    let title = page
+        .page
+        .map_or_else(|| html_escape(name), |p| esc(&p.title));
     let html = String::from(
         r##"<!DOCTYPE html>
-<html lang="en">
+<html lang="@LANG@">
 <head>
 <meta charset="UTF-8">
 @CSP@<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 @APP_THEME@<title>@TITLE@</title>
-@APP_LINKS@<style>
+@PAGE_META@@APP_LINKS@<style>
 /* A default so a program is usable on a phone; the page owns presentation, replace it freely. */
 :root { color-scheme: light dark; }
 body {
@@ -179,7 +295,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 .cui-media { display: block; width: 100%; max-width: 100%; height: auto; border-radius: 12px; background: #000; }
 [data-ratio="1:1"] { aspect-ratio: 1 / 1; } [data-ratio="4:3"] { aspect-ratio: 4 / 3; } [data-ratio="3:2"] { aspect-ratio: 3 / 2; }
 [data-ratio="16:9"] { aspect-ratio: 16 / 9; } [data-ratio="21:9"] { aspect-ratio: 21 / 9; } [data-ratio="3:4"] { aspect-ratio: 3 / 4; } [data-ratio="2:3"] { aspect-ratio: 2 / 3; }
-</style>
+@PAGE_CSS@</style>
 @THEME_CSS@</head>
 <body>
 @ROOT@
@@ -210,8 +326,18 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
     } else {
         ("", "", "")
     };
+    let meta = page.page.map_or_else(String::new, page_meta);
+    let page_css = if page.page.is_some() || page.sticky {
+        PAGE_CSS
+    } else {
+        ""
+    };
+    let lang = page.page.map_or_else(|| "en".to_string(), |p| esc(&p.lang));
     let fill = |part: &str| {
         part.replace("@CSP@", &csp)
+            .replace("@PAGE_CSS@", page_css)
+            .replace("@PAGE_META@", &meta)
+            .replace("@LANG@", &lang)
             .replace("@TITLE@", &title)
             .replace("@THEME_CSS@", &theme_css)
             .replace("@APP_THEME@", theme)
@@ -460,7 +586,15 @@ mod tests {
 
     #[test]
     fn a_name_is_escaped_in_the_page_and_in_the_manifest() {
-        let files = generate("//", "A \"b\" <c> & d", None, None, &[], None);
+        let files = generate(
+            "//",
+            "A \"b\" <c> & d",
+            None,
+            None,
+            &[],
+            None,
+            PageInfo::default(),
+        );
         let html = String::from_utf8(files[1].1.clone()).unwrap();
         assert!(html.contains("<title>A &quot;b&quot; &lt;c&gt; &amp; d</title>"));
         let manifest: serde_json::Value = serde_json::from_slice(&files[2].1).unwrap();
@@ -470,7 +604,7 @@ mod tests {
     #[test]
     fn a_page_is_not_an_app() {
         // `--page` (docs/mobile-backend.md section 5.2): the script and the page, and nothing a browser installs from.
-        let files = generate_page("//", "Demo", None, None, &[], None);
+        let files = generate_page("//", "Demo", None, None, &[], None, PageInfo::default());
         let names: Vec<&str> = files.iter().map(|(n, _)| n.as_str()).collect();
         assert_eq!(names, ["app.js", "index.html"]);
         let html = String::from_utf8(files[1].1.clone()).unwrap();
@@ -489,25 +623,40 @@ mod tests {
             "still a page for a phone"
         );
         // The page of `--pwa` is the same page plus those lines.
-        let app =
-            String::from_utf8(generate("//", "Demo", None, None, &[], None)[1].1.clone()).unwrap();
+        let app = String::from_utf8(
+            generate("//", "Demo", None, None, &[], None, PageInfo::default())[1]
+                .1
+                .clone(),
+        )
+        .unwrap();
         assert!(app.contains("manifest") && app.contains("serviceWorker"));
     }
 
     #[test]
     fn the_worker_version_follows_every_byte_it_caches() {
-        let a = generate("one", "x", None, None, &[], None);
-        let b = generate("two", "x", None, None, &[], None);
+        let a = generate("one", "x", None, None, &[], None, PageInfo::default());
+        let b = generate("two", "x", None, None, &[], None, PageInfo::default());
         let sw = |f: &PwaFiles| String::from_utf8(f.last().unwrap().1.clone()).unwrap();
         assert_ne!(sw(&a), sw(&b));
-        assert_eq!(sw(&a), sw(&generate("one", "x", None, None, &[], None)));
+        assert_eq!(
+            sw(&a),
+            sw(&generate(
+                "one",
+                "x",
+                None,
+                None,
+                &[],
+                None,
+                PageInfo::default()
+            ))
+        );
     }
 
     #[test]
     fn the_maskable_icon_keeps_its_mark_inside_the_safe_zone() {
         // #67: the manifest has a maskable entry for each icon, and the mark of that icon lies inside the circle of radius
         // 40% of the image, whatever the size, so a circular mask cuts nothing of it.
-        let files = generate("//", "x", None, None, &[], None);
+        let files = generate("//", "x", None, None, &[], None, PageInfo::default());
         let manifest: serde_json::Value = serde_json::from_slice(&files[2].1).unwrap();
         let icons = manifest["icons"].as_array().unwrap();
         for size in [192u32, 512] {

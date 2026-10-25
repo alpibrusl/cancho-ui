@@ -29,6 +29,7 @@
 mod assets;
 mod diff_cmd;
 mod islands;
+mod page;
 mod pipeline;
 mod pwa;
 mod test_cmd;
@@ -195,8 +196,13 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
                 // the pictures and videos the views name, copied into the build at the paths the page uses
                 let site = match ir.as_ref() {
                     Some(i) => {
-                        assets::load(i, file.parent().unwrap_or_else(|| std::path::Path::new("")))
-                            .map_err(CliError::Env)?
+                        let dir = file.parent().unwrap_or_else(|| std::path::Path::new(""));
+                        let mut site = assets::load(i, dir).map_err(CliError::Env)?;
+                        // the icons and alternates the page names, copied at the paths it uses
+                        if let Some(p) = &i.page {
+                            site.extend(page::load(p, dir).map_err(CliError::Env)?);
+                        }
+                        site
                     }
                     None => Vec::new(),
                 };
@@ -213,6 +219,14 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
                             .map(|c| cancho_ui_ir::recipe::prerender(&c.view.body)),
                     }
                 };
+                let page_info = pwa::PageInfo {
+                    page: ir.as_ref().and_then(|i| i.page.as_ref()),
+                    sticky: ir.as_ref().is_some_and(|i| {
+                        i.components
+                            .iter()
+                            .any(|c| cancho_ui_ir::structure::view_has_sticky(&c.view.body))
+                    }),
+                };
                 let files = if opts.pwa {
                     pwa::generate(
                         &out,
@@ -221,6 +235,7 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
                         theme.as_ref(),
                         &site,
                         prerender.as_ref(),
+                        page_info,
                     )
                 } else {
                     pwa::generate_page(
@@ -230,6 +245,7 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
                         theme.as_ref(),
                         &site,
                         prerender.as_ref(),
+                        page_info,
                     )
                 };
                 pwa::write_all(dir, &files).map_err(CliError::Env)?;

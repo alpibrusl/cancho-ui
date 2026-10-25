@@ -197,6 +197,7 @@ pub fn lower_file(file: &File) -> Result<IrFile, LowerError> {
         Some(t) => Some(crate::theme::lower_theme(t)?),
         None => None,
     };
+    let page = crate::page::lower_decls(file)?;
     let mut ir = IrFile {
         schema: SCHEMA.to_string(),
         version: schema_version().to_string(),
@@ -205,6 +206,7 @@ pub fn lower_file(file: &File) -> Result<IrFile, LowerError> {
         theme,
         assets: Vec::new(),
         islands: crate::island::lower_decls(file)?,
+        page,
     };
     crate::island::resolve_instances(&mut ir)?;
     crate::controls::check_controls(&ir)?;
@@ -230,6 +232,7 @@ pub fn merge_ir_files(files: &[IrFile]) -> IrFile {
             theme: None,
             assets: Vec::new(),
             islands: Vec::new(),
+            page: None,
         };
     };
     IrFile {
@@ -241,6 +244,8 @@ pub fn merge_ir_files(files: &[IrFile]) -> IrFile {
         theme: files.iter().rev().find_map(|f| f.theme.clone()),
         assets: Vec::new(),
         islands: files.iter().flat_map(|f| f.islands.clone()).collect(),
+        // one page per program (the pipeline refuses two): the last file's, which is the entry's when it has one
+        page: files.iter().rev().find_map(|f| f.page.clone()),
     }
 }
 
