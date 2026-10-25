@@ -54,8 +54,8 @@
     {
       "name": "an unused island still sets the policy",
       "file": "crates/cancho-ui-ir/src/island.rs",
-      "from": "    if !used.is_empty() {\n        parts.push",
-      "to": "    if true {\n        parts.push"
+      "from": "    if used.iter().any(|i| i.sealed) {",
+      "to": "    if true {"
     },
     {
       "name": "the policy trusts inline scripts",
@@ -108,8 +108,8 @@
     {
       "name": "a prop read from state is accepted",
       "file": "crates/cancho-ui-ir/src/island.rs",
-      "from": "            None => {\n                return Err(refuse(\n                    \"island-prop-dynamic\",",
-      "to": "            None => {\n                if true {\n                    return Ok(());\n                }\n                return Err(refuse(\n                    \"island-prop-dynamic\","
+      "from": "                if island.sealed {\n                    return Err(refuse(\n                        \"island-prop-dynamic\",",
+      "to": "                if island.sealed {\n                    if true {\n                        return Ok(());\n                    }\n                    return Err(refuse(\n                        \"island-prop-dynamic\","
     },
     {
       "name": "the arity of a handler is not checked",
@@ -132,8 +132,8 @@
     {
       "name": "inspect effects lists no files",
       "file": "crates/cancho-ui-ir/src/island.rs",
-      "from": "\"files\": i.scripts.iter().chain(i.style.iter())",
-      "to": "\"files\": i.scripts.iter().take(0)"
+      "from": "        \"sealed\": true,\n        \"label\": i.label,\n        \"decorative\": i.decorative,\n        \"files\": i.scripts.iter().chain(i.style.iter()).map(|f| serde_json::json!({ \"path\": f.path, \"sha256\": f.sha256, \"bytes\": f.bytes })).collect::<Vec<_>>(),",
+      "to": "        \"sealed\": true,\n        \"label\": i.label,\n        \"decorative\": i.decorative,\n        \"files\": i.scripts.iter().take(0).map(|f| serde_json::json!({ \"path\": f.path, \"sha256\": f.sha256, \"bytes\": f.bytes })).collect::<Vec<_>>(),"
     },
     {
       "name": "an island is a hole of the skeleton",
@@ -150,19 +150,19 @@
     {
       "name": "a message from any window is taken for the frame's",
       "file": "crates/cancho-ui-codegen-web/src/island.rs",
-      "from": "if (__cui_isl.live[i].frame.contentWindow === e.source) {",
-      "to": "if (true) {"
+      "from": "!__cui_isl.live[i].open && __cui_isl.live[i].frame.contentWindow === e.source",
+      "to": "true"
     },
     {
       "name": "the type of an event's value is not checked",
       "file": "crates/cancho-ui-codegen-web/src/island.rs",
-      "from": "|| !__cui_isl_ok(decl.type, d.value) ||",
+      "from": "|| !__cui_isl_ok(decl.type, value) ||",
       "to": "||"
     },
     {
       "name": "an event that is on every object is heard",
       "file": "crates/cancho-ui-codegen-web/src/island.rs",
-      "from": "|| !Object.prototype.hasOwnProperty.call(en.spec.events, d.name)",
+      "from": "|| !Object.prototype.hasOwnProperty.call(en.spec.events, name)",
       "to": ""
     },
     {

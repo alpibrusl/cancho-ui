@@ -1,0 +1,13 @@
+[data-cui-island] svg { display: block; width: 100%; height: auto; }
+[data-cui-island] .paper { fill: #efe6cf; }
+[data-cui-island] .trail { fill: none; stroke: #6d8f4f; stroke-width: 3; stroke-dasharray: 8 7; opacity: .7; }
+[data-cui-island] .rests { fill: none; stroke: #2f6db5; stroke-width: 3; }
+[data-cui-island] .mk { fill: #2f6db5; }
+[data-cui-island] .plain { fill: #b9a99a; stroke: #6b5a4c; stroke-width: 3; }
+[data-cui-island] .design .plain { fill: none; stroke-dasharray: 6 5; }
+[data-cui-island] .name { font: 600 20px/1 system-ui, sans-serif; fill: #3b2f25; }
+[data-cui-island] .name.big { font-size: 26px; }
+[data-cui-island] .rock { cursor: pointer; outline: none; }
+[data-cui-island] .rock:focus-visible .plain { stroke: #1f6feb; stroke-width: 6; }
+[data-cui-island] .rock.sel .plain { stroke: #1f6feb; stroke-width: 6; }
+[data-cui-island] .dim, [data-cui-island] .rock.dim { opacity: .25; }

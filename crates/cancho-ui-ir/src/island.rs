@@ -178,6 +178,7 @@ pub fn lower_decls(file: &File) -> Result<Vec<IrIsland>, LowerError> {
         }
         let mut island = IrIsland {
             name: d.name.clone(),
+            sealed: true,
             label: None,
             decorative: false,
             width: 0,
@@ -187,8 +188,11 @@ pub fn lower_decls(file: &File) -> Result<Vec<IrIsland>, LowerError> {
             props: Vec::new(),
             events: Vec::new(),
             srcdoc: String::new(),
+            texts: Vec::new(),
+            style_text: None,
             span: d.span,
         };
+        let mut sealed_seen = false;
         let (mut decorative_seen, mut label_seen, mut props_seen, mut events_seen) =
             (false, false, false, false);
         let (mut width_seen, mut height_seen) = (false, false);
@@ -245,6 +249,13 @@ pub fn lower_decls(file: &File) -> Result<Vec<IrIsland>, LowerError> {
                         ));
                     }
                     island.label = Some(text.clone());
+                }
+                IslandEntry::Sealed { value, span } => {
+                    if sealed_seen {
+                        return Err(twice("sealed", *span));
+                    }
+                    sealed_seen = true;
+                    island.sealed = *value;
                 }
                 IslandEntry::Decorative { value, span } => {
                     if decorative_seen {
@@ -453,6 +464,28 @@ pub fn lower_decls(file: &File) -> Result<Vec<IrIsland>, LowerError> {
             }
             _ => {}
         }
+        if !island.sealed {
+            if island.props.iter().any(|p| p.ty == IrIslandType::Pointer) {
+                return Err(refuse(
+                    "island-open-pointer",
+                    format!(
+                        "open island `{}` declares a `Pointer` prop: an open island runs in the page and listens to the pointer itself; the runtime feeds only a sealed frame",
+                        d.name
+                    ),
+                    d.span,
+                ));
+            }
+            if island.props.iter().any(|p| p.name == "text") {
+                return Err(refuse(
+                    "island-prop-name",
+                    format!(
+                        "open island `{}` declares a prop `text`: `text:` on an open island names the element that is its text alternative",
+                        d.name
+                    ),
+                    d.span,
+                ));
+            }
+        }
         out.push(island);
     }
     Ok(out)
@@ -466,19 +499,66 @@ pub fn resolve_instances(ir: &mut IrFile) -> Result<(), LowerError> {
     }
     let islands = ir.islands.clone();
     for c in &mut ir.components {
-        let handlers: Vec<(String, usize)> = c
-            .events
-            .iter()
-            .map(|e| (e.name.clone(), e.params.len()))
-            .collect();
-        resolve_node(&islands, &handlers, &mut c.view.body)?;
+        let mut ctx = Ctx {
+            handlers: c
+                .events
+                .iter()
+                .map(|e| (e.name.clone(), e.params.len()))
+                .collect(),
+            state: c
+                .state
+                .iter()
+                .map(|f| (f.name.clone(), f.ty.clone()))
+                .collect(),
+            has_dom: c.requires.iter().any(|r| r.name == "Dom"),
+            ids: Vec::new(),
+            dynamic: Vec::new(),
+        };
+        collect_ids(&c.view.body, &mut ctx.ids);
+        resolve_node(&islands, &mut ctx, &mut c.view.body)?;
     }
     Ok(())
 }
 
+/// What an instance is checked against besides its island: the component it is in.
+struct Ctx {
+    handlers: Vec<(String, usize)>,
+    state: Vec<(String, IrType)>,
+    has_dom: bool,
+    /// the `id:` of every element of the view (the text alternative of an open island names one)
+    ids: Vec<String>,
+    /// the open islands already instantiated with a prop read from state
+    dynamic: Vec<String>,
+}
+
+fn collect_ids(node: &IrViewNode, out: &mut Vec<String>) {
+    match node {
+        IrViewNode::Element {
+            bindings, children, ..
+        } => {
+            for b in bindings {
+                if b.key == "id"
+                    && let IrBindingValue::String(s) = &b.value
+                {
+                    out.push(s.clone());
+                }
+            }
+            for c in children {
+                collect_ids(c, out);
+            }
+        }
+        IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
+            for c in children {
+                collect_ids(c, out);
+            }
+        }
+        IrViewNode::Text { .. } => {}
+    }
+}
+
 fn resolve_node(
     islands: &[IrIsland],
-    handlers: &[(String, usize)],
+    ctx: &mut Ctx,
     node: &mut IrViewNode,
 ) -> Result<(), LowerError> {
     match node {
@@ -492,16 +572,16 @@ fn resolve_node(
             if let IrElementKind::Named(name) = kind
                 && let Some(island) = islands.iter().find(|i| &i.name == name)
             {
-                check_instance(island, handlers, accessibility, bindings, children, *span)?;
+                check_instance(island, ctx, accessibility, bindings, children, *span)?;
                 *kind = IrElementKind::Island(Arc::new(island.clone()));
             }
             for ch in children {
-                resolve_node(islands, handlers, ch)?;
+                resolve_node(islands, ctx, ch)?;
             }
         }
         IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
             for ch in children {
-                resolve_node(islands, handlers, ch)?;
+                resolve_node(islands, ctx, ch)?;
             }
         }
         IrViewNode::Text { .. } => {}
@@ -527,7 +607,7 @@ fn literal_of(b: &IrBinding) -> Option<(serde_json::Value, IrIslandType)> {
 
 fn check_instance(
     island: &IrIsland,
-    handlers: &[(String, usize)],
+    ctx: &mut Ctx,
     accessibility: &IrAccessibility,
     bindings: &[IrBinding],
     children: &[IrViewNode],
@@ -553,9 +633,40 @@ fn check_instance(
             span,
         ));
     }
+    if !island.sealed && !ctx.has_dom {
+        return Err(refuse(
+            "island-open-needs-dom",
+            format!(
+                "`{name}` is an open island: it runs plain JavaScript in the page, with the page's authority. The component that uses it declares `requires Dom;`"
+            ),
+            span,
+        ));
+    }
     let mut bound: Vec<&str> = Vec::new();
     let mut heard: Vec<&str> = Vec::new();
+    let mut described = false;
+    let mut dynamic_here = false;
     for b in bindings {
+        if !island.sealed && b.key == "text" {
+            let id = match &b.value {
+                IrBindingValue::Const { expr, .. } => match &**expr {
+                    IrExpr::StringLit { value, .. } => Some(value.as_str()),
+                    _ => None,
+                },
+                _ => None,
+            };
+            if !id.is_some_and(|i| ctx.ids.iter().any(|x| x == i)) {
+                return Err(refuse(
+                    "island-text-alternative-invalid",
+                    format!(
+                        "`text:` on `{name}` names the `id:` of an element of this component that holds the island's text alternative; no element has that id"
+                    ),
+                    b.span,
+                ));
+            }
+            described = true;
+            continue;
+        }
         if b.key == "on" {
             let ev = match &b.value {
                 IrBindingValue::EventRef(n) => n,
@@ -591,7 +702,7 @@ fn check_instance(
                     b.span,
                 ));
             };
-            let Some((_, params)) = handlers.iter().find(|(h, _)| h == ev) else {
+            let Some((_, params)) = ctx.handlers.iter().find(|(h, _)| h == ev) else {
                 return Err(refuse(
                     "island-event-handler-missing",
                     format!("`on: {ev}` on `{name}`: this component has no `on {ev}` handler"),
@@ -668,16 +779,76 @@ fn check_instance(
                 ));
             }
             None => {
-                return Err(refuse(
-                    "island-prop-dynamic",
-                    format!(
-                        "`{}:` on `{name}` is read from state; a prop of a sealed island is a literal, written where the island is used",
-                        b.key
-                    ),
-                    b.span,
-                ));
+                if island.sealed {
+                    return Err(refuse(
+                        "island-prop-dynamic",
+                        format!(
+                            "`{}:` on `{name}` is read from state; a prop of a sealed island is a literal, written where the island is used",
+                            b.key
+                        ),
+                        b.span,
+                    ));
+                }
+                // an open island's prop may be a state field of the component: the page's script gives it the value at every render
+                let field = match &b.value {
+                    IrBindingValue::Const { expr, .. } => match &**expr {
+                        IrExpr::Ident { name: f, .. } => ctx.state.iter().find(|(n, _)| n == f),
+                        _ => None,
+                    },
+                    _ => None,
+                };
+                let Some((field_name, field_ty)) = field else {
+                    return Err(refuse(
+                        "island-prop-source-unknown",
+                        format!(
+                            "`{}:` on `{name}` is not a literal and not a `state` field of this component",
+                            b.key
+                        ),
+                        b.span,
+                    ));
+                };
+                let ty = match field_ty {
+                    IrType::Int => Some(IrIslandType::Int),
+                    IrType::Float => Some(IrIslandType::Float),
+                    IrType::Bool => Some(IrIslandType::Bool),
+                    IrType::String => Some(IrIslandType::String),
+                    _ => None,
+                };
+                if ty != Some(prop.ty) {
+                    return Err(refuse(
+                        "island-prop-type",
+                        format!(
+                            "`{}:` is a {} of island `{name}`; the state field `{field_name}` is not",
+                            b.key,
+                            prop.ty.name()
+                        ),
+                        b.span,
+                    ));
+                }
+                if !dynamic_here && ctx.dynamic.contains(name) {
+                    return Err(refuse(
+                        "island-open-instance-twice",
+                        format!(
+                            "`{name}` is used twice in one component with props read from state: the page's script gives a state value to an island by its name, so it can tell only one from another when there is one"
+                        ),
+                        span,
+                    ));
+                }
+                dynamic_here = true;
             }
         }
+    }
+    if dynamic_here {
+        ctx.dynamic.push(name.clone());
+    }
+    if !island.sealed && !island.decorative && !described {
+        return Err(refuse(
+            "island-text-alternative-missing",
+            format!(
+                "`{name}` is an open island that is not decorative: its drawing is not readable by a screen reader, so name the element that says the same in text, as `text: \"list-id\"`"
+            ),
+            span,
+        ));
     }
     for p in &island.props {
         if p.ty != IrIslandType::Pointer && !bound.contains(&p.name.as_str()) {
@@ -699,6 +870,12 @@ pub fn spec(island: &IrIsland, bindings: &[IrBinding]) -> String {
             props.insert(b.key.clone(), v);
         }
     }
+    let mut dynamic = Vec::new();
+    for b in bindings {
+        if b.key != "on" && b.key != "text" && literal_of(b).is_none() {
+            dynamic.push(b.key.clone());
+        }
+    }
     let mut events = serde_json::Map::new();
     for b in bindings {
         if b.key == "on"
@@ -718,11 +895,42 @@ pub fn spec(island: &IrIsland, bindings: &[IrBinding]) -> String {
         v.insert("pointer".into(), serde_json::json!(p.name));
     }
     v.insert("events".into(), serde_json::Value::Object(events));
+    if !island.sealed {
+        v.insert("open".into(), serde_json::json!(true));
+        v.insert("dynamic".into(), serde_json::json!(dynamic));
+    }
     serde_json::Value::Object(v).to_string()
 }
 
 /// The `<iframe>` an instance becomes. Call it on an element that `resolve_instances` accepted.
 pub fn island_dom(island: &IrIsland, bindings: &[IrBinding]) -> Dom {
+    if !island.sealed {
+        // an open island is drawn into a `div` of the page by its own scripts; there is no document of its own
+        let mut d = Dom::element("div");
+        if island.decorative {
+            d = d.attr("aria-hidden", "true");
+        } else {
+            d = d
+                .attr("role", "group")
+                .attr("aria-label", island.label.clone().unwrap_or_default());
+            if let Some(b) = bindings.iter().find(|b| b.key == "text")
+                && let IrBindingValue::Const { expr, .. } = &b.value
+                && let IrExpr::StringLit { value, .. } = &**expr
+            {
+                d = d.attr("aria-describedby", value.clone());
+            }
+        }
+        return d
+            .attr(
+                "style",
+                format!(
+                    "display:block;width:100%;max-width:{w}px;aspect-ratio:{w} / {h}",
+                    w = island.width,
+                    h = island.height
+                ),
+            )
+            .attr("data-cui-island", spec(island, bindings));
+    }
     let mut d = Dom::element("iframe").attr("sandbox", "allow-scripts");
     d = d.attr("title", island.label.clone().unwrap_or_default());
     if island.decorative {
@@ -840,7 +1048,10 @@ pub fn unsafe_in_html(text: &str, style: bool) -> Option<&'static str> {
 /// the label, the size, the props and the events with their types.
 pub fn flatten(i: &IrIsland) -> Vec<(String, String)> {
     let n = &i.name;
-    let mut out = vec![(n.clone(), "sealed".to_string())];
+    let mut out = vec![(
+        n.clone(),
+        if i.sealed { "sealed" } else { "open" }.to_string(),
+    )];
     for s in &i.scripts {
         out.push((format!("{n}.script {}", s.path), s.sha256.clone()));
     }
@@ -912,7 +1123,8 @@ pub fn page_policy(ir: &IrFile) -> Option<String> {
     for c in &ir.components {
         collect(&c.view.body, &mut used);
     }
-    if !used.is_empty() {
+    // an open island runs in the page and has no frame: only a sealed one needs the page to allow `about:` frames
+    if used.iter().any(|i| i.sealed) {
         parts.push("frame-src about:".to_string());
     }
     (!parts.is_empty()).then(|| parts.join("; "))
@@ -939,6 +1151,20 @@ fn collect<'a>(node: &'a IrViewNode, out: &mut Vec<&'a IrIsland>) {
 
 /// What a sealed island is, as `inspect effects` and `report` say it: what it runs, what it reaches, and what the sandbox does not bound.
 pub fn describe(i: &IrIsland) -> serde_json::Value {
+    if !i.sealed {
+        return serde_json::json!({
+            "name": i.name,
+            "sealed": false,
+            "authority": OPEN_AUTHORITY,
+            "label": i.label,
+            "decorative": i.decorative,
+            "files": i.scripts.iter().chain(i.style.iter()).map(|f| serde_json::json!({ "path": f.path, "sha256": f.sha256, "bytes": f.bytes })).collect::<Vec<_>>(),
+            "reaches": "everything the page can reach: its DOM, its storage, its cookies, its network, its origin",
+            "props": i.props.iter().map(|p| format!("{}: {}", p.name, p.ty.name())).collect::<Vec<_>>(),
+            "events": i.events.iter().map(|e| match e.ty { Some(t) => format!("{}: {}", e.name, t.name()), None => e.name.clone() }).collect::<Vec<_>>(),
+            "not_bounded": ["everything: an open island has no sandbox and no policy of its own; what the sealed battery shows it cannot do, this one can (docs/islands.md section 12)"],
+        });
+    }
     serde_json::json!({
         "name": i.name,
         "sealed": true,
@@ -951,6 +1177,10 @@ pub fn describe(i: &IrIsland) -> serde_json::Value {
         "not_bounded": NOT_BOUNDED,
     })
 }
+
+/// What `inspect effects` prints as the authority of an open island.
+pub const OPEN_AUTHORITY: &str =
+    "UNBOUNDED (runs plain JavaScript in the page's origin; no sandbox)";
 
 /// What the sandbox of a sealed island does not guarantee (docs/islands.md section 9).
 pub const NOT_BOUNDED: &[&str] = &[
@@ -979,4 +1209,11 @@ pub fn used_in(node: &IrViewNode) -> Vec<String> {
         }
     }
     names
+}
+
+/// Does the view instantiate an open island? That is the use of `Dom` a component declares.
+pub fn view_has_open(node: &IrViewNode) -> bool {
+    let mut used: Vec<&IrIsland> = Vec::new();
+    collect(node, &mut used);
+    used.iter().any(|i| !i.sealed)
 }

@@ -373,7 +373,7 @@ impl Parser {
         let mut entries = Vec::new();
         while !matches!(self.peek().token, Token::RBrace) {
             let (key, key_span) = self.bump_ident(
-                "`script`, `style`, `label`, `decorative`, `width`, `height`, `props` or `events`",
+                "`script`, `style`, `sealed`, `label`, `decorative`, `width`, `height`, `props` or `events`",
             )?;
             match key.as_str() {
                 "script" | "style" => {
@@ -400,6 +400,26 @@ impl Parser {
                     let semi = self.expect(Token::Semi)?;
                     entries.push(IslandEntry::Label {
                         text,
+                        span: Span::new(key_span.start, semi.span.end),
+                    });
+                }
+                "sealed" => {
+                    self.expect(Token::DotDot)?;
+                    let (word, word_span) = self.bump_ident("`true` or `false`")?;
+                    let value = match word.as_str() {
+                        "true" => true,
+                        "false" => false,
+                        _ => {
+                            return Err(unexpected(
+                                Token::Ident(word),
+                                word_span,
+                                "`true` or `false`",
+                            ));
+                        }
+                    };
+                    let semi = self.expect(Token::Semi)?;
+                    entries.push(IslandEntry::Sealed {
+                        value,
                         span: Span::new(key_span.start, semi.span.end),
                     });
                 }
@@ -482,7 +502,7 @@ impl Parser {
                     return Err(unexpected(
                         Token::Ident(key),
                         key_span,
-                        "`script`, `style`, `label`, `decorative`, `width`, `height`, `props` or `events`",
+                        "`script`, `style`, `sealed`, `label`, `decorative`, `width`, `height`, `props` or `events`",
                     ));
                 }
             }

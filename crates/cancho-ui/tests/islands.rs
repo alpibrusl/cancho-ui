@@ -230,6 +230,13 @@ const TAGS: &[&str] = &[
     "island-event-handler-missing",
     "island-event-arity",
     "island-event-bound-twice",
+    "island-open-needs-dom",
+    "island-open-pointer",
+    "island-text-alternative-missing",
+    "island-text-alternative-invalid",
+    "island-prop-source-unknown",
+    "island-open-instance-twice",
+    "capability-unused",
 ];
 
 #[test]
@@ -582,4 +589,183 @@ fn no_file_of_the_examples_or_the_fixtures_is_ignored_by_git() {
         ignored.is_empty(),
         "ignored by git, so absent from a clone: {ignored:?}"
     );
+}
+
+const OPEN: &str = r#"island Places {
+    sealed: false;
+    script: "a.js" sha256: "{sha:a.js}";
+    style: "s.css" sha256: "{sha:s.css}";
+    label: "Places";
+    width: 100;
+    height: 50;
+    props { seed: Int; }
+    events { Picked: Int; }
+}
+component C {
+    requires Dom;
+    state n: Int = 0;
+    on Picked(v) { n = v; }
+    view { Column { Places { seed: n text: "alt" on: Picked } Section { label: "Alt" id: "alt" Text { "alt" } } } }
+}
+"#;
+
+#[test]
+fn an_open_island_is_a_div_of_the_page_and_adds_no_frame_policy() {
+    let (_, html, js) = built(OPEN, &["--page"]);
+    assert!(!html.contains("<iframe"), "an open island has no frame");
+    assert!(
+        !html.contains("Content-Security-Policy"),
+        "an open island adds no policy"
+    );
+    assert!(
+        html.contains("<div role=\"group\" aria-label=\"Places\" aria-describedby=\"alt\""),
+        "{html}"
+    );
+    assert!(html.contains("data-cui-island=\"{&quot;dynamic&quot;:[&quot;seed&quot;]"));
+    // its files are in the script, to be run in the page
+    assert!(js.contains("const __cui_open_src = {"));
+    assert!(js.contains("var x = 1;"));
+}
+
+#[test]
+fn inspect_effects_and_report_say_unbounded_for_an_open_island() {
+    let c = corpus();
+    let file = workspace(&c, OPEN);
+    let (code, out, _) = run(&["inspect", "effects", p(&file), "C"]);
+    assert_eq!(code, 0, "{out}");
+    let v: Value = serde_json::from_str(&out).expect("json");
+    let i = &v["islands"][0];
+    assert_eq!(i["sealed"], false);
+    assert!(
+        i["authority"]
+            .as_str()
+            .expect("authority")
+            .starts_with("UNBOUNDED")
+    );
+    assert!(
+        i["reaches"]
+            .as_str()
+            .expect("reaches")
+            .contains("everything the page can")
+    );
+    assert!(i.get("not_bounded").is_some());
+    assert_eq!(v["requires"][0]["name"], "Dom");
+    let (_, out, _) = run(&["report", p(&file)]);
+    let r: Value = serde_json::from_str(&out).expect("json");
+    assert_eq!(r["trust"]["boundaries"][0]["kind"], "open island");
+    assert!(
+        r["trust"]["boundaries"][0]["authority"]
+            .as_str()
+            .expect("a")
+            .starts_with("UNBOUNDED")
+    );
+}
+
+#[test]
+fn an_open_island_is_a_static_element_of_the_skeleton() {
+    let c = corpus();
+    let file = workspace(&c, OPEN);
+    let (_, out, _) = run(&["inspect", "prerender", p(&file), "C"]);
+    let v: Value = serde_json::from_str(&out).expect("json");
+    let holes: Vec<&str> = v["holes"]
+        .as_array()
+        .expect("holes")
+        .iter()
+        .map(|h| h["what"].as_str().expect("w"))
+        .collect();
+    assert!(holes.is_empty(), "{out}");
+    assert_eq!(v["hydrates"], true);
+}
+
+#[test]
+fn diff_marks_an_open_island_as_expanded_authority() {
+    let c = corpus();
+    let none =
+        "component C {\n    state n: Int = 0;\n    view { Column { Text { \"n = {n}\" } } }\n}\n";
+    let base = workspace(&c, none);
+    let open = workspace(&c, OPEN);
+    let (code, out, _) = run(&["diff", p(&base), p(&open), "--output", "json"]);
+    assert_eq!(code, 5, "{out}");
+    let v: Value = serde_json::from_str(&out).expect("json");
+    assert_eq!(v["authority"], "expanded");
+    assert!(
+        v["islands"]
+            .as_array()
+            .expect("islands")
+            .iter()
+            .any(|s| s["setting"] == "Places" && s["candidate"] == "open")
+    );
+    // the same island sealed, opened: authority expands; opened, sealed: it reduces
+    let sealed_src = OPEN
+        .replace("    sealed: false;\n", "")
+        .replace("    requires Dom;\n", "")
+        .replace(" text: \"alt\"", "")
+        .replace("seed: n", "seed: 1");
+    let sealed = workspace(&c, &sealed_src);
+    let (code, out, _) = run(&["diff", p(&sealed), p(&open), "--output", "json"]);
+    assert_eq!(code, 5, "{out}");
+    let v: Value = serde_json::from_str(&out).expect("json");
+    assert_eq!(v["authority"], "expanded", "{out}");
+    assert!(
+        v["islands"]
+            .as_array()
+            .expect("islands")
+            .iter()
+            .any(|s| s["setting"] == "Places" && s["base"] == "sealed" && s["candidate"] == "open")
+    );
+    let (_, out, _) = run(&["diff", p(&open), p(&sealed), "--output", "json"]);
+    let v: Value = serde_json::from_str(&out).expect("json");
+    assert_eq!(v["authority"], "reduced", "{out}");
+    // a sealed island added to a program leaves authority alone (the sealed path is as it was)
+    let (_, out, _) = run(&["diff", p(&base), p(&sealed), "--output", "json"]);
+    let v: Value = serde_json::from_str(&out).expect("json");
+    assert_eq!(v["authority"], "unchanged", "{out}");
+}
+
+#[test]
+fn the_page_policy_of_a_program_with_both_kinds_is_the_sealed_islands_alone() {
+    let both = format!(
+        "{}\n{}",
+        PROGRAM.split("component C").next().expect("island"),
+        "island Places {\n    sealed: false;\n    script: \"a.js\" sha256: \"{sha:a.js}\";\n    decorative: true;\n    width: 10;\n    height: 10;\n}\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    on Picked(v) { n = v; }\n    view { Column { Stones { seed: 1 on: Picked } Places { } } }\n}\n"
+    );
+    let (_, html, _) = built(&both, &["--page"]);
+    assert!(html.contains("content=\"frame-src about:\""));
+    assert_eq!(
+        html.matches("<iframe").count(),
+        1,
+        "one frame, for the sealed island"
+    );
+}
+
+#[test]
+fn the_example_map_is_pinned_to_the_files_beside_it() {
+    let (code, _, err) = run(&["check", "examples/map-island/map.cui"]);
+    assert_eq!(code, 0, "{err}");
+}
+
+#[test]
+fn opening_a_sealed_island_expands_authority_by_itself() {
+    // both programs declare `requires Dom` (one island is open in both), so the capability does not move: only the island does
+    let c = corpus();
+    let src = |other_open: bool| {
+        format!(
+            "island Places {{\n    sealed: false;\n    script: \"a.js\" sha256: \"{{sha:a.js}}\";\n    decorative: true;\n    width: 10;\n    height: 10;\n}}\nisland Other {{\n    {}\n    script: \"b.js\" sha256: \"{{sha:b.js}}\";\n    decorative: true;\n    width: 10;\n    height: 10;\n}}\ncomponent C {{\n    requires Dom;\n    view {{ Column {{ Places {{ }} Other {{ }} }} }}\n}}\n",
+            if other_open { "sealed: false;" } else { "" }
+        )
+    };
+    let sealed = workspace(&c, &src(false));
+    let opened = workspace(&c, &src(true));
+    let (code, out, _) = run(&["diff", p(&sealed), p(&opened), "--output", "json"]);
+    assert_eq!(code, 5, "{out}");
+    let v: Value = serde_json::from_str(&out).expect("json");
+    assert_eq!(v["authority"], "expanded", "{out}");
+    assert_eq!(
+        v["capabilities"]["added"].as_array().expect("caps").len(),
+        0,
+        "{out}"
+    );
+    let (_, out, _) = run(&["diff", p(&opened), p(&sealed), "--output", "json"]);
+    let v: Value = serde_json::from_str(&out).expect("json");
+    assert_eq!(v["authority"], "reduced", "{out}");
 }

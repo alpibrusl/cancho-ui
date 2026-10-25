@@ -322,9 +322,15 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
                     }
                 }
             }
-            for i in built {
+            for i in built.iter().filter(|i| i.sealed) {
                 out.push_str(&crate::island::emit_doc(i));
             }
+            // the scripts of an open island are run by the page's script wherever its `div` is, hydrated or not
+            let mut every: Vec<&IrIsland> = Vec::new();
+            for c in &ir.components {
+                crate::island::islands_in(&c.view.body, &mut every);
+            }
+            out.push_str(&crate::island::emit_open_sources(&every));
         }
     }
     let adapters_end = out.len();
@@ -950,7 +956,13 @@ fn emit_component(
     if crate::island::view_has_island(&c.view.body) {
         let mut handlers = Vec::new();
         crate::island::handlers_in(&c.view.body, &mut handlers);
-        out.push_str(&crate::island::emit_scan("            ", &handlers));
+        let mut dynamic = Vec::new();
+        crate::island::dynamic_in(&c.view.body, &mut dynamic);
+        out.push_str(&crate::island::emit_scan(
+            "            ",
+            &handlers,
+            &dynamic,
+        ));
     }
     if view_has_status(&c.view.body) {
         out.push_str("            __cui_status_end(root);\n");

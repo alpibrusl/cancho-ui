@@ -28,6 +28,9 @@ pub struct IrFile {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IrIsland {
     pub name: String,
+    /// `false` for an open island (`sealed: false;`): it runs in the page's document with the page's authority, and the component that uses it
+    /// declares `requires Dom`.
+    pub sealed: bool,
     pub label: Option<String>,
     pub decorative: bool,
     pub width: u32,
@@ -39,6 +42,10 @@ pub struct IrIsland {
     /// The document of the frame, written by the pipeline once the files are read and their hashes match: empty before that, and never in the
     /// serialised IR (it is a function of the files and the compiler).
     pub srcdoc: String,
+    /// The text of the scripts and of the style, in order, once the pipeline has read them (never in the serialised IR): an open island's
+    /// scripts are run from these by the page's script.
+    pub texts: Vec<String>,
+    pub style_text: Option<String>,
     pub span: Span,
 }
 

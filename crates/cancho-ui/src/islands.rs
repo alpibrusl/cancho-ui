@@ -39,6 +39,7 @@ fn refuse(code: &str, message: String, island: &IrIsland, program: &Path) -> Box
 fn read(
     f: &IrIslandFile,
     style: bool,
+    html: bool,
     root: &Option<std::path::PathBuf>,
     dir: &Path,
     island: &IrIsland,
@@ -105,7 +106,8 @@ fn read(
             program,
         ));
     };
-    if let Some(what) = unsafe_in_html(&text, style) {
+    // a sealed island's files are copied into the document of a frame; an open island's are run from a string, so what would end an element is no harm
+    if html && let Some(what) = unsafe_in_html(&text, style) {
         return Err(refuse(
             "island-source-unsafe",
             format!(
@@ -152,14 +154,22 @@ pub fn load(ir: &mut IrFile, dir: &Path, program: &Path) -> Result<(), Box<Diagn
         let mut texts = Vec::new();
         let mut total = 0u64;
         for n in 0..island.scripts.len() {
-            let (f, text) = read(&island.scripts[n], false, &root, dir, &island, program)?;
+            let (f, text) = read(
+                &island.scripts[n],
+                false,
+                island.sealed,
+                &root,
+                dir,
+                &island,
+                program,
+            )?;
             total += f.bytes;
             island.scripts[n] = f;
             texts.push(text);
         }
         let mut css = None;
         if let Some(s) = island.style.clone() {
-            let (f, text) = read(&s, true, &root, dir, &island, program)?;
+            let (f, text) = read(&s, true, island.sealed, &root, dir, &island, program)?;
             total += f.bytes;
             island.style = Some(f);
             css = Some(text);
@@ -184,7 +194,12 @@ pub fn load(ir: &mut IrFile, dir: &Path, program: &Path) -> Result<(), Box<Diagn
                 sha256: &f.sha256,
             })
             .collect();
-        island.srcdoc = frame_document(&pieces, css.as_deref(), &shim, &ready);
+        if island.sealed {
+            island.srcdoc = frame_document(&pieces, css.as_deref(), &shim, &ready);
+        } else {
+            island.texts = texts.clone();
+            island.style_text = css.clone();
+        }
         done.push(island);
     }
     cancho_ui_ir::island::attach(ir, done);

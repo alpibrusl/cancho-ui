@@ -387,7 +387,11 @@ fn run_report(args: &[String]) -> Result<ExitCode, CliError> {
                 // each island is a boundary: code the program did not write, pinned by hash (docs/islands.md section 6)
                 for i in &ir.islands {
                     let mut d = cancho_ui_ir::island::describe(i);
-                    d["kind"] = serde_json::json!("sealed island");
+                    d["kind"] = serde_json::json!(if i.sealed {
+                        "sealed island"
+                    } else {
+                        "open island"
+                    });
                     d["from"] = serde_json::json!("island");
                     d["symbol"] = serde_json::json!(i.name);
                     d["tier"] = serde_json::json!("Trust");

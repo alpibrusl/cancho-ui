@@ -1567,6 +1567,7 @@ fn check_capabilities(ir: &IrFile) -> Result<(), LowerError> {
                 c.reachable_effects.iter().any(|e| e.capability == req.name)
                     || (req.name == "Network" && crate::map::view_has_map(&c.view.body))
                     || (req.name == "Clipboard" && crate::structure::view_has_copy(&c.view.body))
+                    || (req.name == "Dom" && crate::island::view_has_open(&c.view.body))
             };
             if !used {
                 return Err(LowerError::CapabilityUnused {

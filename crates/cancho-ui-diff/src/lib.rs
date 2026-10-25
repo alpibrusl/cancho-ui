@@ -670,6 +670,18 @@ pub fn diff_ir(
             components.removed.push(s);
         }
     }
+    // an open island runs in the page's origin (docs/islands.md section 12): one that is added, or one that was sealed and is opened, widens what
+    // the program can do, whatever the component says it requires; a sealed island never moves authority
+    let open = |f: &IrFile| -> BTreeSet<String> {
+        f.islands
+            .iter()
+            .filter(|i| !i.sealed)
+            .map(|i| i.name.clone())
+            .collect()
+    };
+    let (open_b, open_c) = (open(base), open(candidate));
+    expanded |= open_c.difference(&open_b).next().is_some();
+    reduced |= open_b.difference(&open_c).next().is_some();
     let authority = if expanded {
         Authority::Expanded
     } else if reduced {
