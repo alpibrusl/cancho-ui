@@ -542,3 +542,44 @@ fn the_examples_island_is_pinned_to_the_files_beside_it() {
     let (code, _, err) = run(&["check", "examples/islands/islands.cui"]);
     assert_eq!(code, 0, "{err}");
 }
+
+/// A file a test or an example needs must be in the repository: a clean clone has no ignored file. (`*.js` is ignored in `.gitignore`, which is how
+/// `examples/islands/assets/stones.js` and `tests/fixtures/islands/reach.js` once passed locally and failed in CI.)
+#[test]
+fn no_file_of_the_examples_or_the_fixtures_is_ignored_by_git() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    if Command::new("git").arg("--version").output().is_err() || !root.join(".git").exists() {
+        return;
+    }
+    fn files(dir: &Path, out: &mut Vec<PathBuf>) {
+        for e in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                files(&p, out);
+            } else {
+                out.push(p);
+            }
+        }
+    }
+    let mut all = Vec::new();
+    files(&root.join("examples"), &mut all);
+    files(&root.join("tests"), &mut all);
+    assert!(all.len() > 50);
+    let ignored: Vec<String> = all
+        .iter()
+        .filter(|f| {
+            Command::new("git")
+                .current_dir(&root)
+                .args(["check-ignore", "-q"])
+                .arg(f)
+                .status()
+                .map(|s| s.success())
+                .unwrap_or(false)
+        })
+        .map(|f| f.display().to_string())
+        .collect();
+    assert!(
+        ignored.is_empty(),
+        "ignored by git, so absent from a clone: {ignored:?}"
+    );
+}
