@@ -355,6 +355,8 @@ island Hero {
 * **Declaration, not use, is the unit.** An island must be declared with `island` in the program (or an imported file) and used by name; the build emits **only**
   script that is the compiler's own runtime or a declared island's file, matched by `sha256` (`island-hash-mismatch`, `island-undeclared` for a script tag, an
   inline `<script>`, or `javascript:` smuggled through a string; `island-source-missing`). A `Link`/`Rich`/`Code` containing markup stays text (they take text).
+> **Measured again 2026-10-25 ([`islands.md`](islands.md), `scripts/measure-islands.js`), and this section corrected by it:** the CSP below does **not** seal the frame (the island navigated its own frame to another origin, and a `<meta refresh>` did the same; what closes both is the *page's* CSP `frame-src about:`); WebRTC sent 3 UDP packets to a STUN server in every configuration until a shim removed the constructors; `requires Draw` is dropped (a sealed island reaches nothing but the page); `size: Responsive { ratio: 640 / 600 }` is `width: 640 height: 600`; a sealed island can still stall the page for as long as it loops (1,983 ms measured); and 11 sealed frames for the cairns cost about 50x the time of drawing them in the page.
+
 * **Sealed, measured (Chromium, local servers):** the island runs in `<iframe sandbox="allow-scripts" srcdoc="…">` with a `<meta http-equiv="Content-Security-Policy"
   content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'">` that the compiler writes into the `srcdoc`. Measured result: the island
   script **cannot read the parent** (`parent.document` throws `SecurityError`), **cannot reach `localStorage`**, **its `fetch` to another local server failed
@@ -368,7 +370,7 @@ island Hero {
 * **`sealed: false` (an open island):** same document, full DOM, can read and write the page and call `fetch`. It is allowed, but `authority` prints it as
   **`island Map: UNBOUNDED (runs plain JavaScript in the page's origin)`**, `diff` marks its addition, hash change and the change of `sealed` as the highest-severity lines,
   and the CI of the page would pin it. Use it only where a frame cannot work (section 9: the map's keyboard focus ring and `textPath` need the page's document).
-* **Authority:** `requires Draw` (a sealed island: draws, receives props, emits declared events); `requires Dom` for an open one. They are capabilities like
+* **Authority:** *(corrected 2026-10-25: no `requires Draw`; a sealed island is listed, not granted anything)* `requires Dom` for an open one. They are capabilities like
   `Network`, listed by `cancho-ui inspect effects`. `diff` prints a new island, a changed `sha256`, and a changed prop or event list.
 * **Events out:** `events { Selected(String) }` are ordinary program events with typed payloads, validated at the boundary (a message that is not a declared event, or has
   the wrong type, is dropped and counted: `island-event-undeclared`, `island-event-type`).
