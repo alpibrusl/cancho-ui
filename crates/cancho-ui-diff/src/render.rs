@@ -176,6 +176,7 @@ fn kind(k: &IrElementKind) -> String {
         IrElementKind::Image => "Image".into(),
         IrElementKind::Media => "Media".into(),
         IrElementKind::Grid => "Grid".into(),
+        IrElementKind::Island(i) => i.name.clone(),
         IrElementKind::Named(n) => n.clone(),
     }
 }

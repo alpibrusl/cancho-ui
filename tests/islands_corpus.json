@@ -1,0 +1,427 @@
+{
+ "about": "docs/islands.md. `valid`: an island declaration and a view that use it, which must check. `refusals`: a declaration and a view (or a whole program) and the rule tag that refuses it. `{sha:path}` in a program is the SHA-256 of the corpus file `path`, and `{SHA:path}` is the same in upper case. Checked by crates/cancho-ui/tests/islands.rs.",
+ "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+ "component": "component C {\n    state n: Int = 0;\n    on Picked(v) { n = v; }\n    on Closed { n = 0; }\n    view { Column { {view} } }\n}\n",
+ "files": {
+  "a.js": "var x = 1;\n",
+  "b.js": "var y = 2;\n",
+  "s.css": "body { margin: 0; }\n",
+  "unsafe.js": "var s = '</script><script>alert(1)</script>';\n",
+  "comment.js": "var s = '<!-- not a comment';\n",
+  "unsafe.css": "a { } </style><script>1</script>\n",
+  "big1.js": {
+   "fill": "x",
+   "bytes": 400000
+  },
+  "big2.js": {
+   "fill": "y",
+   "bytes": 400000
+  },
+  "big3.js": {
+   "fill": "z",
+   "bytes": 400000
+  },
+  "huge.js": {
+   "fill": "h",
+   "bytes": 600000
+  },
+  "bad.js": {
+   "base64": "gP8="
+  },
+  "nul.js": "var a = 1;\u0000\n",
+  "c.js": "var z = 3;\n"
+ },
+ "valid": [
+  {
+   "name": "the base island, bound to a literal and heard",
+   "view": "Stones { seed: 1 on: Picked }"
+  },
+  {
+   "name": "an island that is heard on both events",
+   "view": "Stones { seed: 1 on: Picked on: Closed }"
+  },
+  {
+   "name": "an island with no event heard",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "two islands of one name with different props",
+   "view": "Stones { seed: 1 } Stones { seed: 2 on: Picked }"
+  },
+  {
+   "name": "an island inside a For",
+   "view": "For { over: items as: m Stones { seed: 1 } }",
+   "extra_state": "state items: List[String] = [\"a\"];"
+  },
+  {
+   "name": "an island with a style and two scripts",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; script: \"b.js\" sha256: \"{sha:b.js}\"; style: \"s.css\" sha256: \"{sha:s.css}\"; decorative: true; width: 100; height: 50; props { seed: Int; } }",
+   "view": "Stones { seed: 3 }"
+  },
+  {
+   "name": "props of every type",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"S\"; width: 100; height: 50; props { a: Int; b: Float; c: Bool; d: String; } }",
+   "view": "Stones { a: 1 b: 1.5 c: true d: \"x\" }"
+  },
+  {
+   "name": "an island with no props and no events",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"S\"; width: 100; height: 50; }",
+   "view": "Stones { }"
+  }
+ ],
+ "refusals": [
+  {
+   "name": "a lower-case name",
+   "code": "island-name-invalid",
+   "decl": "island stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Column { }"
+  },
+  {
+   "name": "the name of a built-in element",
+   "code": "island-name-conflict",
+   "decl": "island Text { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Column { }"
+  },
+  {
+   "name": "the name of a component",
+   "code": "island-name-conflict",
+   "decl": "island C { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Column { }"
+  },
+  {
+   "name": "an island declared twice",
+   "code": "island-duplicate",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }\nisland Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Column { }"
+  },
+  {
+   "name": "a label written twice",
+   "code": "island-entry-duplicate",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; label: \"Again\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "props written twice",
+   "code": "island-entry-duplicate",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } props { seed: Int; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "a script named twice",
+   "code": "island-file-duplicate",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "a script by address",
+   "code": "island-path-invalid",
+   "decl": "island Stones { script: \"https://example.com/a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "a script that is not .js",
+   "code": "island-path-invalid",
+   "decl": "island Stones { script: \"a.txt\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "a path that climbs out of the directory",
+   "code": "island-path-invalid",
+   "decl": "island Stones { script: \"../a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "a style that is not .css",
+   "code": "island-path-invalid",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; style: \"s.txt\" sha256: \"{sha:s.css}\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "a short hash",
+   "code": "island-hash-invalid",
+   "decl": "island Stones { script: \"a.js\" sha256: \"abc123\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "an upper-case hash",
+   "code": "island-hash-invalid",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{SHA:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "no script",
+   "code": "island-script-missing",
+   "decl": "island Stones { label: \"S\"; width: 100; height: 50; }",
+   "view": "Column { }"
+  },
+  {
+   "name": "nine scripts",
+   "code": "island-too-many",
+   "decl": "island Stones { script: \"s0.js\" sha256: \"{sha:a.js}\"; script: \"s1.js\" sha256: \"{sha:a.js}\"; script: \"s2.js\" sha256: \"{sha:a.js}\"; script: \"s3.js\" sha256: \"{sha:a.js}\"; script: \"s4.js\" sha256: \"{sha:a.js}\"; script: \"s5.js\" sha256: \"{sha:a.js}\"; script: \"s6.js\" sha256: \"{sha:a.js}\"; script: \"s7.js\" sha256: \"{sha:a.js}\"; script: \"s8.js\" sha256: \"{sha:a.js}\"; label: \"S\"; width: 100; height: 50; }",
+   "view": "Column { }"
+  },
+  {
+   "name": "no size",
+   "code": "island-size-missing",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\";  props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "a size of 0",
+   "code": "island-size-invalid",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 0; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "a size over the bound",
+   "code": "island-size-invalid",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 4001; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "no label and not decorative",
+   "code": "island-label-missing",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\";  width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "an empty label",
+   "code": "island-label-missing",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \" \"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "a label and decorative",
+   "code": "island-label-conflict",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; decorative: true; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "a prop in camel case",
+   "code": "island-prop-name",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { Seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "a prop declared twice",
+   "code": "island-prop-duplicate",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "a prop of a list type",
+   "code": "island-prop-type",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: List; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "two pointers",
+   "code": "island-pointer-twice",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; other: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "an event in lower case",
+   "code": "island-event-name",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "an event declared twice",
+   "code": "island-event-duplicate",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "an event that carries a list",
+   "code": "island-event-type",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: List; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "an event that carries a pointer",
+   "code": "island-event-type",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Pointer; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "an unknown entry",
+   "code": "parse-unexpected-token",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; network: true; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "a script that is not there",
+   "code": "island-source-missing",
+   "decl": "island Stones { script: \"gone.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "a script that is a directory",
+   "code": "island-source-missing",
+   "decl": "island Stones { script: \"dir.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }",
+   "mkdir": [
+    "dir.js"
+   ]
+  },
+  {
+   "name": "a script of another hash",
+   "code": "island-hash-mismatch",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:b.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "a script of the hash of nothing",
+   "code": "island-hash-mismatch",
+   "decl": "island Stones { script: \"a.js\" sha256: \"0000000000000000000000000000000000000000000000000000000000000000\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "a style of the wrong hash",
+   "code": "island-hash-mismatch",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; style: \"s.css\" sha256: \"{sha:a.js}\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "a file over the size bound",
+   "code": "island-source-too-large",
+   "decl": "island Stones { script: \"huge.js\" sha256: \"{sha:huge.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "files that are too large together",
+   "code": "island-too-large",
+   "decl": "island Stones { script: \"big1.js\" sha256: \"{sha:big1.js}\"; script: \"big2.js\" sha256: \"{sha:big2.js}\"; script: \"big3.js\" sha256: \"{sha:big3.js}\"; label: \"S\"; width: 100; height: 50; }",
+   "view": "Stones { }"
+  },
+  {
+   "name": "a script that is not UTF-8",
+   "code": "island-source-not-text",
+   "decl": "island Stones { script: \"bad.js\" sha256: \"{sha:bad.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "a script that would end its own element",
+   "code": "island-source-unsafe",
+   "decl": "island Stones { script: \"unsafe.js\" sha256: \"{sha:unsafe.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "a script with an opening comment",
+   "code": "island-source-unsafe",
+   "decl": "island Stones { script: \"comment.js\" sha256: \"{sha:comment.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "a script with a NUL",
+   "code": "island-source-unsafe",
+   "decl": "island Stones { script: \"nul.js\" sha256: \"{sha:nul.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "a style that would end its own element",
+   "code": "island-source-unsafe",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; style: \"unsafe.css\" sha256: \"{sha:unsafe.css}\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }"
+  },
+  {
+   "name": "an island with children",
+   "code": "island-instance-children",
+   "view": "Stones { seed: 1 Text { \"x\" } }"
+  },
+  {
+   "name": "an island with a label of its own",
+   "code": "island-instance-label",
+   "view": "Stones { label: \"again\" seed: 1 }"
+  },
+  {
+   "name": "an island with a role",
+   "code": "island-instance-label",
+   "view": "Stones { role: button seed: 1 }"
+  },
+  {
+   "name": "a prop the island does not declare",
+   "code": "island-prop-unknown",
+   "view": "Stones { seed: 1 colour: 2 }"
+  },
+  {
+   "name": "the pointer bound",
+   "code": "island-prop-pointer-bound",
+   "view": "Stones { seed: 1 pointer: 2 }"
+  },
+  {
+   "name": "a prop bound twice",
+   "code": "island-prop-bound-twice",
+   "view": "Stones { seed: 1 seed: 2 }"
+  },
+  {
+   "name": "a prop of the wrong type",
+   "code": "island-prop-type",
+   "view": "Stones { seed: \"one\" }"
+  },
+  {
+   "name": "a float for an int",
+   "code": "island-prop-type",
+   "view": "Stones { seed: 1.5 }"
+  },
+  {
+   "name": "a prop read from state",
+   "code": "island-prop-dynamic",
+   "view": "Stones { seed: n }"
+  },
+  {
+   "name": "a prop that is missing",
+   "code": "island-prop-missing",
+   "view": "Stones { }"
+  },
+  {
+   "name": "an event the island does not declare",
+   "code": "island-event-undeclared",
+   "view": "Stones { seed: 1 on: Opened }"
+  },
+  {
+   "name": "an event with arguments",
+   "code": "island-event-args",
+   "view": "Stones { seed: 1 on: Picked(1) }"
+  },
+  {
+   "name": "a handler the component does not have",
+   "code": "island-event-handler-missing",
+   "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; Moved; } }",
+   "view": "Stones { seed: 1 on: Moved }"
+  },
+  {
+   "name": "a handler with the wrong number of parameters (carries nothing, takes one)",
+   "code": "island-event-arity",
+   "program": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"S\"; width: 100; height: 50; props { seed: Int; } events { Closed; } }\ncomponent C {\n    state n: Int = 0;\n    on Closed(v) { n = v; }\n    view { Column { Stones { seed: 1 on: Closed } } }\n}\n"
+  },
+  {
+   "name": "a handler with the wrong number of parameters (carries a value, takes none)",
+   "code": "island-event-arity",
+   "program": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"S\"; width: 100; height: 50; props { seed: Int; } events { Picked: Int; } }\ncomponent C {\n    state n: Int = 0;\n    on Picked { n = 1; }\n    view { Column { Stones { seed: 1 on: Picked } } }\n}\n"
+  },
+  {
+   "name": "an event heard twice",
+   "code": "island-event-bound-twice",
+   "view": "Stones { seed: 1 on: Picked on: Picked }"
+  },
+  {
+   "name": "the same island in an imported module",
+   "code": "island-duplicate",
+   "program": "import m.M;\nisland Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }\ncomponent C {\n    state n: Int = 0;\n    on Picked(v) { n = v; }\n    view { Column { M { } Stones { seed: 1 } } }\n}\n",
+   "module": {
+    "m.cui": "module m;\nisland Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }\ncomponent M {\n    view { Column { Stones { seed: 1 } } }\n}\n"
+   }
+  },
+  {
+   "name": "a script that is a link to a file outside the directory",
+   "code": "island-source-missing",
+   "decl": "island Stones { script: \"link.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }",
+   "view": "Stones { seed: 1 }",
+   "symlinks": {
+    "link.js": "/etc/hostname"
+   }
+  }
+ ]
+}

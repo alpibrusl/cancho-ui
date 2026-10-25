@@ -365,3 +365,13 @@ Two things beside components are compared, and neither is authority.
   `font.body.sha256`), absent when the themes are equal; the human form is `~ theme light.accent: #185fa5 -> #0f3d6e`. It counts in `change_count`; `authority` does not move.
 * **The hosts a `Link` names** (`structure.md` 3): a changed component has a `links` delta (`added`, `removed`: `github.com`, `mailto:example.org`), absent when equal; the human form is `  + link evil.example`.
   A new host is a review item: it is where a reader can be sent. It is not an effect, so `authority` does not move.
+
+---
+
+## 12. Sealed islands (added 2026-10-25)
+
+A sealed island (`islands.md`) is code the program did not write, so the diff says it first. `islands` in the JSON is a list of `{ setting, base, candidate }`, one per setting added, removed or changed: the island itself
+(`Hero`), each file with its SHA-256 (`Hero.script assets/scene.js`, `Hero.style assets/hero.css`), the order the scripts run in (`Hero.script-order`), `Hero.label`, `Hero.decorative`, `Hero.size`, each prop
+(`Hero.prop seed`: `Int`) and each event (`Hero.event Picked`: `Int`). Absent when the islands are equal. The human form is `~ island Hero.script assets/scene.js: ab5fffd8c1d2 -> 7c0e2e91aa40`, and these lines are printed **before** the
+components. It counts in `change_count`. **`authority` does not move**: a sealed island reaches nothing but the page, by messages, so adding one, or changing a file of one, is `authority: unchanged` and a line of its own. (An open
+island, which runs in the page's origin, will move it: that is not built.) The props an *instance* is given (`Stones { seed: 3 }`) are properties, which this version does not compare (`not_compared`).

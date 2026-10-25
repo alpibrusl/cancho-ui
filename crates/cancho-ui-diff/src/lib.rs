@@ -76,6 +76,11 @@ pub struct DiffReport {
     /// Absent from the JSON when they are the same files.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub assets: Vec<AssetChange>,
+    /// The settings of the sealed islands that differ (docs/islands.md section 6): an island added or removed, a file with a different SHA-256, a
+    /// changed label, size, prop or event. A sealed island reaches nothing but the page, so none of it changes `authority`; it is reported first,
+    /// because it is code the review has not read. Absent from the JSON when the islands are equal.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub islands: Vec<IslandChange>,
     pub not_compared: Vec<&'static str>,
 }
 
@@ -94,6 +99,34 @@ pub struct AssetChange {
     pub path: String,
     pub base: Option<String>,
     pub candidate: Option<String>,
+}
+
+/// One setting of an island: `Hero`, `Hero.script assets/scene.js`, `Hero.prop seed`. `None` on the side that does not have it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct IslandChange {
+    pub setting: String,
+    pub base: Option<String>,
+    pub candidate: Option<String>,
+}
+
+fn diff_islands(base: &IrFile, candidate: &IrFile) -> Vec<IslandChange> {
+    let flat = |f: &IrFile| -> BTreeMap<String, String> {
+        f.islands
+            .iter()
+            .flat_map(cancho_ui_ir::island::flatten)
+            .collect()
+    };
+    let (b, c) = (flat(base), flat(candidate));
+    let mut keys: BTreeSet<&String> = b.keys().collect();
+    keys.extend(c.keys());
+    keys.into_iter()
+        .filter(|k| b.get(*k) != c.get(*k))
+        .map(|k| IslandChange {
+            setting: k.clone(),
+            base: b.get(k).cloned(),
+            candidate: c.get(k).cloned(),
+        })
+        .collect()
 }
 
 fn diff_assets(base: &IrFile, candidate: &IrFile) -> Vec<AssetChange> {
@@ -649,11 +682,13 @@ pub fn diff_ir(
 
     let theme = diff_theme(base, candidate);
     let assets = diff_assets(base, candidate);
+    let islands = diff_islands(base, candidate);
     let change_count = components.added.len()
         + components.removed.len()
         + components.changed.iter().map(leaf_count).sum::<usize>()
         + theme.len()
-        + assets.len();
+        + assets.len()
+        + islands.len();
     DiffReport {
         schema: SCHEMA,
         version: VERSION,
@@ -666,6 +701,7 @@ pub fn diff_ir(
         components,
         theme,
         assets,
+        islands,
         not_compared: NOT_COMPARED.to_vec(),
     }
 }

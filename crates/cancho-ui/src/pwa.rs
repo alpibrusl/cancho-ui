@@ -24,7 +24,7 @@ const MARK: [u8; 3] = [0xff, 0xff, 0xff];
 pub fn generate(
     js: &str,
     name: &str,
-    img_src: Option<&str>,
+    csp: Option<&str>,
     theme: Option<&ThemeAssets>,
     site: &[(String, Vec<u8>)],
     prerender: Option<&Prerender>,
@@ -33,7 +33,7 @@ pub fn generate(
         ("app.js".into(), js.as_bytes().to_vec()),
         (
             "index.html".into(),
-            index_html(name, true, img_src, theme, prerender).into_bytes(),
+            index_html(name, true, csp, theme, prerender).into_bytes(),
         ),
         ("manifest.webmanifest".into(), manifest(name).into_bytes()),
         ("icon-192.png".into(), icon_png(192)),
@@ -52,7 +52,7 @@ pub fn generate(
 pub fn generate_page(
     js: &str,
     name: &str,
-    img_src: Option<&str>,
+    csp: Option<&str>,
     theme: Option<&ThemeAssets>,
     site: &[(String, Vec<u8>)],
     prerender: Option<&Prerender>,
@@ -61,7 +61,7 @@ pub fn generate_page(
         ("app.js".into(), js.as_bytes().to_vec()),
         (
             "index.html".into(),
-            index_html(name, false, img_src, theme, prerender).into_bytes(),
+            index_html(name, false, csp, theme, prerender).into_bytes(),
         ),
     ];
     files.extend(theme.iter().flat_map(|t| t.fonts.iter().cloned()));
@@ -94,7 +94,7 @@ fn html_escape(s: &str) -> String {
 fn index_html(
     name: &str,
     installable: bool,
-    img_src: Option<&str>,
+    csp: Option<&str>,
     theme: Option<&ThemeAssets>,
     prerender: Option<&Prerender>,
 ) -> String {
@@ -188,12 +188,12 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 </html>
 "##,
     );
-    // A page with a map lets images in from its own origin and the tile hosts the program declared, and from nowhere else (docs/maps.md). The policy comes
-    // first, before anything that could ask for an image.
-    let csp = match img_src {
-        Some(sources) => format!(
-            "<meta http-equiv=\"Content-Security-Policy\" content=\"img-src {}\">\n",
-            html_escape(sources)
+    // A page with a map lets images in from its own origin and the tile hosts the program declared, and from nowhere else (docs/maps.md); a page with a
+    // sealed island lets in no frame but its `srcdoc` ones (docs/islands.md section 1). The policy comes first, before anything that could ask.
+    let csp = match csp {
+        Some(policy) => format!(
+            "<meta http-equiv=\"Content-Security-Policy\" content=\"{}\">\n",
+            html_escape(policy)
         ),
         None => String::new(),
     };

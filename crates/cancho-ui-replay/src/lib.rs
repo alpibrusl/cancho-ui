@@ -95,6 +95,7 @@ fn empty_report(file: &str, trace_name: &str, failures: Vec<Failure>) -> TestRep
         steps: Vec::new(),
         requests: Vec::new(),
         final_state: BTreeMap::new(),
+        islands_not_replayed: Vec::new(),
         not_claimed: NOT_CLAIMED.to_vec(),
     }
 }
@@ -129,7 +130,9 @@ pub fn replay(ir: &IrFile, trace_text: &str, file: &str, trace_name: &str) -> Te
         r.steps_total = trace.steps.len();
         return r;
     };
-    run_trace(comp, &trace, file, trace_name)
+    let mut report = run_trace(comp, &trace, file, trace_name);
+    report.islands_not_replayed = cancho_ui_ir::island::used_in(&comp.view.body);
+    report
 }
 
 /// The name of the `Credential` the component declares, if it does (docs/adapters.md section 18).

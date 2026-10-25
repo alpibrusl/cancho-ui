@@ -145,6 +145,24 @@ pub fn render_human(r: &DiffReport) -> String {
         return out;
     }
     let _ = writeln!(out, "authority: {}", r.authority.as_str());
+    // code the review has not read comes first, whatever its authority
+    for i in &r.islands {
+        let short = |h: &String| {
+            if h.len() == 64 {
+                h.chars().take(12).collect::<String>()
+            } else {
+                h.clone()
+            }
+        };
+        let _ = match (&i.base, &i.candidate) {
+            (Some(b), Some(c)) => {
+                writeln!(out, "~ island {}: {} -> {}", i.setting, short(b), short(c))
+            }
+            (None, Some(c)) => writeln!(out, "+ island {} = {}", i.setting, short(c)),
+            (Some(b), None) => writeln!(out, "- island {} = {}", i.setting, short(b)),
+            (None, None) => Ok(()),
+        };
+    }
     for c in &r.components.added {
         let _ = writeln!(
             out,

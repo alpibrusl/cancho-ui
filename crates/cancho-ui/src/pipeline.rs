@@ -409,6 +409,7 @@ fn compile_inner(
             imports: Vec::new(),
             components: ast.components.clone(),
             themes: ast.themes.clone(),
+            islands: ast.islands.clone(),
             span: ast.span,
         },
     };
@@ -504,6 +505,13 @@ fn compile_inner(
     // the pictures and videos the views name exist, are the formats they say, and are hashed for `diff` (docs/structure.md section 10)
     merged.assets = crate::assets::verify(
         &merged,
+        file.parent().unwrap_or_else(|| Path::new("")),
+        file,
+    )
+    .map_err(PipelineError::Refused)?;
+    // the files of the sealed islands exist, are the files the program pins, and become the documents of their frames (docs/islands.md)
+    crate::islands::load(
+        &mut merged,
         file.parent().unwrap_or_else(|| Path::new("")),
         file,
     )
@@ -1766,6 +1774,7 @@ fn control_remediation(code: &str) -> String {
         "submit-event-invalid" => "Name an event of this component that takes no parameters: `submit: Apply` with `on Apply { ... }`.".to_string(),
         "disabled-not-bool" => "Write `disabled: true`, `disabled: false` or `disabled: sending` where `sending` is a `state sending: Bool`.".to_string(),
         c if c.starts_with("theme-") || c.starts_with("font-") => crate::theme::remediation(c),
+        c if c.starts_with("island-") => "See docs/islands.md.".to_string(),
         c if c.starts_with("image-")
             || c.starts_with("media-")
             || c.starts_with("grid-")

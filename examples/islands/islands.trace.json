@@ -1,0 +1,8 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "steps": [
+    { "event": "Picked", "params": [2], "state": { "picked": 2 } },
+    { "event": "Picked", "params": [3], "state": { "picked": 3 } }
+  ]
+}

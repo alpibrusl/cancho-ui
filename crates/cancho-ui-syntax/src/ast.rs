@@ -28,7 +28,50 @@ pub struct File {
     /// `theme { light { .. } dark { .. } font body { .. } }` (docs/theme.md): the declared themes, in source order. More than one is
     /// refused when the file is lowered (`theme-duplicate`).
     pub themes: Vec<ThemeDecl>,
+    /// `island Name { script: ".."  sha256: ".."; .. }` (docs/islands.md): the sealed islands declared in this file, in source order.
+    pub islands: Vec<IslandDecl>,
     pub span: Span,
+}
+
+/// `island Name { .. }`: a piece of the page that is not written in cancho-ui, declared with the hash of every file it runs (docs/islands.md).
+/// What the entries mean, and which are refused, is decided when the file is lowered.
+#[derive(Debug, Clone, PartialEq)]
+pub struct IslandDecl {
+    pub name: String,
+    pub entries: Vec<IslandEntry>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum IslandEntry {
+    /// `script: "assets/rocks.js" sha256: "ab5f..";`, in the order they run.
+    Script {
+        path: String,
+        sha256: String,
+        span: Span,
+    },
+    /// `style: "assets/hero.css" sha256: "..";`
+    Style {
+        path: String,
+        sha256: String,
+        span: Span,
+    },
+    /// `label: "..";`
+    Label { text: String, span: Span },
+    /// `decorative: true;`
+    Decorative { value: bool, span: Span },
+    /// `width: 640;` and `height: 600;`
+    Size { key: String, value: i64, span: Span },
+    /// `props { seed: Int; pointer: Pointer; }`: (name, type name as written).
+    Props {
+        items: Vec<(String, String, Span)>,
+        span: Span,
+    },
+    /// `events { Selected: Int; Closed; }`: (name, type name as written, if any).
+    Events {
+        items: Vec<(String, Option<String>, Span)>,
+        span: Span,
+    },
 }
 
 /// `theme { .. }`: the colours of the two schemes and the fonts of a program.

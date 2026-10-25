@@ -373,6 +373,9 @@ pub(crate) fn emit_view_node(
             if matches!(kind, IrElementKind::Map) {
                 return crate::map::emit(indent, &var, parent_var, accessibility, bindings, params);
             }
+            if let IrElementKind::Island(island) = kind {
+                return crate::island::emit(indent, &var, parent_var, island, bindings);
+            }
             if matches!(kind, IrElementKind::Image) {
                 return crate::media::emit_image(indent, &var, parent_var, bindings);
             }

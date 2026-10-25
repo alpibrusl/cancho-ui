@@ -95,7 +95,7 @@ fn check_node(c: &IrComponent, node: &IrViewNode, in_for: bool) -> Result<(), Lo
             children,
             span,
         } => {
-            if !matches!(kind, IrElementKind::Named(_)) {
+            if !matches!(kind, IrElementKind::Named(_) | IrElementKind::Island(_)) {
                 for b in bindings {
                     check_binding(c, kind, b)?;
                 }
@@ -177,6 +177,7 @@ fn element_name(kind: &IrElementKind) -> &'static str {
         IrElementKind::Image => "Image",
         IrElementKind::Media => "Media",
         IrElementKind::Grid => "Grid",
+        IrElementKind::Island(_) => "an island",
         IrElementKind::Named(_) => "a component",
     }
 }

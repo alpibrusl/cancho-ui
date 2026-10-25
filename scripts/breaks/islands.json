@@ -1,0 +1,205 @@
+{
+  "checks": [
+    {
+      "name": "cargo test islands",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "islands"
+      ]
+    },
+    {
+      "name": "check-islands.js",
+      "argv": [
+        "node",
+        "scripts/check-islands.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "the hash of a file is not compared",
+      "file": "crates/cancho-ui/src/islands.rs",
+      "from": "    if actual != f.sha256 {",
+      "to": "    if false && actual != f.sha256 {"
+    },
+    {
+      "name": "a link out of the directory counts as inside",
+      "file": "crates/cancho-ui/src/islands.rs",
+      "from": "meta.filter(|_| inside)",
+      "to": "meta.filter(|_| true)"
+    },
+    {
+      "name": "a script that would end its element is accepted",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "lower.contains(\"</script\") || lower.contains(\"<!--\")",
+      "to": "lower.contains(\"</scriptX\") || lower.contains(\"<!--\")"
+    },
+    {
+      "name": "a NUL is accepted",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "    if text.contains('\\0') {",
+      "to": "    if false && text.contains('\\0') {"
+    },
+    {
+      "name": "the page has no frame-src",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "parts.push(\"frame-src about:\".to_string());",
+      "to": "parts.push(\"frame-src 'self'\".to_string());"
+    },
+    {
+      "name": "an unused island still sets the policy",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "    if !used.is_empty() {\n        parts.push",
+      "to": "    if true {\n        parts.push"
+    },
+    {
+      "name": "the policy trusts inline scripts",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "let mut policy = String::from(\"default-src 'none'; script-src \");",
+      "to": "let mut policy = String::from(\"default-src 'none'; script-src 'unsafe-inline' \");"
+    },
+    {
+      "name": "the frame is not sandboxed apart from scripts",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "Dom::element(\"iframe\").attr(\"sandbox\", \"allow-scripts\")",
+      "to": "Dom::element(\"iframe\").attr(\"sandbox\", \"allow-scripts allow-same-origin\")"
+    },
+    {
+      "name": "the WebRTC constructors are not removed",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "var dead = ['RTCPeerConnection', 'webkitRTCPeerConnection', 'RTCDataChannel'];",
+      "to": "var dead = ['XRTCPeerConnection'];"
+    },
+    {
+      "name": "a decorative frame is not hidden",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "d.attr(\"aria-hidden\", \"true\").attr(\"tabindex\", \"-1\")",
+      "to": "d.attr(\"aria-hidden\", \"false\").attr(\"tabindex\", \"-1\")"
+    },
+    {
+      "name": "the pointer prop is not told to the runtime",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "if let Some(p) = island.props.iter().find(|p| p.ty == IrIslandType::Pointer) {\n        v.insert",
+      "to": "if let Some(p) = island.props.iter().find(|p| p.ty == IrIslandType::Int) {\n        v.insert"
+    },
+    {
+      "name": "the shim hash is the wrong one",
+      "file": "crates/cancho-ui/src/islands.rs",
+      "from": "let (shim, ready) = (sha256_hex(SHIM.as_bytes()), sha256_hex(READY.as_bytes()));",
+      "to": "let (shim, ready) = (sha256_hex(READY.as_bytes()), sha256_hex(READY.as_bytes()));"
+    },
+    {
+      "name": "a prop of the wrong type is accepted",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "            Some((_, ty)) if ty == prop.ty => {}",
+      "to": "            Some((_, _ty)) if true => {}"
+    },
+    {
+      "name": "a missing prop is accepted",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "if p.ty != IrIslandType::Pointer && !bound.contains(&p.name.as_str()) {",
+      "to": "if false && p.ty != IrIslandType::Pointer && !bound.contains(&p.name.as_str()) {"
+    },
+    {
+      "name": "a prop read from state is accepted",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "            None => {\n                return Err(refuse(\n                    \"island-prop-dynamic\",",
+      "to": "            None => {\n                if true {\n                    return Ok(());\n                }\n                return Err(refuse(\n                    \"island-prop-dynamic\","
+    },
+    {
+      "name": "the arity of a handler is not checked",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "            if *params != want {",
+      "to": "            if false && *params != want {"
+    },
+    {
+      "name": "an undeclared event is accepted",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "            let Some(declared) = island.events.iter().find(|e| &e.name == ev) else {",
+      "to": "            let Some(declared) = island.events.iter().find(|e| &e.name == ev).or(island.events.first()) else {"
+    },
+    {
+      "name": "a changed file is not seen by diff",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "out.push((format!(\"{n}.script {}\", s.path), s.sha256.clone()));",
+      "to": "out.push((format!(\"{n}.script {}\", s.path), String::new()));"
+    },
+    {
+      "name": "inspect effects lists no files",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "\"files\": i.scripts.iter().chain(i.style.iter())",
+      "to": "\"files\": i.scripts.iter().take(0)"
+    },
+    {
+      "name": "an island is a hole of the skeleton",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "(!dom_representable(&island::island_dom(i, bindings))).then(|| {",
+      "to": "Some(()).map(|_| {"
+    },
+    {
+      "name": "replay does not say an island is not replayed",
+      "file": "crates/cancho-ui-replay/src/lib.rs",
+      "from": "report.islands_not_replayed = cancho_ui_ir::island::used_in(&comp.view.body);",
+      "to": "report.islands_not_replayed = Vec::new();"
+    },
+    {
+      "name": "a message from any window is taken for the frame's",
+      "file": "crates/cancho-ui-codegen-web/src/island.rs",
+      "from": "if (__cui_isl.live[i].frame.contentWindow === e.source) {",
+      "to": "if (true) {"
+    },
+    {
+      "name": "the type of an event's value is not checked",
+      "file": "crates/cancho-ui-codegen-web/src/island.rs",
+      "from": "|| !__cui_isl_ok(decl.type, d.value) ||",
+      "to": "||"
+    },
+    {
+      "name": "an event that is on every object is heard",
+      "file": "crates/cancho-ui-codegen-web/src/island.rs",
+      "from": "|| !Object.prototype.hasOwnProperty.call(en.spec.events, d.name)",
+      "to": ""
+    },
+    {
+      "name": "a flood is heard",
+      "file": "crates/cancho-ui-codegen-web/src/island.rs",
+      "from": "++en.count > 50",
+      "to": "++en.count > 5000"
+    },
+    {
+      "name": "the pointer is forwarded while the frame is off screen",
+      "file": "crates/cancho-ui-codegen-web/src/island.rs",
+      "from": "if (en.spec.pointer && en.visible) {",
+      "to": "if (en.spec.pointer) {"
+    },
+    {
+      "name": "the pointer over the frame is not forwarded",
+      "file": "crates/cancho-ui-codegen-web/src/island.rs",
+      "from": "if (d.cui === 'pointer') {",
+      "to": "if (d.cui === 'pointerX') {"
+    },
+    {
+      "name": "the pointer is not limited",
+      "file": "crates/cancho-ui-codegen-web/src/island.rs",
+      "from": "const wait = 50 - (Date.now() - __cui_isl.last);",
+      "to": "const wait = 0 - (Date.now() - __cui_isl.last);"
+    },
+    {
+      "name": "a frame that says ready is not answered",
+      "file": "crates/cancho-ui-codegen-web/src/island.rs",
+      "from": "if (d.cui === 'ready') { en.ready = true; __cui_isl_post(en); return; }",
+      "to": "if (d.cui === 'ready') { en.ready = true; return; }"
+    },
+    {
+      "name": "a frame is not given its props when the page registers it",
+      "file": "crates/cancho-ui-codegen-web/src/island.rs",
+      "from": "        __cui_isl.live.push(en);\n        __cui_isl_post(en);\n",
+      "to": "        __cui_isl.live.push(en);\n"
+    }
+  ]
+}

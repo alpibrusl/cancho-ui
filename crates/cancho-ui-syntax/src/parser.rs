@@ -325,6 +325,7 @@ impl Parser {
         let mut imports = Vec::new();
         let mut components = Vec::new();
         let mut themes = Vec::new();
+        let mut islands = Vec::new();
         while !self.at_eof() {
             // Tier 16: `import <module>.<Component>;` — only at the
             // top level, only before components in practice but the
@@ -340,6 +341,14 @@ impl Parser {
             {
                 // `theme` is a keyword only here, at the top level and followed by `{` (docs/theme.md section 2).
                 themes.push(self.parse_theme_decl()?);
+            } else if matches!(&self.peek().token, Token::Ident(s) if s == "island")
+                && matches!(
+                    self.tokens.get(self.pos + 1).map(|t| &t.token),
+                    Some(Token::Ident(_))
+                )
+            {
+                // `island` is a keyword only here, at the top level and followed by a name (docs/islands.md section 4).
+                islands.push(self.parse_island_decl()?);
             } else {
                 components.push(self.parse_component()?);
             }
@@ -350,7 +359,139 @@ impl Parser {
             imports,
             components,
             themes,
+            islands,
             span: Span::new(start, end),
+        })
+    }
+
+    /// `island Name { script: ".." sha256: ".."; style: ".." sha256: ".."; label: ".."; decorative: true; width: 640; height: 600;
+    /// props { seed: Int; } events { Selected: Int; Closed; } }`; the current token is `island`.
+    fn parse_island_decl(&mut self) -> Result<IslandDecl, ParseError> {
+        let kw = self.bump();
+        let (name, _) = self.bump_ident("the island's name")?;
+        self.expect(Token::LBrace)?;
+        let mut entries = Vec::new();
+        while !matches!(self.peek().token, Token::RBrace) {
+            let (key, key_span) = self.bump_ident(
+                "`script`, `style`, `label`, `decorative`, `width`, `height`, `props` or `events`",
+            )?;
+            match key.as_str() {
+                "script" | "style" => {
+                    self.expect(Token::DotDot)?;
+                    let (path, _) = self.bump_string_lit("the path of the file, as a string")?;
+                    let (word, word_span) = self.bump_ident("`sha256`")?;
+                    if word != "sha256" {
+                        return Err(unexpected(Token::Ident(word), word_span, "`sha256`"));
+                    }
+                    self.expect(Token::DotDot)?;
+                    let (sha256, _) =
+                        self.bump_string_lit("the sha256 of the file, as a string")?;
+                    let semi = self.expect(Token::Semi)?;
+                    let span = Span::new(key_span.start, semi.span.end);
+                    entries.push(if key == "script" {
+                        IslandEntry::Script { path, sha256, span }
+                    } else {
+                        IslandEntry::Style { path, sha256, span }
+                    });
+                }
+                "label" => {
+                    self.expect(Token::DotDot)?;
+                    let (text, _) = self.bump_string_lit("the label, as a string")?;
+                    let semi = self.expect(Token::Semi)?;
+                    entries.push(IslandEntry::Label {
+                        text,
+                        span: Span::new(key_span.start, semi.span.end),
+                    });
+                }
+                "decorative" => {
+                    self.expect(Token::DotDot)?;
+                    let (word, word_span) = self.bump_ident("`true` or `false`")?;
+                    let value = match word.as_str() {
+                        "true" => true,
+                        "false" => false,
+                        _ => {
+                            return Err(unexpected(
+                                Token::Ident(word),
+                                word_span,
+                                "`true` or `false`",
+                            ));
+                        }
+                    };
+                    let semi = self.expect(Token::Semi)?;
+                    entries.push(IslandEntry::Decorative {
+                        value,
+                        span: Span::new(key_span.start, semi.span.end),
+                    });
+                }
+                "width" | "height" => {
+                    self.expect(Token::DotDot)?;
+                    let here = self.peek().clone();
+                    let value = match here.token {
+                        Token::IntLit(n) => {
+                            self.bump();
+                            n
+                        }
+                        other => {
+                            return Err(unexpected(other, here.span, "a whole number of pixels"));
+                        }
+                    };
+                    let semi = self.expect(Token::Semi)?;
+                    entries.push(IslandEntry::Size {
+                        key,
+                        value,
+                        span: Span::new(key_span.start, semi.span.end),
+                    });
+                }
+                "props" => {
+                    self.expect(Token::LBrace)?;
+                    let mut items = Vec::new();
+                    while !matches!(self.peek().token, Token::RBrace) {
+                        let (n, n_span) = self.bump_ident("a prop's name")?;
+                        self.expect(Token::DotDot)?;
+                        let (t, _) = self.bump_ident("the prop's type")?;
+                        let semi = self.expect(Token::Semi)?;
+                        items.push((n, t, Span::new(n_span.start, semi.span.end)));
+                    }
+                    let close = self.expect(Token::RBrace)?;
+                    entries.push(IslandEntry::Props {
+                        items,
+                        span: Span::new(key_span.start, close.span.end),
+                    });
+                }
+                "events" => {
+                    self.expect(Token::LBrace)?;
+                    let mut items = Vec::new();
+                    while !matches!(self.peek().token, Token::RBrace) {
+                        let (n, n_span) = self.bump_ident("an event's name")?;
+                        let t = if matches!(self.peek().token, Token::DotDot) {
+                            self.bump();
+                            Some(self.bump_ident("the event's value type")?.0)
+                        } else {
+                            None
+                        };
+                        let semi = self.expect(Token::Semi)?;
+                        items.push((n, t, Span::new(n_span.start, semi.span.end)));
+                    }
+                    let close = self.expect(Token::RBrace)?;
+                    entries.push(IslandEntry::Events {
+                        items,
+                        span: Span::new(key_span.start, close.span.end),
+                    });
+                }
+                _ => {
+                    return Err(unexpected(
+                        Token::Ident(key),
+                        key_span,
+                        "`script`, `style`, `label`, `decorative`, `width`, `height`, `props` or `events`",
+                    ));
+                }
+            }
+        }
+        let close = self.expect(Token::RBrace)?;
+        Ok(IslandDecl {
+            name,
+            entries,
+            span: Span::new(kw.span.start, close.span.end),
         })
     }
 

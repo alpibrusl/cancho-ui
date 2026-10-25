@@ -1,0 +1,28 @@
+// examples/islands/islands.cui — a sealed island (docs/islands.md): a drawing the program did not write, pinned by hash, in a sandboxed frame.
+// The island reaches nothing but the page: no network, no storage, no cookies, no access to this page, by messages only. `cancho-ui authority`
+// does not change for it; `inspect effects` lists it with the hash of every file, and `diff` shows a file that changed. The program hears its
+// `Picked` event in a handler of the same name; the pointer is fed by the runtime and never bound here.
+
+island Stones {
+    script: "assets/stones.js" sha256: "2d8c4127c20158456295267e2dab55c75ea5db9d4d6366b8a5fb893593fbf933";
+    style: "assets/stones.css" sha256: "42d0348b1303d14c8fbde775baa2d01fa63e479bbbcb20395fea6cbbf995724b";
+    label: "Three stones in a row. Click one to pick it.";
+    width: 320;
+    height: 200;
+    props { seed: Int; pointer: Pointer; }
+    events { Picked: Int; Closed; }
+}
+
+component Garden {
+    state picked: Int = 0;
+
+    on Picked(n) { picked = n; }
+
+    view {
+        Column {
+            Heading { level: 1 "Garden" }
+            Stones { seed: 3 on: Picked }
+            Text { "Picked stone: {picked}" }
+        }
+    }
+}

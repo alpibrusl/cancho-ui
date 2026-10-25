@@ -18,6 +18,71 @@ pub struct IrFile {
     /// The files the views ask for (`Image`, `Media`; docs/structure.md section 10), with their size and SHA-256: empty after lowering, filled by the
     /// pipeline, which is the part that reads files. `diff` reports a changed file.
     pub assets: Vec<IrAsset>,
+    /// The sealed islands the program declares (docs/islands.md), in source order. Their files are read by the pipeline, which fills each
+    /// island's `srcdoc`; `diff` and `inspect effects` report them.
+    pub islands: Vec<IrIsland>,
+}
+
+/// A declared island (docs/islands.md section 4): the files it runs, pinned by hash, and the typed props and events that are its only way of
+/// talking to the page.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IrIsland {
+    pub name: String,
+    pub label: Option<String>,
+    pub decorative: bool,
+    pub width: u32,
+    pub height: u32,
+    pub scripts: Vec<IrIslandFile>,
+    pub style: Option<IrIslandFile>,
+    pub props: Vec<IrIslandProp>,
+    pub events: Vec<IrIslandEvent>,
+    /// The document of the frame, written by the pipeline once the files are read and their hashes match: empty before that, and never in the
+    /// serialised IR (it is a function of the files and the compiler).
+    pub srcdoc: String,
+    pub span: Span,
+}
+
+/// A file an island runs: where it is, the hash the program pins it to, and (once read) its size.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IrIslandFile {
+    pub path: String,
+    pub sha256: String,
+    pub bytes: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IrIslandProp {
+    pub name: String,
+    pub ty: IrIslandType,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IrIslandEvent {
+    pub name: String,
+    pub ty: Option<IrIslandType>,
+}
+
+/// The types that cross the frame's boundary. `Pointer` is a prop the runtime feeds (the pointer of the page, normalised, at most 20 a second);
+/// the program never binds it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IrIslandType {
+    Bool,
+    Int,
+    Float,
+    String,
+    Pointer,
+}
+
+impl IrIslandType {
+    pub fn name(self) -> &'static str {
+        match self {
+            IrIslandType::Bool => "Bool",
+            IrIslandType::Int => "Int",
+            IrIslandType::Float => "Float",
+            IrIslandType::String => "String",
+            IrIslandType::Pointer => "Pointer",
+        }
+    }
 }
 
 /// A file of the site a view names, as the build found it.
@@ -632,6 +697,8 @@ pub enum IrElementKind {
     TableRow,
     Cell,
     HeaderCell,
+    /// An instance of a declared island (docs/islands.md): an `<iframe sandbox>` whose document the compiler wrote. The data is shared, not copied.
+    Island(std::sync::Arc<IrIsland>),
     Named(String),
 }
 
@@ -678,6 +745,7 @@ impl IrElementKind {
             IrElementKind::TableRow => "tr",
             IrElementKind::Cell => "td",
             IrElementKind::HeaderCell => "th",
+            IrElementKind::Island(_) => "iframe",
             IrElementKind::Named(_) => "div",
         }
     }

@@ -7,6 +7,7 @@
 //! written whole or not at all, so a hole inside it makes the container a hole.
 
 use crate::ir::*;
+use crate::island;
 use crate::media::{self, Dom};
 use crate::structure;
 
@@ -386,6 +387,15 @@ fn first_hole(node: &IrViewNode) -> Option<(String, String)> {
                     )
                 })
             }
+            IrElementKind::Island(i) => {
+                // a frame is a static element: its document is written by the compiler and the script only posts props to it
+                (!dom_representable(&island::island_dom(i, bindings))).then(|| {
+                    (
+                        kind_name(kind),
+                        "text with a NUL character cannot be written in HTML".to_string(),
+                    )
+                })
+            }
             IrElementKind::Code => match code_text(children) {
                 Some(t) if representable(&t) => None,
                 Some(_) => Some((
@@ -467,6 +477,15 @@ fn walk(w: &mut Writer, node: &IrViewNode) {
                     } else {
                         w.out.content = true;
                         w.dom(&media::media_dom(accessibility, bindings));
+                    }
+                    return;
+                }
+                IrElementKind::Island(i) => {
+                    if let Some((what, why)) = first_hole(node) {
+                        w.hole(&what, &why);
+                    } else {
+                        w.out.content = true;
+                        w.dom(&island::island_dom(i, bindings));
                     }
                     return;
                 }

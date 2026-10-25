@@ -293,6 +293,40 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
         out.push_str(HYDRATE_ADAPTER_JS);
         out.push('\n');
     }
+    // sealed islands (docs/islands.md): the runtime, and the document of each island that the emitted code builds (a hydrated page carries the
+    // documents of its static frames in its HTML, so only a frame inside a hole is built here)
+    {
+        let mut all: Vec<&IrIsland> = Vec::new();
+        for c in &ir.components {
+            crate::island::islands_in(&c.view.body, &mut all);
+        }
+        if !all.is_empty() {
+            out.push_str(crate::island::ADAPTER_JS);
+            out.push('\n');
+            let mut built: Vec<&IrIsland> = Vec::new();
+            match &hydrating {
+                None => built = all,
+                Some((idx, sk)) => {
+                    for (n, c) in ir.components.iter().enumerate() {
+                        if n != *idx {
+                            crate::island::islands_in(&c.view.body, &mut built);
+                        }
+                    }
+                    if let Some(c) = ir.components.get(*idx) {
+                        for h in &sk.holes {
+                            if let Some(node) = cancho_ui_ir::recipe::node_at(&c.view.body, &h.path)
+                            {
+                                crate::island::islands_in(node, &mut built);
+                            }
+                        }
+                    }
+                }
+            }
+            for i in built {
+                out.push_str(&crate::island::emit_doc(i));
+            }
+        }
+    }
     let adapters_end = out.len();
     for (i, c) in ir.components.iter().enumerate() {
         out.push_str(&emit_component(
@@ -913,6 +947,11 @@ fn emit_component(
         }
     };
     out.push_str(&view_body);
+    if crate::island::view_has_island(&c.view.body) {
+        let mut handlers = Vec::new();
+        crate::island::handlers_in(&c.view.body, &mut handlers);
+        out.push_str(&crate::island::emit_scan("            ", &handlers));
+    }
     if view_has_status(&c.view.body) {
         out.push_str("            __cui_status_end(root);\n");
     }

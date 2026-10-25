@@ -28,6 +28,7 @@
 
 mod assets;
 mod diff_cmd;
+mod islands;
 mod pipeline;
 mod pwa;
 mod test_cmd;
@@ -177,7 +178,7 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
                 });
                 // a program with a map gets a Content-Security-Policy listing the hosts it declared (docs/maps.md)
                 let ir = pipeline::compile_to_ir(file).ok();
-                let img_src = ir.as_ref().and_then(cancho_ui_ir::map::csp_img_sources);
+                let csp = ir.as_ref().and_then(cancho_ui_ir::island::page_policy);
                 // a theme (docs/theme.md): its stylesheet, and its font files copied into the build
                 let theme = match ir.as_ref().and_then(|i| i.theme.as_ref()) {
                     Some(t) => {
@@ -216,7 +217,7 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
                     pwa::generate(
                         &out,
                         &name,
-                        img_src.as_deref(),
+                        csp.as_deref(),
                         theme.as_ref(),
                         &site,
                         prerender.as_ref(),
@@ -225,7 +226,7 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
                     pwa::generate_page(
                         &out,
                         &name,
-                        img_src.as_deref(),
+                        csp.as_deref(),
                         theme.as_ref(),
                         &site,
                         prerender.as_ref(),
@@ -299,6 +300,18 @@ fn run_inspect(args: &[String]) -> Result<ExitCode, CliError> {
             {
                 o.insert("links".to_string(), serde_json::json!(links));
             }
+            // the sealed islands the view instantiates (docs/islands.md section 6): what each runs, by hash, and what it reaches
+            let used: Vec<serde_json::Value> = ir
+                .islands
+                .iter()
+                .filter(|i| cancho_ui_ir::island::view_uses(&comp.view.body, &i.name))
+                .map(cancho_ui_ir::island::describe)
+                .collect();
+            if !used.is_empty()
+                && let Some(o) = v.as_object_mut()
+            {
+                o.insert("islands".to_string(), serde_json::json!(used));
+            }
             cancho_ui_ir::pretty_json(&v)
         }
         "prerender" => {
@@ -367,8 +380,21 @@ fn run_report(args: &[String]) -> Result<ExitCode, CliError> {
                 report["static"]["checks_passed"] =
                     serde_json::json!(report["static"]["checks_passed"].as_u64().unwrap_or(0) + 1);
                 report["trust"]["count"] = serde_json::json!(
-                    report["trust"]["count"].as_u64().unwrap_or(0) + trust_count as u64
+                    report["trust"]["count"].as_u64().unwrap_or(0)
+                        + trust_count as u64
+                        + ir.islands.len() as u64
                 );
+                // each island is a boundary: code the program did not write, pinned by hash (docs/islands.md section 6)
+                for i in &ir.islands {
+                    let mut d = cancho_ui_ir::island::describe(i);
+                    d["kind"] = serde_json::json!("sealed island");
+                    d["from"] = serde_json::json!("island");
+                    d["symbol"] = serde_json::json!(i.name);
+                    d["tier"] = serde_json::json!("Trust");
+                    if let Some(b) = report["trust"]["boundaries"].as_array_mut() {
+                        b.push(d);
+                    }
+                }
             }
             Err(pipeline::PipelineError::Refused(diag)) => {
                 failures += 1;

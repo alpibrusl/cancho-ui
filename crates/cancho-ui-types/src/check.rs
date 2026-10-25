@@ -478,8 +478,9 @@ fn check_shape_with(file: &File, externals: &[ExternalComponent]) -> Result<(), 
     for e in externals {
         shapes.insert(e.name.clone(), e.state.clone());
     }
+    let islands: Vec<String> = file.islands.iter().map(|i| i.name.clone()).collect();
     for c in &file.components {
-        check_instances(c, &shapes)?;
+        check_instances(c, &shapes, &islands)?;
     }
     check_instance_cycle(file)?;
     Ok(())
@@ -493,6 +494,7 @@ fn check_shape_with(file: &File, externals: &[ExternalComponent]) -> Result<(), 
 fn check_instances(
     c: &Component,
     shapes: &std::collections::HashMap<String, Vec<(String, Type)>>,
+    islands: &[String],
 ) -> Result<(), TypeError> {
     fn is_const(value: &BindingValue, ty: &Type) -> bool {
         // A prop value must be a literal whose kind matches the
@@ -511,6 +513,7 @@ fn check_instances(
     fn walk(
         node: &ViewNode,
         shapes: &std::collections::HashMap<String, Vec<(String, Type)>>,
+        islands: &[String],
         parent: &Component,
         locals: &mut Vec<String>,
     ) -> Result<(), TypeError> {
@@ -522,7 +525,10 @@ fn check_instances(
                 accessibility,
                 span,
             } => {
-                if let ElementKind::Named(name) = kind {
+                // An island instance is checked where the island is known, when the file is lowered (docs/islands.md section 8).
+                if let ElementKind::Named(name) = kind
+                    && !islands.iter().any(|i| i == name)
+                {
                     // Tier 16: the target shape may come from an
                     // imported sibling module, not only this file.
                     let Some(target) = shapes.get(name.as_str()) else {
@@ -660,7 +666,7 @@ fn check_instances(
                     }
                 }
                 for ch in children {
-                    walk(ch, shapes, parent, locals)?;
+                    walk(ch, shapes, islands, parent, locals)?;
                 }
             }
             ViewNode::For {
@@ -670,13 +676,13 @@ fn check_instances(
                 // property values inside the body.
                 locals.push(binding.clone());
                 for ch in children {
-                    walk(ch, shapes, parent, locals)?;
+                    walk(ch, shapes, islands, parent, locals)?;
                 }
                 locals.pop();
             }
             ViewNode::If { children, .. } => {
                 for ch in children {
-                    walk(ch, shapes, parent, locals)?;
+                    walk(ch, shapes, islands, parent, locals)?;
                 }
             }
             ViewNode::Text { .. } => {}
@@ -684,7 +690,7 @@ fn check_instances(
         Ok(())
     }
     let mut locals: Vec<String> = Vec::new();
-    walk(&c.view.body, shapes, c, &mut locals)
+    walk(&c.view.body, shapes, islands, c, &mut locals)
 }
 
 /// A component cannot contain (transitively) an instance of

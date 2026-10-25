@@ -75,6 +75,49 @@ impl Serialize for IrFile {
         if !self.assets.is_empty() {
             s.serialize_field("assets", &self.assets)?;
         }
+        if !self.islands.is_empty() {
+            s.serialize_field("islands", &self.islands)?;
+        }
+        s.end()
+    }
+}
+
+impl Serialize for IrIsland {
+    fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut s = ser.serialize_struct("IrIsland", 10)?;
+        s.serialize_field("name", &self.name)?;
+        s.serialize_field("sealed", &true)?;
+        s.serialize_field("label", &self.label)?;
+        s.serialize_field("decorative", &self.decorative)?;
+        s.serialize_field("width", &self.width)?;
+        s.serialize_field("height", &self.height)?;
+        s.serialize_field("scripts", &self.scripts)?;
+        s.serialize_field("style", &self.style)?;
+        let props: Vec<serde_json::Value> = self
+            .props
+            .iter()
+            .map(|p| serde_json::json!({ "name": p.name, "type": p.ty.name() }))
+            .collect();
+        s.serialize_field("props", &props)?;
+        let events: Vec<serde_json::Value> = self
+            .events
+            .iter()
+            .map(|e| serde_json::json!({ "name": e.name, "type": e.ty.map(|t| t.name()) }))
+            .collect();
+        s.serialize_field("events", &events)?;
+        s.serialize_field("span", &IrSpan::from(self.span))?;
+        s.end()
+    }
+}
+
+impl Serialize for IrIslandFile {
+    fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut s = ser.serialize_struct("IrIslandFile", 3)?;
+        s.serialize_field("path", &self.path)?;
+        s.serialize_field("sha256", &self.sha256)?;
+        s.serialize_field("bytes", &self.bytes)?;
         s.end()
     }
 }
@@ -667,6 +710,9 @@ impl Serialize for IrElementKind {
             IrElementKind::Cell => ser.serialize_unit_variant("IrElementKind", 7, "Cell"),
             IrElementKind::HeaderCell => {
                 ser.serialize_unit_variant("IrElementKind", 8, "HeaderCell")
+            }
+            IrElementKind::Island(i) => {
+                ser.serialize_newtype_variant("IrElementKind", 40, "Island", &i.name)
             }
             IrElementKind::Named(s) => ser.serialize_str(s),
         }
