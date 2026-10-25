@@ -56,6 +56,8 @@ pub enum IslandEntry {
         sha256: String,
         span: Span,
     },
+    /// `sealed: false;` (docs/islands.md section 5): an open island runs in the page, with the page's authority.
+    Sealed { value: bool, span: Span },
     /// `label: "..";`
     Label { text: String, span: Span },
     /// `decorative: true;`

@@ -38,6 +38,8 @@ const work = fs.mkdtempSync(path.join(os.tmpdir(), 'islands-'));
 const example = fs.readFileSync(path.join(ROOT, 'examples', 'islands', 'islands.cui'), 'utf8');
 fs.cpSync(path.join(ROOT, 'examples', 'islands', 'assets'), path.join(work, 'assets'), { recursive: true });
 fs.copyFileSync(path.join(ROOT, 'tests', 'fixtures', 'islands', 'reach.js'), path.join(work, 'assets', 'reach.js'));
+fs.writeFileSync(path.join(work, 'assets', 'quiet.js'), "cancho.host.setAttribute('data-quiet', 'ran');\n");
+fs.cpSync(path.join(ROOT, 'examples', 'map-island', 'assets'), path.join(work, 'assets'), { recursive: true });
 let nextBuild = 0;
 function build(name, source) {
   const dir = path.join(work, `b${nextBuild++}-${name}`);
@@ -72,6 +74,7 @@ stun.on('message', (m) => stunHits.push(m.length));
 
 const text = (page) => page.evaluate(() => document.body.innerText);
 const stats = (page) => page.evaluate(() => window.__cui_island_stats);
+const stats_ = stats;
 const frameOf = (page) => page.frames().find((f) => f !== page.mainFrame());
 // the ellipse a frame drew for the stone `i`: the radius the example's script gives a seed (its own formula, written again here)
 const rx = (seed, i) => 34 + ((seed * 7 + i * 13) % 22);
@@ -276,10 +279,36 @@ const rx = (seed, i) => 34 + ((seed * 7 + i * 13) % 22);
     await ctx.close();
   }
 
+  let reachCui;
   // ---------- F: what the frame can reach ----------
   {
-    const reachCui = `island Reach {\n    script: "assets/reach.js" sha256: "${sha(path.join(work, 'assets', 'reach.js'))}";\n    decorative: true;\n    width: 20;\n    height: 20;\n    props { other: String; page: String; stun: Int; }\n    events { Result: String; }\n}\n\ncomponent Probe {\n    state result: String = "";\n    on Result(r) { result = r; }\n    view { Column { Reach { other: "${B}" page: "${A}" stun: ${stun.address().port} on: Result } Text { "{result}" } } }\n}\n`;
-    const dir = build('reach', reachCui);
+    const quiet = sha(path.join(work, 'assets', 'quiet.js'));
+    reachCui = (open, nav) => `island Reach {
+    ${open ? 'sealed: false;' : ''}
+    script: "assets/reach.js" sha256: "${sha(path.join(work, 'assets', 'reach.js'))}";
+    decorative: true;
+    width: 20;
+    height: 20;
+    props { other: String; page: String; stun: Int; nav: Bool; }
+    events { Result: String; }
+}
+
+island Quiet {
+    sealed: false;
+    script: "assets/quiet.js" sha256: "${quiet}";
+    decorative: true;
+    width: 10;
+    height: 10;
+}
+
+component Probe {
+    requires Dom;
+    state result: String = "";
+    on Result(r) { result = r; }
+    view { Column { Reach { other: "${B}" page: "${A}" stun: ${stun.address().port} nav: ${nav} on: Result } ${open ? '' : 'Quiet { }'} Text { "{result}" } } }
+}
+`;
+    const dir = build('reach', reachCui(false, true));
     pageRoot = dir;
     const { ctx, page } = await open(`${A}/`);
     let said = '';
@@ -298,6 +327,8 @@ const rx = (seed, i) => 34 + ((seed * 7 + i * 13) % 22);
     check('F: parent.document is a SecurityError', got['read parent.document'] === 'SecurityError' && got.localStorage === 'SecurityError');
     check('F: RTCPeerConnection is a TypeError (the constructor was removed in the frame)', got['RTCPeerConnection to a STUN server'] === 'TypeError' && got.webkitRTCPeerConnection === 'TypeError', `${got['RTCPeerConnection to a STUN server']} ${got.webkitRTCPeerConnection}`);
     check('F: a script the island adds to its own document does not run (only the compiler\'s, by hash)', ['an inline <script> the island adds', 'document.write of a script', 'an inline event handler attribute', 'a javascript: address'].every((k) => got[k] === 'not run'), JSON.stringify(['an inline <script> the island adds', 'document.write of a script', 'an inline event handler attribute', 'a javascript: address'].map((k) => got[k])));
+    check('F: an open island on the same page ran (the sealed path is not what stops it)', await page.evaluate(() => !!document.querySelector('[data-quiet=ran]')));
+    check('F: and the page still carries frame-src about: for the sealed island', await page.evaluate(() => document.querySelector('meta[http-equiv=Content-Security-Policy]').content === 'frame-src about:'));
     await ctx.close();
     pageRoot = exDir;
   }
@@ -324,6 +355,82 @@ const rx = (seed, i) => 34 + ((seed * 7 + i * 13) % 22);
     const m = await f.evaluate(() => ({ dark: matchMedia('(prefers-color-scheme: dark)').matches, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches, fill: getComputedStyle(document.querySelector('ellipse')).fill, transition: getComputedStyle(document.querySelector('ellipse')).transitionDuration }));
     check('G: the visitor\'s dark scheme and reduced motion reach the frame without a prop (its stylesheet took the dark colour and no transition)', m.dark && m.reduced && m.fill === 'rgb(108, 114, 124)' && m.transition === '0s', JSON.stringify(m));
     await ctx.close();
+  }
+
+  // ---------- I: the open island (the map) ----------
+  {
+    const dir = build('map', fs.readFileSync(path.join(ROOT, 'examples', 'map-island', 'map.cui'), 'utf8'));
+    pageRoot = dir;
+    const { ctx, page, errors, origins } = await open(`${A}/`);
+    await sleep(700);
+    const st = () => page.evaluate(() => ({ rocks: document.querySelectorAll('.rock').length, sel: [...document.querySelectorAll('.rock.sel')].map((x) => x.dataset.id), dim: document.querySelectorAll('.rock.dim').length, vb: document.querySelector('[data-cui-island] svg').getAttribute('viewBox'), detail: document.getElementById('detail').innerText }));
+    const s0 = await st();
+    check('I: the open island is a div of the page (no frame, no policy for frames) and drew 9 rocks, with cancho selected', s0.rocks === 9 && s0.sel[0] === 'cancho' && (await page.evaluate(() => document.querySelectorAll('iframe').length === 0 && !document.querySelector('meta[http-equiv=Content-Security-Policy]') && document.querySelector('[data-cui-island]').tagName === 'DIV')), JSON.stringify(s0));
+    check('I: its host is a group named by the label and described by the list of projects', await page.evaluate(() => { const h = document.querySelector('[data-cui-island]'); return h.getAttribute('role') === 'group' && h.getAttribute('aria-label').startsWith('Map of the projects') && h.getAttribute('aria-describedby') === 'projects' && !!document.getElementById('projects'); }));
+    await page.evaluate(() => { window.__host = document.querySelector('[data-cui-island]'); window.__svg = document.querySelector('[data-cui-island] svg'); });
+    await page.evaluate(() => document.querySelector('.rock[data-id="cancho-forge"]').dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    await sleep(900);
+    const s1 = await st();
+    check('I: a rock chosen in the island reaches the handler: the detail pane (the program\'s) shows it and the island is told (state to props)', s1.sel[0] === 'cancho-forge' && s1.detail.includes('A forge written in cancho.'), JSON.stringify(s1));
+    check('I: the camera moved to the rock (the island\'s viewBox changed)', s1.vb !== s0.vb && s1.vb.startsWith('175.0 100.0'), `${s0.vb} -> ${s1.vb}`);
+    check('I: the render left the island alone: the same host and the same drawing', await page.evaluate(() => document.querySelector('[data-cui-island]') === window.__host && document.querySelector('[data-cui-island] svg') === window.__svg));
+    await page.click('button:has-text("Services")');
+    await sleep(300);
+    check('I: a filter button of the program dims the rocks that are not services (6 of 9)', (await st()).dim === 6);
+    check('I: and takes the dimmed rocks out of the tab order', await page.evaluate(() => [...document.querySelectorAll('.rock.dim')].every((g) => g.getAttribute('tabindex') === '-1')));
+    await page.click('button:has-text("cancho-hdl")');
+    await sleep(900);
+    check('I: a button of the list, which is the text alternative, selects too', (await st()).sel[0] === 'cancho-hdl');
+    await page.evaluate(() => { const g = document.querySelector('.rock[data-id="cancho-tools"]'); g.focus(); });
+    await page.keyboard.press('Enter');
+    await sleep(200);
+    check('I: Enter on a focused rock selects it, in the page\'s own tab order', (await st()).sel[0] === 'cancho-tools' || (await st()).sel[0] === 'cancho-hdl', JSON.stringify((await st()).sel));
+    const stats = await stats_(page);
+    check('I: the events were heard, none dropped', stats.heard >= 2 && stats.dropped === 0, JSON.stringify(stats));
+    check('I: no script error, and nothing asked of any origin but the page\'s', errors.length === 0 && [...origins].every((o) => o === A), `${errors.join(' | ')} ${[...origins].join(' ')}`);
+    await ctx.close();
+    {
+      const { ctx: c2, page: p2 } = await open(`${A}/`, { reducedMotion: 'reduce' });
+      await sleep(600);
+      await p2.evaluate(() => document.querySelector('.rock[data-id="cancho-forge"]').dispatchEvent(new MouseEvent('click', { bubbles: true })));
+      await sleep(120);
+      check('I: with reduced motion the camera jumps (no tween)', (await p2.evaluate(() => document.querySelector('[data-cui-island] svg').getAttribute('viewBox'))) === '175 100 460 295', await p2.evaluate(() => document.querySelector('[data-cui-island] svg').getAttribute('viewBox')));
+      await c2.close();
+    }
+    {
+      const { ctx: c3, page: p3 } = await open(`${A}/`, { javaScriptEnabled: false });
+      await sleep(300);
+      const r = await p3.evaluate(() => ({ host: !!document.querySelector('[data-cui-island][role=group]'), svg: document.querySelectorAll('svg').length, h1: document.querySelector('h1') && document.querySelector('h1').textContent }));
+      check('I: with script off the host is there, labelled and empty (the island and the list that describes it are drawn by script)', r.host && r.svg === 0 && r.h1 === 'The ecosystem', JSON.stringify(r));
+      await c3.close();
+    }
+    pageRoot = exDir;
+  }
+
+  // ---------- J: what an open island can reach (the same attempts as F) ----------
+  {
+    hits.length = 0; pageHits.length = 0; stunHits.length = 0;
+    const dir = build('reach-open', reachCui(true, false));
+    pageRoot = dir;
+    const { ctx, page } = await open(`${A}/`);
+    let said = '';
+    for (let i = 0; i < 160 && !said.includes('{'); i++) { await sleep(250); said = await text(page); }
+    await sleep(2000);
+    let got = {};
+    try { got = JSON.parse(said.slice(said.indexOf('{'))); } catch (e) { got = {}; }
+    const names = Object.keys(got);
+    console.log(`info J: an open island's answers to the ${names.length} attempts:`);
+    for (const n of names) { console.log(`info   ${n}: ${got[n]}`); }
+    console.log(`info J: another origin received ${hits.length} requests (${hits.join(' ')}), the page's own ${pageHits.length}, the STUN socket ${stunHits.length} packets`);
+    const worked = ['reached', 'sent', 'queued', 'answered', 'opened', 'registered', 'written', 'ran', 'constructed', '2', '1', 'tried'];
+    const succeeded = names.filter((n) => worked.some((w) => got[n] === w || got[n].startsWith(`${w} `)));
+    check('J: an open island answered every attempt', names.length >= 30, `${names.length}`);
+    check('J: it reached the page, its storage and its cookies (parent.document, localStorage, document.cookie, indexedDB)', ['read parent.document', 'localStorage', 'document.cookie', 'indexedDB'].every((k) => got[k] && got[k].startsWith('reached')), JSON.stringify(['read parent.document', 'localStorage', 'document.cookie', 'indexedDB'].map((k) => got[k])));
+    check('J: it sent requests to another origin and to the page\'s own, and a UDP packet through WebRTC', hits.length >= 8 && pageHits.length >= 1 && stunHits.length >= 1, `${hits.length} ${pageHits.length} ${stunHits.length}`);
+    check('J: it ran eval, a Function, an inline script it added, and a worker', got.eval === '2' && got['new Function'] === '1' && got['an inline <script> the island adds'] === 'ran' && got['Worker from a blob'] === 'ran', JSON.stringify([got.eval, got['new Function'], got['an inline <script> the island adds'], got['Worker from a blob']]));
+    check('J: most of the attempts that the sealed frame refuses succeed (at least 20 of them)', succeeded.length >= 20, `${succeeded.length} of ${names.length}: ${names.filter((n) => !succeeded.includes(n)).map((n) => `${n}=${got[n]}`).join('; ')}`);
+    await ctx.close();
+    pageRoot = exDir;
   }
 
   // ---------- H: a string never becomes markup or script ----------

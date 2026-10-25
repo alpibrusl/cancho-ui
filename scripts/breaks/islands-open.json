@@ -1,0 +1,139 @@
+{
+  "checks": [
+    {
+      "name": "cargo test islands",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "islands"
+      ]
+    },
+    {
+      "name": "check-islands.js",
+      "argv": [
+        "node",
+        "scripts/check-islands.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "an open island needs no Dom",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "    if !island.sealed && !ctx.has_dom {",
+      "to": "    if false && !island.sealed && !ctx.has_dom {"
+    },
+    {
+      "name": "an open island may take the pointer",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "            if island.props.iter().any(|p| p.ty == IrIslandType::Pointer) {\n                return Err(refuse(\n                    \"island-open-pointer\"",
+      "to": "            if false && island.props.iter().any(|p| p.ty == IrIslandType::Pointer) {\n                return Err(refuse(\n                    \"island-open-pointer\""
+    },
+    {
+      "name": "an open island needs no text alternative",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "    if !island.sealed && !island.decorative && !described {",
+      "to": "    if false && !island.sealed && !island.decorative && !described {"
+    },
+    {
+      "name": "a text alternative may name nothing",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "            if !id.is_some_and(|i| ctx.ids.iter().any(|x| x == i)) {",
+      "to": "            if false && !id.is_some_and(|i| ctx.ids.iter().any(|x| x == i)) {"
+    },
+    {
+      "name": "a prop may be read from a name that is not state",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "let Some((field_name, field_ty)) = field else {",
+      "to": "let Some((field_name, field_ty)) = field.or(ctx.state.first()) else {"
+    },
+    {
+      "name": "a state field of another type is accepted for a prop",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "                if ty != Some(prop.ty) {",
+      "to": "                if false && ty != Some(prop.ty) {"
+    },
+    {
+      "name": "an open island may be used twice with state props",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "                if !dynamic_here && ctx.dynamic.contains(name) {",
+      "to": "                if false && !dynamic_here && ctx.dynamic.contains(name) {"
+    },
+    {
+      "name": "requires Dom is used by anything",
+      "file": "crates/cancho-ui-ir/src/lower.rs",
+      "from": "|| (req.name == \"Dom\" && crate::island::view_has_open(&c.view.body))",
+      "to": "|| req.name == \"Dom\""
+    },
+    {
+      "name": "an open island makes the page allow frames",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "    if used.iter().any(|i| i.sealed) {",
+      "to": "    if !used.is_empty() {"
+    },
+    {
+      "name": "opening a sealed island is not authority",
+      "file": "crates/cancho-ui-diff/src/lib.rs",
+      "from": "    expanded |= open_c.difference(&open_b).next().is_some();",
+      "to": "    expanded |= false;"
+    },
+    {
+      "name": "closing an open island is not authority",
+      "file": "crates/cancho-ui-diff/src/lib.rs",
+      "from": "    reduced |= open_b.difference(&open_c).next().is_some();",
+      "to": "    reduced |= false;"
+    },
+    {
+      "name": "an open island is not said to be unbounded",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "            \"authority\": OPEN_AUTHORITY,\n            \"label\": i.label,",
+      "to": "            \"authority\": \"bounded\",\n            \"label\": i.label,"
+    },
+    {
+      "name": "an open island is a sealed boundary in the report",
+      "file": "crates/cancho-ui/src/main.rs",
+      "from": "                    d[\"kind\"] = serde_json::json!(if i.sealed {",
+      "to": "                    d[\"kind\"] = serde_json::json!(if true {"
+    },
+    {
+      "name": "the setting of sealed is not reported",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "if i.sealed { \"sealed\" } else { \"open\" }.to_string(),",
+      "to": "\"sealed\".to_string(),"
+    },
+    {
+      "name": "a state value is not given to an open island",
+      "file": "crates/cancho-ui-codegen-web/src/island.rs",
+      "from": "            if (en.open) { __cui_isl_open_sync(en, dynamic[en.spec.name] || {}); }",
+      "to": "            if (en.open) { void 0; }"
+    },
+    {
+      "name": "an open island's scripts are not run",
+      "file": "crates/cancho-ui-codegen-web/src/island.rs",
+      "from": "            __cui_isl_open_run(en);\n            continue;",
+      "to": "            continue;"
+    },
+    {
+      "name": "an open island cannot say anything",
+      "file": "crates/cancho-ui-codegen-web/src/island.rs",
+      "from": "        emit: function (name, value) { __cui_isl_event(en, String(name), value); },",
+      "to": "        emit: function (name, value) {},"
+    },
+    {
+      "name": "the scripts of an open island are not in the page",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "            out.push_str(&crate::island::emit_open_sources(&every));",
+      "to": "            let _ = &every;"
+    },
+    {
+      "name": "an open island is not described by its alternative",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "                d = d.attr(\"aria-describedby\", value.clone());",
+      "to": "                let _ = value;"
+    }
+  ]
+}

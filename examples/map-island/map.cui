@@ -1,0 +1,76 @@
+// examples/map-island/map.cui — an OPEN island (docs/islands.md section 12): the drawing half of a map, written in plain JavaScript, run in the page.
+// Unlike a sealed island it is not in a sandbox: it can read and write the page, call the network and use the page's storage, so the component that
+// uses it declares `requires Dom;` and \`inspect effects\` prints its authority as UNBOUNDED. Its files are still pinned by hash. Everything that
+// is not drawing (the filter buttons, the count, the detail pane, the list that is the map's text alternative) is written here, in cancho-ui.
+
+island Places {
+    sealed: false;
+    script: "assets/map-draw.js" sha256: "bdec1a4aa3fd74000eb74a5998018c2586edf1c95ca31e0a38a829cb2f23bb5d";
+    style: "assets/map-draw.css" sha256: "99974e6de2f02e605575a386bfa8991610690c94385e193d6e2b9322595c7e07";
+    label: "Map of the projects: each one is a rock. Choose one for its details.";
+    width: 1300;
+    height: 810;
+    props { places: String; selected: String; kind: String; only_built: Bool; }
+    events { Selected: String; }
+}
+
+component Ecosystem {
+    requires Dom;
+    state data: String = "\{\"cancho\":\{\"name\":\"cancho\",\"kind\":\"language\",\"stage\":\"built\",\"summary\":\"The language and its compiler.\"\},\"cancho-ui\":\{\"name\":\"cancho-ui\",\"kind\":\"language\",\"stage\":\"built\",\"summary\":\"A UI language whose compiler knows what each component may do.\",\"rests_on\":[\"cancho\"]\},\"cancho-forge\":\{\"name\":\"cancho-forge\",\"kind\":\"service\",\"stage\":\"early\",\"summary\":\"A forge written in cancho.\",\"rests_on\":[\"cancho\"]\},\"cancho-cache\":\{\"name\":\"cancho-cache\",\"kind\":\"service\",\"stage\":\"design\",\"summary\":\"A cache, on paper.\",\"rests_on\":[\"cancho\"]\},\"cancho-hooks\":\{\"name\":\"cancho-hooks\",\"kind\":\"service\",\"stage\":\"early\",\"summary\":\"Webhooks, with the hosts they may reach declared.\",\"rests_on\":[\"cancho\"]\},\"cancho-schema\":\{\"name\":\"cancho-schema\",\"kind\":\"library\",\"stage\":\"built\",\"summary\":\"Schemas that check what crosses a boundary.\",\"rests_on\":[\"cancho\"]\},\"cancho-tools\":\{\"name\":\"cancho-tools\",\"kind\":\"tool\",\"stage\":\"alpha\",\"summary\":\"Small command line tools.\",\"rests_on\":[\"cancho\"]\},\"cancho-robot\":\{\"name\":\"cancho-robot\",\"kind\":\"edge\",\"stage\":\"design\",\"summary\":\"Robot control, on paper.\",\"rests_on\":[\"cancho\"]\},\"cancho-hdl\":\{\"name\":\"cancho-hdl\",\"kind\":\"edge\",\"stage\":\"design\",\"summary\":\"Hardware description, on paper.\",\"rests_on\":[\"cancho\"]\}\}";
+    state ids: List[String] = ["cancho", "cancho-ui", "cancho-forge", "cancho-cache", "cancho-hooks", "cancho-schema", "cancho-tools", "cancho-robot", "cancho-hdl"];
+    state selected: String = "cancho";
+    state name: String = "cancho";
+    state stage: String = "built";
+    state summary: String = "The language and its compiler.";
+    state kind: String = "all";
+    state only_built: Bool = false;
+
+    on Selected(id) {
+        selected = id;
+        name = json.get(data, id + ".name", id);
+        stage = json.get(data, id + ".stage", "");
+        summary = json.get(data, id + ".summary", "");
+    }
+    on Pick(id) {
+        selected = id;
+        name = json.get(data, id + ".name", id);
+        stage = json.get(data, id + ".stage", "");
+        summary = json.get(data, id + ".summary", "");
+    }
+    on KindAll { kind = "all"; }
+    on KindLanguage { kind = "language"; }
+    on KindServices { kind = "service"; }
+    on KindLibraries { kind = "library"; }
+    on KindTools { kind = "tool"; }
+    on KindHardware { kind = "edge"; }
+    on OnlyBuilt { only_built = !only_built; }
+
+    view {
+        Column {
+            Heading { level: 1 "The ecosystem" }
+            Row {
+                Button { label: "All" on: KindAll }
+                Button { label: "Language" on: KindLanguage }
+                Button { label: "Services" on: KindServices }
+                Button { label: "Libraries" on: KindLibraries }
+                Button { label: "Tools" on: KindTools }
+                Button { label: "Hardware" on: KindHardware }
+                Button { label: "Only what exists" on: OnlyBuilt }
+            }
+            Places { places: data selected: selected kind: kind only_built: only_built on: Selected text: "projects" }
+            Section {
+                label: "Selected project"
+                id: "detail"
+                Heading { level: 2 "{name}" }
+                Text { "{stage}: {summary}" }
+            }
+            Section {
+                label: "All projects"
+                id: "projects"
+                For { over: ids as: id
+                    Button { label: id on: Pick(id) }
+                }
+            }
+        }
+    }
+}

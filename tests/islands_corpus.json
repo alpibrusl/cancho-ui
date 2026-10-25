@@ -67,6 +67,22 @@
    "name": "an island with no props and no events",
    "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"S\"; width: 100; height: 50; }",
    "view": "Stones { }"
+  },
+  {
+   "name": "an open island with a prop read from state, a text alternative and a handler",
+   "program": "island Stones { sealed: false; script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; } events { Picked: Int; } }\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    state s: String = \"x\";\n    state b: Bool = false;\n    on Picked(v) { n = v; }\n    view { Column { Stones { seed: n text: \"alt\" on: Picked } Section { label: \"Alt\" id: \"alt\" Text { \"alt\" } } } }\n}\n"
+  },
+  {
+   "name": "an open island with a literal prop",
+   "program": "island Stones { sealed: false; script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; } events { Picked: Int; } }\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    state s: String = \"x\";\n    state b: Bool = false;\n    on Picked(v) { n = v; }\n    view { Column { Stones { seed: 3 text: \"alt\" } Section { label: \"Alt\" id: \"alt\" Text { \"alt\" } } } }\n}\n"
+  },
+  {
+   "name": "a decorative open island needs no text alternative",
+   "program": "island Stones { sealed: false; script: \"a.js\" sha256: \"{sha:a.js}\"; decorative: true; width: 100; height: 50; props { seed: Int; } events { Picked: Int; } }\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    state s: String = \"x\";\n    state b: Bool = false;\n    on Picked(v) { n = v; }\n    view { Column { Stones { seed: n } Section { label: \"Alt\" id: \"alt\" Text { \"alt\" } } } }\n}\n"
+  },
+  {
+   "name": "a sealed and an open island in one component",
+   "program": "island Stones { sealed: false; script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; } events { Picked: Int; } }\nisland Other { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    view { Column { Stones { seed: n text: \"alt\" } Other { seed: 1 } Section { label: \"Alt\" id: \"alt\" Text { \"alt\" } } } }\n}\n"
   }
  ],
  "refusals": [
@@ -422,6 +438,76 @@
    "symlinks": {
     "link.js": "/etc/hostname"
    }
+  },
+  {
+   "name": "an open island used by a component that does not declare Dom",
+   "code": "island-open-needs-dom",
+   "program": "island Stones { sealed: false; script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; } events { Picked: Int; } }\ncomponent C {\n    \n    state n: Int = 0;\n    state s: String = \"x\";\n    state b: Bool = false;\n    on Picked(v) { n = v; }\n    view { Column { Stones { seed: n text: \"alt\" on: Picked } Section { label: \"Alt\" id: \"alt\" Text { \"alt\" } } } }\n}\n"
+  },
+  {
+   "name": "requires Dom with no open island",
+   "code": "capability-unused",
+   "program": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    view { Column { Stones { seed: 1 } } }\n}\n"
+  },
+  {
+   "name": "requires Dom with a sealed island only",
+   "code": "capability-unused",
+   "program": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    view { Column { Stones { seed: 1 } } }\n}\n"
+  },
+  {
+   "name": "an open island with a Pointer prop",
+   "code": "island-open-pointer",
+   "program": "island Stones { sealed: false; script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; p: Pointer; } events { Picked: Int; } }\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    state s: String = \"x\";\n    state b: Bool = false;\n    on Picked(v) { n = v; }\n    view { Column { Stones { seed: n text: \"alt\" on: Picked } Section { label: \"Alt\" id: \"alt\" Text { \"alt\" } } } }\n}\n"
+  },
+  {
+   "name": "an open island with a prop called text",
+   "code": "island-prop-name",
+   "program": "island Stones { sealed: false; script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; text: String; } events { Picked: Int; } }\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    state s: String = \"x\";\n    state b: Bool = false;\n    on Picked(v) { n = v; }\n    view { Column { Stones { seed: n text: \"alt\" on: Picked } Section { label: \"Alt\" id: \"alt\" Text { \"alt\" } } } }\n}\n"
+  },
+  {
+   "name": "an open island that is not decorative and names no text alternative",
+   "code": "island-text-alternative-missing",
+   "program": "island Stones { sealed: false; script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; } events { Picked: Int; } }\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    state s: String = \"x\";\n    state b: Bool = false;\n    on Picked(v) { n = v; }\n    view { Column { Stones { seed: n } Section { label: \"Alt\" id: \"alt\" Text { \"alt\" } } } }\n}\n"
+  },
+  {
+   "name": "a text alternative that is no element of the component",
+   "code": "island-text-alternative-invalid",
+   "program": "island Stones { sealed: false; script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; } events { Picked: Int; } }\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    state s: String = \"x\";\n    state b: Bool = false;\n    on Picked(v) { n = v; }\n    view { Column { Stones { seed: n text: \"nowhere\" } Section { label: \"Alt\" id: \"alt\" Text { \"alt\" } } } }\n}\n"
+  },
+  {
+   "name": "sealed written twice",
+   "code": "island-entry-duplicate",
+   "program": "island Stones { sealed: false; sealed: false; script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; } events { Picked: Int; } }\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    state s: String = \"x\";\n    state b: Bool = false;\n    on Picked(v) { n = v; }\n    view { Column { Stones { seed: n text: \"alt\" on: Picked } Section { label: \"Alt\" id: \"alt\" Text { \"alt\" } } } }\n}\n"
+  },
+  {
+   "name": "sealed with a word that is not true or false",
+   "code": "parse-unexpected-token",
+   "program": "island Stones { sealed: maybe; script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; } events { Picked: Int; } }\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    state s: String = \"x\";\n    state b: Bool = false;\n    on Picked(v) { n = v; }\n    view { Column { Stones { seed: n text: \"alt\" on: Picked } Section { label: \"Alt\" id: \"alt\" Text { \"alt\" } } } }\n}\n"
+  },
+  {
+   "name": "a prop read from a name that is not state",
+   "code": "island-prop-source-unknown",
+   "program": "island Stones { sealed: false; script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; } events { Picked: Int; } }\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    state s: String = \"x\";\n    state b: Bool = false;\n    on Picked(v) { n = v; }\n    view { Column { Stones { seed: nowhere text: \"alt\" } Section { label: \"Alt\" id: \"alt\" Text { \"alt\" } } } }\n}\n"
+  },
+  {
+   "name": "a prop read from state of another type",
+   "code": "island-prop-type",
+   "program": "island Stones { sealed: false; script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; } events { Picked: Int; } }\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    state s: String = \"x\";\n    state b: Bool = false;\n    on Picked(v) { n = v; }\n    view { Column { Stones { seed: s text: \"alt\" } Section { label: \"Alt\" id: \"alt\" Text { \"alt\" } } } }\n}\n"
+  },
+  {
+   "name": "a Bool state field for an Int prop",
+   "code": "island-prop-type",
+   "program": "island Stones { sealed: false; script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; } events { Picked: Int; } }\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    state s: String = \"x\";\n    state b: Bool = false;\n    on Picked(v) { n = v; }\n    view { Column { Stones { seed: b text: \"alt\" } Section { label: \"Alt\" id: \"alt\" Text { \"alt\" } } } }\n}\n"
+  },
+  {
+   "name": "an open island used twice with a prop read from state",
+   "code": "island-open-instance-twice",
+   "program": "island Stones { sealed: false; script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; } events { Picked: Int; } }\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    state s: String = \"x\";\n    state b: Bool = false;\n    on Picked(v) { n = v; }\n    view { Column { Stones { seed: n text: \"alt\" } Stones { seed: n text: \"alt\" } Section { label: \"Alt\" id: \"alt\" Text { \"alt\" } } } }\n}\n"
+  },
+  {
+   "name": "a prop of a sealed island read from state is still refused",
+   "code": "island-prop-dynamic",
+   "view": "Stones { seed: n }"
   }
  ]
 }

@@ -87,7 +87,10 @@ impl Serialize for IrIsland {
         use serde::ser::SerializeStruct;
         let mut s = ser.serialize_struct("IrIsland", 10)?;
         s.serialize_field("name", &self.name)?;
-        s.serialize_field("sealed", &true)?;
+        s.serialize_field("sealed", &self.sealed)?;
+        if !self.sealed {
+            s.serialize_field("authority", crate::island::OPEN_AUTHORITY)?;
+        }
         s.serialize_field("label", &self.label)?;
         s.serialize_field("decorative", &self.decorative)?;
         s.serialize_field("width", &self.width)?;

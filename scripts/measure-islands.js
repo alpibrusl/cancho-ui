@@ -2,7 +2,7 @@
 // A measurement, not a gate (docs/islands.md): what a sealed island can reach, what a message costs, what the cancho-www hero and cairns cost in a
 // sandboxed frame against the page, and how a frame behaves under a page that rebuilds or hydrates. The page is read, never changed: pass the path
 // of a cancho-www clone.
-//   node scripts/measure-islands.js /path/to/cancho-www [reach|messages|hero|cairns|media|a11y|hydrate|compiled ...]
+//   node scripts/measure-islands.js /path/to/cancho-www [reach|messages|hero|cairns|media|a11y|hydrate|compiled|map ...]
 // DESKTOP CHROMIUM with the Pixel 7 profile (a viewport and a user agent) and, where it says so, a 4x CPU throttle: not a device.
 'use strict';
 const fs = require('fs');
@@ -497,6 +497,103 @@ component Page {
       await sleep(600);
       const at1 = await inCount();
       console.log(`| ${rate}x | ${took} ms | ${heroNodes} | ${cairnsDrawn} of 11 | ${errs.length}${errs.length ? ' (' + errs[0] + ')' : ''} | ${[...origins].filter((o) => o !== `http://127.0.0.1:${served.address().port}`).length} | ${at0} of 11 / ${at1} of 11 |`);
+      await ctx.close();
+    }
+    served.close();
+    if (!process.env.KEEP) { fs.rmSync(dir, { recursive: true, force: true }); } else { console.log('kept', dir); }
+  }
+
+  // ---------- map: the real ecosystem map as an open island ----------
+  if (on('map')) {
+    const os = require('os');
+    const { spawnSync } = require('child_process');
+    const crypto = require('crypto');
+    const ROOT = path.join(__dirname, '..');
+    const BIN = path.join(ROOT, 'target', 'debug', 'cancho-ui');
+    const sha = (b) => crypto.createHash('sha256').update(b).digest('hex');
+    console.log('\n## map: the 24 projects of data/ecosystem.json drawn by examples/map-island/assets/map-draw.js with the real rocks.js (byte for byte), as an OPEN island; the filters, the detail pane and the list are cancho-ui\n');
+    const data = JSON.parse(read('data/ecosystem.json'));
+    const spots = /var SPOTS = \{[\s\S]*?\n  \};/.exec(read('assets/map.js'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'islands-map-'));
+    fs.mkdirSync(path.join(dir, 'assets'));
+    const put = (name, text) => { fs.writeFileSync(path.join(dir, 'assets', name), text); return sha(Buffer.from(text)); };
+    // the layout of today's map: SPOTS of map.js ([x, y, where the name goes]) in place of the example's nine
+    let draw = fs.readFileSync(path.join(ROOT, 'examples', 'map-island', 'assets', 'map-draw.js'), 'utf8');
+    const real = spots ? spots[0].replace(/^ {2}/gm, '    ').replace(/'([a-z-]+)': \[(\d+), (\d+), '[nsew]'\]/g, "'$1': [$2, $3]").replace(/(\w[\w-]*): \[(\d+), (\d+), '[nsew]'\]/g, "'$1': [$2, $3]").replace("    var SPOTS", "    var SPOTS") : null;
+    if (real) { draw = draw.replace(/var SPOTS = \{[\s\S]*?\};/, real.replace(/^\s*var SPOTS = /, 'var SPOTS = ').replace(/\n  \};$/, '\n    };')); }
+    const h = { rocks: put('rocks.js', ROCKS), draw: put('map-draw.js', draw), css: put('map-draw.css', fs.readFileSync(path.join(ROOT, 'examples', 'map-island', 'assets', 'map-draw.css'), 'utf8') + read('assets/site.css').split('\n').filter((l) => /^\.(rock|g-)/.test(l)).join('\n')) };
+    const places = {};
+    for (const q of data.projects) { places[q.id] = { name: q.name, kind: q.kind, stage: q.stage, summary: q.summary, rests_on: q.rests_on || [] }; }
+    const lit = (t) => t.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\{/g, '\\{').replace(/\}/g, '\\}');
+    const ids = Object.keys(places).map((i) => `"${i}"`).join(', ');
+    const pick = '        selected = id;\n        name = json.get(data, id + ".name", id);\n        stage = json.get(data, id + ".stage", "");\n        summary = json.get(data, id + ".summary", "");';
+    fs.writeFileSync(path.join(dir, 'map.cui'), `island Places {
+    sealed: false;
+    script: "assets/rocks.js" sha256: "${h.rocks}";
+    script: "assets/map-draw.js" sha256: "${h.draw}";
+    style: "assets/map-draw.css" sha256: "${h.css}";
+    label: "Map of the cancho projects: each one is a rock.";
+    width: 1300;
+    height: 810;
+    props { places: String; selected: String; kind: String; only_built: Bool; }
+    events { Selected: String; }
+}
+component Ecosystem {
+    requires Dom;
+    state data: String = "${lit(JSON.stringify(places))}";
+    state ids: List[String] = [${ids}];
+    state selected: String = "cancho";
+    state name: String = "cancho";
+    state stage: String = "built";
+    state summary: String = "";
+    state kind: String = "all";
+    state only_built: Bool = false;
+    on Selected(id) {\n${pick}\n    }
+    on Pick(id) {\n${pick}\n    }
+    on All { kind = "all"; }
+    on Services { kind = "service"; }
+    view {
+        Column {
+            Heading { level: 1 "The ecosystem" }
+            Row { Button { label: "All" on: All } Button { label: "Services" on: Services } }
+            Places { places: data selected: selected kind: kind only_built: only_built on: Selected text: "projects" }
+            Section { label: "Selected project" id: "detail" Heading { level: 2 "{name}" } Text { "{stage}: {summary}" } }
+            Section { label: "All projects" id: "projects" For { over: ids as: id Button { label: id on: Pick(id) } } }
+        }
+    }
+}
+`);
+    const out = path.join(dir, 'out');
+    const r = spawnSync(BIN, ['build', path.join(dir, 'map.cui'), '--page', '-o', out], { encoding: 'utf8' });
+    if (r.status !== 0) { console.log(r.stdout + r.stderr); throw new Error('the map did not build'); }
+    const html = fs.readFileSync(path.join(out, 'index.html'), 'utf8');
+    const js = fs.readFileSync(path.join(out, 'app.js'), 'utf8');
+    console.log(`index.html ${html.length.toLocaleString()} B (gzip ${zlib.gzipSync(html).length.toLocaleString()}), app.js ${js.length.toLocaleString()} B (gzip ${zlib.gzipSync(js).length.toLocaleString()}); today's map.js is 21,760 B\n`);
+    const served = http.createServer((q, rs) => { const f = path.join(out, q.url === '/' ? 'index.html' : q.url.split('?')[0]); fs.readFile(f, (e, d) => { if (e) { rs.statusCode = 404; rs.end(); return; } rs.setHeader('content-type', { '.js': 'text/javascript', '.html': 'text/html' }[path.extname(f)] || 'text/plain'); rs.end(d); }); });
+    await new Promise((ok) => served.listen(0, ok));
+    console.log('| throttle | drawn after | rocks | nodes in the island | nodes in the page | selection reaches the island | same host after a render | console errors | requests to another origin |');
+    console.log('|---|---:|---:|---:|---:|---|---|---:|---:|');
+    for (const rate of [1, 4]) {
+      const { ctx, page } = await newPage({ viewport: { width: 1000, height: 900 } });
+      const errs = []; const origins = new Set();
+      page.on('console', (m) => { if (m.type() === 'error') { errs.push(m.text().slice(0, 100)); } });
+      page.on('pageerror', (e) => errs.push(String(e).slice(0, 100)));
+      page.on('request', (rq) => { if (!/^(data|about):/.test(rq.url())) { origins.add(new URL(rq.url()).origin); } });
+      const cdp = await ctx.newCDPSession(page);
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate });
+      const t0 = Date.now();
+      await page.goto(`http://127.0.0.1:${served.address().port}/`, { waitUntil: 'commit' });
+      await page.waitForFunction(() => document.querySelectorAll('.rock').length > 0, null, { timeout: 60000 });
+      const took = Date.now() - t0;
+      const rocks = await page.evaluate(() => document.querySelectorAll('.rock').length);
+      const nodes = await page.evaluate(() => [document.querySelector('[data-cui-island]').querySelectorAll('*').length, document.querySelectorAll('*').length]);
+      await page.evaluate(() => { window.__h = document.querySelector('[data-cui-island]'); });
+      await page.evaluate(() => document.querySelector('.rock[data-id="cancho-forge"]').dispatchEvent(new MouseEvent('click', { bubbles: true })));
+      await sleep(rate * 400);
+      const after = await page.evaluate(() => ({ sel: [...document.querySelectorAll('.rock.sel')].map((x) => x.dataset.id).join(), same: document.querySelector('[data-cui-island]') === window.__h, detail: document.getElementById('detail').innerText.split('\n')[0] }));
+      await page.click('button:has-text("Services")'); await sleep(rate * 200);
+      const dim = await page.evaluate(() => document.querySelectorAll('.rock.dim').length);
+      console.log(`| ${rate}x | ${took} ms | ${rocks} | ${nodes[0]} | ${nodes[1]} | ${after.sel} / ${after.detail}; Services dims ${dim} | ${after.same} | ${errs.length}${errs.length ? ' (' + errs[0] + ')' : ''} | ${[...origins].filter((o) => o !== `http://127.0.0.1:${served.address().port}`).length} |`);
       await ctx.close();
     }
     served.close();
