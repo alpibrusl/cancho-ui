@@ -1,0 +1,5 @@
+:root { color-scheme: light dark; --stone: #8a8f98; --stone-line: #4a4f58; }
+@media (prefers-color-scheme: dark) { :root { --stone: #6c727c; --stone-line: #c9ced6; } }
+body { margin: 0; }
+.stone { fill: var(--stone); stroke: var(--stone-line); stroke-width: 2; cursor: pointer; transition: cx .25s; }
+@media (prefers-reduced-motion: reduce) { .stone { transition: none; } }

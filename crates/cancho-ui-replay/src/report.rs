@@ -189,6 +189,10 @@ pub struct TestReport {
     pub steps: Vec<StepReport>,
     pub requests: Vec<RequestJson>,
     pub final_state: BTreeMap<String, Json>,
+    /// The sealed islands (docs/islands.md) the replayed component draws: replay does not run an island, and an event it would send reaches the
+    /// handler as an event of the trace. Absent from the JSON when there are none.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub islands_not_replayed: Vec<String>,
     pub not_claimed: Vec<&'static str>,
 }
 
@@ -242,6 +246,11 @@ fn render_human_bounded(r: &TestReport, bound: Option<usize>) -> String {
             if r.steps_total == 1 { "" } else { "s" }
         )),
         None => out.push_str("no component replayed\n"),
+    }
+    for i in &r.islands_not_replayed {
+        out.push_str(&format!(
+            "island {i}: not replayed (a sealed island is checked in a browser; what it sends reaches the handler as an event of the trace)\n"
+        ));
     }
     for s in &r.steps {
         let desc = match s.action {

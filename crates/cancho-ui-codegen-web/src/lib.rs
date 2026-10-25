@@ -19,6 +19,7 @@ mod controls;
 pub mod emit;
 mod expr;
 mod i18n;
+mod island;
 mod lists;
 mod map;
 mod media;

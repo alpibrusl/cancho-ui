@@ -2,7 +2,7 @@
 // A measurement, not a gate (docs/islands.md): what a sealed island can reach, what a message costs, what the cancho-www hero and cairns cost in a
 // sandboxed frame against the page, and how a frame behaves under a page that rebuilds or hydrates. The page is read, never changed: pass the path
 // of a cancho-www clone.
-//   node scripts/measure-islands.js /path/to/cancho-www [reach|messages|hero|cairns|media|a11y|hydrate ...]
+//   node scripts/measure-islands.js /path/to/cancho-www [reach|messages|hero|cairns|media|a11y|hydrate|compiled ...]
 // DESKTOP CHROMIUM with the Pixel 7 profile (a viewport and a user agent) and, where it says so, a 4x CPU throttle: not a device.
 'use strict';
 const fs = require('fs');
@@ -174,7 +174,7 @@ const CSP_B = CSP_A + "; form-action 'none'; base-uri 'none'; frame-src 'none'";
   async function islandCss(page) {
     return page.evaluate((css) => {
       const sheet = new CSSStyleSheet(); sheet.replaceSync(css);
-      const keep = /\.(rock|shrub|scene|layer|sun|ridge|ground|pine|cloud|bird|drop|cairn)|^:root|^\.rock/;
+      const keep = /\.(rock|shrub|scene|layer|sun|ridge|ground|pine|cloud|bird|drop|cairn|defs)|^:root|^\.rock/;
       const out = [];
       for (const r of sheet.cssRules) {
         if (r.type === CSSRule.KEYFRAMES_RULE && /sunrise|breathe|drift|glide|settle/.test(r.name)) { out.push(r.cssText); }
@@ -383,6 +383,124 @@ const CSP_B = CSP_A + "; form-action 'none'; base-uri 'none'; frame-src 'none'";
     }, doc2);
     for (const [k, v] of Object.entries(counts)) { console.log(`| ${k} | ${v} of 20 |`); }
     await ctx.close();
+  }
+
+  // ---------- compiled: the real hero and the 11 cairns through the compiler ----------
+  if (on('compiled')) {
+    const os = require('os');
+    const { spawnSync } = require('child_process');
+    const crypto = require('crypto');
+    const BIN = path.join(__dirname, '..', 'target', 'debug', 'cancho-ui');
+    const sha = (b) => crypto.createHash('sha256').update(b).digest('hex');
+    console.log('\n## compiled: the real rocks.js and scene.js (byte for byte, pinned by hash), written as islands and built by `cancho-ui build --page`; 4x CPU throttle\n');
+    const probe = await newPage({ viewport: { width: 412, height: 800 } });
+    await probe.page.goto(`${A}/assets/rocks.js`).catch(() => {});
+    const css = await islandCss(probe.page);
+    await probe.ctx.close();
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'islands-compiled-'));
+    fs.mkdirSync(path.join(dir, 'assets'));
+    const put = (name, text) => { fs.writeFileSync(path.join(dir, 'assets', name), text); return sha(Buffer.from(text)); };
+    const h = { rocks: put('rocks.js', ROCKS), scene: put('scene.js', SCENE) };
+    // the glue: what the page's hero() and cairns() do, as the island's own entry
+    h.heroGlue = put('island-hero.js', `(function () {
+    var wrap = document.createElement('div'); wrap.className = 'scene';
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 640 600'); svg.setAttribute('preserveAspectRatio', 'xMidYMax meet');
+    wrap.appendChild(svg); document.body.appendChild(wrap);
+    window.Scene.draw(svg);
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) { return; }
+    cancho.onprops(function (p) { if (p.pointer) { svg.style.setProperty('--px', p.pointer.x.toFixed(3)); svg.style.setProperty('--py', p.pointer.y.toFixed(3)); } });
+})();
+`);
+    h.cairnGlue = put('island-cairn.js', `(function () {
+    var R = window.Rocks, el = R.el;
+    var c = document.createElement('div'); c.className = 'cairn'; document.body.appendChild(c);
+    var svg = el('svg', { viewBox: '0 0 84 58', 'aria-hidden': 'true' }, c);
+    cancho.onprops(function (p) {
+        if (c.firstChild.childNodes.length) { return; }
+        [[42, 58, 32, 14, 3], [44, 38, 22, 11, 4], [41, 21, 13, 8, 5]].forEach(function (s, i) {
+            var g = el('g', { class: 'st' }, svg);
+            R.rock(g, { seed: 'cairn' + p.seed + i, x: s[0], baseY: s[1], rx: s[2], ry: s[3], n: 9, cracks: 0, lichen: 0, jitter: 0.12 });
+        });
+    });
+    var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { c.classList.add('in'); io.disconnect(); } }); }, { threshold: 0.25 });
+    io.observe(c);
+})();
+`);
+    h.heroCss = put('island-hero.css', css + '\nbody{margin:0}\n');
+    h.cairnCss = put('island-cairn.css', css + '\nbody{margin:0} .cairn{margin:0} .cairn svg{width:5.2rem;height:3.6rem;overflow:visible}\n');
+    const cairns = Array.from({ length: 11 }, (_, n) => `Cairn { seed: ${n} }`).join('\n            ');
+    fs.writeFileSync(path.join(dir, 'page.cui'), `island Hero {
+    script: "assets/rocks.js" sha256: "${h.rocks}";
+    script: "assets/scene.js" sha256: "${h.scene}";
+    script: "assets/island-hero.js" sha256: "${h.heroGlue}";
+    style: "assets/island-hero.css" sha256: "${h.heroCss}";
+    decorative: true;
+    width: 640;
+    height: 600;
+    props { pointer: Pointer; }
+}
+island Cairn {
+    script: "assets/rocks.js" sha256: "${h.rocks}";
+    script: "assets/island-cairn.js" sha256: "${h.cairnGlue}";
+    style: "assets/island-cairn.css" sha256: "${h.cairnCss}";
+    decorative: true;
+    width: 84;
+    height: 58;
+    props { seed: Int; }
+}
+component Page {
+    view {
+        Column {
+            Heading { level: 1 "Sealed islands, compiled" }
+            Hero { }
+            ${cairns}
+        }
+    }
+}
+`);
+    const out = path.join(dir, 'out');
+    const t = Date.now();
+    const r = spawnSync(BIN, ['build', path.join(dir, 'page.cui'), '--page', '-o', out], { encoding: 'utf8' });
+    if (r.status !== 0) { console.log(r.stdout + r.stderr); throw new Error('the compiled page did not build'); }
+    const html = fs.readFileSync(path.join(out, 'index.html'), 'utf8');
+    const js = fs.readFileSync(path.join(out, 'app.js'), 'utf8');
+    console.log(`built in ${Date.now() - t} ms: index.html ${html.length.toLocaleString()} B (gzip ${zlib.gzipSync(html).length.toLocaleString()}), app.js ${js.length.toLocaleString()} B; 12 frames, ${html.split('<iframe').length - 1} iframes in the HTML\n`);
+    const served = http.createServer((q, rs) => { const f = path.join(out, q.url === '/' ? 'index.html' : q.url.split('?')[0]); fs.readFile(f, (e, d) => { if (e) { rs.statusCode = 404; rs.end(); return; } rs.setHeader('content-type', { '.js': 'text/javascript', '.html': 'text/html' }[path.extname(f)] || 'text/plain'); rs.end(d); }); });
+    await new Promise((ok) => served.listen(0, ok));
+    console.log('| throttle | all 12 frames drawn after | hero nodes | cairn frames drawn | console errors | requests to another origin | revealed at load / after scrolling |');
+    console.log('|---|---:|---:|---:|---:|---:|---|');
+    for (const rate of [1, 4]) {
+      const { ctx, page } = await newPage({ viewport: { width: 412, height: 700 } });
+      const errs = []; const origins = new Set();
+      page.on('console', (m) => { if (m.type() === 'error') { errs.push(m.text().slice(0, 120)); } });
+      page.on('pageerror', (e) => errs.push(String(e).slice(0, 120)));
+      page.on('request', (rq) => { if (!/^(data|about):/.test(rq.url())) { origins.add(new URL(rq.url()).origin); } });
+      const cdp = await ctx.newCDPSession(page);
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate });
+      const t0 = Date.now();
+      await page.goto(`http://127.0.0.1:${served.address().port}/`, { waitUntil: 'commit' });
+      let drawn = 0, heroNodes = 0;
+      while (Date.now() - t0 < 60000) {
+        const fs2 = page.frames().filter((f) => f !== page.mainFrame());
+        const counts = await Promise.all(fs2.map((f) => f.evaluate(() => document.querySelectorAll('svg *').length).catch(() => 0)));
+        drawn = counts.filter((c) => c > 0).length;
+        heroNodes = counts[0] || 0;
+        if (drawn >= 12) { break; }
+        await sleep(25);
+      }
+      const took = Date.now() - t0;
+      const cairnsDrawn = drawn - (heroNodes > 0 ? 1 : 0);
+      const inCount = async () => { let n = 0; for (const f of page.frames().filter((x) => x !== page.mainFrame()).slice(1)) { n += await f.evaluate(() => document.querySelector('.cairn') && document.querySelector('.cairn').classList.contains('in') ? 1 : 0).catch(() => 0); } return n; };
+      const at0 = await inCount();
+      for (let y = 0; y <= 2200; y += 300) { await page.evaluate((y) => window.scrollTo(0, y), y); await sleep(150); }
+      await sleep(600);
+      const at1 = await inCount();
+      console.log(`| ${rate}x | ${took} ms | ${heroNodes} | ${cairnsDrawn} of 11 | ${errs.length}${errs.length ? ' (' + errs[0] + ')' : ''} | ${[...origins].filter((o) => o !== `http://127.0.0.1:${served.address().port}`).length} | ${at0} of 11 / ${at1} of 11 |`);
+      await ctx.close();
+    }
+    served.close();
+    if (!process.env.KEEP) { fs.rmSync(dir, { recursive: true, force: true }); } else { console.log('kept', dir); }
   }
 
   await browser.close(); site.close(); other.close(); stun.close();

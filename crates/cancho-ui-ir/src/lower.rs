@@ -197,14 +197,16 @@ pub fn lower_file(file: &File) -> Result<IrFile, LowerError> {
         Some(t) => Some(crate::theme::lower_theme(t)?),
         None => None,
     };
-    let ir = IrFile {
+    let mut ir = IrFile {
         schema: SCHEMA.to_string(),
         version: schema_version().to_string(),
         module: file.module.as_ref().map(|m| m.name.clone()),
         components,
         theme,
         assets: Vec::new(),
+        islands: crate::island::lower_decls(file)?,
     };
+    crate::island::resolve_instances(&mut ir)?;
     crate::controls::check_controls(&ir)?;
     crate::conditions::check_conditions(&ir)?;
     check_capabilities(&ir)?;
@@ -227,6 +229,7 @@ pub fn merge_ir_files(files: &[IrFile]) -> IrFile {
             components: Vec::new(),
             theme: None,
             assets: Vec::new(),
+            islands: Vec::new(),
         };
     };
     IrFile {
@@ -237,6 +240,7 @@ pub fn merge_ir_files(files: &[IrFile]) -> IrFile {
         // one theme per program (the pipeline refuses two): the last file's, which is the entry's when it has one
         theme: files.iter().rev().find_map(|f| f.theme.clone()),
         assets: Vec::new(),
+        islands: files.iter().flat_map(|f| f.islands.clone()).collect(),
     }
 }
 
