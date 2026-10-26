@@ -90,6 +90,8 @@ const BUILT_IN: &[&str] = &[
     "Strong",
     "Em",
     "Small",
+    "Reveal",
+    "CountUp",
     "Break",
     "Summary",
     "Code",

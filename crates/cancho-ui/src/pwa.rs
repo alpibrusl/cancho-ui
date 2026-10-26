@@ -33,6 +33,8 @@ pub struct PageParts {
     pub touch_icon: bool,
     /// the program has a sticky `Header`: the page reserves room for it above an anchor
     pub sticky: bool,
+    /// what the program uses of the motion script (docs/motion.md)
+    pub motion: crate::motion::MotionUse,
 }
 
 const BACKGROUND: [u8; 3] = [0x1f, 0x6f, 0xeb];
@@ -206,7 +208,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 .cui-skip:focus { top: 0.5rem; }
 main[tabindex="-1"]:focus { outline: none; }
 .cui-sticky nav { display: flex; flex-wrap: wrap; column-gap: 1rem; }
-</style>
+@MOTION_CSS@</style>
 @STICKY_CSS@@THEME_CSS@</head>
 <body>
 @SKIP@@ROOT@
@@ -253,7 +255,14 @@ main[tabindex="-1"]:focus { outline: none; }
     let sticky_css = if page.sticky { STICKY_CSS } else { "" };
     let lang = html_escape(page.lang.as_deref().unwrap_or("en"));
     // one pass over the template: the text of a program, a title or a description is never read as a token, whatever it says
-    let tokens: [(&str, &str); 10] = [
+    let motion_js = if page.motion.any() {
+        crate::motion::script(page.motion)
+    } else {
+        String::new()
+    };
+    let measure = format!("{}{motion_js}", if page.sticky { STICKY_JS } else { "" });
+    let tokens: [(&str, &str); 11] = [
+        ("@MOTION_CSS@", crate::motion::CSS),
         ("@CSP@", &csp),
         ("@TITLE@", &title),
         ("@LANG@", &lang),
@@ -271,7 +280,7 @@ main[tabindex="-1"]:focus { outline: none; }
     format!(
         "{}{}{}",
         expand(head, &tokens),
-        root_block(prerender, if page.sticky { STICKY_JS } else { "" }),
+        root_block(prerender, &measure),
         expand(tail, &tokens)
     )
 }

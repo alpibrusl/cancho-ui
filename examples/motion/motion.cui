@@ -1,0 +1,179 @@
+// examples/motion/motion.cui — what a page does when an element has been seen (docs/motion.md): `Reveal` shows a block, `CountUp` counts a
+// number up, and `visible:` / `hidden:` tell the program by the name of an event. All three are safe by construction: the page's HTML has every
+// block, every final number and every section with no script; under reduced motion nothing is hidden and nothing counts; the final number is the
+// text of the page the whole time, so a screen reader reads it and not a frame. Replay (`cancho-ui test`) runs `Seen` and `Gone` like any event.
+
+component Landing {
+    state seen: Int = 0;
+    state gone: Int = 0;
+
+    on Seen { seen = seen + 1; }
+    on Gone { gone = gone + 1; }
+
+    view {
+        Column {
+            Main {
+                id: "main"
+                Section {
+                    id: "top"
+                    Heading { level: 1 "Motion" }
+                    Rich { "Conformance: " CountUp { to: 704 } " of 704, refusals " CountUp { to: 333 } "." }
+                }
+                Reveal {
+                    Section {
+                        id: "one"
+                        Heading { level: 2 "One" }
+                    Text { "One line 1. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "One line 2. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "One line 3. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "One line 4. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "One line 5. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "One line 6. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "One line 7. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "One line 8. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "One line 9. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "One line 10. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "One line 11. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "One line 12. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "One line 13. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "One line 14. Enough prose that the block takes real room on a phone, and wraps." }
+                    }
+                }
+                Section {
+                    id: "watched"
+                    visible: Seen
+                    hidden: Gone
+                    Heading { level: 2 "Watched" }
+                    Text { "Watched line 1. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Watched line 2. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Watched line 3. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Watched line 4. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Watched line 5. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Watched line 6. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Watched line 7. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Watched line 8. Enough prose that the block takes real room on a phone, and wraps." }
+                }
+                Reveal {
+                    Section {
+                        id: "tall"
+                        Heading { level: 2 "Tall" }
+                    Text { "Tall line 1. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 2. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 3. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 4. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 5. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 6. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 7. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 8. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 9. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 10. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 11. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 12. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 13. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 14. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 15. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 16. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 17. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 18. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 19. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 20. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 21. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 22. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 23. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 24. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 25. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 26. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 27. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 28. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 29. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 30. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 31. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 32. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 33. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 34. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 35. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 36. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 37. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 38. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 39. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 40. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 41. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 42. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 43. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 44. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 45. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 46. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 47. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 48. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 49. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 50. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 51. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 52. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 53. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 54. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 55. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 56. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 57. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 58. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 59. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 60. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 61. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 62. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 63. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 64. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 65. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 66. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 67. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 68. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 69. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 70. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 71. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 72. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 73. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 74. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 75. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 76. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 77. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 78. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 79. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 80. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 81. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 82. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 83. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 84. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 85. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 86. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 87. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 88. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 89. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 90. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 91. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 92. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 93. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 94. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 95. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 96. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 97. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 98. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 99. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Tall line 100. Enough prose that the block takes real room on a phone, and wraps." }
+                    }
+                }
+                Reveal {
+                    Section {
+                        id: "last"
+                        Heading { level: 2 "Last" }
+                    Text { "Last line 1. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Last line 2. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Last line 3. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Last line 4. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Last line 5. Enough prose that the block takes real room on a phone, and wraps." }
+                    Text { "Last line 6. Enough prose that the block takes real room on a phone, and wraps." }
+                        Rich { "Rules: " CountUp { to: 62 } }
+                    }
+                }
+                Text { "Seen {seen} times, left {gone} times." }
+            }
+        }
+    }
+}

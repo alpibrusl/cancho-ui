@@ -252,6 +252,14 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
         out.push_str(COPY_ADAPTER_JS);
         out.push('\n');
     }
+    if ir.components.iter().any(|c| {
+        let mut e = std::collections::BTreeSet::new();
+        cancho_ui_ir::motion::seen_events(&c.view.body, &mut e);
+        !e.is_empty()
+    }) {
+        out.push_str(VISIBLE_ADAPTER_JS);
+        out.push('\n');
+    }
     if ir.components.iter().any(|c| view_has_file(&c.view.body)) {
         out.push_str(FILE_ADAPTER_JS);
         out.push('\n');
@@ -980,6 +988,16 @@ fn emit_component(
     out.push_str("        }\n");
 
     out.push_str("        __render();\n");
+    // docs/motion.md: the events the page tells this component an element was seen or left with, by the name written in the program
+    let mut seen = std::collections::BTreeSet::new();
+    cancho_ui_ir::motion::seen_events(&c.view.body, &mut seen);
+    if !seen.is_empty() {
+        let table: Vec<String> = seen.iter().map(|n| format!("{n}: __on_{n}")).collect();
+        out.push_str(&format!(
+            "        __cui_visible_hook({{ {} }});\n",
+            table.join(", ")
+        ));
+    }
 
     // docs/schedules.md: `start` runs after the first render, in the order written; `every` arms its timer.
     for s in &c.schedules {

@@ -289,6 +289,8 @@ impl Parser {
             "Strong" => ElementKind::Strong,
             "Em" => ElementKind::Em,
             "Small" => ElementKind::Small,
+            "Reveal" => ElementKind::Reveal,
+            "CountUp" => ElementKind::CountUp,
             "Break" => ElementKind::Break,
             "Summary" => ElementKind::Summary,
             "Code" => ElementKind::Code,
@@ -516,7 +518,7 @@ impl Parser {
         //   - `role: heading` etc.
         // Phase 2 adds typed expressions.
         match key {
-            "on" | "submit" => {
+            "on" | "submit" | "visible" | "hidden" => {
                 let name_tok = self.bump();
                 let name = match name_tok.token {
                     Token::Ident(s) => s,

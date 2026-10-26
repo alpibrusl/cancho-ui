@@ -83,6 +83,18 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 .cui-skip:focus { top: 0.5rem; }
 main[tabindex="-1"]:focus { outline: none; }
 .cui-sticky nav { display: flex; flex-wrap: wrap; column-gap: 1rem; }
+/* motion (docs/motion.md): an element is hidden only while the page's script has it armed and has not yet seen it, and never when the visitor asks for less motion */
+.cui-reveal.cui-armed { transition: opacity 0.7s ease, transform 0.7s ease; }
+.cui-reveal.cui-armed:not(.cui-in) { opacity: 0; transform: translateY(18px); }
+.cui-countup { font-variant-numeric: tabular-nums; }
+.cui-countup[data-frame] { position: relative; color: transparent; }
+.cui-countup[data-frame]::after { content: attr(data-frame) / ""; position: absolute; left: 0; top: 0; color: var(--cui-cu); }
+@media (prefers-reduced-motion: reduce), print {
+    .cui-reveal.cui-armed { transition: none; }
+    .cui-reveal.cui-armed:not(.cui-in) { opacity: 1; transform: none; }
+    .cui-countup[data-frame] { color: inherit; }
+    .cui-countup[data-frame]::after { content: none; }
+}
 </style>
 </head>
 <body>

@@ -1,0 +1,205 @@
+{
+  "checks": [
+    {
+      "name": "cargo test motion",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "motion"
+      ]
+    },
+    {
+      "name": "cargo test structure",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "structure"
+      ]
+    },
+    {
+      "name": "check-motion.js",
+      "argv": [
+        "node",
+        "scripts/check-motion.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "a block is hidden without the script arming it",
+      "file": "crates/cancho-ui/src/motion.rs",
+      "from": ".cui-reveal.cui-armed:not(.cui-in) { opacity: 0; transform",
+      "to": ".cui-reveal:not(.cui-in) { opacity: 0; transform"
+    },
+    {
+      "name": "reduced motion leaves an armed block hidden",
+      "file": "crates/cancho-ui/src/motion.rs",
+      "from": "    .cui-reveal.cui-armed:not(.cui-in) { opacity: 1; transform: none; }",
+      "to": "    .cui-reveal.cui-armed:not(.cui-in) { opacity: 0; transform: none; }"
+    },
+    {
+      "name": "the script arms blocks under reduced motion",
+      "file": "crates/cancho-ui/src/motion.rs",
+      "from": "try{if(io&&!reduce){var rv=",
+      "to": "try{if(io){var rv="
+    },
+    {
+      "name": "an element taller than the window is never seen",
+      "file": "crates/cancho-ui/src/motion.rs",
+      "from": "e.intersectionRect.height>=f*vh",
+      "to": "false"
+    },
+    {
+      "name": "a block is never armed",
+      "file": "crates/cancho-ui/src/motion.rs",
+      "from": "rv.forEach(function(e){ro.observe(e);e.classList.add('cui-armed')})",
+      "to": "rv.forEach(function(e){ro.observe(e)})"
+    },
+    {
+      "name": "print leaves an armed block hidden",
+      "file": "crates/cancho-ui/src/motion.rs",
+      "from": "@media (prefers-reduced-motion: reduce), print {",
+      "to": "@media (prefers-reduced-motion: reduce) {"
+    },
+    {
+      "name": "a frame has no empty alternative text",
+      "file": "crates/cancho-ui/src/motion.rs",
+      "from": "content: attr(data-frame) / \\\"\\\";",
+      "to": "content: attr(data-frame);"
+    },
+    {
+      "name": "a CountUp's text is not its final number",
+      "file": "crates/cancho-ui-ir/src/motion.rs",
+      "from": "parts: vec![IrTextPart::Literal(n.to_string())],",
+      "to": "parts: vec![IrTextPart::Literal(\"0\".to_string())],"
+    },
+    {
+      "name": "the frame is not removed at the end",
+      "file": "crates/cancho-ui/src/motion.rs",
+      "from": "el.removeAttribute('data-frame');el.style.removeProperty('--cui-cu')",
+      "to": "el.style.removeProperty('--cui-cu')"
+    },
+    {
+      "name": "the count writes into the text",
+      "file": "crates/cancho-ui/src/motion.rs",
+      "from": "el.setAttribute('data-frame','0');(function tick(){",
+      "to": "el.setAttribute('data-frame','0');el.textContent='0';(function tick(){"
+    },
+    {
+      "name": "the frames are not hidden text",
+      "file": "crates/cancho-ui/src/motion.rs",
+      "from": ".cui-countup[data-frame] { position: relative; color: transparent; }",
+      "to": ".cui-countup[data-frame] { position: relative; }"
+    },
+    {
+      "name": "the count takes no time",
+      "file": "crates/cancho-ui/src/motion.rs",
+      "from": "/1300)",
+      "to": "/1)"
+    },
+    {
+      "name": "a section is never told it was left",
+      "file": "crates/cancho-ui/src/motion.rs",
+      "from": "if(st.get(k)===on){return}st.set(k,on);",
+      "to": "if(st.get(k)===on||on===false){return}st.set(k,on);"
+    },
+    {
+      "name": "a section is never seen",
+      "file": "crates/cancho-ui/src/motion.rs",
+      "from": "var on=seen(e,.5),k=e.target;",
+      "to": "var on=seen(e,1.5),k=e.target;"
+    },
+    {
+      "name": "what was told before app.js is forgotten",
+      "file": "crates/cancho-ui/src/motion.rs",
+      "from": "(w.__cui_vis_q=w.__cui_vis_q||[]).push(n)",
+      "to": "void 0"
+    },
+    {
+      "name": "what was queued is not told when app.js has run",
+      "file": "crates/cancho-ui-codegen-web/src/adapters.rs",
+      "from": "q.forEach(function (name) { window.__cui_vis_live(name); });",
+      "to": "void q;"
+    },
+    {
+      "name": "a browser with no IntersectionObserver tells nothing",
+      "file": "crates/cancho-ui/src/motion.rs",
+      "from": "if(!io){vs.forEach(",
+      "to": "if(false){vs.forEach("
+    },
+    {
+      "name": "a reveal needs a fraction of five",
+      "file": "crates/cancho-ui/src/motion.rs",
+      "from": "if(seen(e,.25)){",
+      "to": "if(seen(e,5)){"
+    },
+    {
+      "name": "a CountUp over a billion is allowed",
+      "file": "crates/cancho-ui-ir/src/motion.rs",
+      "from": "(0..=COUNT_MAX).contains(&n)",
+      "to": "(0..=COUNT_MAX * 2).contains(&n)"
+    },
+    {
+      "name": "a CountUp may have children",
+      "file": "crates/cancho-ui-ir/src/motion.rs",
+      "from": "if !children.is_empty() {",
+      "to": "if false && !children.is_empty() {"
+    },
+    {
+      "name": "visible may be on an element script draws",
+      "file": "crates/cancho-ui-ir/src/motion.rs",
+      "from": "if mounted != Some(i) || in_html != n {",
+      "to": "if false {"
+    },
+    {
+      "name": "visible may name an event with parameters",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "Some(e) if !e.params.is_empty() => {\n                    return Err(refuse(\n                        \"visible-event-invalid\"",
+      "to": "Some(e) if e.params.is_empty() && false => {\n                    return Err(refuse(\n                        \"visible-event-invalid\""
+    },
+    {
+      "name": "hidden writes the attribute of visible",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "if b.key == \"visible\" {\n                            \"data-cui-visible\"\n                        } else {\n                            \"data-cui-hidden\"\n                        },",
+      "to": "\"data-cui-visible\","
+    },
+    {
+      "name": "a section that is told it was seen is a hole",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "matches!(b.value, IrBindingValue::EventRef(_)) && structure::handles(kind, k)",
+      "to": "false"
+    },
+    {
+      "name": "the module does not listen",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "if !seen.is_empty() {\n        let table",
+      "to": "if false && !seen.is_empty() {\n        let table"
+    },
+    {
+      "name": "a CountUp has no class",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "IrElementKind::CountUp => return Some(\"cui-countup\".to_string()),",
+      "to": "IrElementKind::CountUp => return None,"
+    },
+    {
+      "name": "a CountUp's number is not in the page",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "out.push((\"data-to\", n.to_string()));",
+      "to": "out.push((\"data-t\", n.to_string()));"
+    },
+    {
+      "name": "the script is in every page",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "let motion_js = if page.motion.any() {",
+      "to": "let motion_js = if true {"
+    }
+  ]
+}

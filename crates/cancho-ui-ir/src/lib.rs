@@ -26,6 +26,7 @@ pub mod lower;
 pub mod map;
 pub mod media;
 pub mod messages;
+pub mod motion;
 pub mod page;
 pub mod recipe;
 pub mod routing;

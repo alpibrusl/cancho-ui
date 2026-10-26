@@ -50,6 +50,8 @@ pub fn is_structure(kind: &IrElementKind) -> bool {
             | IrElementKind::Strong
             | IrElementKind::Em
             | IrElementKind::Small
+            | IrElementKind::Reveal
+            | IrElementKind::CountUp
             | IrElementKind::Break
             | IrElementKind::Summary
             | IrElementKind::Code
@@ -68,6 +70,7 @@ pub fn is_inline_container(kind: &IrElementKind) -> bool {
             | IrElementKind::Strong
             | IrElementKind::Em
             | IrElementKind::Small
+            | IrElementKind::CountUp
             | IrElementKind::Link
     )
 }
@@ -87,6 +90,7 @@ fn inline_child_ok(parent: &IrElementKind, child: &IrElementKind) -> bool {
         IrElementKind::Strong
         | IrElementKind::Em
         | IrElementKind::Small
+        | IrElementKind::CountUp
         | IrElementKind::Break
         | IrElementKind::InlineCode => true,
         IrElementKind::Link => !matches!(parent, IrElementKind::Link),
@@ -100,6 +104,7 @@ fn is_inline_only(kind: &IrElementKind) -> bool {
         IrElementKind::Strong
             | IrElementKind::Em
             | IrElementKind::Small
+            | IrElementKind::CountUp
             | IrElementKind::Break
             | IrElementKind::InlineCode
     )
@@ -116,6 +121,7 @@ fn is_landmark_or_container(kind: &IrElementKind) -> bool {
             | IrElementKind::Aside
             | IrElementKind::Article
             | IrElementKind::Figure
+            | IrElementKind::Reveal
     )
 }
 
@@ -137,6 +143,8 @@ fn name(kind: &IrElementKind) -> &'static str {
         IrElementKind::Strong => "Strong",
         IrElementKind::Em => "Em",
         IrElementKind::Small => "Small",
+        IrElementKind::Reveal => "Reveal",
+        IrElementKind::CountUp => "CountUp",
         IrElementKind::Break => "Break",
         IrElementKind::Summary => "Summary",
         IrElementKind::Code | IrElementKind::InlineCode => "Code",
@@ -155,6 +163,11 @@ fn keys(kind: &IrElementKind) -> &'static [&'static str] {
         IrElementKind::Rich => &["style"],
         IrElementKind::Code => &["copy", "max_height"],
         IrElementKind::Header => &["id", "sticky"],
+        IrElementKind::CountUp => &["to"],
+        IrElementKind::Section
+        | IrElementKind::Article
+        | IrElementKind::Aside
+        | IrElementKind::Figure => &["id", "visible", "hidden"],
         k if is_landmark_or_container(k) => &["id"],
         _ => &[],
     }
@@ -305,6 +318,8 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
         "copy",
         "max_height",
         "sticky",
+        "visible",
+        "hidden",
     ];
     let structure = is_structure(kind);
     if !structure && !(NEW.contains(&b.key.as_str())) {
@@ -340,6 +355,7 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                     "style" => "Text and Rich",
                     "copy" | "max_height" => "Code",
                     "sticky" => "Header",
+                    "visible" | "hidden" => "Section, Article, Aside and Figure",
                     _ => "the structure elements (Section, Article, Heading, ..)",
                 }
             ),
@@ -380,6 +396,10 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                 b.span,
             )),
         },
+        // the parser gives these an event name and nothing else; that the event exists and takes no parameters is checked with the component
+        "visible" | "hidden" => Ok(true),
+        // a CountUp's `to:` is checked where its text is made (motion.rs)
+        "to" if !matches!(kind, IrElementKind::Link) => Ok(true),
         "to" => match string_of(b) {
             None => Err(refuse(
                 "link-to-invalid",
@@ -468,7 +488,7 @@ pub fn check_complete(
     let has = |k: &str| bindings.iter().any(|b| b.key == k);
     let text = literal_text(children);
     // the name of a heading, a link, a caption and a details is its text; a `label:` would make the name differ from what is seen
-    if !is_landmark_or_container(kind)
+    if (!is_landmark_or_container(kind) || matches!(kind, IrElementKind::Reveal))
         && (accessibility.label.is_some() || accessibility.label_expr.is_some())
     {
         return Err(refuse(
@@ -499,6 +519,33 @@ pub fn check_complete(
             ),
             span,
         ));
+    }
+    for b in bindings
+        .iter()
+        .filter(|b| b.key == "visible" || b.key == "hidden")
+    {
+        if let IrBindingValue::EventRef(n) = &b.value {
+            match c.events.iter().find(|e| &e.name == n) {
+                None => {
+                    return Err(refuse(
+                        "visible-event-invalid",
+                        format!("`{}: {n}`: this component has no `on {n}` handler", b.key),
+                        b.span,
+                    ));
+                }
+                Some(e) if !e.params.is_empty() => {
+                    return Err(refuse(
+                        "visible-event-invalid",
+                        format!(
+                            "`{}: {n}`: `on {n}` takes parameters, and being seen has none to give; use an event without parameters",
+                            b.key
+                        ),
+                        b.span,
+                    ));
+                }
+                Some(_) => {}
+            }
+        }
     }
     match kind {
         IrElementKind::Heading => {
@@ -664,6 +711,25 @@ pub fn attrs(kind: &IrElementKind, bindings: &[IrBinding]) -> Vec<(&'static str,
                     out.push(("tabindex", "-1".to_string()));
                 }
             }
+            ("visible", _) | ("hidden", _)
+                if matches!(&b.value, IrBindingValue::EventRef(_)) && is_structure(kind) =>
+            {
+                if let IrBindingValue::EventRef(n) = &b.value {
+                    out.push((
+                        if b.key == "visible" {
+                            "data-cui-visible"
+                        } else {
+                            "data-cui-hidden"
+                        },
+                        n.clone(),
+                    ));
+                }
+            }
+            ("to", _) if matches!(kind, IrElementKind::CountUp) => {
+                if let Some(n) = int_of(b) {
+                    out.push(("data-to", n.to_string()));
+                }
+            }
             ("to", Some(s)) if matches!(kind, IrElementKind::Link) => {
                 out.push(("href", s.to_string()))
             }
@@ -680,6 +746,11 @@ pub fn attrs(kind: &IrElementKind, bindings: &[IrBinding]) -> Vec<(&'static str,
 pub fn class(kind: &IrElementKind, bindings: &[IrBinding]) -> Option<String> {
     if matches!(kind, IrElementKind::Header) {
         return is_sticky(bindings).then(|| "cui-sticky".to_string());
+    }
+    match kind {
+        IrElementKind::Reveal => return Some("cui-reveal".to_string()),
+        IrElementKind::CountUp => return Some("cui-countup".to_string()),
+        _ => {}
     }
     if !matches!(kind, IrElementKind::Link) {
         return None;

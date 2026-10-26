@@ -170,6 +170,8 @@ fn element_name(kind: &IrElementKind) -> &'static str {
         IrElementKind::Strong => "Strong",
         IrElementKind::Em => "Em",
         IrElementKind::Small => "Small",
+        IrElementKind::Reveal => "Reveal",
+        IrElementKind::CountUp => "CountUp",
         IrElementKind::Break => "Break",
         IrElementKind::Summary => "Summary",
         IrElementKind::Code => "Code",
