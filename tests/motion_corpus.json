@@ -1,0 +1,158 @@
+{
+ "about": "docs/motion.md. `valid`: a view that must check. `refusals`: a view (of component C, with the events Seen, Gone and Pick(v)) and the rule tag that refuses it; `program` is a whole program instead. Checked by crates/cancho-ui/tests/motion.rs.",
+ "component": "component C {\n    state n: Int = 0;\n    {state}\n    on Seen { n = n + 1; }\n    on Gone { n = n + 1; }\n    on Pick(v) { n = v; }\n    view { Column { {view} } }\n}\n",
+ "valid": [
+  {
+   "name": "a Reveal around a section",
+   "view": "Reveal { Section { Heading { level: 1 \"A\" } Text { \"x\" } } }"
+  },
+  {
+   "name": "a Reveal with an id, inside a Reveal",
+   "view": "Reveal { id: \"a\" Reveal { Text { \"x\" } } }"
+  },
+  {
+   "name": "a CountUp in a Rich",
+   "view": "Rich { \"Total \" CountUp { to: 704 } \" of them\" }"
+  },
+  {
+   "name": "a CountUp in a Heading, a Strong and a Link",
+   "view": "Heading { level: 2 CountUp { to: 5 } } Rich { Strong { CountUp { to: 6 } } Link { to: \"https://example.org/\" CountUp { to: 7 } } }"
+  },
+  {
+   "name": "a CountUp of 0 and of 1,000,000,000",
+   "view": "Rich { CountUp { to: 0 } CountUp { to: 1000000000 } }"
+  },
+  {
+   "name": "visible and hidden on a section",
+   "view": "Section { visible: Seen hidden: Gone Text { \"x\" } }"
+  },
+  {
+   "name": "visible on an Article, an Aside and a Figure",
+   "view": "Article { visible: Seen Text { \"x\" } } Aside { hidden: Gone Text { \"y\" } } Figure { visible: Seen Text { \"z\" } }"
+  },
+  {
+   "name": "visible and a Reveal together",
+   "view": "Reveal { Section { visible: Seen Text { \"x\" } } }"
+  }
+ ],
+ "refusals": [
+  {
+   "tag": "countup-not-number",
+   "name": "a CountUp with no to",
+   "view": "Rich { CountUp { } }"
+  },
+  {
+   "tag": "countup-not-number",
+   "name": "a CountUp of text",
+   "view": "Rich { CountUp { to: \"12\" } }"
+  },
+  {
+   "tag": "countup-not-number",
+   "name": "a CountUp of a bool",
+   "view": "Rich { CountUp { to: true } }"
+  },
+  {
+   "tag": "countup-not-number",
+   "name": "a CountUp of a fraction",
+   "view": "Rich { CountUp { to: 1.5 } }"
+  },
+  {
+   "tag": "countup-out-of-range",
+   "name": "a CountUp over a billion",
+   "view": "Rich { CountUp { to: 1000000001 } }"
+  },
+  {
+   "tag": "countup-has-children",
+   "name": "a CountUp with text",
+   "view": "Rich { CountUp { to: 3 \"3\" } }"
+  },
+  {
+   "tag": "countup-has-children",
+   "name": "a CountUp with an element",
+   "view": "Rich { CountUp { to: 3 Strong { \"3\" } } }"
+  },
+  {
+   "tag": "inline-outside-rich",
+   "name": "a CountUp in a Column",
+   "view": "CountUp { to: 3 }"
+  },
+  {
+   "tag": "inline-outside-rich",
+   "name": "a CountUp in a Section",
+   "view": "Section { CountUp { to: 3 } }"
+  },
+  {
+   "tag": "rich-child-invalid",
+   "name": "a Reveal in a Rich",
+   "view": "Rich { Reveal { Text { \"x\" } } }"
+  },
+  {
+   "tag": "binding-unknown",
+   "name": "a label on a Reveal",
+   "view": "Reveal { label: \"x\" Text { \"y\" } }"
+  },
+  {
+   "tag": "binding-unknown",
+   "name": "visible on a Column",
+   "view": "Column { visible: Seen Text { \"x\" } }"
+  },
+  {
+   "tag": "binding-unknown",
+   "name": "visible on a Heading",
+   "view": "Heading { level: 2 visible: Seen \"x\" }"
+  },
+  {
+   "tag": "binding-unknown",
+   "name": "visible on a Reveal",
+   "view": "Reveal { visible: Seen Text { \"x\" } }"
+  },
+  {
+   "tag": "binding-unknown",
+   "name": "visible on a Main",
+   "view": "Main { visible: Seen Text { \"x\" } }"
+  },
+  {
+   "tag": "binding-unknown",
+   "name": "a to on a Section",
+   "view": "Section { to: 3 Text { \"x\" } }"
+  },
+  {
+   "tag": "visible-event-invalid",
+   "name": "visible names no event",
+   "view": "Section { visible: Nope Text { \"x\" } }"
+  },
+  {
+   "tag": "visible-event-invalid",
+   "name": "hidden names no event",
+   "view": "Section { hidden: Nope Text { \"x\" } }"
+  },
+  {
+   "tag": "visible-event-invalid",
+   "name": "visible names an event with a parameter",
+   "view": "Section { visible: Pick Text { \"x\" } }"
+  },
+  {
+   "tag": "visible-dynamic",
+   "name": "a section in a For",
+   "view": "For { over: items as: m Section { visible: Seen Text { \"x\" } } }",
+   "extra_state": "state items: List[String] = [\"a\"];"
+  },
+  {
+   "tag": "visible-dynamic",
+   "name": "a section in an If",
+   "view": "If { when: shown Section { visible: Seen Text { \"x\" } } }",
+   "extra_state": "state shown: Bool = true;"
+  },
+  {
+   "tag": "visible-dynamic",
+   "name": "a section in a component that is not the mounted one",
+   "view": null,
+   "program": "component Inner {\n    on Seen { }\n    view { Section { visible: Seen Text { \"x\" } } }\n}\ncomponent Outer {\n    view { Inner { } }\n}\n"
+  },
+  {
+   "tag": "visible-dynamic",
+   "name": "a page with nothing static to read is built by script, not hydrated",
+   "view": "Section { visible: Seen Button { label: \"b\" on: Seen } }"
+  }
+ ]
+}

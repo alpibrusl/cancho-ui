@@ -169,6 +169,8 @@ fn kind(k: &IrElementKind) -> String {
         IrElementKind::Strong => "Strong".into(),
         IrElementKind::Em => "Em".into(),
         IrElementKind::Small => "Small".into(),
+        IrElementKind::Reveal => "Reveal".into(),
+        IrElementKind::CountUp => "CountUp".into(),
         IrElementKind::Break => "Break".into(),
         IrElementKind::Summary => "Summary".into(),
         IrElementKind::Code => "Code".into(),

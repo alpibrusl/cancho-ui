@@ -730,6 +730,10 @@ pub enum IrElementKind {
     Em,
     /// Inline content and code (docs/structure.md section 7): `Small`, a `<small>` (a `Code` is a box around a `<pre>`; an `InlineCode` is a `Code` inside inline content).
     Small,
+    /// Motion (docs/motion.md): `Reveal`, a `<div>` that is shown when it has been seen.
+    Reveal,
+    /// Motion (docs/motion.md): `CountUp`, a `<span>` whose text is its final number.
+    CountUp,
     /// Inline content and code (docs/structure.md section 7): `Break`, a `<br>` (a `Code` is a box around a `<pre>`; an `InlineCode` is a `Code` inside inline content).
     Break,
     /// Inline content and code (docs/structure.md section 7): `Summary`, a `<summary>` (a `Code` is a box around a `<pre>`; an `InlineCode` is a `Code` inside inline content).
@@ -786,6 +790,8 @@ impl IrElementKind {
             IrElementKind::Strong => "strong",
             IrElementKind::Em => "em",
             IrElementKind::Small => "small",
+            IrElementKind::Reveal => "div",
+            IrElementKind::CountUp => "span",
             IrElementKind::Break => "br",
             IrElementKind::Summary => "summary",
             IrElementKind::Code => "div",
@@ -836,6 +842,7 @@ impl IrElementKind {
                 | IrElementKind::Strong
                 | IrElementKind::Em
                 | IrElementKind::Small
+                | IrElementKind::CountUp
                 | IrElementKind::Summary
                 | IrElementKind::InlineCode
         )

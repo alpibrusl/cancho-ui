@@ -44,6 +44,8 @@ fn has_shell(kind: &IrElementKind) -> bool {
             | IrElementKind::Strong
             | IrElementKind::Em
             | IrElementKind::Small
+            | IrElementKind::Reveal
+            | IrElementKind::CountUp
             | IrElementKind::Break
             | IrElementKind::InlineCode
     )
@@ -76,6 +78,10 @@ fn binding_ok(kind: &IrElementKind, b: &IrBinding) -> bool {
                 matches!(kind, IrElementKind::Column | IrElementKind::Row)
             };
             on && int_of(b).is_some()
+        }
+        // being seen is the page's business, not script that draws the element: the element stays static
+        k @ ("visible" | "hidden") => {
+            matches!(b.value, IrBindingValue::EventRef(_)) && structure::handles(kind, k)
         }
         k => literal && (structure::handles(kind, k) || media::handles(kind, k)),
     }

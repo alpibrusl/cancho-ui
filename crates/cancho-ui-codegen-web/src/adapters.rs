@@ -824,3 +824,14 @@ function __cui_fill(marks, id, fragment) {
     m.end.parentNode.insertBefore(fragment, m.end);
 }
 "#;
+
+/// docs/motion.md: the page's script says an element was seen (or left) by the name of the event written in the program. What it said before this
+/// script ran is kept and told in order, so an element that was on the screen at load is not forgotten.
+pub(crate) const VISIBLE_ADAPTER_JS: &str = r#"const __cui_vis_table = {};
+function __cui_visible_hook(t) {
+    Object.assign(__cui_vis_table, t);
+    const q = window.__cui_vis_q || [];
+    window.__cui_vis_q = null;
+    window.__cui_vis_live = function (name) { const f = __cui_vis_table[name]; if (f) { f(); } };
+    q.forEach(function (name) { window.__cui_vis_live(name); });
+}"#;

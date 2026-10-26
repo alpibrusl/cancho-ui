@@ -1,0 +1,9 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "steps": [
+    { "event": "Seen", "state": { "seen": 1, "gone": 0 }, "expect": { "outcome": "completed" } },
+    { "event": "Gone", "state": { "seen": 1, "gone": 1 } },
+    { "event": "Seen", "state": { "seen": 2, "gone": 1 } }
+  ]
+}

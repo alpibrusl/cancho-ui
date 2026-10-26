@@ -517,6 +517,8 @@ fn compile_inner(
     // a sticky Header, a skip link and the Main it goes to: checks that need every component of the program
     cancho_ui_ir::page::check_program(&merged)
         .map_err(|e| PipelineError::refused(lower_to_diag(&e, file)))?;
+    cancho_ui_ir::motion::check_program(&merged)
+        .map_err(|e| PipelineError::refused(lower_to_diag(&e, file)))?;
     // the font files a theme declares exist and are the files it names (relative to the entry file's directory)
     if let Some(t) = &merged.theme {
         let dir = file.parent().unwrap_or_else(|| Path::new(""));
@@ -1801,6 +1803,7 @@ fn control_remediation(code: &str) -> String {
         "submit-event-invalid" => "Name an event of this component that takes no parameters: `submit: Apply` with `on Apply { ... }`.".to_string(),
         "disabled-not-bool" => "Write `disabled: true`, `disabled: false` or `disabled: sending` where `sending` is a `state sending: Bool`.".to_string(),
         c if c.starts_with("theme-") || c.starts_with("font-") => crate::theme::remediation(c),
+        c if c.starts_with("countup-") || c.starts_with("visible-") => "See docs/motion.md.".to_string(),
         c if c.starts_with("island-") => "See docs/islands.md.".to_string(),
         c if c.starts_with("page-") || c.starts_with("skip-link-") || c.starts_with("header-sticky-") => crate::page_files::remediation(c),
         c if c.starts_with("image-")

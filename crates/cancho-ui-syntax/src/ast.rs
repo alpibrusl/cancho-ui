@@ -424,6 +424,10 @@ pub enum ElementKind {
     Em,
     /// Inline content and code (docs/structure.md section 7): `Small`.
     Small,
+    /// Motion (docs/motion.md): `Reveal`, a block that is shown when it has been seen.
+    Reveal,
+    /// Motion (docs/motion.md): `CountUp { to: 1380 }`, a number that counts up when it is seen.
+    CountUp,
     /// Inline content and code (docs/structure.md section 7): `Break`.
     Break,
     /// Inline content and code (docs/structure.md section 7): `Summary`.

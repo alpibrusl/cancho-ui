@@ -1082,6 +1082,10 @@ fn lower_view_node_with_effects(
             for b in bindings {
                 lowered_bindings.push(lower_binding(b, Some(kind), &mut effects)?);
             }
+            if matches!(kind, ElementKind::CountUp) {
+                lowered_children =
+                    crate::motion::countup_children(&lowered_bindings, &lowered_children, *span)?;
+            }
             Ok((
                 IrViewNode::Element {
                     kind: lower_kind(kind),
@@ -1201,6 +1205,8 @@ fn lower_kind(k: &ElementKind) -> IrElementKind {
         ElementKind::Strong => IrElementKind::Strong,
         ElementKind::Em => IrElementKind::Em,
         ElementKind::Small => IrElementKind::Small,
+        ElementKind::Reveal => IrElementKind::Reveal,
+        ElementKind::CountUp => IrElementKind::CountUp,
         ElementKind::Break => IrElementKind::Break,
         ElementKind::Summary => IrElementKind::Summary,
         ElementKind::Code => IrElementKind::Code,

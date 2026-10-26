@@ -1,6 +1,6 @@
 # The home page of cancho, written in cancho-ui: an inventory, a map, and an order
 
-> **Status: DESIGN; steps 1 to 4 are built (theme, structure, prerender and islands, page-level: [`page.md`](page.md)); the rest is not**  *(updated 2026-10-24: [`theme.md`](theme.md))*. Written 2026-10-24, before any code ([`CONTRIBUTING.md`](../CONTRIBUTING.md) section 1). The goal, set by the
+> **Status: DESIGN; steps 1 to 5 are built (theme, structure, prerender and islands, page-level: [`page.md`](page.md), motion: [`motion.md`](motion.md)); the rest is not**  *(updated 2026-10-24: [`theme.md`](theme.md))*. Written 2026-10-24, before any code ([`CONTRIBUTING.md`](../CONTRIBUTING.md) section 1). The goal, set by the
 > user: evolve cancho-ui until the home page in `alpibrusl/cancho-www` can be written in it. This note inventories that page, maps every part of it
 > to what cancho-ui does today, to a new primitive, or to a declared plain-JS island, and proposes the order in which to build. **Nothing here is a
 > commitment to build a step**: each step is its own draft PR after the user confirms the order. Every number is measured and says how; what could
@@ -310,21 +310,18 @@ sentence above.
 
 ### 5.4 Scroll, viewport, motion (reduced motion is the compiler's, not the author's)
 
-* **`Reveal { ... }`**: a container that gets `data-in` once, when 25 % of it has been seen (`IntersectionObserver`, threshold fixed; the page uses 0.25, 0.4, 0.5
-  in three places). With no `IntersectionObserver`, or under `prefers-reduced-motion`, it is shown immediately. **The author cannot opt out**: there is no
-  key for it, so every use is safe by construction.
-* **`CountUp { value: n }`** on a number `Text`: an eased tween over a fixed 1.3 s to `n`; under reduced motion, or with no JS, the final number is written
-  at once. The tag `countup-not-number` refuses a non-number. The final value is always in the DOM text (an assistive technology reads the number, not the
-  frames).
-* **`on Visible` / `on Hidden`** events on a `Section`: for the authority animation's "start when half visible". The handler is an ordinary handler; the
-  replay trace carries the event (`{"event":"Visible"}`), so the state machine is replayable without a viewport. Tag: `visible-threshold-invalid`.
+> **Built 2026-10-26: [`motion.md`](motion.md). Measured against the real page and corrected in place below.**
+
+* **`Reveal { ... }`**: a block that is shown when a quarter of it, **or a quarter of the window's height**, has been seen (`IntersectionObserver`, threshold fixed, no key) *(corrected 2026-10-26, motion.md 1 to 3: this said "gets `data-in` once, when 25 % of it has been seen"; a block more than four windows tall can never have a quarter of itself inside the window, so the second half is needed; the page has none that tall, measured, and the check builds one of 4,064 px)*. **Safe by construction, measured**: the stylesheet hides only a block that the page's inline script has *armed* (`cui-armed`), and the script arms only the blocks that are in the HTML, only with `IntersectionObserver`, only without reduced motion; so no script, a script that throws, an old browser, a block built later, reduced motion and print all show the block. *(The real page sets `<html class="js">` from an inline script in `<head>` and shows a block from `site.js`: with `site.js` blocked, **14 of 14** blocks stay at `opacity: 0` for good, measured.)*
+* **`CountUp { to: n }`** *(corrected 2026-10-26: this said `CountUp { value: n }` on a number `Text`, "an eased tween over a fixed 1.3 s")*: an **inline** element, in a `Rich`, a `Heading` or another inline element, whose **text is the final number in the HTML**; the 1.3 s count is drawn over it by CSS (`content: attr(data-frame) / ""`: a frame is not read by a screen reader) and only where the browser supports that. *(The real page's HTML says `0 / 704`, `0 / 333`, `0 named rules`: **with no script the page's own numbers read `0`**, and half a second into the tween the accessibility tree reads `"0"`, `" "`, `"/ 704"`; the compiled element reads the final number the whole time, measured.)* Tags: `countup-not-number` (as planned), `countup-out-of-range`, `countup-has-children`.
+* **`visible: Seen` / `hidden: Gone`** *(corrected 2026-10-26: this said "`on Visible` / `on Hidden` events on a `Section`"; they are bindings that name the program's own events, like `submit:`, so replay needs no new event kind: its trace carries `{"event":"Seen"}`)*, on `Section`, `Article`, `Aside` and `Figure`: told when half of the element, or half the window's height, is in view, and when it is left. The element must be in the page's HTML and never rebuilt by script (`visible-dynamic`: the event would draw the element again, which fires it again). **`visible-threshold-invalid` is dropped**: there is no threshold to write. (The page's three thresholds, 0.25 / 0.4 / 0.5, measured: reveal, the proof cards' count-up, the authority drawing's start.)
 * **Pointer parallax is not a primitive**: continuous `pointermove` data is input a program would have to declare and replay (a `Pointer` capability); one
   decoration does not earn it. It stays in the hero island, which receives the pointer as a message (section 6).
 * **Reduced motion for islands:** an island receives `reducedMotion: true|false` as a prop and is told when it changes; an island that ignores it is a defect of that island,
   visible in the island's declaration review, not hidden.
-* **Authority:** `Reveal`/`CountUp`/`on Visible` reach nothing outside the page. Replay: `Visible` is a trace event; `CountUp`'s end state is what replay
-  shows. **Measured today:** 33 CSS animations on the page, 30 running after load, **0 under `reducedMotion: 'reduce'`**; the same page without that setting
-  runs them, so the existing hand-written handling works. What the compiler adds is that it can no longer be forgotten.
+* **Authority:** `Reveal`/`CountUp`/`visible:` reach nothing outside the page: no capability, no host. Replay: `Seen` is an ordinary event of the trace; `CountUp`'s end state is what replay
+  shows. **Measured on the real page** *(corrected 2026-10-26: this said "33 CSS animations on the page, 30 running after load")*: **32 animations running** 1.5 s after load, **0 under `reducedMotion: 'reduce'`**; the same page without that setting
+  runs them, so the existing hand-written handling works. What the compiler adds is that it can no longer be forgotten. Layout shift while scrolling the whole page: 0 (Pixel 7) and 0.0008 (desktop) with motion, 0.0041 and 0.0046 under reduced motion; the compiled `examples/motion` shifts by 0 on both profiles.
 
 ### 5.5 Drawing, kept small
 
@@ -395,7 +392,7 @@ Counted against the page as it is. "Unblocks" is the share of the **page** that 
 | **2** | **Structure and `Rich`** (5.2) | **all of the readable content**: 762 non-SVG nodes, 23,369 bytes of text, 128 of 164 links, 82 of 162 text blocks, 9 images, 2 videos, 8 code blocks | **medium**: `Rich` is a new kind of element with children; a11y rules to get right | without `Rich` and `Link` **no prose section can be written at all**. This is where the page starts to be *in* cancho-ui |
 | **3** | **Islands** (6), *moved up from step 5* | **the other 74 %** (the hero, the map, the authority drawing, the cairns), as sealed or open islands | **medium**: the compiler learns to refuse an undeclared script; a frame protocol | after steps 2 and 3 the **whole page is a cancho-ui program** and every opaque part is declared and visible in `authority`/`diff`. Doing it before motion and SVG means the page can be finished and *then* improved piece by piece, and the escape hatch is measured against the real page rather than designed in the abstract |
 | **4** | **Page-level** (5.3) | head: 13 `meta`, `canonical`, 2 `alternate`, `lang`; anchors; sticky header | **low** | needed before the page can *replace* `index.html` (link previews and agent discovery would otherwise silently disappear) |
-| **5** | **Scroll, viewport, motion** (5.4) | `Reveal` 24+ uses, `CountUp` 3, the authority animation's start | **medium**: `IntersectionObserver` in Chromium only here | replay carries `Visible`; reduced motion becomes impossible to forget |
+| **5** | **Scroll, viewport, motion** (5.4) | `Reveal` 14 uses *(corrected 2026-10-26: this said 24+; the page has 14 `.reveal` elements, 10 `.cairn` and 1 `.nope` that the same observer shows: 25, of which only the 14 are blocks of content)*, `CountUp` 3, the authority animation's start | **medium**: `IntersectionObserver` in Chromium only here | replay carries the event `visible:` names; reduced motion becomes impossible to forget |
 | **6** | **Data-driven sections and `Chart { kind: "waffle" }`** (5.5) | the 3 waffles (1,099 nodes), the lists the Python generator writes (17 `verifies` claims, 9 path entries, 24 projects) | **low**: mostly (a) already (spike: 24 rows) | last because it needs the least: the list part is **already possible today** |
 
 **Where this differs from the expected order, with the number:** islands move from 5 to 3 because (1) 74 % of the DOM is drawing that no primitive in steps 1, 2, 4 or 6
@@ -464,11 +461,11 @@ If the user prefers the expected order, steps 3 and 5 swap with no other change:
 9. **The additions of 5.2b, as closed sets:** `Article`, `Figure`/`Caption`, link `appearance`, text `style`, inline content in `Heading`/`Link`/`Details` summary, `Code { max_height }`, `ratio` on `Image`/`Media`, and `weights:` on `Grid` (`min` stays). Any may be argued against by measurement in its PR. *Decided 2026-10-24 by the user.*
 10. **Order:** P0 the code tokens; B1 `Heading`, `Section`, landmarks, `Article`, `Link` (+ `appearance`, host listing), `Details`, `Figure`/`Caption`, text `style`; B2 `Rich` and `Code`; B3 `Image`, `Media`, `ratio`, `Grid` weights; then P1 prerender (design note first). *Decided 2026-10-24 by the user,* with leave to re-order if prerender must come first, reported before doing so.
 
-Steps 1 to 4 are built (theme, structure, prerender and islands, and the page-level elements: [`page.md`](page.md)).
+Steps 1 to 5 are built (theme, structure, prerender and islands, the page-level elements [`page.md`](page.md), and motion [`motion.md`](motion.md)).
 
 ## 11. Rules kept
 
 The program says what a thing is (every proposed binding is a closed set or a literal; the one drawing extension reuses `Chart`). Authority is declared in `requires` and printed
 by `authority` and `diff` (`Clipboard`, `Draw`, `Dom`, link hosts, islands). Every refusal has a rule tag (listed per primitive). Replay and the page agree on a shared corpus for
-each primitive, and an island is **reported as not replayed** rather than claimed. No new dependency (the islands are the page's own files, hashed). **Steps 1 to 4 are
+each primitive, and an island is **reported as not replayed** rather than claimed. No new dependency (the islands are the page's own files, hashed). **Steps 1 to 5 are
 built; nothing was pushed to `cancho-www`.**

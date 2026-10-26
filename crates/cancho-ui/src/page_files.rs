@@ -254,9 +254,11 @@ pub fn copies(ir: &IrFile, dir: &Path) -> Result<Vec<(String, Vec<u8>)>, String>
 /// What the page generator needs from the program's `page { .. }` and sticky `Header`: the head, the skip link, the title and the language.
 pub fn parts(ir: &IrFile) -> PageParts {
     let sticky = cancho_ui_ir::page::has_sticky(ir);
+    let motion = crate::motion::uses(ir);
     let Some(p) = &ir.page else {
         return PageParts {
             sticky,
+            motion,
             ..PageParts::default()
         };
     };
@@ -271,6 +273,7 @@ pub fn parts(ir: &IrFile) -> PageParts {
         icon: p.icon.is_some(),
         touch_icon: p.touch_icon.is_some(),
         sticky,
+        motion,
     }
 }
 

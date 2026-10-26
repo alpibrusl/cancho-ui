@@ -29,6 +29,7 @@
 mod assets;
 mod diff_cmd;
 mod islands;
+mod motion;
 mod page_files;
 mod pipeline;
 mod pwa;
