@@ -477,3 +477,7 @@ Step 7 is the port itself: the home page written in cancho-ui under [`www-port/`
 only that ([`www-port/gaps.md`](www-port/gaps.md): `List`/`Item`, `pressed:`, `data.value`, backticks as `Code` in text from data, state-driven props of a sealed island, and links to files of the
 site that the build carries) and listed what is a judgment about the page, each with a recommendation (J1 to J9 there). **PR B** is the port and the parity checks against the live page; it follows the
 recommendations unless the user says otherwise, and it does not claim the port can replace the page: that is the user's decision.
+
+**PR B was split in three, as it was too big to review in one** (the coordinator allowed it): **B1** the content, head, theme, fonts, pictures, videos, data and the agents pane, with the parity checks of text, links,
+outline, anchors, accessibility roles and the page without script ([`www-port/README.md`](www-port/README.md), [`parity.md`](www-port/parity.md), [`dropped.md`](www-port/dropped.md)); **B2** the sealed islands,
+the authority animation and the map; **B3** bytes, requests, timings (HTML, `app.js`, FCP, LCP, CLS) and the pixel diff at several widths.

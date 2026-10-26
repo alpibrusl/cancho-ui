@@ -1,0 +1,97 @@
+{
+  "checks": [
+    {
+      "name": "check-www-port.js",
+      "argv": [
+        "node",
+        "scripts/check-www-port.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "a font's licence text is not the OFL",
+      "file": "docs/www-port/site/fonts/OFL-Caveat.txt",
+      "from": "SIL OPEN FONT LICENSE Version 1.1",
+      "to": "SIL OPEN FONT LICENSE Version 0.9"
+    },
+    {
+      "name": "a picture is not named in THIRD_PARTY",
+      "file": "docs/www-port/THIRD_PARTY.md",
+      "from": "`assets/img/field.*`, `dawn.*`",
+      "to": "`assets/img/dawn.*`"
+    },
+    {
+      "name": "the skip link is not written",
+      "file": "docs/www-port/site/home.cui",
+      "from": "    skip_link: \"Skip to content\";\n",
+      "to": ""
+    },
+    {
+      "name": "the language is not English",
+      "file": "docs/www-port/site/home.cui",
+      "from": "lang: \"en\";",
+      "to": "lang: \"es\";"
+    },
+    {
+      "name": "the title is not the page's",
+      "file": "docs/www-port/site/home.cui",
+      "from": "title: \"cancho: tools built for agents, not adapted from humans\";",
+      "to": "title: \"cancho\";"
+    },
+    {
+      "name": "the data file's link is left out",
+      "file": "docs/www-port/site/home.cui",
+      "from": "Item { Link { to: \"data/ecosystem.json\" \"data/ecosystem.json\" } Rich { \"Every project with stage, summary, authority and links. The map is drawn from it.\" } }",
+      "to": ""
+    },
+    {
+      "name": "the pane for agents is not on the page",
+      "file": "docs/www-port/site/home.cui",
+      "from": "                            AgentFiles { }\n",
+      "to": ""
+    },
+    {
+      "name": "the menu has a link fewer",
+      "file": "docs/www-port/site/home.cui",
+      "from": "                        Link { to: \"https://alpibrusl.github.io/cancho/\" \"Docs\" }\n                        Link { to: \"https://github.com/alpibrusl/cancho\" \"GitHub\" }\n                    }",
+      "to": "                        Link { to: \"https://alpibrusl.github.io/cancho/\" \"Docs\" }\n                    }"
+    },
+    {
+      "name": "the list of every project is the first path's entries",
+      "file": "docs/www-port/site/home.cui",
+      "from": "For { over: data.items(Ecosystem, \"projects\") as: p\n                                Item {\n                                    Rich {\n                                        Link { to: json.get(p, \"url\", \"\") \"{json.get(p, \\\"name\\\", \\\"\\\")}\" }\n                                        If { when: json.get(p, \"page\", \"\") != \"\"",
+      "to": "For { over: data.items(Ecosystem, \"paths.0.entries\") as: p\n                                Item {\n                                    Rich {\n                                        Link { to: json.get(p, \"url\", \"\") \"{json.get(p, \\\"name\\\", \\\"\\\")}\" }\n                                        If { when: json.get(p, \"page\", \"\") != \"\""
+    },
+    {
+      "name": "the open claims are the tests' claims",
+      "file": "docs/www-port/site/home.cui",
+      "from": "data.items(Ecosystem, \"verifies.open\")",
+      "to": "data.items(Ecosystem, \"verifies.tests\")"
+    },
+    {
+      "name": "a count is the total and not the passed",
+      "file": "docs/www-port/site/home.cui",
+      "from": "Rich { Strong { CountUp { to: num(json.get(f, \"passed\", \"0\"), 0) } \" \" Small { \"/ {json.get(f, \\\"of\\\", \\\"0\\\")}\" } } }\n                                        Waffle { label: \"conformance",
+      "to": "Rich { Strong { CountUp { to: num(json.get(f, \"of\", \"0\"), 0) } \" \" Small { \"/ {json.get(f, \\\"of\\\", \\\"0\\\")}\" } } }\n                                        Waffle { label: \"conformance"
+    },
+    {
+      "name": "the rules waffle is not drawn",
+      "file": "docs/www-port/site/home.cui",
+      "from": "                                        Waffle { label: \"named rules\" of: num(json.get(f, \"value\", \"0\"), 0) counted: num(json.get(f, \"value\", \"0\"), 0) columns: 16 }\n",
+      "to": ""
+    },
+    {
+      "name": "a second h1",
+      "file": "docs/www-port/site/home.cui",
+      "from": "Heading { level: 2 \"Identity, not lines\" }",
+      "to": "Heading { level: 1 \"Identity, not lines\" }"
+    },
+    {
+      "name": "the tool's demo video is gone",
+      "file": "docs/www-port/site/home.cui",
+      "from": "Media { label: \"cancho-ui: a component declares what it may do\" kind: \"video\" src: [\"assets/media/ui-demo.mp4\", \"assets/media/ui-demo.webm\"] poster: \"assets/media/ui-demo.poster.jpg\" ratio: \"16:9\" caption: \"cap2\" }",
+      "to": ""
+    }
+  ]
+}

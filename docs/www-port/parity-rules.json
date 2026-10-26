@@ -1,0 +1,480 @@
+{
+ "about": "docs/www-port/parity.md: every difference measured by scripts/parity-www.js is explained by the first rule that matches its kind, section and side. A difference no rule matches is UNEXPLAINED. Classes: intentional (a decision in dropped.md or gaps.md), deferred (B2) (belongs to the islands and the map, the next PR), defect (open) (a fault of the port, listed in parity.md).",
+ "rules": [
+  {
+   "kind": "text",
+   "match": "^(phone only: |desktop only: )?(pre-1\\.0 · alpha )?try it trust evidence",
+   "class": "intentional",
+   "why": "the inline section links of the header (and the human/agent switch) are not in the port: the menu has them at every width",
+   "ref": "J4, J5, dropped.md 1 and 3",
+   "side": "page"
+  },
+  {
+   "kind": "text",
+   "match": "^(phone only: |desktop only: )?(github|pre-1\\.0 · alpha try it trust)",
+   "class": "intentional",
+   "why": "the GitHub link of the header is shown at every width in the port; on a phone the page hides it",
+   "ref": "J5, dropped.md 3"
+  },
+  {
+   "kind": "nojs",
+   "match": "^(phone only: |desktop only: )?(pre-1\\.0 · alpha )?try it trust evidence",
+   "class": "intentional",
+   "why": "the inline section links of the header (and the human/agent switch) are not in the port: the menu has them at every width",
+   "ref": "J4, J5, dropped.md 1 and 3",
+   "side": "page"
+  },
+  {
+   "kind": "nojs",
+   "match": "^(phone only: |desktop only: )?(github|pre-1\\.0 · alpha try it trust)",
+   "class": "intentional",
+   "why": "the GitHub link of the header is shown at every width in the port; on a phone the page hides it",
+   "ref": "J5, dropped.md 3"
+  },
+  {
+   "kind": "width",
+   "match": "^(phone only: |desktop only: )?(pre-1\\.0 · alpha )?try it trust evidence",
+   "class": "intentional",
+   "why": "the inline section links of the header (and the human/agent switch) are not in the port: the menu has them at every width",
+   "ref": "J4, J5, dropped.md 1 and 3",
+   "side": "page"
+  },
+  {
+   "kind": "width",
+   "match": "^(phone only: |desktop only: )?(github|pre-1\\.0 · alpha try it trust)",
+   "class": "intentional",
+   "why": "the GitHub link of the header is shown at every width in the port; on a phone the page hides it",
+   "ref": "J5, dropped.md 3"
+  },
+  {
+   "kind": "text",
+   "match": "^menu$",
+   "class": "intentional",
+   "why": "the menu button is text (\"Menu\") and not the three bars of an icon",
+   "ref": "J2, dropped.md 2",
+   "side": "port"
+  },
+  {
+   "kind": "nojs",
+   "match": "^menu$",
+   "class": "intentional",
+   "why": "the menu button is text (\"Menu\") and not the three bars of an icon",
+   "ref": "J2, dropped.md 2",
+   "side": "port"
+  },
+  {
+   "kind": "text",
+   "match": "^[1-5]$",
+   "class": "intentional",
+   "why": "the page writes the numbers 1 to 5 in a span beside an ordered list; the port's `ol` numbers its items itself",
+   "ref": "dropped.md 6",
+   "side": "page"
+  },
+  {
+   "kind": "text",
+   "match": "^question$",
+   "class": "intentional",
+   "why": "a table whose first column header is empty is not accessible: the port names it",
+   "ref": "dropped.md 7",
+   "side": "port"
+  },
+  {
+   "kind": "nojs",
+   "match": "^[1-5]$",
+   "class": "intentional",
+   "why": "the page writes the numbers 1 to 5 in a span beside an ordered list; the port's `ol` numbers its items itself",
+   "ref": "dropped.md 6",
+   "side": "page"
+  },
+  {
+   "kind": "nojs",
+   "match": "^question$",
+   "class": "intentional",
+   "why": "a table whose first column header is empty is not accessible: the port names it",
+   "ref": "dropped.md 7",
+   "side": "port"
+  },
+  {
+   "kind": "text",
+   "match": "hand it down",
+   "class": "deferred (B2)",
+   "why": "the authority animation (tabs, code pane, stepper, canvas) is PR B2",
+   "section": "authority",
+   "side": "page"
+  },
+  {
+   "kind": "text",
+   "match": "authority there is",
+   "class": "deferred (B2)",
+   "why": "the first caption of the authority animation",
+   "section": "authority",
+   "side": "page"
+  },
+  {
+   "kind": "text",
+   "match": "^(all language and compiler|.*trail: a shop)",
+   "class": "deferred (B2)",
+   "why": "the filter chips and trail buttons of the ecosystem map are PR B2",
+   "section": "ecosystem",
+   "side": "page"
+  },
+  {
+   "kind": "nojs",
+   "match": "^[◀▶ |]+$",
+   "class": "deferred (B2)",
+   "why": "the stepper buttons of the authority animation",
+   "side": "page"
+  },
+  {
+   "kind": "nojs",
+   "match": "^a3f9… 7c21… e0b4…$",
+   "class": "deferred (B2)",
+   "why": "the text of the three drawings of the cards (islands)",
+   "ref": "J3",
+   "side": "page"
+  },
+  {
+   "kind": "nojs",
+   "match": "\"rule\": \"linear-value-unconsumed\"",
+   "class": "deferred (B2)",
+   "why": "the text of a card drawing (island)",
+   "ref": "J3",
+   "side": "page"
+  },
+  {
+   "kind": "nojs",
+   "match": "^exists design, not built",
+   "class": "deferred (B2)",
+   "why": "the legend of the map",
+   "side": "page"
+  },
+  {
+   "kind": "nojs",
+   "match": "^human tools, used by agents",
+   "class": "defect (open)",
+   "why": "the comparison table is drawn by script: `Table` has no prerender yet, so with JavaScript off the port has no table (the page has it in its HTML)",
+   "ref": "docs/www-port/parity.md \"open defects\" 1",
+   "side": "page"
+  },
+  {
+   "kind": "text",
+   "match": "^0$",
+   "class": "intentional",
+   "why": "the page's three numbers read 0 until each card is seen and until a script runs (measured; waffle.md): the port's are final in the HTML",
+   "ref": "waffle.md",
+   "side": "page"
+  },
+  {
+   "kind": "text",
+   "match": "^(697|256|62)$",
+   "class": "intentional",
+   "why": "final numbers in the HTML (CountUp)",
+   "ref": "waffle.md",
+   "side": "port"
+  },
+  {
+   "kind": "text",
+   "match": "data table|^that$|refused, and are|named rules",
+   "class": "intentional",
+   "why": "the text alternative of a Waffle: its label and its data table",
+   "ref": "waffle.md",
+   "side": "port"
+  },
+  {
+   "kind": "nojs",
+   "match": "^0$",
+   "class": "intentional",
+   "why": "the page's three numbers read 0 until each card is seen and until a script runs (measured; waffle.md): the port's are final in the HTML",
+   "ref": "waffle.md",
+   "side": "page"
+  },
+  {
+   "kind": "nojs",
+   "match": "^(697|256|62)$",
+   "class": "intentional",
+   "why": "final numbers in the HTML (CountUp)",
+   "ref": "waffle.md",
+   "side": "port"
+  },
+  {
+   "kind": "nojs",
+   "match": "data table|^that$|refused, and are|named rules",
+   "class": "intentional",
+   "why": "the text alternative of a Waffle: its label and its data table",
+   "ref": "waffle.md",
+   "side": "port"
+  },
+  {
+   "kind": "nojs",
+   "match": "^\\.$",
+   "class": "intentional",
+   "why": "the page fills the date of the measurement by script; the port has it in the HTML",
+   "side": "page"
+  },
+  {
+   "kind": "nojs",
+   "match": "^2026-10-15, macos aarch64\\.$",
+   "class": "intentional",
+   "why": "the date and platform of the measurement are in the port's HTML (data.value)",
+   "ref": "gaps.md 3",
+   "side": "port"
+  },
+  {
+   "kind": "text",
+   "match": "flip the switch in the header",
+   "class": "intentional",
+   "why": "the page tells the reader to use the switch, which the port does not have",
+   "ref": "J4, dropped.md 1",
+   "side": "page"
+  },
+  {
+   "kind": "text",
+   "match": "^written in$|^\\(ui/agent-files\\.cui\\)\\.$|^a component of this page|^program\\.$",
+   "class": "intentional",
+   "why": "the pane is a component of the same cancho-ui program, not a separate file",
+   "ref": "dropped.md 5"
+  },
+  {
+   "kind": "nojs",
+   "match": "flip the switch in the header",
+   "class": "intentional",
+   "why": "the page tells the reader to use the switch, which the port does not have",
+   "ref": "J4, dropped.md 1",
+   "side": "page"
+  },
+  {
+   "kind": "nojs",
+   "match": "^written in$|^\\(ui/agent-files\\.cui\\)\\.$|^a component of this page|^program\\.$",
+   "class": "intentional",
+   "why": "the pane is a component of the same cancho-ui program, not a separate file",
+   "ref": "dropped.md 5"
+  },
+  {
+   "kind": "nojs",
+   "match": "^fetch agents\\.md, ecosystem\\.json or llms\\.txt directly\\.$",
+   "class": "intentional",
+   "why": "the page's fallback line for its pane; the port's fallback is the notice below and the links above",
+   "side": "page"
+  },
+  {
+   "kind": "nojs",
+   "match": "^some parts of this page need javascript\\.$",
+   "class": "intentional",
+   "why": "the notice the prerenderer keeps for a page with holes",
+   "ref": "prerender.md",
+   "side": "port"
+  },
+  {
+   "kind": "link",
+   "match": "^#(trust|ecosystem|agents|demo|try|verifies)$",
+   "class": "intentional",
+   "why": "the page links its sections twice (nav and menu); the port once, in the menu",
+   "ref": "J5, dropped.md 3",
+   "side": "page"
+  },
+  {
+   "kind": "link",
+   "match": "^(https://github.com/alpibrusl/cancho|https://alpibru.com/manifesto|https://alpibrusl.github.io/cancho/|agents.md)$",
+   "class": "intentional",
+   "why": "the page links these from the header nav and the menu; the port from the menu only",
+   "ref": "J5, dropped.md 3",
+   "side": "page"
+  },
+  {
+   "kind": "link",
+   "match": "cancho-www$|ui/agent-files\\.cui$|cancho-ui$",
+   "class": "intentional",
+   "why": "links of the sentence about the separate file of the pane, which the port does not have",
+   "ref": "dropped.md 5",
+   "side": "page"
+  },
+  {
+   "kind": "linkcount",
+   "match": ".*",
+   "class": "intentional",
+   "why": "the page has the nav and the menu with the same links, and the map's links (B2); the distinct targets are what the rows above list",
+   "ref": "J5"
+  },
+  {
+   "kind": "heading",
+   "match": "^h3 (identity, not lines|authority, not trust|verified, not read)$",
+   "class": "intentional",
+   "why": "the page has h3 under the h1 (a skipped level); the port writes h2",
+   "ref": "J1, dropped.md 8",
+   "side": "page"
+  },
+  {
+   "kind": "heading",
+   "match": "^h2 (identity, not lines|authority, not trust|verified, not read)$",
+   "class": "intentional",
+   "why": "the page has h3 under the h1 (a skipped level); the port writes h2",
+   "ref": "J1, dropped.md 8",
+   "side": "port"
+  },
+  {
+   "kind": "heading",
+   "match": "^h3 cancho$",
+   "class": "deferred (B2)",
+   "why": "the heading of the map's detail pane",
+   "side": "page"
+  },
+  {
+   "kind": "landmark",
+   "match": "section \"This site as an agent reads it\"",
+   "class": "intentional",
+   "why": "the agent view is the switch's",
+   "ref": "J4, dropped.md 1",
+   "side": "page"
+  },
+  {
+   "kind": "landmark",
+   "match": "^aside$",
+   "class": "deferred (B2)",
+   "why": "the map's detail pane is an aside",
+   "side": "page"
+  },
+  {
+   "kind": "id",
+   "match": "^(view-human|view-agent|agent-view|agent-full)$",
+   "class": "intentional",
+   "why": "the switch and the agent view",
+   "ref": "J4, dropped.md 1",
+   "side": "page"
+  },
+  {
+   "kind": "id",
+   "match": "^(scene-svg|gran|gran-shade|soft|paper|mk-rest|road-path|river-path|rocks-defs|gr|shade|halo|speck)$",
+   "class": "deferred (B2)",
+   "why": "ids inside the drawings (hero, cairns, map)",
+   "side": "page"
+  },
+  {
+   "kind": "id",
+   "match": "^(auth-.*)$",
+   "class": "deferred (B2)",
+   "why": "the authority animation",
+   "side": "page"
+  },
+  {
+   "kind": "id",
+   "match": "^(map-chips|map-svg|detail|map-count)$",
+   "class": "deferred (B2)",
+   "why": "the map and its filter",
+   "side": "page"
+  },
+  {
+   "kind": "id",
+   "match": "^(w-conformance|w-refusals|w-rules|proof-date)$",
+   "class": "intentional",
+   "why": "script-made containers of the page's waffles and its date; the port's waffles and date are in its HTML",
+   "ref": "waffle.md",
+   "side": "page"
+  },
+  {
+   "kind": "id",
+   "match": "^demo-text$",
+   "class": "intentional",
+   "why": "the transcript's `<details>` is named so that the video can point at it (`aria-details`)",
+   "side": "port"
+  },
+  {
+   "kind": "ax",
+   "match": "^(DescriptionList|term|definition):",
+   "class": "deferred (B2)",
+   "why": "the map's detail pane has a `dl`",
+   "ref": "J8"
+  },
+  {
+   "kind": "ax",
+   "match": "^log:",
+   "class": "deferred (B2)",
+   "why": "the recorded session of the map",
+   "ref": "J8"
+  },
+  {
+   "kind": "ax",
+   "match": "^(Figcaption|figure):",
+   "class": "intentional",
+   "why": "the port's waffles are figures with a caption, and the quote is a figure",
+   "ref": "J6, waffle.md"
+  },
+  {
+   "kind": "ax",
+   "match": "^blockquote:",
+   "class": "intentional",
+   "why": "the quote is a figure with a caption",
+   "ref": "J6, dropped.md 4"
+  },
+  {
+   "kind": "ax",
+   "match": "^article:",
+   "class": "intentional",
+   "why": "the three cards and the three proof cards are articles in the port (divs in the page)"
+  },
+  {
+   "kind": "ax",
+   "match": "^button:",
+   "class": "deferred (B2)",
+   "why": "the page's buttons are the map's 24 rocks and chips, the tabs, the stepper, the switch; the port has the copy buttons, the pane's and the pressed ones that exist",
+   "ref": "J4"
+  },
+  {
+   "kind": "ax",
+   "match": "^cell:",
+   "class": "intentional",
+   "why": "the port's comparison is a real table (cells); the page's is divs with ARIA roles"
+  },
+  {
+   "kind": "ax",
+   "match": "^group:",
+   "class": "intentional",
+   "why": "groups of the port: the pane's buttons; the page's: chips, tabs, switch, the map"
+  },
+  {
+   "kind": "ax",
+   "match": "^heading:",
+   "class": "deferred (B2)",
+   "why": "one heading fewer: the detail pane's"
+  },
+  {
+   "kind": "ax",
+   "match": "^image:",
+   "class": "deferred (B2)",
+   "why": "the drawings with role img (scene, cards, authority, map) are islands in B2; icons dropped",
+   "ref": "J3"
+  },
+  {
+   "kind": "ax",
+   "match": "^link:",
+   "class": "intentional",
+   "why": "duplicate nav links, the map's links, the star and the logo link",
+   "ref": "J2, J5"
+  },
+  {
+   "kind": "ax",
+   "match": "^navigation:",
+   "class": "intentional",
+   "why": "the port's navigation is inside the closed menu, so the tree has none until it is opened",
+   "ref": "J5, dropped.md 3"
+  },
+  {
+   "kind": "ax",
+   "match": "^paragraph:",
+   "class": "intentional",
+   "why": "the port writes a paragraph (`Rich`) where the page has a span or a div"
+  },
+  {
+   "kind": "ax",
+   "match": "^region:",
+   "class": "intentional",
+   "why": "the port's table is a labelled, scrollable region"
+  },
+  {
+   "kind": "width",
+   "match": "human tools, used by agents built for agents",
+   "class": "defect (open)",
+   "why": "as above: the table is shown by script in the port; on the phone profile the page hides its header row",
+   "side": "page"
+  }
+ ]
+}

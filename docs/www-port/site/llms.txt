@@ -1,0 +1,40 @@
+# cancho
+
+> Tools built for agents, not adapted from humans: a native systems language, and the ecosystem built with it, where trust comes from verification, not comprehension.
+
+Status: pre-1.0. Alpha products are built with it; the compiler is the Rust one, and a second compiler written in cancho is being checked against it (it does not yet refuse everything the language refuses). See the roadmap for what is open.
+
+Manifesto (the idea behind it): https://alpibru.com/manifesto
+Source: https://github.com/alpibrusl/cancho
+Docs: https://alpibrusl.github.io/cancho/
+Roadmap: https://alpibrusl.github.io/cancho/ROADMAP.html
+Writing cancho programs (agents): https://github.com/alpibrusl/cancho/blob/main/AGENTS.md
+This site as Markdown: https://alpibrusl.github.io/cancho-www/agents.md
+Everything in one file: https://alpibrusl.github.io/cancho-www/llms-full.txt
+The ecosystem as JSON: https://alpibrusl.github.io/cancho-www/data/ecosystem.json
+
+## Ecosystem
+
+- [cancho-ui](https://github.com/alpibrusl/cancho-ui) (built): A UI language whose compiler knows what each component is allowed to do. Builds JavaScript and DOM. Page: https://alpibrusl.github.io/cancho-ui/
+- [cancho-hooks](https://github.com/alpibrusl/cancho-hooks) (alpha): Webhook delivery: on disk before the 202, signed, retried, dead-lettered and replayable. Page: https://alpibrusl.github.io/cancho-hooks/
+- [cancho-cache](https://github.com/alpibrusl/cancho-cache) (alpha): Redis-compatible cache over RESP2 and RESP3: strings and hashes, expiry and LRU eviction, in a fixed arena. Page: https://alpibrusl.github.io/cancho-cache/
+- [cancho-gateway](https://github.com/alpibrusl/cancho-gateway) (early): An HTTP/1.1 reverse proxy you can audit: strict, bounded request parsing, no FFI, a checkable authority report. Page: https://alpibrusl.github.io/cancho-gateway/
+- [cancho-mqtt](https://github.com/alpibrusl/cancho-mqtt) (alpha): An MQTT broker you can reason about: 3.1.1 over plain TCP, QoS 0 to 2, retained messages, wills and persistent sessions, on one thread with bounded memory. Page: https://alpibrusl.github.io/cancho-mqtt/
+- [cancho-dns](https://github.com/alpibrusl/cancho-dns) (early): A forwarding and caching DNS resolver: a bounded packet parser, an answer cache in a fixed arena, no FFI. Page: https://alpibrusl.github.io/cancho-dns/
+- [cancho-oci](https://github.com/alpibrusl/cancho-oci) (alpha): Container images without a daemon: oci-build assembles a reproducible FROM-scratch image from static executables.
+- [cancho-pg](https://github.com/alpibrusl/cancho-pg) (early): PostgreSQL client: v3 protocol, SCRAM-SHA-256, extended queries, TLS, non-blocking pool.
+- [cancho-schema](https://github.com/alpibrusl/cancho-schema) (early): Schemas as data: validation, problem+json errors and JSON Schema 2020-12 from one value.
+- [cancho-web](https://github.com/alpibrusl/cancho-web) (alpha): Typed routes, validated bodies, problem+json errors and an OpenAPI document from one declaration. Page: https://alpibrusl.github.io/cancho-web/
+- [cancho-log](https://github.com/alpibrusl/cancho-log) (early): A durable, segmented, append-only log with crash-safe recovery that cuts off a torn tail.
+- [cancho-stats](https://github.com/alpibrusl/cancho-stats) (built): Statistics whose last digit you can check: a command line for describing data and drawing inferences, with exact sums and error bounds written before the code. Page: https://alpibrusl.github.io/cancho-stats/
+- [cancho-ml](https://github.com/alpibrusl/cancho-ml) (alpha): Classical machine learning on tabular data as a command line an agent can read: seven models, one JSON line out, or a named refusal with a repair. Page: https://alpibrusl.github.io/cancho-ml/
+- [cancho-tools](https://github.com/alpibrusl/cancho-tools) (early): Ten small tools for agents (seek, list, peek, jsonq, tally, hash, write, replace, move, archive) and one opt-in, run. JSON out, tagged refusals that often carry a repair. Page: https://alpibrusl.github.io/cancho-tools/
+- [cancho-table](https://github.com/alpibrusl/cancho-table) (early): Select, filter, group and aggregate CSV/TSV for agents; bounded, exact, byte-stable. Page: https://alpibrusl.github.io/cancho-table/
+- [cancho-robot](https://github.com/alpibrusl/cancho-robot) (design): A robot arm controller: the Feetech servo bus, SO-101 kinematics and a safety core every motion goes through. Page: https://alpibrusl.github.io/cancho-robot/
+- [cancho-gpu](https://github.com/alpibrusl/cancho-gpu) (built): A compiler for typed tile kernels (.chx) to CUDA C and Metal, written in cancho; it also runs language models on a Metal GPU. Page: https://alpibrusl.github.io/cancho-gpu/
+- [cancho-code](https://github.com/alpibrusl/cancho-code) (built): An AI coding assistant that proves its work: the cancho compiler checks every piece the model writes, and a task is done only when the compiler and the task's own examples say so. Page: https://alpibrusl.github.io/cancho-code/
+- [cancho-forge](https://github.com/alpibrusl/cancho-forge) (built): An agent-run software company you can audit: state, budgets, approvals and evidence are kept by the runtime, and a worker cannot accept its own work. Page: https://alpibrusl.github.io/cancho-forge/
+- [cancho-hdl](https://github.com/alpibrusl/cancho-hdl) (built): One .chw file declares the software/hardware boundary (registers, fields, interrupts, DMA); it is checked, and a C header, device tree, SystemVerilog RTL and CMSIS-SVD are generated from it. Page: https://alpibrusl.github.io/cancho-hdl/
+- [cancho-client-gen](https://github.com/alpibrusl/cancho-client-gen) (built): Reads the OpenAPI 3.1 document that cancho-web generates and writes strictly typed clients; the contract, both ways.
+- [cancho-fetch](https://github.com/alpibrusl/cancho-fetch) (design): An agent-safe fetch: HTTP and HTTPS to a fixed, built-in list of hosts, with the list in the binary's authority row instead of a flag.
+- [cancho-mqtt-client](https://github.com/alpibrusl/cancho-mqtt-client) (design): An MQTT 3.1.1 client library: connect, publish, subscribe, will, QoS 0 and 1, and a reconnect with bounded backoff. The other half of cancho-mqtt.
