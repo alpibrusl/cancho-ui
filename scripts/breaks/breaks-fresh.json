@@ -1,0 +1,19 @@
+{
+  "checks": [
+    { "name": "check-breaks-fresh.js", "argv": ["node", "scripts/check-breaks-fresh.js"] }
+  ],
+  "breaks": [
+    {
+      "name": "the source a break spoils moves (a code box's tabindex)",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "Dom::element(\"pre\").attr(\"tabindex\", \"0\");",
+      "to": "Dom::element(\"pre\").attr(\"tabindex\", \"0\").attr(\"data-x\", \"1\");"
+    },
+    {
+      "name": "the source a break spoils moves (the keys of a Grid)",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "IrElementKind::Grid => &[\"min\", \"weights\", \"gap\"],",
+      "to": "IrElementKind::Grid => &[\"weights\", \"min\", \"gap\"],"
+    }
+  ]
+}

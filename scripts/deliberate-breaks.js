@@ -2,7 +2,8 @@
 // Deliberate breaks: does each check of a change fail when the change is spoiled on purpose? A break file (scripts/breaks/*.json)
 // lists source edits (`file`, an exact `from` that must occur once, a `to`) and the checks to run (`checks`: name and argv). For
 // each break the edit is applied, the compiler is rebuilt, every check is run, and the file is restored byte for byte; a break
-// that no check catches is reported and the exit status is 1. A baseline run (no edit) must pass first. Outside the gate: it
+// that no check catches is reported and the exit status is 1. A file may also carry an `equivalent` list: mutations measured to change nothing observable (with the
+// measurement), kept as documentation and never run. A baseline run (no edit) must pass first. Outside the gate: it
 // rebuilds and runs the browser checks once per break (minutes).
 //   node scripts/deliberate-breaks.js scripts/breaks/view-if.json [only-break-name ...]
 'use strict';

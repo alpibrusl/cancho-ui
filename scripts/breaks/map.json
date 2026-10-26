@@ -114,8 +114,8 @@
     {
       "name": "the page carries no policy",
       "file": "crates/cancho-ui/src/pwa.rs",
-      "from": "html.replace(\"@CSP@\", &csp)",
-      "to": "html.replace(\"@CSP@\", \"\")"
+      "from": "(\"@CSP@\", &csp),",
+      "to": "(\"@CSP@\", \"\"),"
     },
     {
       "name": "replay asks for a tile twice",

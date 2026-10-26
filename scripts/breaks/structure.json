@@ -48,8 +48,8 @@
     {
       "name": "a details has no summary line",
       "file": "crates/cancho-ui-codegen-web/src/view.rs",
-      "from": "            if matches!(kind, IrElementKind::Details)\n                && let Some(text)",
-      "to": "            if matches!(kind, IrElementKind::Details) && false\n                && let Some(text)"
+      "from": "                if let Some(text) = &shell.summary {\n                    out.push_str(&format!(\n                        \"{0}const {1}_summary",
+      "to": "                if let Some(text) = &shell.summary\n                    && false\n                {\n                    out.push_str(&format!(\n                        \"{0}const {1}_summary"
     },
     {
       "name": "a skipped heading level is allowed",

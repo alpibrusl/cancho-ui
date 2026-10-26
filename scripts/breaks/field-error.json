@@ -26,32 +26,32 @@
     {
       "name": "every message has the same id (a For shares one)",
       "file": "crates/cancho-ui-codegen-web/src/view.rs",
-      "from": "{0}{1}_err.id = 'cui-err-' + (window.__cui_uid = (window.__cui_uid || 0) + 1);",
-      "to": "{0}{1}_err.id = 'cui-err-1';"
+      "from": "{1}_err.id = 'cui-err-' + (window.__cui_uid = (window.__cui_uid || 0) + 1);",
+      "to": "{1}_err.id = 'cui-err-1';"
     },
     {
       "name": "the message is not a status element",
       "file": "crates/cancho-ui-codegen-web/src/view.rs",
-      "from": "{0}{1}_err.setAttribute('role', 'status');",
-      "to": "{0}{1}_err.setAttribute('data-role', 'status');"
+      "from": "{0}{1}_err_new.setAttribute('role', 'status');",
+      "to": "{0}{1}_err_new.setAttribute('data-role', 'status');"
     },
     {
       "name": "an empty message keeps its tone and mark",
       "file": "crates/cancho-ui-codegen-web/src/view.rs",
-      "from": " else {{ {1}_err.removeAttribute('data-tone'); }}",
+      "from": "if (!{1}_err_new.textContent.trim()) {{ {1}_err_new.removeAttribute('data-tone'); }}",
       "to": ""
     },
     {
       "name": "error: accepts any state field",
       "file": "crates/cancho-ui-ir/src/controls.rs",
-      "from": "                .any(|f| &f.name == name && f.ty == IrType::String) =>\n        {\n            Ok(())",
-      "to": "                .any(|f| &f.name == name) =>\n        {\n            Ok(())"
+      "from": "                .any(|f| &f.name == name && f.ty == IrType::String) =>\n        {\n            Ok(())\n        }\n        _ => Err(LowerError::ControlRefused {\n            code: \"error-binding-invalid\",",
+      "to": "                .any(|f| &f.name == name) =>\n        {\n            Ok(())\n        }\n        _ => Err(LowerError::ControlRefused {\n            code: \"error-binding-invalid\","
     },
     {
       "name": "error: is accepted on every element",
       "file": "crates/cancho-ui-ir/src/controls.rs",
-      "from": "fn check_error(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {\n    if !matches!(kind, IrElementKind::TextField) {",
-      "to": "fn check_error(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {\n    if false && !matches!(kind, IrElementKind::TextField) {"
+      "from": "    if !kind.is_field() && !matches!(kind, IrElementKind::Checkbox | IrElementKind::Select) {\n        return Err(LowerError::ControlRefused {\n            code: \"binding-unknown\",\n            message: format!(\n                \"`error:`",
+      "to": "    if false && !kind.is_field() && !matches!(kind, IrElementKind::Checkbox | IrElementKind::Select) {\n        return Err(LowerError::ControlRefused {\n            code: \"binding-unknown\",\n            message: format!(\n                \"`error:`"
     }
   ]
 }

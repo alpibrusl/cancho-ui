@@ -175,20 +175,20 @@
     {
       "name": "the font is not copied into a page",
       "file": "crates/cancho-ui/src/pwa.rs",
-      "from": "        ),\n    ];\n    files.extend(theme.iter().flat_map(|t| t.fonts.iter().cloned()));\n    files\n}",
-      "to": "        ),\n    ];\n    files\n}"
+      "from": "    ];\n    files.extend(theme.iter().flat_map(|t| t.fonts.iter().cloned()));\n    files.extend(site.iter().cloned());\n    files\n}",
+      "to": "    ];\n    files.extend(site.iter().cloned());\n    files\n}"
     },
     {
       "name": "the font is not precached by an app",
       "file": "crates/cancho-ui/src/pwa.rs",
-      "from": "    files.extend(theme.iter().flat_map(|t| t.fonts.iter().cloned()));\n    let sw",
-      "to": "    let sw"
+      "from": "    files.extend(theme.iter().flat_map(|t| t.fonts.iter().cloned()));\n    files.extend(site.iter().cloned());\n    let sw",
+      "to": "    files.extend(site.iter().cloned());\n    let sw"
     },
     {
       "name": "a theme change is not counted by diff",
       "file": "crates/cancho-ui-diff/src/lib.rs",
-      "from": "        + theme.len();",
-      "to": "        + 0;"
+      "from": "        + theme.len()\n        + page.len()",
+      "to": "        + 0\n        + page.len()"
     },
     {
       "name": "a theme change widens authority",

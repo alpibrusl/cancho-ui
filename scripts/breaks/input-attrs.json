@@ -8,8 +8,8 @@
     {
       "name": "maxlength is not written to the page",
       "file": "crates/cancho-ui-codegen-web/src/view.rs",
-      "from": "\"{0}{1}.setAttribute('maxlength', '{2}');\\n\",",
-      "to": "\"{0}{1}.setAttribute('data-maxlength', '{2}');\\n\","
+      "from": "\"{0}{1}.setAttribute('{3}', '{2}');\\n\",",
+      "to": "\"{0}{1}.setAttribute('data-{3}', '{2}');\\n\","
     },
     {
       "name": "replay does not refuse a value longer than the limit",
@@ -68,14 +68,14 @@
     {
       "name": "these bindings are accepted on every element",
       "file": "crates/cancho-ui-ir/src/controls.rs",
-      "from": "fn check_text_attribute(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {\n    if !matches!(kind, IrElementKind::TextField) {",
-      "to": "fn check_text_attribute(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {\n    if false && !matches!(kind, IrElementKind::TextField) {"
+      "from": "fn check_text_attribute(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {\n    if !kind.is_field()",
+      "to": "fn check_text_attribute(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {\n    if false && !kind.is_field()"
     },
     {
       "name": "inputmode is not a known key",
       "file": "crates/cancho-ui-ir/src/controls.rs",
-      "from": "    \"autocomplete\",\n    \"inputmode\",\n    \"maxlength\",\n    \"name\",\n];\n\n/// The `type:`",
-      "to": "    \"autocomplete\",\n    \"maxlength\",\n    \"name\",\n];\n\n/// The `type:`"
+      "from": "    \"autocomplete\",\n    \"inputmode\",\n    \"maxlength\",\n    \"name\",\n    \"error\",",
+      "to": "    \"autocomplete\",\n    \"maxlength\",\n    \"name\",\n    \"error\","
     }
   ]
 }

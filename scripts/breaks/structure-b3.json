@@ -118,12 +118,6 @@
       "to": "for (i, w) in Vec::<f64>::new().iter().enumerate() {"
     },
     {
-      "name": "a gap of a Grid is left to nobody",
-      "file": "crates/cancho-ui-ir/src/media.rs",
-      "from": "is_media(kind) && keys(kind).contains(&key) && key != \"gap\"",
-      "to": "is_media(kind) && keys(kind).contains(&key)"
-    },
-    {
       "name": "a picture needs no alt",
       "file": "crates/cancho-ui-ir/src/media.rs",
       "from": "(false, false) => {",
@@ -270,8 +264,8 @@
     {
       "name": "a build copies no files",
       "file": "crates/cancho-ui/src/main.rs",
-      "from": "let site = match ir.as_ref() {",
-      "to": "let site = match ir.as_ref().filter(|_| false) {"
+      "from": "let mut site = match ir.as_ref() {",
+      "to": "let mut site = match ir.as_ref().filter(|_| false) {"
     },
     {
       "name": "a lowered Image is a Media",
@@ -314,6 +308,15 @@
       "file": "crates/cancho-ui/src/pwa.rs",
       "from": ".cui-img img { display: block; width: 100%; height: auto; }",
       "to": ".cui-img img { display: block; height: auto; }"
+    }
+  ],
+  "equivalent": [
+    {
+      "name": "a gap of a Grid is left to nobody",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "is_media(kind) && keys(kind).contains(&key) && key != \"gap\"",
+      "to": "is_media(kind) && keys(kind).contains(&key)",
+      "why": "Measured 2026-10-26 (breaks hygiene): with the edit applied, the index.html and app.js built from a program with `Grid { min: 10 gap: 3 .. }` are byte-identical to the unedited build, for a static Grid and for a Grid in a hole. The generic binding loop that `media::handles` would skip never emits `gap` for a Grid (the gap class comes from the layout path), so the `key != \"gap\"` guard changes nothing observable. No check can catch it."
     }
   ]
 }

@@ -222,8 +222,8 @@
     {
       "name": "the table header is aligned left",
       "file": "crates/cancho-ui/src/pwa.rs",
-      "from": "text-align: start; padding: 0.25rem",
-      "to": "text-align: left; padding: 0.25rem"
+      "from": ".cui-table th, .cui-table td { text-align: start; padding: 0.25rem",
+      "to": ".cui-table th, .cui-table td { text-align: left; padding: 0.25rem"
     },
     {
       "name": "the document is not set at mount",

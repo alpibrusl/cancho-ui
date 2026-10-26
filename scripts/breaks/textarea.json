@@ -38,8 +38,8 @@
     {
       "name": "error is refused on a TextArea",
       "file": "crates/cancho-ui-ir/src/controls.rs",
-      "from": "fn check_error(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {\n    if !kind.is_field() {",
-      "to": "fn check_error(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {\n    if !matches!(kind, IrElementKind::TextField) {"
+      "from": "    if !kind.is_field() && !matches!(kind, IrElementKind::Checkbox | IrElementKind::Select) {\n        return Err(LowerError::ControlRefused {\n            code: \"binding-unknown\",\n            message: format!(\n                \"`error:`",
+      "to": "    if !matches!(\n        kind,\n        IrElementKind::TextField | IrElementKind::Checkbox | IrElementKind::Select\n    ) {\n        return Err(LowerError::ControlRefused {\n            code: \"binding-unknown\",\n            message: format!(\n                \"`error:`"
     },
     {
       "name": "replay applies no limit to a TextArea",
@@ -50,8 +50,8 @@
     {
       "name": "the value is not drawn back into a TextArea",
       "file": "crates/cancho-ui-codegen-web/src/view.rs",
-      "from": "                        if b.key == \"value\" {\n                            if kind.is_field() {\n                                // One-way",
-      "to": "                        if b.key == \"value\" {\n                            if matches!(kind, IrElementKind::TextField) {\n                                // One-way"
+      "from": "                        if b.key == \"value\" {\n                            if kind.is_field() || matches!(kind, IrElementKind::Select) {",
+      "to": "                        if b.key == \"value\" {\n                            if matches!(kind, IrElementKind::TextField | IrElementKind::Select) {"
     },
     {
       "name": "typing in a TextArea reaches no handler",
@@ -62,8 +62,8 @@
     {
       "name": "a TextArea has no label element",
       "file": "crates/cancho-ui-codegen-web/src/view.rs",
-      "from": "let field_label = if kind.is_field() {",
-      "to": "let field_label = if matches!(kind, IrElementKind::TextField) {"
+      "from": "let field_label = if kind.is_field()\n                || matches!(kind, IrElementKind::Select | IrElementKind::FileField)",
+      "to": "let field_label = if matches!(kind, IrElementKind::TextField)\n                || matches!(kind, IrElementKind::Select | IrElementKind::FileField)"
     }
   ]
 }
