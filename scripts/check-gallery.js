@@ -287,7 +287,7 @@ const BREAKS = [
   ['R7 accessible', 'low contrast text', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('</style>', '.gtile p { color: #c8c8c8 !important; }\n</style>')), 'r7'],
   ['R7 accessible', 'no focus ring', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('</style>', '.gallery a:focus, .gallery a:focus-visible { outline: none !important; }\n</style>')), 'r7'],
   ['R7 accessible', 'headings skip a level', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('<h3 class="gh">Built with cancho-ui</h3>', '<h5 class="gh">Built with cancho-ui</h5>')), 'r7'],
-  ['R8 counts are true', 'the page says 17 programs', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('(31 programs)', '(17 programs)')), 'r8'],
+  ['R8 counts are true', 'the page says 17 programs', (c) => editFile(path.join(c.docs, 'index.html'), (s) => s.replace('(32 programs)', '(17 programs)')), 'r8'],
 ];
 
 async function runRule(name, ctx) {

@@ -1,0 +1,290 @@
+{
+  "checks": [
+    {
+      "name": "cargo test page",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "page"
+      ]
+    },
+    {
+      "name": "cargo test page_files",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--bin",
+        "cancho-ui",
+        "page_files"
+      ]
+    },
+    {
+      "name": "cargo test theme",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "theme"
+      ]
+    },
+    {
+      "name": "cargo test structure",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "structure"
+      ]
+    },
+    {
+      "name": "check-page.js",
+      "argv": [
+        "node",
+        "scripts/check-page.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "a description of 300 characters is too long",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "pub const DESCRIPTION_MAX: usize = 300;",
+      "to": "pub const DESCRIPTION_MAX: usize = 160;"
+    },
+    {
+      "name": "the description bound is exclusive",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "if text.chars().count() > DESCRIPTION_MAX {",
+      "to": "if text.chars().count() >= DESCRIPTION_MAX {"
+    },
+    {
+      "name": "a one-letter language is a language",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "(2..=3).contains(&first.len())",
+      "to": "(1..=3).contains(&first.len())"
+    },
+    {
+      "name": "a line break in a title is text",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "text.chars().find(|c| c.is_control())",
+      "to": "text.chars().find(|c| c.is_control() && false)"
+    },
+    {
+      "name": "a canonical address may have a fragment",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "'<' | '>' | '\"' | '\\'' | '\\\\' | '#'",
+      "to": "'<' | '>' | '\"' | '\\'' | '\\\\'"
+    },
+    {
+      "name": "a canonical host may have capitals",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "b.is_ascii_lowercase() || b.is_ascii_digit()",
+      "to": "b.is_ascii_alphabetic() || b.is_ascii_digit()"
+    },
+    {
+      "name": "the card's address is made from the whole canonical address",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "Some(base) => base.to_string(),",
+      "to": "Some(_) => format!(\"{no_query}/\"),"
+    },
+    {
+      "name": "a card needs no canonical address",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "if page.image.is_some() && page.canonical.is_none() {",
+      "to": "if false && page.image.is_some() && page.canonical.is_none() {"
+    },
+    {
+      "name": "a quote in a title is written as it is",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": ".replace('\"', \"&quot;\")",
+      "to": ""
+    },
+    {
+      "name": "the card's width and height are swapped",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "meta(\"property\", \"og:image:width\", &img.width.to_string());",
+      "to": "meta(\"property\", \"og:image:width\", &img.height.to_string());"
+    },
+    {
+      "name": "the card has the page's description, not its own",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "if let Some(d) = p.share_description.as_ref().or(p.description.as_ref()) {",
+      "to": "if let Some(d) = p.description.as_ref().or(p.share_description.as_ref()) {"
+    },
+    {
+      "name": "the skip link goes to nothing",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "\"<a class=\\\"cui-skip\\\" href=\\\"#{}\\\">{}</a>\\n\"",
+      "to": "\"<a class=\\\"cui-skip\\\" href=\\\"{}\\\">{}</a>\\n\""
+    },
+    {
+      "name": "two sticky headers are allowed",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "if let Some(second) = sticky.get(1) {",
+      "to": "if let Some(second) = sticky.get(2) {"
+    },
+    {
+      "name": "a Main that is not in the HTML is a target",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "if *dynamic || *n != mounted || !in_html {",
+      "to": "if false {"
+    },
+    {
+      "name": "a sticky header may be inside a section",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "&& w.inside > 0 {",
+      "to": "&& w.inside > 99 {"
+    },
+    {
+      "name": "a Main with an id cannot be started from",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "if matches!(kind, IrElementKind::Main) {\n                    out.push((\"tabindex\"",
+      "to": "if false && matches!(kind, IrElementKind::Main) {\n                    out.push((\"tabindex\""
+    },
+    {
+      "name": "a sticky header has no class",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "return is_sticky(bindings).then(|| \"cui-sticky\".to_string());",
+      "to": "return None;"
+    },
+    {
+      "name": "the skip link is always on the screen",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": ".cui-skip { position: fixed; top: -4rem;",
+      "to": ".cui-skip { position: fixed; top: 0;"
+    },
+    {
+      "name": "the skip link stays off the screen when focused",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": ".cui-skip:focus { top: 0.5rem; }",
+      "to": ".cui-skip:focus { top: -4rem; }"
+    },
+    {
+      "name": "the skip link is under the sticky header",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "left: 0.5rem; z-index: 20;",
+      "to": "left: 0.5rem; z-index: 5;"
+    },
+    {
+      "name": "a sticky header is not sticky",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": ".cui-sticky { position: sticky; top: 0;",
+      "to": ".cui-sticky { position: relative; top: 0;"
+    },
+    {
+      "name": "the Main draws an outline when it is started from",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "main[tabindex=\"-1\"]:focus { outline: none; }",
+      "to": "main[tabindex=\"-1\"]:focus { outline: 3px solid red; }"
+    },
+    {
+      "name": "no room is kept above an anchor",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "scroll-padding-top: calc(var(--cui-header-h, 4rem) + 1rem);",
+      "to": "scroll-padding-top: 0;"
+    },
+    {
+      "name": "the header's height is never measured",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "r.style.setProperty('--cui-header-h',h.offsetHeight+'px')",
+      "to": "r.style.setProperty('--cui-header-h','4rem')"
+    },
+    {
+      "name": "the skip link comes after the page",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "@SKIP@@ROOT@",
+      "to": "@ROOT@@SKIP@"
+    },
+    {
+      "name": "the title of the page is written unescaped",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "let title = html_escape(page.title.as_deref().unwrap_or(name));",
+      "to": "let title = page.title.clone().unwrap_or_else(|| name.to_string());"
+    },
+    {
+      "name": "the language of the page is always en",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "html_escape(page.lang.as_deref().unwrap_or(\"en\"))",
+      "to": "\"en\".to_string()"
+    },
+    {
+      "name": "the width and height of a PNG are swapped",
+      "file": "crates/cancho-ui/src/page_files.rs",
+      "from": "(be(16)?, be(20)?)",
+      "to": "(be(20)?, be(16)?)"
+    },
+    {
+      "name": "the width and height of a JPEG are swapped",
+      "file": "crates/cancho-ui/src/page_files.rs",
+      "from": "break (u16be(b, i + 7)?, u16be(b, i + 5)?);",
+      "to": "break (u16be(b, i + 5)?, u16be(b, i + 7)?);"
+    },
+    {
+      "name": "the height of a lossless WebP is one short",
+      "file": "crates/cancho-ui/src/page_files.rs",
+      "from": "((bits >> 14) & 0x3fff) + 1)",
+      "to": "((bits >> 14) & 0x3fff))"
+    },
+    {
+      "name": "a file of the page is not hashed",
+      "file": "crates/cancho-ui/src/page_files.rs",
+      "from": "f.sha256 = sha256_hex(&bytes);",
+      "to": "f.sha256 = String::new();"
+    },
+    {
+      "name": "a page file is not copied beside the page",
+      "file": "crates/cancho-ui/src/page_files.rs",
+      "from": "if out.iter().any(|(path, _)| *path == f.path) {\n                continue;\n            }",
+      "to": "if true {\n                continue;\n            }"
+    },
+    {
+      "name": "a changed page is not counted by diff",
+      "file": "crates/cancho-ui-diff/src/lib.rs",
+      "from": "        + theme.len()\n        + page.len()\n",
+      "to": "        + theme.len()\n"
+    },
+    {
+      "name": "the host of the metadata is not listed",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": ".and_then(canonical_host)\n        .into_iter()",
+      "to": ".and_then(|_: &str| None::<String>)\n        .into_iter()"
+    },
+    {
+      "name": "the header is not on the theme's background",
+      "file": "crates/cancho-ui/src/theme.rs",
+      "from": ".cui-sticky { background: var(--cui-bg);",
+      "to": ".cui-sticky { background: var(--cui-surface);"
+    },
+    {
+      "name": "the skip link has the page's text colour in a theme",
+      "file": "crates/cancho-ui/src/theme.rs",
+      "from": "a.cui-skip { background: var(--cui-accent); color: var(--cui-accent-fg); }",
+      "to": "a.cui-skip { background: var(--cui-accent); color: var(--cui-fg); }"
+    },
+    {
+      "name": "the page's colour scheme is not declared",
+      "file": "crates/cancho-ui-ir/src/page.rs",
+      "from": "    s.push_str(\"<meta name=\\\"color-scheme\\\" content=\\\"light dark\\\">\\n\");\n",
+      "to": "    s.push_str(\"\");\n"
+    },
+    {
+      "name": "a second page in an import is allowed",
+      "file": "crates/cancho-ui/src/pipeline.rs",
+      "from": ".filter(|i| i.page.is_some())\n        .nth(1)",
+      "to": ".filter(|i| i.page.is_some())\n        .nth(2)"
+    }
+  ]
+}
