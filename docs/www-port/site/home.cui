@@ -104,6 +104,19 @@ island AuthorityCanvas {
 }
 data AuthorityData { file: "data/authority.json" sha256: "829ee6c67254b38b74431b19f30c759db7f4e5ff483b35e0e48e86369296a637"; }
 
+island Places {
+    sealed: false;
+    script: "islands/rocks.js" sha256: "ab5fffd81da37de020b59a17a03eb779d9cf0b4f35fca167d7b9fedd7fa8c008";
+    script: "islands/map.js" sha256: "275bb3bfe526f2b015e33e9eb0eace4ffffb1289b0529d19cb01ae5bc2e06d3e";
+    style: "islands/map.css" sha256: "76998e0808925fdf9c1a6331594cc93c6f1c15b16a743855165727eec491eb1f";
+    label: "Map of the cancho ecosystem: each repository is a rock; choose one for its details";
+    width: 1300;
+    height: 810;
+    props { places: String; selected: String; kind: String; only_built: Bool; }
+    events { Selected: String; }
+}
+data Demos { file: "data/demos.json" sha256: "d7b99e2d0a565544b4cdc7836816c62a86ec4569ad9ea550855ba2ea705f996a"; }
+
 component AgentFiles {
     requires Network;
 
@@ -153,6 +166,10 @@ component AgentFiles {
 
 component Home {
     requires Clipboard;
+    requires Dom;
+    state selected: String = "cancho";
+    state kind: String = "all";
+    state only: Bool = false;
     state tab: Int = 0;
     state step: Int = 0;
     state last: Int = 4;
@@ -162,6 +179,9 @@ component Home {
     on Next { playing = false; if step < last { step = step + 1; } else { step = 0; } }
     on Prev { playing = false; if step > 0 { step = step - 1; } else { step = last; } }
     on Play { playing = !playing; }
+    on Selected(id) { selected = id; }
+    on Kind(k) { kind = k; }
+    on Only { only = !only; }
     on Tick { if playing { if step < last { step = step + 1; } else { playing = false; } } }
 
     every 2600 Tick;
@@ -497,6 +517,139 @@ component Home {
                         }
                     }
                     Heading { level: 3 "Or browse every repository" }
+                    Row {
+                        label: "Filter the map"
+                        role: group
+                            Button { label: "All" on: Kind("all") pressed: kind == "all" }
+                            Button { label: json.get(data.value(Ecosystem, "kinds"), "language", "") on: Kind("language") pressed: kind == "language" }
+                            Button { label: json.get(data.value(Ecosystem, "kinds"), "service", "") on: Kind("service") pressed: kind == "service" }
+                            Button { label: json.get(data.value(Ecosystem, "kinds"), "library", "") on: Kind("library") pressed: kind == "library" }
+                            Button { label: json.get(data.value(Ecosystem, "kinds"), "tool", "") on: Kind("tool") pressed: kind == "tool" }
+                            Button { label: json.get(data.value(Ecosystem, "kinds"), "edge", "") on: Kind("edge") pressed: kind == "edge" }
+                    }
+                    Row {
+                        label: "Trails"
+                        role: group
+                            Button { label: "Trail: A shop's energy, passed between roles" on: Selected("trail:shop-energy") pressed: selected == "trail:shop-energy" }
+                            Button { label: "Trail: A parcel-lateness service: data, model, deploy, drift, retrain" on: Selected("trail:late-parcels") pressed: selected == "trail:late-parcels" }
+                            Button { label: "Trail: Trust a model change you didn't write" on: Selected("trail:model-review") pressed: selected == "trail:model-review" }
+                            Button { label: "Trail: Ship an API: declare, generate a client, use it, change it, package it" on: Selected("trail:ship-an-api") pressed: selected == "trail:ship-an-api" }
+                    }
+                    Row {
+                        Button { label: "Only what exists" on: Only pressed: only }
+                    }
+                    Grid {
+                        min: 20
+                        weights: [2, 1]
+                        Places { places: data.value(Ecosystem, "projects") selected: selected kind: kind only_built: only on: Selected text: "map-fallback" }
+                        Aside {
+                            label: "Details of what is chosen on the map"
+                            id: "detail"
+                            For { over: data.items(Ecosystem, "projects") as: p
+                                If { when: selected == json.get(p, "id", "")
+                                    Rich {
+                                        If { when: json.get(p, "stage", "") == "built" Chip { tone: "accent" "built" } }
+                                        If { when: json.get(p, "stage", "") == "working" Chip { tone: "good" "working" } }
+                                        If { when: json.get(p, "stage", "") == "alpha" Chip { tone: "warn" "alpha" } }
+                                        If { when: json.get(p, "stage", "") == "early" Chip { tone: "warn" "early" } }
+                                        If { when: json.get(p, "stage", "") == "design" Chip { tone: "quiet" "design" } }
+                                    }
+                                    Heading { level: 3 "{json.get(p, \"name\", \"\")}" }
+                                    Rich { "{json.get(p, \"summary\", \"\")}" }
+                                    List {
+                                        Item { Rich { Strong { "Stage" } ": {json.get(data.value(Ecosystem, \"stages\"), json.get(p, \"stage\", \"\"), \"\")}" } }
+                                        If { when: json.get(p, "authority", "") != "" Item { Rich { Strong { "Authority" } ": {json.get(p, \"authority\", \"\")}" } } }
+                                        If { when: json.get(p, "note", "") != "" Item { Rich { Strong { "Note" } ": {json.get(p, \"note\", \"\")}" } } }
+                                        If { when: len(json.items(p, "rests_on")) > 0 Item { Rich { Strong { "Rests on" } ": {join(map(json.items(p, \"rests_on\"), r => json.get(r, \"\", \"\")), \", \")}" } } }
+                                    }
+                                    If { when: json.get(p, "id", "") == "cancho"
+                                    Details {
+                                        summary: "A recorded session"
+                                        For { over: data.items(Demos, "cancho.steps") as: st
+                                            Code { "# {json.get(st, \"note\", \"\")}\n$ {json.get(st, \"cmd\", \"\")}\n{json.get(st, \"out\", \"\")}" }
+                                            If { when: json.get(st, "chart.type", "") == "histogram" Text { "Chart: {json.get(st, \"chart.title\", \"\")}. Count in each of {len(json.items(st, \"chart.counts\"))} equal bins: {join(json.items(st, \"chart.counts\"), \", \")}." } }
+                                            If { when: json.get(st, "chart.type", "") == "bars" Text { "Chart: {json.get(st, \"chart.title\", \"\")}. {join(map(json.items(st, \"chart.labels\"), r => json.get(r, \"\", \"\")), \", \")}: {join(json.items(st, \"chart.values\"), \", \")}." } }
+                                            If { when: json.get(st, "chart.type", "") == "scatter" Text { "Chart: {json.get(st, \"chart.title\", \"\")}. {len(json.items(st, \"chart.points\"))} points, predicted against actual." } }
+                                        }
+                                    }
+                                    }
+                                    If { when: json.get(p, "id", "") == "cancho-ui"
+                                    Details {
+                                        summary: "A recorded session"
+                                        For { over: data.items(Demos, "cancho-ui.steps") as: st
+                                            Code { "# {json.get(st, \"note\", \"\")}\n$ {json.get(st, \"cmd\", \"\")}\n{json.get(st, \"out\", \"\")}" }
+                                            If { when: json.get(st, "chart.type", "") == "histogram" Text { "Chart: {json.get(st, \"chart.title\", \"\")}. Count in each of {len(json.items(st, \"chart.counts\"))} equal bins: {join(json.items(st, \"chart.counts\"), \", \")}." } }
+                                            If { when: json.get(st, "chart.type", "") == "bars" Text { "Chart: {json.get(st, \"chart.title\", \"\")}. {join(map(json.items(st, \"chart.labels\"), r => json.get(r, \"\", \"\")), \", \")}: {join(json.items(st, \"chart.values\"), \", \")}." } }
+                                            If { when: json.get(st, "chart.type", "") == "scatter" Text { "Chart: {json.get(st, \"chart.title\", \"\")}. {len(json.items(st, \"chart.points\"))} points, predicted against actual." } }
+                                        }
+                                    }
+                                    }
+                                    If { when: json.get(p, "id", "") != "cancho" && json.get(p, "id", "") != "cancho-ui" Rich { "No recorded session for this one yet." } }
+                                    Row {
+                                        Link { to: json.get(p, "url", "") appearance: "primary" "Repository" }
+                                        If { when: json.get(p, "page", "") != "" Link { to: json.get(p, "page", "") appearance: "secondary" "Landing page" } }
+                                    }
+                                }
+                            }
+                            If { when: selected == "trail:shop-energy"
+                                Rich { Chip { tone: "accent" "a trail" } }
+                                Heading { level: 3 "{join(json.items(data.value(Demos, \"trail:shop-energy\"), \"route\"), \" → \")}" }
+                                Rich { "{json.get(data.value(Demos, \"trail:shop-energy\"), \"summary\", \"\")}" }
+                                Details {
+                                    summary: "A recorded session"
+                                    For { over: data.items(Demos, "trail:shop-energy.steps") as: st
+                                        Code { "# {json.get(st, \"note\", \"\")}\n$ {json.get(st, \"cmd\", \"\")}\n{json.get(st, \"out\", \"\")}" }
+                                        If { when: json.get(st, "chart.type", "") == "histogram" Text { "Chart: {json.get(st, \"chart.title\", \"\")}. Count in each of {len(json.items(st, \"chart.counts\"))} equal bins: {join(json.items(st, \"chart.counts\"), \", \")}." } }
+                                        If { when: json.get(st, "chart.type", "") == "bars" Text { "Chart: {json.get(st, \"chart.title\", \"\")}. {join(map(json.items(st, \"chart.labels\"), r => json.get(r, \"\", \"\")), \", \")}: {join(json.items(st, \"chart.values\"), \", \")}." } }
+                                        If { when: json.get(st, "chart.type", "") == "scatter" Text { "Chart: {json.get(st, \"chart.title\", \"\")}. {len(json.items(st, \"chart.points\"))} points, predicted against actual." } }
+                                    }
+                                }
+                            }
+                            If { when: selected == "trail:late-parcels"
+                                Rich { Chip { tone: "accent" "a trail" } }
+                                Heading { level: 3 "{join(json.items(data.value(Demos, \"trail:late-parcels\"), \"route\"), \" → \")}" }
+                                Rich { "{json.get(data.value(Demos, \"trail:late-parcels\"), \"summary\", \"\")}" }
+                                Details {
+                                    summary: "A recorded session"
+                                    For { over: data.items(Demos, "trail:late-parcels.steps") as: st
+                                        Code { "# {json.get(st, \"note\", \"\")}\n$ {json.get(st, \"cmd\", \"\")}\n{json.get(st, \"out\", \"\")}" }
+                                        If { when: json.get(st, "chart.type", "") == "histogram" Text { "Chart: {json.get(st, \"chart.title\", \"\")}. Count in each of {len(json.items(st, \"chart.counts\"))} equal bins: {join(json.items(st, \"chart.counts\"), \", \")}." } }
+                                        If { when: json.get(st, "chart.type", "") == "bars" Text { "Chart: {json.get(st, \"chart.title\", \"\")}. {join(map(json.items(st, \"chart.labels\"), r => json.get(r, \"\", \"\")), \", \")}: {join(json.items(st, \"chart.values\"), \", \")}." } }
+                                        If { when: json.get(st, "chart.type", "") == "scatter" Text { "Chart: {json.get(st, \"chart.title\", \"\")}. {len(json.items(st, \"chart.points\"))} points, predicted against actual." } }
+                                    }
+                                }
+                            }
+                            If { when: selected == "trail:model-review"
+                                Rich { Chip { tone: "accent" "a trail" } }
+                                Heading { level: 3 "{join(json.items(data.value(Demos, \"trail:model-review\"), \"route\"), \" → \")}" }
+                                Rich { "{json.get(data.value(Demos, \"trail:model-review\"), \"summary\", \"\")}" }
+                                Details {
+                                    summary: "A recorded session"
+                                    For { over: data.items(Demos, "trail:model-review.steps") as: st
+                                        Code { "# {json.get(st, \"note\", \"\")}\n$ {json.get(st, \"cmd\", \"\")}\n{json.get(st, \"out\", \"\")}" }
+                                        If { when: json.get(st, "chart.type", "") == "histogram" Text { "Chart: {json.get(st, \"chart.title\", \"\")}. Count in each of {len(json.items(st, \"chart.counts\"))} equal bins: {join(json.items(st, \"chart.counts\"), \", \")}." } }
+                                        If { when: json.get(st, "chart.type", "") == "bars" Text { "Chart: {json.get(st, \"chart.title\", \"\")}. {join(map(json.items(st, \"chart.labels\"), r => json.get(r, \"\", \"\")), \", \")}: {join(json.items(st, \"chart.values\"), \", \")}." } }
+                                        If { when: json.get(st, "chart.type", "") == "scatter" Text { "Chart: {json.get(st, \"chart.title\", \"\")}. {len(json.items(st, \"chart.points\"))} points, predicted against actual." } }
+                                    }
+                                }
+                            }
+                            If { when: selected == "trail:ship-an-api"
+                                Rich { Chip { tone: "accent" "a trail" } }
+                                Heading { level: 3 "{join(json.items(data.value(Demos, \"trail:ship-an-api\"), \"route\"), \" → \")}" }
+                                Rich { "{json.get(data.value(Demos, \"trail:ship-an-api\"), \"summary\", \"\")}" }
+                                Details {
+                                    summary: "A recorded session"
+                                    For { over: data.items(Demos, "trail:ship-an-api.steps") as: st
+                                        Code { "# {json.get(st, \"note\", \"\")}\n$ {json.get(st, \"cmd\", \"\")}\n{json.get(st, \"out\", \"\")}" }
+                                        If { when: json.get(st, "chart.type", "") == "histogram" Text { "Chart: {json.get(st, \"chart.title\", \"\")}. Count in each of {len(json.items(st, \"chart.counts\"))} equal bins: {join(json.items(st, \"chart.counts\"), \", \")}." } }
+                                        If { when: json.get(st, "chart.type", "") == "bars" Text { "Chart: {json.get(st, \"chart.title\", \"\")}. {join(map(json.items(st, \"chart.labels\"), r => json.get(r, \"\", \"\")), \", \")}: {join(json.items(st, \"chart.values\"), \", \")}." } }
+                                        If { when: json.get(st, "chart.type", "") == "scatter" Text { "Chart: {json.get(st, \"chart.title\", \"\")}. {len(json.items(st, \"chart.points\"))} points, predicted against actual." } }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Rich { style: "note" "{len(filter(data.items(Ecosystem, \"projects\"), q => json.get(q, \"stage\", \"\") != \"design\"))} built, {len(filter(data.items(Ecosystem, \"projects\"), q => json.get(q, \"stage\", \"\") == \"design\"))} still on paper" }
                     Rich { style: "note" "Drawn like a walkers’ map of La Pedriza. Position is a layout, not a measurement: size, distance and footpaths mean nothing; only the outline (solid or dotted) and the blue “rests on” arrows do. Private repositories are not shown." }
                     Details {
                         id: "map-fallback"

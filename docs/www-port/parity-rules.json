@@ -1,5 +1,5 @@
 {
- "about": "docs/www-port/parity.md: every difference measured by scripts/parity-www.js is explained by the first rule that matches its kind, section and side. A difference no rule matches is UNEXPLAINED. Classes: intentional (a decision in dropped.md or gaps.md), deferred (B2) (belongs to the islands and the map, the next PR), defect (open) (a fault of the port, listed in parity.md).",
+ "about": "docs/www-port/parity.md: every difference measured by scripts/parity-www.js is explained by the first rule that matches its kind, section and side. A difference no rule matches is UNEXPLAINED. Classes: intentional (a decision in dropped.md or gaps.md), defect (open) (a fault of the port, listed in parity.md).",
  "rules": [
   {
    "kind": "text",
@@ -10,13 +10,6 @@
    "side": "page"
   },
   {
-   "kind": "text",
-   "match": "^(phone only: |desktop only: )?(github|pre-1\\.0 · alpha try it trust)",
-   "class": "intentional",
-   "why": "the GitHub link of the header is shown at every width in the port; on a phone the page hides it",
-   "ref": "J5, dropped.md 3"
-  },
-  {
    "kind": "nojs",
    "match": "^(phone only: |desktop only: )?(pre-1\\.0 · alpha )?try it trust evidence",
    "class": "intentional",
@@ -25,26 +18,12 @@
    "side": "page"
   },
   {
-   "kind": "nojs",
-   "match": "^(phone only: |desktop only: )?(github|pre-1\\.0 · alpha try it trust)",
-   "class": "intentional",
-   "why": "the GitHub link of the header is shown at every width in the port; on a phone the page hides it",
-   "ref": "J5, dropped.md 3"
-  },
-  {
    "kind": "width",
    "match": "^(phone only: |desktop only: )?(pre-1\\.0 · alpha )?try it trust evidence",
    "class": "intentional",
    "why": "the inline section links of the header (and the human/agent switch) are not in the port: the menu has them at every width",
    "ref": "J4, J5, dropped.md 1 and 3",
    "side": "page"
-  },
-  {
-   "kind": "width",
-   "match": "^(phone only: |desktop only: )?(github|pre-1\\.0 · alpha try it trust)",
-   "class": "intentional",
-   "why": "the GitHub link of the header is shown at every width in the port; on a phone the page hides it",
-   "ref": "J5, dropped.md 3"
   },
   {
    "kind": "text",
@@ -93,14 +72,6 @@
    "why": "a table whose first column header is empty is not accessible: the port names it",
    "ref": "dropped.md 7",
    "side": "port"
-  },
-  {
-   "kind": "text",
-   "match": "^(all language and compiler|.*trail: a shop)",
-   "class": "deferred (map PR)",
-   "why": "the filter chips and trail buttons of the ecosystem map are PR B2",
-   "section": "ecosystem",
-   "side": "page"
   },
   {
    "kind": "nojs",
@@ -129,9 +100,10 @@
   {
    "kind": "nojs",
    "match": "^exists design, not built",
-   "class": "deferred (map PR)",
-   "why": "the legend of the map",
-   "side": "page"
+   "class": "intentional",
+   "why": "the legend of the map is drawn by the open island inside the map (the page writes it in HTML after the detail pane): without script there is no map and no legend, and the list under the map says the stage of every project in words",
+   "side": "page",
+   "ref": "dropped.md 15"
   },
   {
    "kind": "text",
@@ -243,22 +215,6 @@
   },
   {
    "kind": "link",
-   "match": "^#(trust|ecosystem|agents|demo|try|verifies)$",
-   "class": "intentional",
-   "why": "the page links its sections twice (nav and menu); the port once, in the menu",
-   "ref": "J5, dropped.md 3",
-   "side": "page"
-  },
-  {
-   "kind": "link",
-   "match": "^(https://github.com/alpibrusl/cancho|https://alpibru.com/manifesto|https://alpibrusl.github.io/cancho/|agents.md)$",
-   "class": "intentional",
-   "why": "the page links these from the header nav and the menu; the port from the menu only",
-   "ref": "J5, dropped.md 3",
-   "side": "page"
-  },
-  {
-   "kind": "link",
    "match": "cancho-www$|ui/agent-files\\.cui$|cancho-ui$",
    "class": "intentional",
    "why": "links of the sentence about the separate file of the pane, which the port does not have",
@@ -269,7 +225,7 @@
    "kind": "linkcount",
    "match": ".*",
    "class": "intentional",
-   "why": "the page has the nav and the menu with the same links, and the map's links (B2); the distinct targets are what the rows above list",
+   "why": "the page has the nav and the menu with the same links (measured: 10 of the 11 extra links of the page are the header's inline copies of the menu's links, J5; the 11th is the link to ui/agent-files.cui, dropped.md 5); the map adds none on either side; the distinct targets are what the rows above list",
    "ref": "J5"
   },
   {
@@ -289,13 +245,6 @@
    "side": "port"
   },
   {
-   "kind": "heading",
-   "match": "^h3 cancho$",
-   "class": "deferred (map PR)",
-   "why": "the heading of the map's detail pane",
-   "side": "page"
-  },
-  {
    "kind": "landmark",
    "match": "section \"This site as an agent reads it\"",
    "class": "intentional",
@@ -306,9 +255,10 @@
   {
    "kind": "landmark",
    "match": "^aside$",
-   "class": "deferred (map PR)",
-   "why": "the map's detail pane is an aside",
-   "side": "page"
+   "class": "intentional",
+   "why": "the page's detail pane is an unnamed `aside` (the accessibility tree calls it generic); the port's is named 'Details of what is chosen on the map' and is a complementary landmark",
+   "side": "page",
+   "ref": "dropped.md 13"
   },
   {
    "kind": "id",
@@ -337,9 +287,10 @@
   {
    "kind": "id",
    "match": "^(map-chips|map-svg|detail|map-count)$",
-   "class": "deferred (map PR)",
-   "why": "the map and its filter",
-   "side": "page"
+   "class": "intentional",
+   "why": "ids the page's script reaches for (the chip row, the drawing, the count); in the port the chips and the count are elements of the program and the drawing is the island's own, found by the island host",
+   "side": "page",
+   "ref": "dropped.md 15"
   },
   {
    "kind": "id",
@@ -359,16 +310,16 @@
   {
    "kind": "ax",
    "match": "^(DescriptionList|term|definition):",
-   "class": "deferred (map PR)",
-   "why": "the map's detail pane has a `dl`",
-   "ref": "J8"
+   "class": "intentional",
+   "why": "the detail pane's `dl` (STAGE, NOTE) is a list of 'Stage: ...', 'Note: ...', 'Rests on: ...' items in the port",
+   "ref": "J8, dropped.md 13"
   },
   {
    "kind": "ax",
    "match": "^log:",
-   "class": "deferred (map PR)",
-   "why": "the recorded session of the map",
-   "ref": "J8"
+   "class": "intentional",
+   "why": "the page's recorded session is typed into a `role=log`; the port's is the whole text in a `Details`",
+   "ref": "J8, dropped.md 14"
   },
   {
    "kind": "ax",
@@ -393,9 +344,9 @@
   {
    "kind": "ax",
    "match": "^button:",
-   "class": "deferred (map PR)",
-   "why": "the page's buttons are the map's 24 rocks, chips and trail buttons, the copy buttons, the tabs and the stepper; the port has the copy buttons, the pane's, the tabs and the stepper; the map's are the next PR",
-   "ref": "J4"
+   "class": "intentional",
+   "why": "the page has the human/agent switch (2 buttons, J4), 'Walk here' and 'Whole map' (2, the hiker, J8) and copy buttons named 'Copy the commands'; the port has none of the first four and names its copy buttons 'Copy the code' (the compiler's name for a code block's button); the 24 rocks, the chips, the trails, the tabs and the stepper are the same on both",
+   "ref": "J4, J8, dropped.md 1, 14"
   },
   {
    "kind": "ax",
@@ -411,15 +362,9 @@
   },
   {
    "kind": "ax",
-   "match": "^heading:",
-   "class": "deferred (map PR)",
-   "why": "one heading fewer: the detail pane's"
-  },
-  {
-   "kind": "ax",
    "match": "^image:",
    "class": "intentional",
-   "why": "the page's drawings with role img (scene, three cards, animation, map) are frames in the port (the map is the next PR); the five icons, the star and the bars are dropped",
+   "why": "the page's drawings with role img (the scene, the three card drawings, the animation and one unnamed decorative SVG) are frames in the port, which a frame's title names (the accessibility tree has an Iframe there, not an image); the map is a `role=group` on both sides, not an image; the five icons, the star and the bars are dropped",
    "ref": "J3"
   },
   {
@@ -457,13 +402,6 @@
    "side": "page"
   },
   {
-   "kind": "id",
-   "match": "^(paper|mk-rest|road-path|river-path)$",
-   "class": "deferred (map PR)",
-   "why": "ids inside the map's drawing",
-   "side": "page"
-  },
-  {
    "kind": "ax",
    "match": "^code:",
    "class": "intentional",
@@ -493,6 +431,85 @@
    "class": "intentional",
    "why": "the stepper's glyph buttons are text buttons",
    "ref": "J7, dropped.md 11",
+   "side": "port"
+  },
+  {
+   "kind": "text",
+   "match": "^(exists design, not|rests on footpath \\(layout only\\) built|exists design, not built rests on footpath \\(layout only\\))$",
+   "class": "intentional",
+   "why": "the legend is inside the island's drawing, so it is read before the detail pane (the page's legend follows it)",
+   "ref": "dropped.md 15",
+   "section": "ecosystem"
+  },
+  {
+   "kind": "text",
+   "match": "^(stage|stage:|note|note:)$",
+   "class": "intentional",
+   "why": "the detail pane's `dl` terms STAGE and NOTE (upper-cased by CSS) are 'Stage:' and 'Note:' in the port's list",
+   "ref": "J8, dropped.md 13",
+   "section": "ecosystem"
+  },
+  {
+   "kind": "text",
+   "match": "^(leaked file, refused by name walk here|run of the real tools, replayed)",
+   "class": "intentional",
+   "why": "the typed recorded session with its title, its Walk here and Whole map buttons and its note; the port has a `Details` with the same text (J8)",
+   "ref": "J8, dropped.md 14",
+   "side": "page",
+   "section": "ecosystem"
+  },
+  {
+   "kind": "text",
+   "match": "^session$",
+   "class": "intentional",
+   "why": "the summary 'A recorded session' of the `Details` that holds the transcript",
+   "ref": "J8, dropped.md 14",
+   "side": "port",
+   "section": "ecosystem"
+  },
+  {
+   "kind": "ax",
+   "match": "^complementary:",
+   "class": "intentional",
+   "why": "the port's detail pane is named, so it is a landmark; the page's unnamed one is generic",
+   "ref": "dropped.md 13"
+  },
+  {
+   "kind": "ax",
+   "match": "^(list|listitem):",
+   "class": "intentional",
+   "why": "the detail pane's Stage and Note are list items in the port (one list; the page's are in a `dl`)",
+   "ref": "J8, dropped.md 13"
+  },
+  {
+   "kind": "nojs",
+   "match": "^(21 built, 3 still|paper)$",
+   "class": "intentional",
+   "why": "the count 'N built, M still on paper' is written into the port's HTML (it depends on the data, not on the script); the page fills it in with script",
+   "ref": "dropped.md 15",
+   "side": "port"
+  },
+  {
+   "kind": "nojs",
+   "match": "^footpath \\(layout only\\)",
+   "class": "intentional",
+   "why": "the legend of the map (see the row above)",
+   "ref": "dropped.md 15",
+   "side": "page"
+  },
+  {
+   "kind": "width",
+   "match": "^(phone only: |desktop only: )?(github|pre-1\\.0 · alpha try it trust)",
+   "class": "intentional",
+   "why": "the GitHub link of the header is shown at every width in the port; on a phone the page hides it",
+   "ref": "J5, dropped.md 3"
+  },
+  {
+   "kind": "landmark",
+   "match": "^aside \"Details of what is chosen on the map\"$",
+   "class": "intentional",
+   "why": "the port's detail pane is named (see the row for the page's)",
+   "ref": "dropped.md 13",
    "side": "port"
   }
  ]

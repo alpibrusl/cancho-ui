@@ -29,7 +29,8 @@
    "base64": "gP8="
   },
   "nul.js": "var a = 1;\u0000\n",
-  "c.js": "var z = 3;\n"
+  "c.js": "var z = 3;\n",
+  "places.json": "{\"projects\": [{\"id\": \"a\", \"name\": \"alpha\"}]}"
  },
  "valid": [
   {
@@ -87,6 +88,10 @@
   {
    "name": "a sealed and an open island in one component",
    "program": "island Stones { sealed: false; script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; } events { Picked: Int; } }\nisland Other { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    view { Column { Stones { seed: n text: \"alt\" } Other { seed: 1 } Section { label: \"Alt\" id: \"alt\" Text { \"alt\" } } } }\n}\n"
+  },
+  {
+   "name": "a prop of an open island read from a data file (data.value, written out at build)",
+   "program": "data P { file: \"places.json\" sha256: \"{sha:places.json}\"; }\nisland Stones { sealed: false; script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { places: String; } events { Picked: Int; } }\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    on Picked(v) { n = v; }\n    view { Column { Stones { places: data.value(P, \"projects\") text: \"alt\" } Section { label: \"Alt\" id: \"alt\" Text { \"alt\" } } } }\n}\n"
   }
  ],
  "refusals": [
@@ -517,6 +522,11 @@
    "name": "a sealed island's prop that is not a literal and not a state field",
    "code": "island-prop-source-unknown",
    "view": "Stones { seed: nowhere }"
+  },
+  {
+   "name": "a data.value prop of an island names a data that is not declared",
+   "code": "data-unknown",
+   "program": "data P { file: \"places.json\" sha256: \"{sha:places.json}\"; }\nisland Stones { sealed: false; script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { places: String; } events { Picked: Int; } }\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    on Picked(v) { n = v; }\n    view { Column { Stones { places: data.value(Q, \"projects\") text: \"alt\" } Section { label: \"Alt\" id: \"alt\" Text { \"alt\" } } } }\n}\n"
   }
  ]
 }

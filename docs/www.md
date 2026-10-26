@@ -479,5 +479,4 @@ site that the build carries) and listed what is a judgment about the page, each 
 recommendations unless the user says otherwise, and it does not claim the port can replace the page: that is the user's decision.
 
 **PR B was split in three, as it was too big to review in one** (the coordinator allowed it): **B1** the content, head, theme, fonts, pictures, videos, data and the agents pane, with the parity checks of text, links,
-outline, anchors, accessibility roles and the page without script ([`www-port/README.md`](www-port/README.md), [`parity.md`](www-port/parity.md), [`dropped.md`](www-port/dropped.md)); **B2** the sealed islands,
-the authority animation and the map; **B3** bytes, requests, timings (HTML, `app.js`, FCP, LCP, CLS) and the pixel diff at several widths.
+outline, anchors, accessibility roles and the page without script ([`www-port/README.md`](www-port/README.md), [`parity.md`](www-port/parity.md), [`dropped.md`](www-port/dropped.md)); **B2** (split again: **B2a**, the sealed islands and the authority animation; **B2b**, the map as the open island, 2026-10-26: [`www-port/README.md`](www-port/README.md), [`islands.md`](islands.md) sections 12 and 13.1); **B3** bytes, requests, timings (HTML, `app.js`, FCP, LCP, CLS) and the pixel diff at several widths.

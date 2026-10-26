@@ -55,6 +55,8 @@ const gz = (p) => zlib.gzipSync(fs.readFileSync(p), { level: 9 }).length;
           new PerformanceObserver((l) => { for (const e of l.getEntries()) { if (!e.hadRecentInput) { window.__m.cls += e.value; } } }).observe({ type: 'layout-shift', buffered: true });
           new PerformanceObserver((l) => { for (const e of l.getEntries()) { window.__m.lcp = e.startTime; } }).observe({ type: 'largest-contentful-paint', buffered: true });
           new PerformanceObserver((l) => { for (const e of l.getEntries()) { if (e.name === 'first-contentful-paint') { window.__m.fcp = e.startTime; } } }).observe({ type: 'paint', buffered: true });
+          window.__m.rocks24 = 0;
+          new MutationObserver(() => { if (!window.__m.rocks24 && document.querySelectorAll('#ecosystem .rock').length >= 24) { window.__m.rocks24 = performance.now(); } }).observe(document, { childList: true, subtree: true });
           new PerformanceObserver((l) => { for (const e of l.getEntries()) { window.__m.long++; window.__m.longMs += e.duration - 50; } }).observe({ type: 'longtask', buffered: true });
         });
         await page.goto(`http://127.0.0.1:${servers[side].address().port}/`, { waitUntil: 'load' });
@@ -63,7 +65,18 @@ const gz = (p) => zlib.gzipSync(fs.readFileSync(p), { level: 9 }).length;
         await cdp.send('Performance.enable');
         const pm = Object.fromEntries((await cdp.send('Performance.getMetrics')).metrics.map((m) => [m.name, m.value]));
         const m = await page.evaluate(() => ({ ...window.__m, frames: document.querySelectorAll('iframe').length, nodes: document.getElementsByTagName('*').length, load: performance.timing.loadEventEnd - performance.timing.navigationStart, dcl: performance.timing.domContentLoadedEventEnd - performance.timing.navigationStart }));
-        runs.push({ ...m, heap: pm.JSHeapUsedSize, requests: reqs.length, bytes: reqs.reduce((a, r) => a + r.bytes, 0), byType: reqs.reduce((a, r) => { a[r.type] = (a[r.type] || 0) + r.bytes; return a; }, {}) });
+        const map = await page.evaluate(async () => {
+          const eco = document.getElementById('ecosystem');
+          const rock = eco.querySelector('.rock[data-id="cancho-web"]');
+          const nodes = eco.getElementsByTagName('*').length;
+          const rocks = eco.querySelectorAll('.rock').length;
+          const t0 = performance.now();
+          rock.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+          let t1 = null;
+          for (let i = 0; i < 400 && t1 === null; i++) { const h = document.querySelector('#detail h3'); if (h && h.textContent.trim() === 'cancho-web') { t1 = performance.now(); } else { await new Promise((r) => requestAnimationFrame(r)); } }
+          return { nodes, rocks, click: t1 === null ? -1 : t1 - t0, drawn: window.__m.rocks24 };
+        });
+        runs.push({ ...m, map, heap: pm.JSHeapUsedSize, requests: reqs.length, bytes: reqs.reduce((a, r) => a + r.bytes, 0), byType: reqs.reduce((a, r) => { a[r.type] = (a[r.type] || 0) + r.bytes; return a; }, {}) });
         await ctx.close();
       }
       rows[`${pname} ${side}`] = runs;
@@ -86,6 +99,13 @@ const gz = (p) => zlib.gzipSync(fs.readFileSync(p), { level: 9 }).length;
     const js = median(runs.map((r) => r.byType['.js'] || 0));
     md.push(`| ${k} | ${f('requests')(runs)} | ${kb(f('bytes')(runs))} | ${kb(html)} + ${kb(js)} | ${f('frames')(runs)} | ${f('nodes')(runs)} | ${kb(f('heap')(runs))} | ${f('fcp')(runs).toFixed(0)} ms | ${f('lcp')(runs).toFixed(0)} ms | ${f('cls')(runs).toFixed(4)} | ${f('long')(runs)} (${f('longMs')(runs).toFixed(0)}) | ${f('dcl')(runs).toFixed(0)} ms | ${f('load')(runs).toFixed(0)} ms |`);
   }
+  md.push('', '## The map alone, medians of the same runs', '', 'The ecosystem section (`#ecosystem`): its elements, the rocks drawn, the time from the start of the navigation until the 24th rock exists, and the time from a click on a rock until the detail pane shows its name (in `requestAnimationFrame` steps, so 16 ms is the floor).', '', '| | elements in #ecosystem | rocks | the 24th rock exists at | click on a rock to its detail |', '|---|---|---|---|---|');
+  for (const [k, runs] of Object.entries(rows)) {
+    md.push(`| ${k} | ${median(runs.map((r) => r.map.nodes))} | ${median(runs.map((r) => r.map.rocks))} | ${median(runs.map((r) => r.map.drawn)).toFixed(0)} ms | ${median(runs.map((r) => r.map.click)).toFixed(0)} ms |`);
+  }
+  md.push('### Where the map\'s bytes are', '');
+  md.push('* **the page**: `assets/map.js` ' + kb(fs.statSync(path.join(REF, 'assets', 'map.js')).size) + ', `assets/rocks.js` ' + kb(fs.statSync(path.join(REF, 'assets', 'rocks.js')).size) + ' (the hero uses it too), and two requests for `data/ecosystem.json` ' + kb(fs.statSync(path.join(REF, 'data', 'ecosystem.json')).size) + ' and `data/demos.json` ' + kb(fs.statSync(path.join(REF, 'data', 'demos.json')).size) + '; the map\'s rules are in `site.css`.');
+  md.push('* **the port**: the island\'s own `islands/map.js` ' + kb(fs.statSync(path.join(ROOT, 'docs', 'www-port', 'site', 'islands', 'map.js')).size) + ' and `islands/map.css` ' + kb(fs.statSync(path.join(ROOT, 'docs', 'www-port', 'site', 'islands', 'map.css')).size) + ' (inside `app.js`), the `places` JSON the program hands the island (in the HTML), and the **program\'s own code for the detail pane**: the `For` over the 24 projects and the four trail panels are unrolled at build time (`data.items` is closed, so each row is emitted as node-building code in `app.js`). Measured once by removing the four trail panels from a copy of the program (not regenerated by this script): `app.js` 273.4 kB to 225.0 kB, so **the four trail panels are about 48 kB of the script**; the 24 project panels are most of the rest of the difference with B2a\'s 87.3 kB script (by subtraction, not by a second removal: the program does not build with the `For` over projects removed, `list-empty`).');
   md.push('');
   fs.writeFileSync(path.join(work, 'cost.md'), md.join('\n'));
   if (WRITE) { fs.writeFileSync(path.join(ROOT, 'docs', 'www-port', 'cost.md'), md.join('\n') + '\n'); }

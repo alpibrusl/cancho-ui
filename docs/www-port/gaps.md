@@ -85,6 +85,8 @@ at a path**, written out at build like `data.items`: a string as it is, a number
 `data-shape-invalid`; a name that is not declared is `data-unknown`; one argument, or a path that is not a literal, is `data-use-invalid`. It counts as a use of the file (`inspect data` says
 how many) and **adds no authority and no request**: the page has the text, `app.js` has neither the file's name nor `data.value`.
 
+*Added in B2b (2026-10-26)*: `data.value(..)` is also accepted as the value of a **prop of an island or of a component instance** (`Places { places: data.value(Ecosystem, "projects") ... }`). The map island is handed the 24 projects that way, as the text of the array: the parser took an expression as a prop only after a few names (`pressed`, `to`, ...) and now takes `data.` in any prop of a named element; the expansion writes it out like any other, so by the time anything but the parser sees it, it is a string literal (the island's `props { places: String; }` is checked against it as before). Corpus: a valid case (an open island with the prop) and a refusal (`data-unknown`, a name not declared) in `tests/islands_corpus.json`; break `parser-prop-data-value` of `scripts/breaks/www-port-map.json`.
+
 ## 4. Backticks in text from a data file are `Code`
 
 The generator wrote `` `x` `` as `<code>x</code>`. Here: **in a text that comes from a data file and is written inside inline content** (`Rich`, `Heading`, `Caption`, `Summary`, `Link`, `Strong`,
