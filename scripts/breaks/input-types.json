@@ -2,7 +2,9 @@
   "checks": [
     { "name": "cargo test input_types", "argv": ["cargo", "test", "--quiet", "-p", "cancho-ui", "--test", "input_types"] },
     { "name": "check-input-types.js", "argv": ["node", "scripts/check-input-types.js"] },
-    { "name": "check-tickets.js", "argv": ["node", "scripts/check-tickets.js"] }
+    { "name": "check-tickets.js", "argv": ["node", "scripts/check-tickets.js"] },
+    { "name": "cargo test number", "argv": ["cargo", "test", "--quiet", "-p", "cancho-ui", "--test", "number"] },
+    { "name": "check-number.js", "argv": ["node", "scripts/check-number.js"] }
   ],
   "breaks": [
     {
@@ -30,16 +32,16 @@
       "to": "    if false && !matches!(kind, IrElementKind::TextField) {\n        return Err(LowerError::ControlRefused {\n            code: \"binding-unknown\",\n            message: format!(\n                \"`type:` is a binding of TextField"
     },
     {
-      "name": "number is offered",
+      "name": "number is not offered",
       "file": "crates/cancho-ui-ir/src/controls.rs",
-      "from": "pub const INPUT_TYPES: &[&str] = &[\"text\", \"password\", \"email\", \"search\", \"tel\", \"url\"];",
-      "to": "pub const INPUT_TYPES: &[&str] = &[\"text\", \"password\", \"email\", \"search\", \"tel\", \"url\", \"number\"];"
+      "from": "pub const INPUT_TYPES: &[&str] = &[\n    \"text\", \"password\", \"email\", \"search\", \"tel\", \"url\", \"number\",\n];",
+      "to": "pub const INPUT_TYPES: &[&str] = &[\"text\", \"password\", \"email\", \"search\", \"tel\", \"url\"];"
     },
     {
       "name": "type is not a known key",
       "file": "crates/cancho-ui-ir/src/controls.rs",
-      "from": "    \"max_width\",\n    \"type\",\n];",
-      "to": "    \"max_width\",\n];"
+      "from": "    \"max_width\",\n    \"type\",\n    \"autocomplete\",",
+      "to": "    \"max_width\",\n    \"autocomplete\","
     }
   ]
 }

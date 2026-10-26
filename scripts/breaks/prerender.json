@@ -168,8 +168,8 @@
     {
       "name": "the program's text is read for tokens",
       "file": "crates/cancho-ui/src/pwa.rs",
-      "from": "format!(\"{}{}{}\", fill(head), root_block(prerender), fill(tail))",
-      "to": "fill(&format!(\"{}{}{}\", head, root_block(prerender), tail))"
+      "from": "    format!(\n        \"{}{}{}\",\n        expand(head, &tokens),\n        root_block(prerender, &measure),\n        expand(tail, &tokens)\n    )",
+      "to": "    expand(\n        &format!(\"{}{}{}\", head, root_block(prerender, &measure), tail),\n        &tokens,\n    )"
     },
     {
       "name": "a page with no content has an empty box",

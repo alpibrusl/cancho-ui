@@ -120,8 +120,8 @@
     {
       "name": "a credential is not used by a delete",
       "file": "crates/cancho-ui-ir/src/lower.rs",
-      "from": "e.path[1].as_str(),\n                            \"get\" | \"fetch\" | \"post\" | \"put\" | \"delete\"",
-      "to": "e.path[1].as_str(),\n                            \"get\" | \"fetch\" | \"post\" | \"put\""
+      "from": "e.path[1].as_str(),\n                                \"get\" | \"fetch\" | \"post\" | \"put\" | \"delete\"\n                            )\n                })",
+      "to": "e.path[1].as_str(),\n                                \"get\" | \"fetch\" | \"post\" | \"put\"\n                            )\n                })"
     },
     {
       "name": "delete is not a known call",

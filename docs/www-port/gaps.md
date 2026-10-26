@@ -175,6 +175,12 @@ These are the places where the page and cancho-ui disagree and **either could ch
   with `git show origin/main:..`): the harness reports `BAD` for them, which does not count as caught. They are in `checkbox`, `field-error`, `handler-seq`, `i18n`, `input-attrs`, `input-types`, `map`, `net-write`,
   `prerender`, `select`, `structure` (1), `structure-b2` (3), `structure-b3` (1), `textarea` and `theme` (3). One more (`data.json`, "any name is the data") became two occurrences with this PR's `data.value` and was
   fixed here by spelling the lookup of `data.value` differently.
+  **Corrected 2026-10-26 (the breaks hygiene PR, `ccr-breaks-hygiene`): all 32 are fixed**, each `from` rewritten against the source of today and the break run again, caught by a check failing on its own. Seven moved
+  because the code moved (the copy box is `recipe.rs` and `copy_button`, not `code.rs`'s three lines; `is_focusable` is one `matches!` per line; `net-write`'s list is indented one more level; the page's tokens are
+  expanded in one pass), and **three were not caught once fixed**: `number is offered` (the input type `number` exists now; the break became `number is not offered` and `check-number.js` and `cargo test number`
+  were added to its checks), `a details has no summary line` (the code it spoiled was the path of an element with no recipe, which no `Details` takes; it now spoils the live path, and `check-structure.js` G2,
+  a `Details` under an `If`, catches it) and, in the full run of `structure-b3.json`, `a gap of a Grid is left to nobody`, an **equivalent mutant**: with the edit the `index.html` and `app.js` of a program with `Grid { gap: 3 .. }` are byte-identical to the unedited build, static or in a hole, so no check can catch it; it is moved to the `equivalent` list of that file, with the measurement. The aborted regression runs of
+  `islands.json`, `islands-open.json`, `data.json`, `structure.json`, `structure-b2.json` and `structure-b3.json` were run to the end: every break is caught except that one.
 * **Gate**: `cargo fmt --all --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test --workspace` (721 passed, 0 failed), all 60 `scripts/check-*.js` and the two `--self-test` runs; once in the working tree, once in
   a fresh clone of the pushed branch (the PR body has the numbers).
 

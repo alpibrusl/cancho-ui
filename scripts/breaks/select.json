@@ -37,8 +37,8 @@
     {
       "name": "a value that is not an option selects the first option (no blank)",
       "file": "crates/cancho-ui-codegen-web/src/view.rs",
-      "from": "                    out.push_str(&format!(\"{0}{1}.value = {2};\\n\", indent, var, v));\n                }\n            }\n\n            // A checkbox",
-      "to": "                    out.push_str(&format!(\"{0}{1}.value = {2}; if ({1}.selectedIndex < 0) {{ {1}.selectedIndex = 0; }}\\n\", indent, var, v));\n                }\n            }\n\n            // A checkbox"
+      "from": "                    out.push_str(&format!(\"{0}{1}.value = {2};\\n\", indent, var, v));\n                }\n            }\n\n            // A chart:",
+      "to": "                    out.push_str(&format!(\"{0}{1}.value = {2}; if ({1}.selectedIndex < 0) {{ {1}.selectedIndex = 0; }}\\n\", indent, var, v));\n                }\n            }\n\n            // A chart:"
     },
     {
       "name": "the choice is not reported",
@@ -49,8 +49,8 @@
     {
       "name": "a Select is not focusable to the focus helper",
       "file": "crates/cancho-ui-ir/src/ir.rs",
-      "from": "            IrElementKind::Button | IrElementKind::Checkbox | IrElementKind::Select\n        ) || self.is_field()",
-      "to": "            IrElementKind::Button | IrElementKind::Checkbox\n        ) || self.is_field()"
+      "from": "                | IrElementKind::Select\n                | IrElementKind::FileField",
+      "to": "                | IrElementKind::FileField"
     },
     {
       "name": "options may hold anything",

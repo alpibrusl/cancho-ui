@@ -204,6 +204,21 @@ const SERIALISE = `(function () {
     await ctx.close();
   }
 
+  // G2. a `Details` under an `If` (the script builds the whole of it) is drawn by the script with its summary line: the disclosure is not a bare box
+  {
+    const src = 'component Page {\n    state n: Int = 0;\n    on Up { n = n + 1; }\n    view {\n        Column {\n            Button { label: "Up" on: Up }\n            If { when: n >= 0 Details { summary: "Counted" Text { "n is {n}" } } }\n        }\n    }\n}\n';
+    const b = buildText(src);
+    check('G2: the program with a Details in a hole builds', b.code === 0, b.err.slice(0, 160));
+    const ctx = await browser.newContext({ viewport: { width: 800, height: 600 }, serviceWorkers: 'block' });
+    const page = await ctx.newPage();
+    await page.goto(`${base}/${b.id}/`, { waitUntil: 'load' });
+    await page.waitForSelector('details');
+    await page.click('button');
+    const d = await page.evaluate(() => { const e = document.querySelector('details'); const s = e && e.querySelector('summary'); return { summary: s ? s.textContent : null, text: e ? e.textContent : '' }; });
+    check('G2: after the script and a click the Details built by the script has its summary line and its text', d.summary === 'Counted' && d.text.includes('n is 1'), JSON.stringify(d));
+    await ctx.close();
+  }
+
   // H. hydration (docs/prerender.md section 13): the script builds only the holes, so what a visitor did to the page before it ran is still there
   // after it, and after a render. The same scenario is measured against the earlier compiler by scripts/measure-hydration.js.
   {

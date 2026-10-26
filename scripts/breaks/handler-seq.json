@@ -45,7 +45,7 @@
     {
       "name": "a run is not replaced (the block is skipped)",
       "file": "crates/cancho-ui-ir/src/blocks.rs",
-      "from": "                out.extend(replace(body, by_name, budget, owner)?);",
+      "from": "                out.extend(replace(body, by_name, budget, owner, depth + 1)?);",
       "to": "                let _ = body;"
     },
     {
@@ -81,8 +81,8 @@
     {
       "name": "the nesting limit is off",
       "file": "crates/cancho-ui-syntax/src/parser.rs",
-      "from": "        if self.depth >= MAX_STMT_DEPTH {\n            let at = self.peek().span.start;\n            return Err(ParseError::TooDeep {\n                max: MAX_STMT_DEPTH,\n                line: at.line,\n                column: at.column,\n            });\n        }\n        self.depth += 1;\n        let mut stmts",
-      "to": "        self.depth += 1;\n        let mut stmts"
+      "from": "    fn parse_stmts(&mut self) -> Result<Vec<Stmt>, ParseError> {\n        if self.depth >= MAX_STMT_DEPTH {\n            let at = self.peek().span.start;\n            return Err(ParseError::TooDeep {\n                what: \"statements\",\n                max: MAX_STMT_DEPTH,\n                line: at.line,\n                column: at.column,\n            });\n        }\n        self.depth += 1;\n        let mut stmts",
+      "to": "    fn parse_stmts(&mut self) -> Result<Vec<Stmt>, ParseError> {\n        self.depth += 1;\n        let mut stmts"
     },
     {
       "name": "the semantic diff does not see an if statement",

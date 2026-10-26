@@ -96,8 +96,8 @@
     {
       "name": "the page writes at once and not on a tap",
       "file": "crates/cancho-ui-codegen-web/src/code.rs",
-      "from": "{var}_copy.addEventListener('click', function () {{ __cui_copy({var}_copy, {var}_pre); }});\\n",
-      "to": "__cui_copy({var}_copy, {var}_pre);\\n"
+      "from": "{var}.addEventListener('click', function () {{ __cui_copy({var}, {pre}); }});\\n",
+      "to": "__cui_copy({var}, {pre});\\n"
     },
     {
       "name": "the page reads the clipboard too",
@@ -113,15 +113,15 @@
     },
     {
       "name": "a code box cannot be scrolled by keyboard",
-      "file": "crates/cancho-ui-codegen-web/src/code.rs",
-      "from": "{var}_pre.setAttribute('tabindex', '0');\\n",
-      "to": "\\n"
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "Dom::element(\"pre\").attr(\"tabindex\", \"0\");",
+      "to": "Dom::element(\"pre\");"
     },
     {
       "name": "a height is written in px",
-      "file": "crates/cancho-ui-codegen-web/src/code.rs",
-      "from": "{var}_pre.style.maxHeight = '{h}rem';",
-      "to": "{var}_pre.style.maxHeight = '{h}px';"
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "format!(\"max-height: {h}rem;\")",
+      "to": "format!(\"max-height: {h}px;\")"
     },
     {
       "name": "the copy code is left out of the page",
