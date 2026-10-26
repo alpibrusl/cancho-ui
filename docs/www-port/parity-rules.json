@@ -149,14 +149,6 @@
    "side": "page"
   },
   {
-   "kind": "nojs",
-   "match": "^human tools, used by agents",
-   "class": "defect (open)",
-   "why": "the comparison table is drawn by script: `Table` has no prerender yet, so with JavaScript off the port has no table (the page has it in its HTML)",
-   "ref": "docs/www-port/parity.md \"open defects\" 1",
-   "side": "page"
-  },
-  {
    "kind": "text",
    "match": "^0$",
    "class": "intentional",
@@ -472,8 +464,9 @@
   {
    "kind": "width",
    "match": "human tools, used by agents built for agents",
-   "class": "defect (open)",
-   "why": "as above: the table is shown by script in the port; on the phone profile the page hides its header row",
+   "class": "intentional",
+   "why": "on a phone the page hides the header row of its comparison; the port's table keeps it",
+   "ref": "dropped.md 7",
    "side": "page"
   }
  ]

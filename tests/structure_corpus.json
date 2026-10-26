@@ -234,6 +234,34 @@
    "name": "links to files of the site",
    "view": "Link { to: \"agents.md\" \"agents.md\" } Link { to: \"assets/v.mp4\" \"The video\" } Link { to: \"assets/b.png\" \"The picture\" }",
    "html": "<div class=\"cui-col\"><a href=\"agents.md\">agents.md</a><a href=\"assets/v.mp4\">The video</a><a href=\"assets/b.png\">The picture</a></div>"
+  },
+  {
+   "name": "a table of literals is written into the page",
+   "view": "Table { label: \"Tools\" Row { Text { role: columnheader \"Q\" } Text { role: columnheader \"A\" } } Row { Text { role: rowheader \"x\" } Rich { Code { \"y\" } } } }",
+   "html": "<div class=\"cui-col\"><div aria-label=\"Tools\" class=\"cui-table-scroll\" role=\"region\" tabindex=\"0\"><table aria-label=\"Tools\" class=\"cui-table\"><tbody><tr><th role=\"columnheader\" scope=\"col\">Q</th><th role=\"columnheader\" scope=\"col\">A</th></tr><tr><td role=\"rowheader\">x</td><td><p><code>y</code></p></td></tr></tbody></table></div></div>"
+  },
+  {
+   "name": "a table with no name has a box and no region",
+   "view": "Table { Row { Text { role: columnheader \"N\" } } Row { Text { \"v\" } } }",
+   "html": "<div class=\"cui-col\"><div class=\"cui-table-scroll\" tabindex=\"0\"><table class=\"cui-table\"><tbody><tr><th role=\"columnheader\" scope=\"col\">N</th></tr><tr><td>v</td></tr></tbody></table></div></div>"
+  },
+  {
+   "name": "a table whose rows are a For is the script's, whole",
+   "view": "Table { label: \"Rows\" Row { Text { role: columnheader \"N\" } } For { over: items as: i Row { Text { i } } } }",
+   "html": "<div class=\"cui-col\"><div aria-label=\"Rows\" class=\"cui-table-scroll\" role=\"region\" tabindex=\"0\"><table aria-label=\"Rows\" class=\"cui-table\"><tbody><tr><th role=\"columnheader\" scope=\"col\">N</th></tr><tr><td>a</td></tr></tbody></table></div></div>",
+   "html_static": ""
+  },
+  {
+   "name": "a table with a cell that reads state is the script's, whole",
+   "view": "Table { Row { Text { role: columnheader \"N\" } } Row { Text { \"{n}\" } } } Text { \"kept\" }",
+   "html": "<div class=\"cui-col\"><div class=\"cui-table-scroll\" tabindex=\"0\"><table class=\"cui-table\"><tbody><tr><th role=\"columnheader\" scope=\"col\">N</th></tr><tr><td>0</td></tr></tbody></table></div><span>kept</span></div>",
+   "html_static": "<div class=\"cui-col\"><span>kept</span></div>"
+  },
+  {
+   "name": "a table whose name is read from state is the script's, whole",
+   "view": "Table { label: \"Rows \" + n Row { Text { role: columnheader \"N\" } } Row { Text { \"v\" } } } Text { \"kept\" }",
+   "html": "<div class=\"cui-col\"><div aria-label=\"Rows 0\" class=\"cui-table-scroll\" role=\"region\" tabindex=\"0\"><table aria-label=\"Rows 0\" class=\"cui-table\"><tbody><tr><th role=\"columnheader\" scope=\"col\">N</th></tr><tr><td>v</td></tr></tbody></table></div><span>kept</span></div>",
+   "html_static": "<div class=\"cui-col\"><span>kept</span></div>"
   }
  ],
  "refusals": [

@@ -73,7 +73,10 @@ const stats = (page) => page.evaluate(() => window.__cui_island_stats);
       note: document.querySelector('p[data-style="note"]').textContent,
       links: [...document.querySelectorAll('a[href]')].map((a) => a.getAttribute('href')),
       buttons: document.querySelectorAll('button').length,
+      rows: [...document.querySelectorAll('table tbody tr')].map((tr) => tr.textContent.slice(0, 20)),
+      region: (document.querySelector('.cui-table-scroll') || {}).getAttribute && document.querySelector('.cui-table-scroll').getAttribute('aria-label'),
     }));
+    check('A: a table whose rows a For over the data wrote is in the HTML with no script (1 header row and 2 rows, in a named region)', r.rows.length === 3 && r.rows[0] === 'Claim' && r.region === 'The claims, in a table', JSON.stringify(r.rows));
     check('A: the lists are in the HTML with no script: 2 bulleted, 1 numbered, 7 items', r.ul === 2 && r.ol === 1 && r.li === 7, JSON.stringify([r.ul, r.ol, r.li]));
     check('A: the items a For over the data wrote are there, each with its link', r.items.length === 2 && r.items[0].startsWith('A value is consumed exactly once. Refused as linear-value-unconsumed (19 fixtures). rule fixtures') && r.items[1].startsWith('Authority is derived, not declared: cancho authority lists what a program can reach.'), JSON.stringify(r.items));
     check('A: the backticks of the data text are <code> elements and no backtick is left', JSON.stringify(r.code) === JSON.stringify(['--output json', 'linear-value-unconsumed', 'cancho authority']) && r.items.every((t) => !t.includes('`')), JSON.stringify(r.code));

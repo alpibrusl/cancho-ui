@@ -1,0 +1,99 @@
+{
+  "checks": [
+    {
+      "name": "cargo test structure",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "structure"
+      ]
+    },
+    {
+      "name": "cargo test prerender",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "prerender"
+      ]
+    },
+    {
+      "name": "check-structure.js",
+      "argv": [
+        "node",
+        "scripts/check-structure.js"
+      ]
+    },
+    {
+      "name": "check-port.js",
+      "argv": [
+        "node",
+        "scripts/check-port.js"
+      ]
+    },
+    {
+      "name": "check-www-port.js",
+      "argv": [
+        "node",
+        "scripts/check-www-port.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "a table is not a shell",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "            | IrElementKind::Table\n            | IrElementKind::TableRow",
+      "to": "            | IrElementKind::TableRow"
+    },
+    {
+      "name": "a header cell does not say it heads a column",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "attrs.push((\"scope\", \"col\".to_string()));",
+      "to": ""
+    },
+    {
+      "name": "the box of a table cannot be focused",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "        .attr(\"class\", \"cui-table-scroll\")\n        .attr(\"tabindex\", \"0\");",
+      "to": "        .attr(\"class\", \"cui-table-scroll\");"
+    },
+    {
+      "name": "the box of a named table is not a region",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "d = d.attr(\"role\", \"region\").attr(\"aria-label\", l.clone());",
+      "to": "d = d.attr(\"aria-label\", l.clone());"
+    },
+    {
+      "name": "a hole in a table does not make it the script's",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "                children.iter().find_map(first_hole)\n            }\n            IrElementKind::Code",
+      "to": "                None\n            }\n            IrElementKind::Code"
+    },
+    {
+      "name": "a table named by state is written from its first name",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "                if accessibility.label_expr.is_some() {\n                    return Some((\n                        \"Table\".to_string(),\n                        \"its name is read from state\".to_string(),\n                    ));\n                }",
+      "to": ""
+    },
+    {
+      "name": "the rows of a written table are not walked",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "                        for (i, c) in children.iter().enumerate() {\n                            w.path.push(i);\n                            walk(w, c);\n                            w.path.pop();\n                        }\n                        w.close(\"tbody\");",
+      "to": "                        w.close(\"tbody\");"
+    },
+    {
+      "name": "a cell is a th",
+      "file": "crates/cancho-ui-ir/src/ir.rs",
+      "from": "IrElementKind::Cell => \"td\",",
+      "to": "IrElementKind::Cell => \"th\","
+    }
+  ]
+}

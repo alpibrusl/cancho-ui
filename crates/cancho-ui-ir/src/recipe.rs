@@ -51,6 +51,10 @@ fn has_shell(kind: &IrElementKind) -> bool {
             | IrElementKind::Item
             | IrElementKind::Break
             | IrElementKind::InlineCode
+            | IrElementKind::Table
+            | IrElementKind::TableRow
+            | IrElementKind::Cell
+            | IrElementKind::HeaderCell
     )
 }
 
@@ -153,6 +157,10 @@ pub fn shell(
     if let Some(label) = &accessibility.label {
         attrs.push(("aria-label", label.clone()));
     }
+    // a header cell says it heads a column (docs/presentation.md section 4)
+    if matches!(kind, IrElementKind::HeaderCell) {
+        attrs.push(("scope", "col".to_string()));
+    }
     Some(Shell {
         tag: structure::tag(kind, bindings),
         attrs,
@@ -162,6 +170,21 @@ pub fn shell(
             None
         },
     })
+}
+
+/// The box a `Table` scrolls in when it is wider than a narrow phone (docs/presentation.md section 4a): a keyboard-focusable region named like the table.
+/// `None` when the name is an expression (the box is then written by script, with the name it has at that render).
+pub fn table_scroll(accessibility: &IrAccessibility) -> Option<Dom> {
+    if accessibility.label_expr.is_some() {
+        return None;
+    }
+    let mut d = Dom::element("div")
+        .attr("class", "cui-table-scroll")
+        .attr("tabindex", "0");
+    if let Some(l) = &accessibility.label {
+        d = d.attr("role", "region").attr("aria-label", l.clone());
+    }
+    Some(d)
 }
 
 /// The tag that stands, in a recipe, for the place of a `Code`'s copy button.
@@ -405,6 +428,27 @@ fn first_hole(node: &IrViewNode) -> Option<(String, String)> {
                     )
                 })
             }
+            // a table is static when its box is, its rows are rows and its cells are literals (or what a `For` over data wrote out): any hole in it
+            // makes the whole table the script's, as a sentence is
+            IrElementKind::Table => {
+                if accessibility.label_expr.is_some() {
+                    return Some((
+                        "Table".to_string(),
+                        "its name is read from state".to_string(),
+                    ));
+                }
+                if accessibility
+                    .label
+                    .as_deref()
+                    .is_some_and(|l| !representable(l))
+                {
+                    return Some((
+                        "Table".to_string(),
+                        "text with a NUL character cannot be written in HTML".to_string(),
+                    ));
+                }
+                children.iter().find_map(first_hole)
+            }
             IrElementKind::Code => match code_text(children) {
                 Some(t) if representable(&t) => None,
                 Some(_) => Some((
@@ -500,6 +544,27 @@ fn walk(w: &mut Writer, node: &IrViewNode) {
                     } else {
                         w.out.content = true;
                         w.dom(&island::island_dom(i, bindings));
+                    }
+                    return;
+                }
+                IrElementKind::Table => {
+                    if let Some((what, why)) = first_hole(node) {
+                        w.hole(&what, &why);
+                    } else if let Some(scroll) = table_scroll(accessibility)
+                        && let Some(s) = shell(kind, accessibility, bindings)
+                    {
+                        // div.cui-table-scroll > table.cui-table > tbody > tr ..: what the script builds, from the same functions
+                        w.open(scroll.tag, &scroll.attrs);
+                        w.open(s.tag, &s.attrs);
+                        w.open("tbody", &[]);
+                        for (i, c) in children.iter().enumerate() {
+                            w.path.push(i);
+                            walk(w, c);
+                            w.path.pop();
+                        }
+                        w.close("tbody");
+                        w.close(s.tag);
+                        w.close(scroll.tag);
                     }
                     return;
                 }

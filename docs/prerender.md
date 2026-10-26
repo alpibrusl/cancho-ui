@@ -189,3 +189,11 @@ Eight demos have no static content and are not hydrated: they are 142 bytes smal
 ### Not measured
 
 A page whose script is old and whose HTML is new at once through a service worker (the offline cache is versioned by one hash over all files, so they change together; the skew check is for a server that serves them from two deploys); a long page's cost of finding the markers (one `TreeWalker` pass, not timed); Safari and Firefox; a screen reader on a page that is hydrated while it is read.
+
+## 12. `Table` (added 2026-10-26)
+
+Found by the port of the cancho-www page ([`www-port/README.md`](www-port/README.md), open defect 1): a `Table` was always a hole, so a page whose comparison is a table had none without script. **Now a `Table` is static when its box, its rows and
+its cells are**: `div.cui-table-scroll` (focusable, a named `region` when the table has a name) `> table.cui-table > tbody > tr > th[scope=col] / td`, from `recipe::table_scroll` and `recipe::shell` (the script's emitter writes the box
+and the cells from the same functions). A `For` or an `If` among the rows or the cells, a cell that reads state, or a name that is an expression makes **the whole table a hole**, as a sentence is: a table with half its rows is a wrong table.
+A table whose rows a `For` over a data file wrote out is static, because the expansion happens before (docs/data.md). **Measured** (Chromium): the corpus has 5 tables (literals, no name, a `For`, a cell that reads state, a name read from state), each equal in the page's HTML and in the script's DOM and, without script, the static part
+(`check-structure.js` G); `examples/port` has a table of the data's claims and `check-port.js` reads it with script off; the port's comparison is a table in the accessibility tree with script off (`check-www-port.js`). `scripts/breaks/table-prerender.json`: 8 breaks, each caught by a check failing on its own.
