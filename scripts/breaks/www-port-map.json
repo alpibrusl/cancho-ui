@@ -1,0 +1,129 @@
+{
+ "about": "Breaks of the map PR (B2b): each must be caught by a check that fails on its own. The checks: the port's own (parts F, G, E), the reach battery on the port's real map island, and the islands corpus.",
+ "checks": [
+  {
+   "name": "check-www-port.js",
+   "argv": [
+    "node",
+    "scripts/check-www-port.js"
+   ]
+  },
+  {
+   "name": "check-www-reach.js",
+   "argv": [
+    "node",
+    "scripts/check-www-reach.js"
+   ]
+  },
+  {
+   "name": "cargo test islands",
+   "argv": [
+    "cargo",
+    "test",
+    "--quiet",
+    "-p",
+    "cancho-ui",
+    "--test",
+    "islands"
+   ]
+  }
+ ],
+ "breaks": [
+  {
+   "name": "the Services chip chooses the libraries",
+   "file": "docs/www-port/site/home.cui",
+   "from": "on: Kind(\"service\") pressed: kind == \"service\"",
+   "to": "on: Kind(\"library\") pressed: kind == \"service\""
+  },
+  {
+   "name": "Only what exists does not say it is pressed",
+   "file": "docs/www-port/site/home.cui",
+   "from": "Button { label: \"Only what exists\" on: Only pressed: only }",
+   "to": "Button { label: \"Only what exists\" on: Only }"
+  },
+  {
+   "name": "the island is handed the kinds and not the projects",
+   "file": "docs/www-port/site/home.cui",
+   "from": "places: data.value(Ecosystem, \"projects\")",
+   "to": "places: data.value(Ecosystem, \"kinds\")"
+  },
+  {
+   "name": "the island ignores the chosen project",
+   "file": "docs/www-port/site/home.cui",
+   "from": "selected: selected kind: kind only_built: only on: Selected",
+   "to": "selected: \"cancho\" kind: kind only_built: only on: Selected"
+  },
+  {
+   "name": "the island ignores the filter",
+   "file": "docs/www-port/site/home.cui",
+   "from": "kind: kind only_built: only on: Selected",
+   "to": "kind: \"all\" only_built: only on: Selected"
+  },
+  {
+   "name": "the island ignores Only what exists",
+   "file": "docs/www-port/site/home.cui",
+   "from": "only_built: only on: Selected",
+   "to": "only_built: false on: Selected"
+  },
+  {
+   "name": "a click on a rock goes nowhere",
+   "file": "docs/www-port/site/home.cui",
+   "from": "only_built: only on: Selected text: \"map-fallback\"",
+   "to": "only_built: only text: \"map-fallback\""
+  },
+  {
+   "name": "the pane does not say what a project rests on",
+   "file": "docs/www-port/site/home.cui",
+   "from": "                                        If { when: len(json.items(p, \"rests_on\")) > 0 Item { Rich { Strong { \"Rests on\" } \": {join(map(json.items(p, \\\"rests_on\\\"), r => json.get(r, \\\"\\\", \\\"\\\")), \\\", \\\")}\" } } }\n",
+   "to": ""
+  },
+  {
+   "name": "the pane gives the kind for the stage",
+   "file": "docs/www-port/site/home.cui",
+   "from": "\": {json.get(data.value(Ecosystem, \\\"stages\\\"), json.get(p, \\\"stage\\\", \\\"\\\"), \\\"\\\")}\"",
+   "to": "\": {json.get(p, \\\"kind\\\", \\\"\\\")}\""
+  },
+  {
+   "name": "cancho shows another project's session",
+   "file": "docs/www-port/site/home.cui",
+   "from": "data.items(Demos, \"cancho.steps\") as: st",
+   "to": "data.items(Demos, \"cancho-ui.steps\") as: st"
+  },
+  {
+   "name": "a trail shows another trail's summary",
+   "file": "docs/www-port/site/home.cui",
+   "from": "Rich { \"{json.get(data.value(Demos, \\\"trail:shop-energy\\\"), \\\"summary\\\", \\\"\\\")}\" }",
+   "to": "Rich { \"{json.get(data.value(Demos, \\\"trail:late-parcels\\\"), \\\"summary\\\", \\\"\\\")}\" }"
+  },
+  {
+   "name": "a trail's charts are not said",
+   "file": "docs/www-port/site/home.cui",
+   "from": "                                    For { over: data.items(Demos, \"trail:shop-energy.steps\") as: st\n                                        Code { \"# {json.get(st, \\\"note\\\", \\\"\\\")}\\n$ {json.get(st, \\\"cmd\\\", \\\"\\\")}\\n{json.get(st, \\\"out\\\", \\\"\\\")}\" }\n                                        If { when: json.get(st, \"chart.type\", \"\") == \"histogram\" Text { \"Chart: {json.get(st, \\\"chart.title\\\", \\\"\\\")}. Count in each of {len(json.items(st, \\\"chart.counts\\\"))} equal bins: {join(json.items(st, \\\"chart.counts\\\"), \\\", \\\")}.\" } }",
+   "to": "                                    For { over: data.items(Demos, \"trail:shop-energy.steps\") as: st\n                                        Code { \"# {json.get(st, \\\"note\\\", \\\"\\\")}\\n$ {json.get(st, \\\"cmd\\\", \\\"\\\")}\\n{json.get(st, \\\"out\\\", \\\"\\\")}\" }\n                                        If { when: json.get(st, \"chart.type\", \"\") == \"histogramx\" Text { \"Chart: {json.get(st, \\\"chart.title\\\", \\\"\\\")}. Count in each of {len(json.items(st, \\\"chart.counts\\\"))} equal bins: {join(json.items(st, \\\"chart.counts\\\"), \\\", \\\")}.\" } }"
+  },
+  {
+   "name": "the count counts the designs as built",
+   "file": "docs/www-port/site/home.cui",
+   "from": "q => json.get(q, \\\"stage\\\", \\\"\\\") != \\\"design\\\"))} built",
+   "to": "q => json.get(q, \\\"stage\\\", \\\"\\\") == \\\"design\\\"))} built"
+  },
+  {
+   "name": "the list under the map has no stage",
+   "file": "docs/www-port/site/home.cui",
+   "from": "\" ({json.get(p, \\\"stage\\\", \\\"\\\")}): {json.get(p, \\\"summary\\\", \\\"\\\")}\"",
+   "to": "\": {json.get(p, \\\"summary\\\", \\\"\\\")}\""
+  },
+  {
+   "name": "the compiler says an open island is bounded",
+   "file": "crates/cancho-ui-ir/src/island.rs",
+   "from": "\"UNBOUNDED (runs plain JavaScript in the page's origin; no sandbox)\"",
+   "to": "\"bounded (runs plain JavaScript in the page's origin; no sandbox)\""
+  },
+  {
+   "name": "data.value is not read as the prop of an island",
+   "file": "crates/cancho-ui-syntax/src/parser/view.rs",
+   "from": "&& matches!(&self.peek().token, Token::Ident(s) if s == \"data\")",
+   "to": "&& matches!(&self.peek().token, Token::Ident(s) if s == \"dataa\")"
+  }
+ ]
+}

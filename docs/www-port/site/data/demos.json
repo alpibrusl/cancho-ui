@@ -1,0 +1,624 @@
+{
+  "cancho": {
+    "title": "A leaked file, refused by name",
+    "steps": [
+      {
+        "note": "It opens a file and never closes it. The compiler refuses:",
+        "cmd": "cancho check leak.cho --std",
+        "out": "leak.cho:12:9: error: `f` is still live at the end of this block; nothing consumes it\n            match open_read(c, \"/tmp/notes.txt\") {\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+      },
+      {
+        "note": "The refusal is data an agent can match on:",
+        "cmd": "cancho check leak.cho --std --output json | grep '\"rule\"'",
+        "out": "      \"rule\": \"linear-value-unconsumed\","
+      },
+      {
+        "note": "One added line fixes it, and the program may now run:",
+        "cmd": "diff leak.cho fixed.cho; cancho build fixed.cho --std -o notes && ./notes",
+        "out": "13a14\n>                 file_close(f);\nopened it, closed it"
+      },
+      {
+        "note": "What may it do? The types say:",
+        "cmd": "cancho authority fixed.cho --std",
+        "out": "performs\n    fs_read(\"/tmp\")\n    io_write\nnever touches\n    the network\n    the heap\n    the command line\n    signals\n    other programs\n    foreign code"
+      }
+    ]
+  },
+  "cancho-ui": {
+    "title": "A component that asks for the clock",
+    "steps": [
+      {
+        "note": "Delete `requires Clock;` and the compiler refuses:",
+        "cmd": "cancho-ui check clock_bad.cui; echo \"exit $?\"",
+        "out": "error[capability-missing] at clock_bad.cui:15:21: component `Clock` performs `clock.now` which requires the `Clock` capability, but `requires Clock` is not declared\nexit 1"
+      },
+      {
+        "note": "With the declaration it is accepted:",
+        "cmd": "cancho-ui check clock.cui; echo \"exit $?\"",
+        "out": "exit 0"
+      },
+      {
+        "note": "Ask what it may reach, as data:",
+        "cmd": "cancho-ui inspect effects clock.cui Clock | grep '\"capability\"'",
+        "out": "      \"capability\": \"Clock\",\n      \"capability\": \"Clock\","
+      }
+    ]
+  },
+  "trail:shop-energy": {
+    "title": "A shop's energy, passed between roles",
+    "route": [
+      "cancho-ml",
+      "cancho-stats",
+      "cancho-table",
+      "cancho-ml",
+      "cancho-tools"
+    ],
+    "summary": "A data scientist, a statistician and a data engineer pass one file between them, each with their own command line, and cancho-tools to read what they print. No glue, no new package: a tool that dislikes the file says why, by rule.",
+    "source": "A recorded run of the real tools, replayed, on synthetic data (examples/shop-energy/make_data.py): nothing here measures a real shop.",
+    "steps": [
+      {
+        "at": "cancho-ml",
+        "note": "Data scientist (ml): I take the file as it came. The tool refuses, and names the row and the rule.",
+        "cmd": "ml fit --model linear --target kwh --output kwh.ml shop.csv > refusal.json; jsonq -p /error/rule --format text refusal.json; jsonq -p /error/detail --format text refusal.json",
+        "out": "\"ml.input.non-numeric\"\n{\"row\":17,\"name\":\"kwh\",\"reason\":\"empty\"}"
+      },
+      {
+        "at": "cancho-stats",
+        "note": "Statistician (stats): What is wrong with it? Three cells are missing in the target.",
+        "cmd": "stats describe shop.csv --cols kwh > kwh.json; for k in count missing mean; do echo \"$k $(jsonq -p /data/columns/0/$k --format text kwh.json)\"; done",
+        "out": "count 117\nmissing 3\nmean 3.1095726495726494"
+      },
+      {
+        "at": "cancho-table",
+        "note": "Data engineer (table): I drop the rows with no reading, and hand the rest on. peek counts the lines: the header and 117 rows.",
+        "cmd": "table --where \"kwh != ''\" --format csv shop.csv > clean.csv; peek --count-lines --lines 1:1 clean.csv | jsonq -p /data/total_lines --format text -",
+        "out": "118"
+      },
+      {
+        "at": "cancho-stats",
+        "note": "Statistician (stats): Same question on the clean file: exact figures, with the median.",
+        "cmd": "stats describe clean.csv --cols kwh > clean.json; for k in count missing mean sd quantiles/2/value; do echo \"$k $(jsonq -p /data/columns/0/$k --format text clean.json)\"; done",
+        "out": "count 117\nmissing 0\nmean 3.1095726495726494\nsd 1.6680436575172235\nquantiles/2/value 1.86",
+        "chart": {
+          "type": "histogram",
+          "title": "kwh, the 117 clean readings: stats' exact histogram",
+          "short": "kWh of the 117 clean readings",
+          "unit": "kWh",
+          "edges": [
+            1.26,
+            1.679,
+            2.098,
+            2.517,
+            2.936,
+            3.355,
+            3.774,
+            4.1930000000000005,
+            4.612,
+            5.031000000000001,
+            5.45
+          ],
+          "counts": [
+            41,
+            23,
+            0,
+            0,
+            0,
+            0,
+            0,
+            7,
+            28,
+            18
+          ]
+        }
+      },
+      {
+        "at": "cancho-table",
+        "note": "Data engineer (table): The readings are in time order, so I hold out the last 24 rows and hand over the 93 before them. peek counts lines, the header included.",
+        "cmd": "table --select hour,outside_c,open,kwh --limit 93 --format csv clean.csv > train.csv; table --select hour,outside_c,open,kwh --from 93 --format csv clean.csv > test.csv; for f in train test; do echo \"$f $(peek --count-lines --lines 1:1 $f.csv | jsonq -p /data/total_lines --format text -) lines\"; done",
+        "out": "train 94 lines\ntest 25 lines"
+      },
+      {
+        "at": "cancho-ml",
+        "note": "Data scientist (ml): I fit on the 93 earlier rows and score on the 24 the model never saw.",
+        "cmd": "ml fit --model linear --target kwh --output kwh.ml train.csv > fit.json; ml eval --model-file kwh.ml test.csv > eval.json; ml predict --model-file kwh.ml test.csv > pred.json; for m in rmse mae r2; do echo \"$m $(jsonq -p /data/metrics/$m --format text eval.json)\"; done",
+        "out": "rmse \"0.31761987221668303\"\nmae \"0.29724702298628963\"\nr2 \"0.9705048728122235\"",
+        "chart": {
+          "type": "scatter",
+          "title": "The 24 held-out rows: predicted against actual",
+          "short": "Held-out rows: predicted vs actual",
+          "unit": "kWh",
+          "points": [
+            [
+              1.6,
+              1.688
+            ],
+            [
+              1.4,
+              1.69
+            ],
+            [
+              1.27,
+              1.703
+            ],
+            [
+              1.33,
+              1.686
+            ],
+            [
+              1.56,
+              1.7
+            ],
+            [
+              1.5,
+              1.696
+            ],
+            [
+              1.37,
+              1.709
+            ],
+            [
+              1.43,
+              1.692
+            ],
+            [
+              1.31,
+              1.705
+            ],
+            [
+              4.47,
+              4.789
+            ],
+            [
+              5.39,
+              4.947
+            ],
+            [
+              5.45,
+              4.96
+            ],
+            [
+              5.24,
+              4.943
+            ],
+            [
+              5.3,
+              4.956
+            ],
+            [
+              5.08,
+              4.939
+            ],
+            [
+              5.14,
+              4.952
+            ],
+            [
+              5.2,
+              4.966
+            ],
+            [
+              5.34,
+              4.948
+            ],
+            [
+              4.61,
+              4.816
+            ],
+            [
+              4.67,
+              4.799
+            ],
+            [
+              1.45,
+              1.711
+            ],
+            [
+              1.32,
+              1.725
+            ],
+            [
+              1.38,
+              1.707
+            ],
+            [
+              1.26,
+              1.721
+            ]
+          ]
+        }
+      },
+      {
+        "at": "cancho-tools",
+        "note": "Reviewer (jsonq, peek): Before this ships: what may each tool do, the reading tools included? The compilers proved it.",
+        "cmd": "for t in table stats ml jsonq peek; do echo \"$t $($t introspect | jsonq -p /authority/effects --format text -)\"; done",
+        "out": "table [\"args\",\"conc\",\"dir_read\",\"err_write\",\"file_read\",\"fs_read\",\"heap\",\"io_read\",\"io_write\"]\nstats [\"args\",\"dir_read\",\"err_write\",\"file_read\",\"fs_read\",\"heap\",\"io_write\"]\nml [\"args\",\"conc\",\"dir_read\",\"dir_write\",\"err_write\",\"file_read\",\"file_write\",\"fs_read\",\"heap\",\"io_read\",\"io_write\"]\njsonq [\"args\",\"dir_read\",\"err_write\",\"file_read\",\"fs_read\",\"heap\",\"io_read\",\"io_write\"]\npeek [\"args\",\"dir_read\",\"err_write\",\"file_read\",\"fs_read\",\"heap\",\"io_write\"]"
+      }
+    ]
+  },
+  "trail:late-parcels": {
+    "title": "A parcel-lateness service: data, model, deploy, drift, retrain",
+    "route": [
+      "cancho-table",
+      "cancho-stats",
+      "cancho-ml",
+      "cancho-client-gen",
+      "cancho-ml",
+      "cancho-tools"
+    ],
+    "summary": "Data and a model before deploy; the service's own traffic and next month's parcels after. Every step is a real run of a cancho tool, and the seam where cancho-client-gen refuses ml-serve's OpenAPI document is shown as it is.",
+    "source": "A recorded run of the real tools, replayed, on synthetic data (examples/late-parcels/make_data.py): nothing here measures a real courier.",
+    "steps": [
+      {
+        "at": "cancho-table",
+        "note": "Data engineer: 400 parcels from last month. Three scanner dropouts have no distance; I drop them. peek counts the lines, header included.",
+        "cmd": "table --where \"distance_km != ''\" --format csv parcels.csv > clean.csv; peek --count-lines --lines 1:1 clean.csv | jsonq -p /data/total_lines --format text -",
+        "out": "398"
+      },
+      {
+        "at": "cancho-stats",
+        "note": "Statistician: how far do parcels travel, and how many are late? (late is 0 or 1, so its mean is the late share)",
+        "cmd": "stats describe clean.csv --cols distance_km,late > desc.json; echo \"distance_km mean $(jsonq -p /data/columns/0/mean --format text desc.json)\"; echo \"late share $(jsonq -p /data/columns/1/mean --format text desc.json)\"",
+        "out": "distance_km mean 25.157178841309825\nlate share 0.28967254408060455",
+        "chart": {
+          "type": "histogram",
+          "title": "Distance of last month's 397 parcels (stats' exact histogram)",
+          "short": "Last month: distance (km)",
+          "unit": "km",
+          "edges": [
+            2.0,
+            6.63,
+            11.26,
+            15.889999999999999,
+            20.52,
+            25.15,
+            29.779999999999998,
+            34.41,
+            39.04,
+            43.669999999999995,
+            48.3
+          ],
+          "counts": [
+            35,
+            40,
+            41,
+            41,
+            43,
+            39,
+            42,
+            41,
+            41,
+            34
+          ]
+        }
+      },
+      {
+        "at": "cancho-ml",
+        "note": "Data scientist: a logistic model for lateness, scored on the fifth of the rows ml holds out.",
+        "cmd": "ml fit --model logistic --target late --split train=0.8 --seed 1 --output late.ml clean.csv > fit.json; for m in accuracy recall roc_auc; do echo \"$m $(jsonq -p /data/summary/holdout/metrics/$m --format text fit.json)\"; done",
+        "out": "accuracy \"0.9375\"\nrecall \"0.8928571428571429\"\nroc_auc \"0.9821428571428571\""
+      },
+      {
+        "at": "cancho-ml",
+        "note": "Deploy: serve the model. It answers on loopback, and /health says which model file it holds, by SHA-256.",
+        "cmd": "ml-serve --model-file late.ml --port 18900 2> serve.log &\ncurl -s localhost:18900/health | jsonq -p /model_sha256 --format text -",
+        "out": "\"1a6779d7747d271f96957ea4ee28e932c4e94dce9cd50cd894c6004c5e420cef\""
+      },
+      {
+        "at": "cancho-ml",
+        "note": "Asking it to listen on every address is refused unless a token file guards it.",
+        "cmd": "ml-serve --model-file late.ml --bind all 2>&1 | jsonq -p /error/rule --format text -",
+        "out": "\"serve.no-token\""
+      },
+      {
+        "at": "cancho-ml",
+        "note": "A parcel (42 km, 5 pm, raining) is predicted late. A distance written as text is refused, and the refusal points at the field.",
+        "cmd": "curl -s -XPOST -H 'Content-Type: application/json' -d '{\"distance_km\":42.5,\"hour\":17,\"rain\":1}' localhost:18900/predict | jsonq -p /rows/0 --format text -\ncurl -s -XPOST -H 'Content-Type: application/json' -d '{\"distance_km\":\"far\",\"hour\":9,\"rain\":0}' localhost:18900/predict > bad.json; jsonq -p /rule --format text bad.json; jsonq -p /errors/0 --format text bad.json",
+        "out": "[1,0.9975656133524182]\n\"ml.schema.mismatch\"\n{\"pointer\":\"/distance_km\",\"code\":\"type\",\"detail\":\"has the wrong type\"}"
+      },
+      {
+        "at": "cancho-client-gen",
+        "note": "Frontend: I want a typed client from the server's own OpenAPI document. The generator refuses it.",
+        "cmd": "curl -s localhost:18900/openapi.json > openapi.json; clientgen openapi.json --python -o client.py; echo \"exit $?\"",
+        "out": "clientgen: openapi.json: a schema is of no kind the model names\nexit 1"
+      },
+      {
+        "at": "cancho-ml",
+        "note": "What did the server log? A line per request, never a payload. Three more calls, then count the statuses.",
+        "cmd": "for i in 1 2 3; do curl -s -XPOST -H 'Content-Type: application/json' -d '{\"distance_km\":10,\"hour\":9,\"rain\":0}' localhost:18900/predict > /dev/null; done; tail -n +2 serve.log | tally --field 3 --delim ' ' | jsonq -p /data/top --format text -",
+        "out": "[{\"key\":\"200\",\"count\":6},{\"key\":\"422\",\"count\":1}]"
+      },
+      {
+        "at": "cancho-stats",
+        "note": "A month later. The rainy season: the parcels are not the ones the model learned from.",
+        "cmd": "for f in clean next; do stats describe $f.csv --cols distance_km,rain > $f.json; echo \"$f: distance_km mean $(jsonq -p /data/columns/0/mean --format text $f.json), rain share $(jsonq -p /data/columns/1/mean --format text $f.json)\"; done",
+        "out": "clean: distance_km mean 25.157178841309825, rain share 0.33753148614609574\nnext: distance_km mean 36.12166666666667, rain share 0.6",
+        "chart": {
+          "type": "bars",
+          "title": "Share of parcels delivered in the rain",
+          "short": "Share of parcels in the rain",
+          "labels": [
+            "last month",
+            "the new month"
+          ],
+          "values": [
+            0.33753148614609574,
+            0.6
+          ]
+        }
+      },
+      {
+        "at": "cancho-ml",
+        "note": "The labels for the new month have come in. Score the model on all 300 new parcels.",
+        "cmd": "ml eval --model-file late.ml next.csv > next_eval.json; for m in accuracy recall; do echo \"$m $(jsonq -p /data/metrics/$m --format text next_eval.json)\"; done",
+        "out": "accuracy \"0.8533333333333334\"\nrecall \"0.8097560975609757\""
+      },
+      {
+        "at": "cancho-table",
+        "note": "Retrain on last month plus the first 200 new parcels, and keep the last 100 aside to judge it.",
+        "cmd": "S=distance_km,hour,rain,late; table --select $S --limit 200 --format csv next.csv > next_train.csv; table --select $S --from 200 --format csv next.csv > next_test.csv; (cat clean.csv; tail -n +2 next_train.csv) > both.csv; for f in both next_test; do echo \"$f $(peek --count-lines --lines 1:1 $f.csv | jsonq -p /data/total_lines --format text -) lines\"; done",
+        "out": "both 598 lines\nnext_test 101 lines"
+      },
+      {
+        "at": "cancho-ml",
+        "note": "Same 100 parcels, old model against the retrained one.",
+        "cmd": "ml fit --model logistic --target late --output late2.ml both.csv > fit2.json; for m in late late2; do ml eval --model-file $m.ml next_test.csv > $m.json; echo \"$m accuracy $(jsonq -p /data/metrics/accuracy --format text $m.json) recall $(jsonq -p /data/metrics/recall --format text $m.json)\"; done",
+        "out": "late accuracy \"0.83\" recall \"0.782608695652174\"\nlate2 accuracy \"0.89\" recall \"0.855072463768116\"",
+        "chart": {
+          "type": "bars",
+          "title": "Accuracy: the old model against the retrained one",
+          "short": "Accuracy (0 to 1)",
+          "labels": [
+            "old, last month's held-out",
+            "old, the last 100 new",
+            "retrained, the last 100 new"
+          ],
+          "values": [
+            0.9375,
+            0.83,
+            0.89
+          ]
+        }
+      },
+      {
+        "at": "cancho-ml",
+        "note": "Redeploy. A reload is a restart, and /health shows the model file changed.",
+        "cmd": "ml-serve --model-file late2.ml --port 18900 2>> serve.log &\ncurl -s localhost:18900/health | jsonq -p /model_sha256 --format text -",
+        "out": "\"d6908ca813a5cf0a4f7996a285d37cf24dfbc341f78d0dedf9958bb27965ce39\""
+      },
+      {
+        "at": "cancho-tools",
+        "note": "Reviewer: what may each tool do? The compilers proved it.",
+        "cmd": "for t in ml-serve ml table stats; do echo \"$t $($t introspect | jsonq -p /authority/effects --format text -)\"; done",
+        "out": "ml-serve [\"args\",\"clock\",\"conn_accept\",\"conn_read\",\"conn_write\",\"dir_read\",\"err_write\",\"file_read\",\"fs_read\",\"heap\",\"io_write\",\"net_in\",\"poll\"]\nml [\"args\",\"conc\",\"dir_read\",\"dir_write\",\"err_write\",\"file_read\",\"file_write\",\"fs_read\",\"heap\",\"io_read\",\"io_write\"]\ntable [\"args\",\"conc\",\"dir_read\",\"err_write\",\"file_read\",\"fs_read\",\"heap\",\"io_read\",\"io_write\"]\nstats [\"args\",\"dir_read\",\"err_write\",\"file_read\",\"fs_read\",\"heap\",\"io_write\"]"
+      }
+    ]
+  },
+  "trail:model-review": {
+    "title": "Trust a model change you didn't write",
+    "route": [
+      "cancho-stats",
+      "cancho-ml",
+      "cancho-table",
+      "cancho-ml",
+      "cancho-tools"
+    ],
+    "summary": "A teammate's agent retrains a model and claims a big gain. A reviewer who never reads the training code checks the claim with run records, a join on customer ids, a clean holdout and a guarded write.",
+    "source": "A recorded run of the real tools, replayed, on synthetic data (examples/model-review/make_data.py): nothing here measures a real service.",
+    "steps": [
+      {
+        "at": "cancho-stats",
+        "note": "Reviewer: before judging a model, is the frozen holdout like the data it will be judged against? Compare the churn rate and tenure.",
+        "cmd": "for f in train holdout; do stats describe $f.csv --cols tenure_months,churned > $f.json; echo \"$f: churn rate $(jsonq -p /data/columns/1/mean --format text $f.json), mean tenure $(jsonq -p /data/columns/0/mean --format text $f.json)\"; done",
+        "out": "train: churn rate 0.59, mean tenure 30.5\nholdout: churn rate 0.53, mean tenure 30.5"
+      },
+      {
+        "at": "cancho-ml",
+        "note": "Teammate's agent: the model in production uses tenure only. I trained a forest on every feature, and tracked both runs. (The PR's claim: accuracy 0.977 against 0.758.)",
+        "cmd": "ml fit --model logistic --target churned --drop id,monthly_spend,tickets_90d --track runs --output prod/model.ml train.csv > /dev/null; ml fit --model forest --task classification --target churned --drop id --track runs --output cand.ml candidate_train.csv > /dev/null; ml runs list runs > runs.json; echo \"$(ls runs | wc -l) run records\"",
+        "out": "2 run records"
+      },
+      {
+        "at": "cancho-ml",
+        "note": "Reviewer: what do the run records say about each run?",
+        "cmd": "for i in 0 1; do echo \"$(jsonq -p /data/runs/$i/model --format text runs.json) trained on $(jsonq -p /data/runs/$i/train_rows --format text runs.json) rows, scored on $(jsonq -p /data/runs/$i/metrics_on --format text runs.json)\"; done",
+        "out": "\"logistic\" trained on 400 rows, scored on \"train\"\n\"forest\" trained on 480 rows, scored on \"train\""
+      },
+      {
+        "at": "cancho-ml",
+        "note": "Compare them: the inputs that differ, and the headline numbers. The new model had 80 more training rows, and the 0.977 is a score on training data.",
+        "cmd": "A=$(jsonq -p /data/runs/0/id --format text runs.json | tr -d '\"'); B=$(jsonq -p /data/runs/1/id --format text runs.json | tr -d '\"'); ml runs compare runs $A $B > cmp.json; echo \"training rows $(jsonq -p /data/inputs/3/a --format text cmp.json) -> $(jsonq -p /data/inputs/3/b --format text cmp.json)\"; echo \"accuracy $(jsonq -p /data/metrics/0/a --format text cmp.json) -> $(jsonq -p /data/metrics/0/b --format text cmp.json)\"",
+        "out": "training rows 400 -> 480\naccuracy \"0.7575\" -> \"0.9770833333333333\""
+      },
+      {
+        "at": "cancho-table",
+        "note": "Where did the 80 extra rows come from? A join on customer id: how many of the candidate's training customers are in the frozen holdout?",
+        "cmd": "table --query \"select count(*) as overlap from 'candidate_train.csv' as a inner join 'holdout.csv' as b on a.id = b.id\" | jsonq -p /data/rows/0/0 --format text -",
+        "out": "\"80\""
+      },
+      {
+        "at": "cancho-table",
+        "note": "So 80 of the 200 holdout customers were trained on. An anti join leaves the customers neither model has seen.",
+        "cmd": "table --query \"select b.id, b.tenure_months, b.monthly_spend, b.tickets_90d, b.churned from 'holdout.csv' as b anti join 'candidate_train.csv' as a on b.id = a.id\" --format csv > clean_holdout.csv; peek --count-lines --lines 1:1 clean_holdout.csv | jsonq -p /data/total_lines --format text -",
+        "out": "121"
+      },
+      {
+        "at": "cancho-ml",
+        "note": "Score on customers it never saw. The honest gain is smaller than the claim, but it is real.",
+        "cmd": "echo \"production, clean holdout            $(ml eval --model-file prod/model.ml clean_holdout.csv --drop id,monthly_spend,tickets_90d | jsonq -p /data/metrics/accuracy --format text -)\"; echo \"candidate, full holdout (leaked)     $(ml eval --model-file cand.ml holdout.csv --drop id | jsonq -p /data/metrics/accuracy --format text -)\"; echo \"candidate, clean holdout             $(ml eval --model-file cand.ml clean_holdout.csv --drop id | jsonq -p /data/metrics/accuracy --format text -)\"",
+        "out": "production, clean holdout            \"0.725\"\ncandidate, full holdout (leaked)     \"0.895\"\ncandidate, clean holdout             \"0.85\"",
+        "chart": {
+          "type": "bars",
+          "title": "Accuracy: the claim against what the review found",
+          "short": "Accuracy (0 to 1)",
+          "labels": [
+            "the claim (on training rows)",
+            "candidate, holdout with the leak",
+            "candidate, clean holdout",
+            "production, clean holdout"
+          ],
+          "values": [
+            0.9770833333333333,
+            0.895,
+            0.85,
+            0.725
+          ]
+        }
+      },
+      {
+        "at": "cancho-ml",
+        "note": "Teammate's agent: retrained on the training file only, tracked. Reviewer: the run record can be replayed, and the clean holdout is the test.",
+        "cmd": "ml fit --model forest --task classification --target churned --drop id --track runs --output cand2.ml train.csv > fit3.json; R=$(jsonq -p /data/run/id --format text fit3.json | tr -d '\"'); echo \"replay verifies: $(ml runs verify runs $R | jsonq -p /data/verified --format text -)\"; echo \"clean holdout accuracy $(ml eval --model-file cand2.ml clean_holdout.csv --drop id | jsonq -p /data/metrics/accuracy --format text -)\"",
+        "out": "replay verifies: true\nclean holdout accuracy \"0.8666666666666667\""
+      },
+      {
+        "at": "cancho-tools",
+        "note": "Promote it, guarded: the write only happens if production still holds the file the reviewer looked at.",
+        "cmd": "H=$(env hash --root prod model.ml --format text | cut -d' ' -f1); write --root prod --if-sha256 $H --stdin model.ml < cand2.ml > promote.json; echo \"promoted: $(jsonq -p /data/changed --format text promote.json), now $(jsonq -p /data/after_sha256 --format text promote.json)\"; echo $H > old_hash.txt",
+        "out": "promoted: true, now \"ae1cb0e81748429d3843cad44b8b4e8347a9db84ece7817d4947f0fa746d90c7\""
+      },
+      {
+        "at": "cancho-tools",
+        "note": "Another agent, which read production before this promotion, tries to promote the original, leaked candidate. The write is refused, and says what the file holds now.",
+        "cmd": "write --root prod --if-sha256 $(cat old_hash.txt) --stdin model.ml < cand.ml > stale.json; jsonq -p /error/rule --format text stale.json; jsonq -p /error/detail/actual_sha256 --format text stale.json",
+        "out": "\"precondition.hash-mismatch\"\n\"ae1cb0e81748429d3843cad44b8b4e8347a9db84ece7817d4947f0fa746d90c7\""
+      },
+      {
+        "at": "cancho-tools",
+        "note": "Reviewer: what may each tool do? The compilers proved it, and none of them reaches the network.",
+        "cmd": "for t in ml table stats write hash; do echo \"$t $(env $t introspect | jsonq -p /authority/effects --format text -)\"; done",
+        "out": "ml [\"args\",\"conc\",\"dir_read\",\"dir_write\",\"err_write\",\"file_read\",\"file_write\",\"fs_read\",\"heap\",\"io_read\",\"io_write\"]\ntable [\"args\",\"conc\",\"dir_read\",\"err_write\",\"file_read\",\"fs_read\",\"heap\",\"io_read\",\"io_write\"]\nstats [\"args\",\"dir_read\",\"err_write\",\"file_read\",\"fs_read\",\"heap\",\"io_write\"]\nwrite [\"args\",\"dir_read\",\"dir_write\",\"err_write\",\"file_read\",\"file_write\",\"fs_read\",\"heap\",\"io_read\",\"io_write\"]\nhash [\"args\",\"dir_read\",\"err_write\",\"file_read\",\"fs_read\",\"heap\",\"io_write\"]"
+      }
+    ]
+  },
+  "trail:ship-an-api": {
+    "title": "Ship an API: declare, generate a client, use it, change it, package it",
+    "route": [
+      "cancho-web",
+      "cancho-client-gen",
+      "cancho-table",
+      "cancho-stats",
+      "cancho-tools",
+      "cancho-oci",
+      "cancho-web"
+    ],
+    "summary": "One declaration is the service, its OpenAPI document and the source of a typed client. An app uses it, the data it generates is analysed, an agent changes the contract, and the service is packaged as a reproducible image. Every step is a real run of a cancho tool; the seams that do not meet are shown as they are.",
+    "source": "A recorded run of the real tools, replayed, on synthetic users (examples/ship-an-api/app.py): nothing here measures a real service. cancho-web's own users example is the service.",
+    "steps": [
+      {
+        "at": "cancho-web",
+        "note": "Build the service from its one declaration (routes, bodies, errors), and start it. The compiler is the revision cancho-web pins.",
+        "cmd": "(cd cancho-web && scripts/build.sh examples/users/users.cho ../users-v1); ./users-v1 18950 2> serve.log &  curl -s localhost:18950/health",
+        "out": "{\"ok\":true}"
+      },
+      {
+        "at": "cancho-web",
+        "note": "A bad request is refused with every error at once, each with its JSON Pointer, as problem+json.",
+        "cmd": "curl -s -XPOST -H 'Content-Type: application/json' -d '{\"name\":\"\",\"age\":151}' localhost:18950/users > refusal.json; for p in /count /errors/0 /errors/1; do jsonq -p $p --format text refusal.json; done",
+        "out": "2\n{\"pointer\":\"/name\",\"code\":\"min_length\",\"detail\":\"is too short\"}\n{\"pointer\":\"/age\",\"code\":\"maximum\",\"detail\":\"is above the maximum\"}"
+      },
+      {
+        "at": "cancho-web",
+        "note": "The OpenAPI 3.1 document comes from the same declaration, so a route cannot be served and undocumented.",
+        "cmd": "curl -s localhost:18950/openapi.json > openapi.json; jsonq -p /paths --keys --format text openapi.json",
+        "out": "\"/health\"\n\"/users\"\n\"/users/{id}\""
+      },
+      {
+        "at": "cancho-client-gen",
+        "note": "Frontend: a typed client from the server's own document. clientgen reads it, lists what it found, and writes Python.",
+        "cmd": "clientgen openapi.json --check; clientgen openapi.json --model | head -3; clientgen openapi.json --python -o client.py",
+        "out": "ok 5 operations, 4 components\nget /health -> health (0 parameters, body none, 1 responses: 200=object )\nget /users -> listUsers (2 parameters, body none, 2 responses: 200=Page 422=Problem )\npost /users -> createUser (0 parameters, body NewUser, 5 responses: 201=User 400=Problem 415=Problem 422=Problem 503=Problem )"
+      },
+      {
+        "at": "cancho-client-gen",
+        "note": "The client's annotations promise a dataclass. Does it return one? (A read-only call, so the service stays empty. An earlier build of clientgen returned a plain dict here; that is fixed in cancho-client-gen#15.)",
+        "cmd": "seek --format text 'def listUsers' client.py; python3 -c \"import client; r = client.Client('http://127.0.0.1:18950').listUsers(limit=1); print(type(r).__name__, r)\"",
+        "out": "client.py:79:    def listUsers(self, *, limit: int | None = None, offset: int | None = None) -> Page:\nPage Page(total=0, items=[])"
+      },
+      {
+        "at": "cancho-client-gen",
+        "note": "The app (a stand-in for whatever uses the service) registers 200 users through the client. Some are invalid on purpose.",
+        "cmd": "python3 app.py http://127.0.0.1:18950",
+        "out": "registered 186 of 200 attempts"
+      },
+      {
+        "at": "cancho-table",
+        "note": "What did the launch traffic get back, and which fields were refused?",
+        "cmd": "table --group status --agg count --sort status --format csv requests.csv; table --where \"status = 422\" --group field --agg count --sort -count --format csv requests.csv",
+        "out": "status,count\n201,186\n422,14\nfield,count\n/age,9\n/name,5"
+      },
+      {
+        "at": "cancho-stats",
+        "note": "What does the service hold now? Ages of the registered users, and how many are over 120. (table compares text unless a column says :int.)",
+        "cmd": "stats describe users.csv --cols age > ages.json; for k in count mean max; do echo \"$k $(jsonq -p /data/columns/0/$k --format text ages.json)\"; done; echo \"older than 120: $(table --where 'age:int > 120' --agg count --format csv users.csv | tail -1)\"",
+        "out": "count 186\nmean 49.01075268817204\nmax 128.0\nolder than 120: 4",
+        "chart": {
+          "type": "histogram",
+          "title": "Ages of the users the service holds (stats' exact histogram)",
+          "short": "Ages of the registered users",
+          "unit": "years",
+          "edges": [
+            18.0,
+            29.0,
+            40.0,
+            51.0,
+            62.0,
+            73.0,
+            84.0,
+            95.0,
+            106.0,
+            117.0,
+            128.0
+          ],
+          "counts": [
+            34,
+            35,
+            33,
+            31,
+            34,
+            15,
+            0,
+            0,
+            0,
+            4
+          ]
+        }
+      },
+      {
+        "at": "cancho-tools",
+        "note": "An agent proposes a tighter limit: no age above 120. replace edits the one line of the declaration, and refuses unless it matches exactly once.",
+        "cmd": "replace --root cancho-web --old 'schema.new_int(heap, s2, 0, 150)' --new 'schema.new_int(heap, s2, 0, 120)' --expect 1 examples/users/users.cho | jsonq -p /data/replacements --format text -",
+        "out": "1"
+      },
+      {
+        "at": "cancho-web",
+        "note": "Rebuild it as a static executable (the linker wrapper adds -static) and restart. The served document now says 120.",
+        "cmd": "(cd cancho-web && CC=static-cc scripts/build.sh examples/users/users.cho ../users-v2); ./users-v2 18950 2> serve.log &  curl -s localhost:18950/openapi.json > openapi2.json; for f in openapi openapi2; do echo \"$f: max age $(jsonq -p /components/schemas/NewUser/properties/age/maximum --format text $f.json)\"; done",
+        "out": "openapi: max age 150\nopenapi2: max age 120"
+      },
+      {
+        "at": "cancho-client-gen",
+        "note": "Does the client need regenerating? The limit lives in the server's schema.",
+        "cmd": "clientgen openapi2.json --python -o client2.py; diff client.py client2.py > /dev/null && echo 'client unchanged'",
+        "out": "client unchanged"
+      },
+      {
+        "at": "cancho-web",
+        "note": "A 130-year-old customer, who was valid yesterday.",
+        "cmd": "curl -s -XPOST -H 'Content-Type: application/json' -d '{\"name\":\"Old\",\"age\":130}' localhost:18950/users > old.json; jsonq -p /errors/0 --format text old.json",
+        "out": "{\"pointer\":\"/age\",\"code\":\"maximum\",\"detail\":\"is above the maximum\"}"
+      },
+      {
+        "at": "cancho-oci",
+        "note": "Package it. A dynamically linked program is refused by rule; the static one becomes an image, built twice into two directories: the same binary gives the same image. (Two builds of the source differ by 2 bytes, so a fresh build has a new digest.)",
+        "cmd": "mkdir -p root img0/blobs/sha256 img/blobs/sha256 img2/blobs/sha256; cp users-v1 root/users; oci-build --root root --out img0 --platform linux/amd64 --bin users:app/users; cp users-v2 root/users; oci-build --root root --out img --platform linux/amd64 --bin users:app/users; oci-build --root root --out img2 --platform linux/amd64 --bin users:app/users; diff -r img img2 && echo 'the two images are identical'",
+        "out": "refused: elf-dynamic (app/users)\nsha256:b7a58f0d56b285d248bc8781fa69f0e66ea7096e4bb1e64e7a8610c03da290fa\nsha256:b7a58f0d56b285d248bc8781fa69f0e66ea7096e4bb1e64e7a8610c03da290fa\nthe two images are identical"
+      },
+      {
+        "at": "cancho-web",
+        "note": "What may the service do? The compiler proved it.",
+        "cmd": "(cd cancho-web && cancho authority examples/users/users.cho src/*.cho build/deps/*.cho --std | awk '/provably pure/{exit}{print}' | tr -s ' \\n' ' ')",
+        "out": "performs args clock conn_accept conn_read conn_write err_write heap net_in(\"\") poll never touches the filesystem signals other programs foreign code "
+      }
+    ]
+  }
+}

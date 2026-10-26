@@ -253,16 +253,79 @@ const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e
     await ctx.close();
   }
 
+  // ---- G. the map: the open island draws, the program owns the rest -------------------------------------------------------------------------------
+  {
+    const ctx = await browser.newContext({ ...devices['Pixel 7'], viewport: { width: 1280, height: 900 }, reducedMotion: 'no-preference' });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    page.on('console', (m) => { if (m.type() === 'error') { errors.push(m.text()); } });
+    await page.goto(`${base}/`);
+    await sleep(1200);
+    const eco = JSON.parse(fs.readFileSync(path.join(SITE, 'data', 'ecosystem.json'), 'utf8'));
+    const demos = JSON.parse(fs.readFileSync(path.join(SITE, 'data', 'demos.json'), 'utf8'));
+    const host = '[role=group][data-cui-island]';
+    await page.evaluate((h) => { window.__host = document.querySelector(h); }, host);
+    const m = await page.evaluate((h) => ({ role: document.querySelector(h).getAttribute('role'), label: document.querySelector(h).getAttribute('aria-label'), describedby: document.querySelector(h).getAttribute('aria-describedby'), rocks: [...document.querySelectorAll(h + ' .rock')].map((g) => [g.getAttribute('data-id'), g.getAttribute('role'), g.getAttribute('tabindex')]), rests: document.querySelectorAll(h + ' .rests').length, legend: document.querySelectorAll(h + ' .cmap-legend span').length, park: !!document.querySelector(h + ' a.park'), names: [...document.querySelectorAll(h + ' text.name')].map((t) => t.textContent) }), host);
+    check('G: the open island is a named group with its text alternative, and draws a rock for each of the 24 projects, each a button in the tab order', m.role === 'group' && m.label.startsWith('Map of the cancho ecosystem') && m.describedby === 'map-fallback' && m.rocks.length === eco.projects.length && m.rocks.every((r) => r[1] === 'button' && r[2] === '0'), `${m.rocks.length} rocks`);
+    check('G: the four "rests on" arrows, the legend of four and the car park are drawn', m.rests === eco.projects.reduce((a, p) => a + (p.rests_on || []).length, 0) && m.legend === 4 && m.park, JSON.stringify([m.rests, m.legend, m.park]));
+    check('G: every project\'s name is on the map', eco.projects.every((p) => m.names.includes(p.name)), '');
+    const detail = () => page.evaluate(() => { const d = document.getElementById('detail'); return { text: d.innerText, h: [...d.querySelectorAll('h3')].map((h) => h.textContent) }; });
+    let d = await detail();
+    check('G: the detail pane (the program\'s, an aside) starts on cancho, with its stage, summary and the rows of the page\'s `dl`', d.h[0] === 'cancho' && d.text.includes('Stage: ' + eco.stages.built) && d.text.includes('Note: Pre-1.0.'), JSON.stringify(d.h));
+    await page.focus(`${host} .rock[data-id="cancho-web"]`);
+    await page.keyboard.press('Enter');
+    await sleep(300);
+    d = await detail();
+    const sel = await page.evaluate((h) => [...document.querySelectorAll(h + ' .rock.sel')].map((g) => g.getAttribute('data-id')), host);
+    check('G: Enter on a rock chooses it: the pane says so (with what it rests on) and the island marks it', d.h[0] === 'cancho-web' && d.text.includes('Rests on: cancho-schema') && JSON.stringify(sel) === '["cancho-web"]', JSON.stringify([d.h, sel]));
+    await page.click('#ecosystem button[aria-label="Services"]');
+    await sleep(300);
+    const services = eco.projects.filter((p) => p.kind === 'service').length;
+    const dim = await page.evaluate((h) => document.querySelectorAll(h + ' .rock.dim').length, host);
+    const pressed = await page.evaluate(() => [...document.querySelectorAll('#ecosystem [role=group] button')].filter((b) => b.getAttribute('aria-pressed') === 'true').map((b) => b.getAttribute('aria-label')));
+    check('G: a filter dims what it leaves out, takes it out of the tab order, and says which is pressed', dim === eco.projects.length - services && pressed.includes('Services') && !pressed.includes('All'), JSON.stringify([dim, pressed]));
+    await page.click('#ecosystem button[aria-label="All"]');
+    await page.click('#ecosystem button[aria-label="Only what exists"]');
+    await sleep(300);
+    const dim2 = await page.evaluate((h) => document.querySelectorAll(h + ' .rock.dim').length, host);
+    const onlyPressed = await page.getAttribute('#ecosystem button[aria-label="Only what exists"]', 'aria-pressed');
+    check('G: "Only what exists" dims the designs, and says it is pressed', dim2 === eco.projects.filter((p) => p.stage === 'design').length && onlyPressed === 'true', `${dim2} ${onlyPressed}`);
+    const listItems = await page.evaluate(() => [...document.querySelectorAll('#map-fallback li')].map((li) => li.textContent));
+    check('G: the list that is the map\'s text alternative has a line for each project with its stage and summary', listItems.length === eco.projects.length && eco.projects.every((p, i) => listItems[i].includes(`(${p.stage}): ${p.summary}`)), `${listItems.length} lines`);
+    await page.click('#ecosystem button[aria-label="Only what exists"]');
+    const trail = Object.keys(demos).find((k) => k.startsWith('trail:'));
+    await page.click(`#ecosystem button[aria-label^="Trail: "] >> nth=0`);
+    await sleep(300);
+    d = await detail();
+    const selNone = await page.evaluate((h) => document.querySelectorAll(h + ' .rock.sel').length, host);
+    check('G: a trail shows its route and summary as text, and no rock is chosen', d.text.includes(' \u2192 ') && d.text.includes(demos[trail].summary.slice(0, 30)) && selNone === 0, d.text.slice(0, 80));
+    const charts = demos[trail].steps.filter((st) => st.chart);
+    const detailText = await page.evaluate(() => document.getElementById('detail').textContent);
+    check('G: each chart of the trail\'s session is a line of text with its title (the page draws them, the port says them: dropped.md 14)', charts.length > 0 && charts.every((st) => detailText.includes('Chart: ' + st.chart.title)) && detailText.split('Chart: ').length - 1 === charts.length, `${charts.length} charts`);
+    await page.click(`${host} .rock[data-id="cancho"]`);
+    await sleep(300);
+    await page.evaluate(() => { document.querySelector('#detail details').open = true; });
+    const codes = await page.evaluate(() => [...document.querySelectorAll('#detail .cui-code')].map((c) => c.innerText));
+    check('G: the recorded session of cancho is text in a details, one code box a step, with the data file\'s commands (it is not typed out and no hiker walks: dropped.md)', codes.length === demos.cancho.steps.length && demos.cancho.steps.every((st, i) => codes[i].includes('$ ' + st.cmd.split('\n')[0].slice(0, 20))), `${codes.length} boxes`);
+    const same = await page.evaluate(() => window.__host === document.querySelector('[role=group][data-cui-island]') && window.__host.isConnected);
+    check('G: the island\'s element is the same one after all of that (its drawing was not built again)', same === true, String(same));
+    const count = await page.evaluate(() => document.querySelector('#ecosystem p[data-style="note"]').textContent);
+    check('G: the count is the data\'s: 21 built, 3 still on paper', count === `${eco.projects.filter((p) => p.stage !== 'design').length} built, ${eco.projects.filter((p) => p.stage === 'design').length} still on paper`, count);
+    check('G: no console error', errors.length === 0, errors.join(' | '));
+    await ctx.close();
+  }
+
   // ---- E. authority ---------------------------------------------------------------------------------------------------------------------------
   {
     const eff = (name) => JSON.parse(spawnSync(BIN, ['inspect', 'effects', path.join(SITE, 'home.cui'), name], { encoding: 'utf8', cwd: ROOT }).stdout);
     const home = eff('Home');
     const pane = eff('AgentFiles');
-    check('E: the page asks for the clipboard (the copy buttons) and nothing else', JSON.stringify(home.requires.map((x) => x.name)) === '["Clipboard"]' && home.reachable_effects.length === 0, JSON.stringify(home.requires.map((x) => x.name)));
+    check('E: the page asks for the clipboard (the copy buttons) and the DOM (the open map island), and nothing else', JSON.stringify(home.requires.map((x) => x.name)) === '["Clipboard","Dom"]' && home.reachable_effects.length === 0, JSON.stringify(home.requires.map((x) => x.name)));
     check('E: the pane asks for the network and nothing else', JSON.stringify(pane.requires.map((x) => x.name)) === '["Network"]', JSON.stringify(pane.requires.map((x) => x.name)));
     check('E: the data file is named by its hash', home.data[0].sha256 === '870d4eb8e3bc5a1c22bb33b9b4ae72c6192251af0c7f283eb29db32b3c65ba52' && home.data[0].file === 'data/ecosystem.json', JSON.stringify(home.data));
     const js = fs.readFileSync(path.join(out, 'app.js'), 'utf8');
-    check('E: the script holds no address of another host', !/https?:\/\/(?!www\.w3\.org)/.test(js.replace(/https:\/\/(github\.com|alpibru\.com|alpibrusl\.github\.io)[^"']*/g, '')), 'checked');
+    check('E: the script holds no address of another host (the loopback address in two demo transcripts is text of the map\'s session boxes, not an address the page contacts)', !/https?:\/\/(?!www\.w3\.org|127\.0\.0\.1:18950)/.test(js.replace(/https:\/\/(github\.com|alpibru\.com|alpibrusl\.github\.io)[^"']*/g, '')), 'checked');
   }
   await browser.close();
   server.close();

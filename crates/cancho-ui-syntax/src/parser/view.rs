@@ -711,6 +711,17 @@ impl Parser {
             // `pressed:` (docs/www-port/gaps.md): a pure `Bool` expression of the view, read at each render; what it is a binding of is
             // decided where the element is lowered (a Button), so a wrong place is `binding-unknown` and not a parse error
             "pressed" => Ok(BindingValue::Prop(self.parse_expr()?)),
+            // a prop of an island or a component instance that is a text read from a data file: `places: data.value(Ecosystem, "projects")`. It is
+            // written out at build (docs/data.md), so it is a literal by the time anything but the parser sees it
+            _ if matches!(kind, ElementKind::Named(_))
+                && matches!(&self.peek().token, Token::Ident(s) if s == "data")
+                && matches!(
+                    self.tokens.get(self.pos + 1).map(|t| &t.token),
+                    Some(Token::Dot)
+                ) =>
+            {
+                Ok(BindingValue::Prop(self.parse_expr()?))
+            }
             "to" if matches!(kind, ElementKind::NavLink) => {
                 // The path a `NavLink` points at: a `String` expression of the view, evaluated at each render
                 // (docs/routing.md section 4).

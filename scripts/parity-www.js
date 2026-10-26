@@ -3,7 +3,7 @@
 // desktop window, not a device. Not part of the gate (the reference clone is not in this repository): it needs the clone,
 //   node scripts/parity-www.js <path to a cancho-www clone> [--write]       (--write rewrites docs/www-port/parity.md)
 // It measures: the visible text of every section, every link, the outline of headings and landmarks, the anchors, the accessibility tree, and the
-// page with JavaScript off. Every difference is looked up in docs/www-port/parity-rules.json (intentional, deferred to a later PR, or a defect
+// page with JavaScript off. Every difference is looked up in docs/www-port/parity-rules.json (intentional, or a defect
 // that was found and is listed as open); a difference no rule explains is UNEXPLAINED and the script exits 1: nothing is "done" while one is.
 'use strict';
 const fs = require('fs');
@@ -104,7 +104,7 @@ const grab = () => {
       if (r.kind !== kind) { continue; }
       if (r.section && r.section !== section && r.section !== '*') { continue; }
       if (r.side && r.side !== side) { continue; }
-      if (new RegExp(r.match, 'i').test(text)) { return r; }
+      if (new RegExp(r.match, 'i').test(text)) { r.used = true; return r; }
     }
     return null;
   };
@@ -193,6 +193,8 @@ const only = (a, b) => { const m = new Map(); for (const x of b) { m.set(x, (m.g
   if (WRITE) { fs.writeFileSync(path.join(ROOT, 'docs', 'www-port', 'parity.md'), md.join('\n') + '\n'); }
   console.log(md.slice(0, 6).join('\n'));
   for (const r of report.filter((x) => x.class === 'UNEXPLAINED')) { console.log(`UNEXPLAINED ${r.kind} [${r.where}] ${r.side}: ${r.text.slice(0, 160)}`); }
+  const stale = RULES.filter((r) => !r.used);
+  if (stale.length) { console.log(`\n${stale.length} rule(s) of parity-rules.json explain no difference any more (remove them): ${stale.map((r) => `${r.kind}:${r.match}`).join(' | ')}`); }
   console.log(unexplained ? `\n${unexplained} unexplained` : '\nevery difference is classified');
   process.exit(unexplained ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
