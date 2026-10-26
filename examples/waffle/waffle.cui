@@ -1,0 +1,34 @@
+// examples/waffle/waffle.cui — the proof section of the cancho-www home page, in miniature (docs/waffle.md): three waffles of the page's own numbers
+// (704, 333 and 62 squares), a `CountUp` for each count, and the stage chips of its lists. Every square, the caption, the text alternative and the
+// table are in the page's HTML before any script; the squares are three `<path>`s, not 1,099 `<rect>`s; a square that is not counted is outlined, so
+// colour is never the only difference; the colours are tokens the theme checks at 4.5:1. Nothing is read from a file or fetched: the numbers are
+// written here (docs/waffle.md section 4 says how a data file would feed them).
+
+component Proof {
+    view {
+        Column {
+            Main {
+                id: "main"
+                Section {
+                    id: "proof"
+                    Heading { level: 1 "The compiler is being written in cancho." }
+                    Rich { CountUp { to: 697 } " of 704 conformance tests pass." }
+                    Waffle { label: "Conformance tests that pass" of: 704 counted: 697 columns: 44 rest: "known" }
+                    Rich { CountUp { to: 256 } " of 333 programs that must be refused are refused." }
+                    Waffle { label: "Programs refused with the same rule" of: 333 counted: 256 columns: 37 }
+                    Rich { CountUp { to: 62 } " named rules." }
+                    Waffle { label: "Named rules" of: 62 counted: 62 columns: 16 }
+                }
+                Section {
+                    id: "stages"
+                    Heading { level: 2 "Stages" }
+                    Rich { "cancho " Chip { tone: "accent" "built" } }
+                    Rich { "cancho-cache " Chip { tone: "warn" "alpha" } }
+                    Rich { "cancho-table " Chip { tone: "warn" "early" } }
+                    Rich { "cancho-robot " Chip { tone: "quiet" "design" } }
+                    Rich { "a service in use " Chip { tone: "good" "working" } }
+                }
+            }
+        }
+    }
+}

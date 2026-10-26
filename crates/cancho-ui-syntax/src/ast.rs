@@ -428,6 +428,10 @@ pub enum ElementKind {
     Reveal,
     /// Motion (docs/motion.md): `CountUp { to: 1380 }`, a number that counts up when it is seen.
     CountUp,
+    /// Drawing (docs/waffle.md): `Waffle { label: ".." of: 704 value: 697 columns: 44 }`, a grid of squares.
+    Waffle,
+    /// Drawing (docs/waffle.md): `Chip { tone: "good" "working" }`, a short label with a tone.
+    Chip,
     /// Inline content and code (docs/structure.md section 7): `Break`.
     Break,
     /// Inline content and code (docs/structure.md section 7): `Summary`.

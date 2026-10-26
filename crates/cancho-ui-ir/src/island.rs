@@ -92,6 +92,8 @@ const BUILT_IN: &[&str] = &[
     "Small",
     "Reveal",
     "CountUp",
+    "Waffle",
+    "Chip",
     "Break",
     "Summary",
     "Code",

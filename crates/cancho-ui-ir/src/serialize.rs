@@ -704,6 +704,8 @@ impl Serialize for IrElementKind {
             IrElementKind::Small => ser.serialize_unit_variant("IrElementKind", 32, "Small"),
             IrElementKind::Reveal => ser.serialize_unit_variant("IrElementKind", 40, "Reveal"),
             IrElementKind::CountUp => ser.serialize_unit_variant("IrElementKind", 41, "CountUp"),
+            IrElementKind::Waffle => ser.serialize_unit_variant("IrElementKind", 42, "Waffle"),
+            IrElementKind::Chip => ser.serialize_unit_variant("IrElementKind", 43, "Chip"),
             IrElementKind::Break => ser.serialize_unit_variant("IrElementKind", 33, "Break"),
             IrElementKind::Summary => ser.serialize_unit_variant("IrElementKind", 34, "Summary"),
             IrElementKind::Code => ser.serialize_unit_variant("IrElementKind", 35, "Code"),

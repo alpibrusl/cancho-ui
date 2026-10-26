@@ -734,6 +734,10 @@ pub enum IrElementKind {
     Reveal,
     /// Motion (docs/motion.md): `CountUp`, a `<span>` whose text is its final number.
     CountUp,
+    /// Drawing (docs/waffle.md): `Waffle`, a `<figure>` of squares with its caption and table.
+    Waffle,
+    /// Drawing (docs/waffle.md): `Chip`, a `<span>` with a tone.
+    Chip,
     /// Inline content and code (docs/structure.md section 7): `Break`, a `<br>` (a `Code` is a box around a `<pre>`; an `InlineCode` is a `Code` inside inline content).
     Break,
     /// Inline content and code (docs/structure.md section 7): `Summary`, a `<summary>` (a `Code` is a box around a `<pre>`; an `InlineCode` is a `Code` inside inline content).
@@ -792,6 +796,8 @@ impl IrElementKind {
             IrElementKind::Small => "small",
             IrElementKind::Reveal => "div",
             IrElementKind::CountUp => "span",
+            IrElementKind::Waffle => "figure",
+            IrElementKind::Chip => "span",
             IrElementKind::Break => "br",
             IrElementKind::Summary => "summary",
             IrElementKind::Code => "div",
@@ -843,6 +849,7 @@ impl IrElementKind {
                 | IrElementKind::Em
                 | IrElementKind::Small
                 | IrElementKind::CountUp
+                | IrElementKind::Chip
                 | IrElementKind::Summary
                 | IrElementKind::InlineCode
         )

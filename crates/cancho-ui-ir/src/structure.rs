@@ -17,6 +17,8 @@ pub const TEXT_STYLES: &[&str] = &["eyebrow", "lead", "note", "label"];
 pub const CODE_HEIGHT: (i64, i64) = (4, 100);
 /// The range of a heading's `level:`.
 pub const LEVELS: (i64, i64) = (1, 4);
+/// The `tone:` of a `Chip`: a closed set, each a text colour the theme checks against the page (`good`, `warn` on `warn_bg`, `accent`, `muted`).
+pub const CHIP_TONES: &[&str] = &["good", "warn", "accent", "quiet"];
 /// The words that do not say where a link goes (compared lower-cased, with punctuation trimmed), `link-label-generic`.
 pub const GENERIC_LABELS: &[&str] = &[
     "here",
@@ -52,6 +54,7 @@ pub fn is_structure(kind: &IrElementKind) -> bool {
             | IrElementKind::Small
             | IrElementKind::Reveal
             | IrElementKind::CountUp
+            | IrElementKind::Chip
             | IrElementKind::Break
             | IrElementKind::Summary
             | IrElementKind::Code
@@ -71,6 +74,7 @@ pub fn is_inline_container(kind: &IrElementKind) -> bool {
             | IrElementKind::Em
             | IrElementKind::Small
             | IrElementKind::CountUp
+            | IrElementKind::Chip
             | IrElementKind::Link
     )
 }
@@ -86,11 +90,16 @@ pub fn ast_is_inline_container(kind: &cancho_ui_syntax::ast::ElementKind) -> boo
 
 /// What may stand inside an inline container: `Link` not inside a `Link`.
 fn inline_child_ok(parent: &IrElementKind, child: &IrElementKind) -> bool {
+    // a chip is a short label: text and nothing else
+    if matches!(parent, IrElementKind::Chip) {
+        return false;
+    }
     match child {
         IrElementKind::Strong
         | IrElementKind::Em
         | IrElementKind::Small
         | IrElementKind::CountUp
+        | IrElementKind::Chip
         | IrElementKind::Break
         | IrElementKind::InlineCode => true,
         IrElementKind::Link => !matches!(parent, IrElementKind::Link),
@@ -105,6 +114,7 @@ fn is_inline_only(kind: &IrElementKind) -> bool {
             | IrElementKind::Em
             | IrElementKind::Small
             | IrElementKind::CountUp
+            | IrElementKind::Chip
             | IrElementKind::Break
             | IrElementKind::InlineCode
     )
@@ -145,6 +155,7 @@ fn name(kind: &IrElementKind) -> &'static str {
         IrElementKind::Small => "Small",
         IrElementKind::Reveal => "Reveal",
         IrElementKind::CountUp => "CountUp",
+        IrElementKind::Chip => "Chip",
         IrElementKind::Break => "Break",
         IrElementKind::Summary => "Summary",
         IrElementKind::Code | IrElementKind::InlineCode => "Code",
@@ -164,6 +175,7 @@ fn keys(kind: &IrElementKind) -> &'static [&'static str] {
         IrElementKind::Code => &["copy", "max_height"],
         IrElementKind::Header => &["id", "sticky"],
         IrElementKind::CountUp => &["to"],
+        IrElementKind::Chip => &["tone"],
         IrElementKind::Section
         | IrElementKind::Article
         | IrElementKind::Aside
@@ -397,6 +409,14 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
             )),
         },
         // the parser gives these an event name and nothing else; that the event exists and takes no parameters is checked with the component
+        "tone" => match string_of(b) {
+            Some(s) if CHIP_TONES.contains(&s) => Ok(true),
+            _ => Err(refuse(
+                "chip-tone-invalid",
+                format!("`tone:` is one of {} as a string literal", CHIP_TONES.join(", ")),
+                b.span,
+            )),
+        },
         "visible" | "hidden" => Ok(true),
         // a CountUp's `to:` is checked where its text is made (motion.rs)
         "to" if !matches!(kind, IrElementKind::Link) => Ok(true),
@@ -545,6 +565,26 @@ pub fn check_complete(
                 }
                 Some(_) => {}
             }
+        }
+    }
+    if matches!(kind, IrElementKind::Chip) {
+        if !has("tone") {
+            return Err(refuse(
+                "chip-tone-invalid",
+                format!(
+                    "a Chip needs `tone:`, one of {}: `Chip {{ tone: \"good\" \"working\" }}`",
+                    CHIP_TONES.join(", ")
+                ),
+                span,
+            ));
+        }
+        if text.as_deref().is_some_and(|t| t.trim().is_empty()) || children.is_empty() {
+            return Err(refuse(
+                "chip-empty",
+                "a Chip with no text says nothing, and its tone alone would be the whole message"
+                    .to_string(),
+                span,
+            ));
         }
     }
     match kind {
@@ -750,6 +790,13 @@ pub fn class(kind: &IrElementKind, bindings: &[IrBinding]) -> Option<String> {
     match kind {
         IrElementKind::Reveal => return Some("cui-reveal".to_string()),
         IrElementKind::CountUp => return Some("cui-countup".to_string()),
+        IrElementKind::Chip => {
+            return bindings
+                .iter()
+                .find(|b| b.key == "tone")
+                .and_then(string_of)
+                .map(|t| format!("cui-chip cui-chip-{t}"));
+        }
         _ => {}
     }
     if !matches!(kind, IrElementKind::Link) {
