@@ -47,6 +47,9 @@ fn magic(path: &str) -> Vec<u8> {
         "avif" => b"\0\0\0\x1cftypavif".to_vec(),
         "mp4" => b"\0\0\0\x1cftypisom".to_vec(),
         "webm" => vec![0x1a, 0x45, 0xdf, 0xa3],
+        // a file a link names (docs/www-port/gaps.md section 6): text
+        "md" | "txt" | "json" | "cast" | "csv" => return b"# a file of the site\n".to_vec(),
+        "pdf" => b"%PDF-1.4\n".to_vec(),
         other => panic!("no magic for {other}"),
     };
     b.extend_from_slice(&[0; 16]);
@@ -57,13 +60,16 @@ fn magic(path: &str) -> Vec<u8> {
 /// what its extension says.
 fn write_assets(dir: &Path) {
     let c = corpus();
-    for kind in ["ok", "big", "fake"] {
+    for kind in ["ok", "big", "fake", "binary"] {
         for f in c["assets"][kind].as_array().expect("assets") {
             let rel = f.as_str().expect("a path");
             let path = dir.join(rel);
             std::fs::create_dir_all(path.parent().expect("a directory")).expect("a directory");
             let bytes = if kind == "fake" {
                 b"<html>not a png</html>".to_vec()
+            } else if kind == "binary" {
+                // bytes, with a name that says text: a NUL is not text
+                vec![0x50, 0x00, 0x01, 0x02]
             } else {
                 magic(rel)
             };
@@ -197,6 +203,14 @@ fn every_refusal_of_the_corpus_is_refused_by_its_tag() {
         "asset-missing",
         "asset-too-large",
         "asset-type-mismatch",
+        "list-child-invalid",
+        "item-outside-list",
+        "list-empty",
+        "item-empty",
+        "list-ordered-invalid",
+        "link-file-invalid",
+        "condition-not-bool",
+        "name-unknown",
     ] {
         assert!(tags.contains(tag), "no case reaches {tag}");
     }

@@ -443,6 +443,10 @@ pub enum ElementKind {
     Waffle,
     /// Drawing (docs/waffle.md): `Chip { tone: "good" "working" }`, a short label with a tone.
     Chip,
+    /// Lists (docs/structure.md section 11): `List { ordered: true Item { .. } }`, a `<ul>` or an `<ol>`.
+    List,
+    /// Lists (docs/structure.md section 11): `Item { .. }`, a `<li>`, only inside a `List`.
+    Item,
     /// Inline content and code (docs/structure.md section 7): `Break`.
     Break,
     /// Inline content and code (docs/structure.md section 7): `Summary`.

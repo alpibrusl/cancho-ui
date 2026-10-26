@@ -597,6 +597,15 @@ pub(crate) fn emit_view_node(
                             emit_expr_runtime(expr, params)
                         ));
                     }
+                    IrBindingValue::Const { expr, .. } if b.key == "pressed" => {
+                        // a toggle button says whether it is pressed (docs/www-port/gaps.md): read at every render
+                        out.push_str(&format!(
+                            "{0}{1}.setAttribute('aria-pressed', String(!!({2})));\n",
+                            indent,
+                            var,
+                            emit_expr_runtime(expr, params)
+                        ));
+                    }
                     IrBindingValue::Const { expr, .. } if b.key == "gap" => {
                         // A step of the scale in the default stylesheet (docs/presentation.md section 2).
                         if let IrExpr::IntLit { value, .. } = **expr {

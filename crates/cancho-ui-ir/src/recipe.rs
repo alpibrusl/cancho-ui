@@ -47,6 +47,8 @@ fn has_shell(kind: &IrElementKind) -> bool {
             | IrElementKind::Reveal
             | IrElementKind::CountUp
             | IrElementKind::Chip
+            | IrElementKind::List
+            | IrElementKind::Item
             | IrElementKind::Break
             | IrElementKind::InlineCode
     )

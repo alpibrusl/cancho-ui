@@ -27,6 +27,9 @@ pub fn sniff(ext: &str, b: &[u8]) -> bool {
         }
         "mp4" => b.len() >= 12 && &b[4..8] == b"ftyp",
         "webm" => b.starts_with(&[0x1a, 0x45, 0xdf, 0xa3]),
+        "pdf" => b.starts_with(b"%PDF-"),
+        // text a person or an agent reads: UTF-8 with no NUL (a binary file renamed `.md` is not one)
+        "md" | "txt" | "json" | "cast" | "csv" => !b.contains(&0) && std::str::from_utf8(b).is_ok(),
         _ => false,
     }
 }

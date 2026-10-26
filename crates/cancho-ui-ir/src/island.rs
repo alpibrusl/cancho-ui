@@ -94,6 +94,8 @@ const BUILT_IN: &[&str] = &[
     "CountUp",
     "Waffle",
     "Chip",
+    "List",
+    "Item",
     "Break",
     "Summary",
     "Code",
@@ -783,17 +785,8 @@ fn check_instance(
                 ));
             }
             None => {
-                if island.sealed {
-                    return Err(refuse(
-                        "island-prop-dynamic",
-                        format!(
-                            "`{}:` on `{name}` is read from state; a prop of a sealed island is a literal, written where the island is used",
-                            b.key
-                        ),
-                        b.span,
-                    ));
-                }
-                // an open island's prop may be a state field of the component: the page's script gives it the value at every render
+                // a prop may be a state field of the component, of a sealed island as of an open one (docs/www-port/gaps.md section 5): the page's
+                // script gives the island the value when the state changes, and the frame of a sealed one can do nothing with it but draw
                 let field = match &b.value {
                     IrBindingValue::Const { expr, .. } => match &**expr {
                         IrExpr::Ident { name: f, .. } => ctx.state.iter().find(|(n, _)| n == f),
@@ -902,6 +895,14 @@ pub fn spec(island: &IrIsland, bindings: &[IrBinding]) -> String {
     if !island.sealed {
         v.insert("open".into(), serde_json::json!(true));
         v.insert("dynamic".into(), serde_json::json!(dynamic));
+    } else if !dynamic.is_empty() {
+        // the props the page gives the frame again when the state they read changes, and the type each must have to be sent
+        let typed: serde_json::Map<String, serde_json::Value> = dynamic
+            .iter()
+            .filter_map(|k| island.props.iter().find(|p| &p.name == k))
+            .map(|p| (p.name.clone(), serde_json::json!(p.ty.name())))
+            .collect();
+        v.insert("typed".into(), serde_json::Value::Object(typed));
     }
     serde_json::Value::Object(v).to_string()
 }

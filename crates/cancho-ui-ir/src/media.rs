@@ -17,6 +17,16 @@ pub const IMAGE_TYPES: &[(&str, &str)] = &[
     ("avif", "image/avif"),
     ("gif", "image/gif"),
 ];
+/// What a `Link { to: "a file of the site" }` may name besides pictures and videos (docs/www-port/gaps.md section 6): text and data a visitor or an agent reads.
+/// Not here: anything a browser runs or renders as a document of the site's own origin (`html`, `svg`, `xml`, `js`, `css`, `wasm`).
+pub const LINK_FILE_TYPES: &[(&str, &str)] = &[
+    ("md", "text/markdown"),
+    ("txt", "text/plain"),
+    ("json", "application/json"),
+    ("cast", "application/x-asciicast"),
+    ("csv", "text/csv"),
+    ("pdf", "application/pdf"),
+];
 /// The video formats a `Media` may name.
 pub const VIDEO_TYPES: &[(&str, &str)] = &[("mp4", "video/mp4"), ("webm", "video/webm")];
 /// The `ratio:` of an `Image` or a `Media`: a closed set, `width:height`.
@@ -176,6 +186,34 @@ pub fn asset_type(path: &str, types: &[(&str, &'static str)]) -> Result<&'static
                     .join(", ")
             )
         })
+}
+
+/// Whether a link's `to:` names a file of the site: not an address, not a `#id`, not a scheme.
+pub fn is_file_link(to: &str) -> bool {
+    if to.is_empty() || to.starts_with('#') || to.starts_with("//") {
+        return false;
+    }
+    match to.find(':') {
+        Some(i) => {
+            let head = &to[..i];
+            !(head.chars().next().is_some_and(|c| c.is_ascii_alphabetic())
+                && head
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'+' | b'.' | b'-')))
+        }
+        None => true,
+    }
+}
+
+/// `Err` says why a link's file is not one a page may name; the media type otherwise.
+pub fn link_file_type(path: &str) -> Result<&'static str, String> {
+    let types: Vec<(&str, &'static str)> = LINK_FILE_TYPES
+        .iter()
+        .chain(IMAGE_TYPES.iter())
+        .chain(VIDEO_TYPES.iter())
+        .copied()
+        .collect();
+    asset_type(path, &types)
 }
 
 /// The width and height of a ratio `"16:9"`.
@@ -762,6 +800,18 @@ pub fn assets_of(node: &IrViewNode) -> Vec<AssetUse> {
                             && let Some(s) = string_of(b)
                         {
                             push(b, s.to_string(), false);
+                        }
+                    }
+                    IrElementKind::Link => {
+                        // a link to a file of the site: the build checks it exists, hashes it and copies it (docs/www-port/gaps.md section 6)
+                        if let Some(b) = find(bindings, "to")
+                            && let Some(s) = string_of(b)
+                            && is_file_link(s)
+                        {
+                            let video = s.rsplit_once('.').is_some_and(|(_, e)| {
+                                VIDEO_TYPES.iter().any(|(x, _)| x.eq_ignore_ascii_case(e))
+                            });
+                            push(b, s.to_string(), video);
                         }
                     }
                     _ => {}

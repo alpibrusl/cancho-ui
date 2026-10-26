@@ -293,6 +293,8 @@ impl Parser {
             "CountUp" => ElementKind::CountUp,
             "Waffle" => ElementKind::Waffle,
             "Chip" => ElementKind::Chip,
+            "List" => ElementKind::List,
+            "Item" => ElementKind::Item,
             "Break" => ElementKind::Break,
             "Summary" => ElementKind::Summary,
             "Code" => ElementKind::Code,
@@ -706,6 +708,9 @@ impl Parser {
                     }),
                 }
             }
+            // `pressed:` (docs/www-port/gaps.md): a pure `Bool` expression of the view, read at each render; what it is a binding of is
+            // decided where the element is lowered (a Button), so a wrong place is `binding-unknown` and not a parse error
+            "pressed" => Ok(BindingValue::Prop(self.parse_expr()?)),
             "to" if matches!(kind, ElementKind::NavLink) => {
                 // The path a `NavLink` points at: a `String` expression of the view, evaluated at each render
                 // (docs/routing.md section 4).

@@ -173,6 +173,8 @@ fn kind(k: &IrElementKind) -> String {
         IrElementKind::CountUp => "CountUp".into(),
         IrElementKind::Waffle => "Waffle".into(),
         IrElementKind::Chip => "Chip".into(),
+        IrElementKind::List => "List".into(),
+        IrElementKind::Item => "Item".into(),
         IrElementKind::Break => "Break".into(),
         IrElementKind::Summary => "Summary".into(),
         IrElementKind::Code => "Code".into(),

@@ -202,6 +202,38 @@
    "name": "a quote, an ampersand and a bracket in an attribute",
    "view": "Image { src: \"assets/b.png\" alt: \"He said \\\"hi\\\" & <b>left</b>\" width: 2 height: 1 }",
    "html": "<div class=\"cui-col\"><picture class=\"cui-img\" style=\"max-width: 2px;\"><img alt=\"He said &quot;hi&quot; &amp; <b>left</b>\" decoding=\"async\" height=\"1\" loading=\"lazy\" src=\"assets/b.png\" width=\"2\"></img></picture></div>"
+  },
+  {
+   "name": "a list of items",
+   "view": "List { Item { \"No ambient authority\" } Item { Rich { \"Run \" Code { \"check\" } \" first\" } Link { to: \"https://github.com/alpibrusl/cancho\" \"cancho\" } } }",
+   "html": "<div class=\"cui-col\"><ul><li><span>No ambient authority</span></li><li><p>Run <code>check</code> first</p><a href=\"https://github.com/alpibrusl/cancho\">cancho</a></li></ul></div>"
+  },
+  {
+   "name": "an ordered list whose items hold blocks",
+   "view": "List { ordered: true Item { Heading { level: 3 \"Generate\" } Text { style: \"note\" \"An agent writes\" } } Item { Heading { level: 3 \"Verify\" } } }",
+   "html": "<div class=\"cui-col\"><ol><li><h3>Generate</h3><p data-style=\"note\">An agent writes</p></li><li><h3>Verify</h3></li></ol></div>"
+  },
+  {
+   "name": "a list inside an item of a list",
+   "view": "List { Item { Text { \"a\" } List { Item { Text { \"b\" } } } } }",
+   "html": "<div class=\"cui-col\"><ul><li><span>a</span><ul><li><span>b</span></li></ul></li></ul></div>"
+  },
+  {
+   "name": "a list whose items are a For is drawn by the script",
+   "view": "List { For { over: items as: i Item { Text { i } } } }",
+   "html": "<div class=\"cui-col\"><ul><li><span>a</span></li></ul></div>",
+   "html_static": ""
+  },
+  {
+   "name": "a button that says whether it is pressed",
+   "view": "Button { label: \"Up\" on: Up pressed: n > 0 } Button { label: \"Always\" on: Up pressed: true }",
+   "html": "<div class=\"cui-col\"><button aria-label=\"Up\" aria-pressed=\"false\">Up</button><button aria-label=\"Always\" aria-pressed=\"true\">Always</button></div>",
+   "html_static": ""
+  },
+  {
+   "name": "links to files of the site",
+   "view": "Link { to: \"agents.md\" \"agents.md\" } Link { to: \"assets/v.mp4\" \"The video\" } Link { to: \"assets/b.png\" \"The picture\" }",
+   "html": "<div class=\"cui-col\"><a href=\"agents.md\">agents.md</a><a href=\"assets/v.mp4\">The video</a><a href=\"assets/b.png\">The picture</a></div>"
   }
  ],
  "refusals": [
@@ -1035,6 +1067,146 @@
    "name": "an image whose path has an empty segment",
    "view": "Image { src: \"assets//a.webp\" alt: \"x\" width: 10 height: 10 }",
    "code": "image-src-invalid"
+  },
+  {
+   "name": "text directly in a list",
+   "view": "List { Text { \"a\" } }",
+   "code": "list-child-invalid"
+  },
+  {
+   "name": "a string directly in a list",
+   "view": "List { \"a\" }",
+   "code": "list-child-invalid"
+  },
+  {
+   "name": "a For of text directly in a list",
+   "view": "List { For { over: items as: i Text { i } } }",
+   "code": "list-child-invalid"
+  },
+  {
+   "name": "an element that is not an item in a list",
+   "view": "List { Item { \"a\" } Section { Text { \"b\" } } }",
+   "code": "list-child-invalid"
+  },
+  {
+   "name": "an item outside a list",
+   "view": "Item { \"a\" }",
+   "code": "item-outside-list"
+  },
+  {
+   "name": "an item in a column inside a list's item",
+   "view": "List { Item { Item { \"a\" } } }",
+   "code": "item-outside-list"
+  },
+  {
+   "name": "a list with nothing in it",
+   "view": "List { }",
+   "code": "list-empty"
+  },
+  {
+   "name": "an item with nothing in it",
+   "view": "List { Item { } }",
+   "code": "item-empty"
+  },
+  {
+   "name": "ordered is a string",
+   "view": "List { ordered: \"yes\" Item { \"a\" } }",
+   "code": "list-ordered-invalid"
+  },
+  {
+   "name": "ordered is a number",
+   "view": "List { ordered: 1 Item { \"a\" } }",
+   "code": "list-ordered-invalid"
+  },
+  {
+   "name": "an id on a list",
+   "view": "List { id: \"l\" Item { \"a\" } }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "a label on an item",
+   "view": "List { Item { label: \"x\" \"a\" } }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "a list inside inline content",
+   "view": "Rich { \"a \" List { Item { \"b\" } } }",
+   "code": "rich-child-invalid"
+  },
+  {
+   "name": "pressed on a column",
+   "view": "Column { pressed: n > 0 Text { \"x\" } }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "pressed on a link",
+   "view": "Link { to: \"https://a.example/\" pressed: true \"x\" }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "pressed that is a number",
+   "view": "Button { label: \"Up\" on: Up pressed: n }",
+   "code": "condition-not-bool"
+  },
+  {
+   "name": "pressed that is a text",
+   "view": "Button { label: \"Up\" on: Up pressed: \"yes\" }",
+   "code": "condition-not-bool"
+  },
+  {
+   "name": "pressed that reads a name that is not there",
+   "view": "Button { label: \"Up\" on: Up pressed: nowhere }",
+   "code": "name-unknown"
+  },
+  {
+   "name": "a link to a page of the site",
+   "view": "Link { to: \"page.html\" \"A page\" }",
+   "code": "link-file-invalid"
+  },
+  {
+   "name": "a link to a picture that is a vector",
+   "view": "Link { to: \"assets/a.svg\" \"A drawing\" }",
+   "code": "link-file-invalid"
+  },
+  {
+   "name": "a link to a file with no extension",
+   "view": "Link { to: \"agents\" \"agents\" }",
+   "code": "link-file-invalid"
+  },
+  {
+   "name": "a link to a file above the program",
+   "view": "Link { to: \"../agents.md\" \"agents\" }",
+   "code": "link-file-invalid"
+  },
+  {
+   "name": "a link to the root of the host",
+   "view": "Link { to: \"/agents.md\" \"agents\" }",
+   "code": "link-file-invalid"
+  },
+  {
+   "name": "a link to a file in a directory called dot",
+   "view": "Link { to: \"./agents.md\" \"agents\" }",
+   "code": "link-file-invalid"
+  },
+  {
+   "name": "a link to a file that is not there",
+   "view": "Link { to: \"missing.md\" \"A file\" }",
+   "code": "asset-missing"
+  },
+  {
+   "name": "a link to a file over the bound",
+   "view": "Link { to: \"assets/big.mp4\" \"A big video\" }",
+   "code": "asset-too-large"
+  },
+  {
+   "name": "a link to a file that is not what its name says",
+   "view": "Link { to: \"assets/fake.png\" \"A picture\" }",
+   "code": "asset-type-mismatch"
+  },
+  {
+   "name": "a link to a file that is bytes with a text name",
+   "view": "Link { to: \"bin.md\" \"A file\" }",
+   "code": "asset-type-mismatch"
   }
  ],
  "assets": {
@@ -1047,13 +1219,17 @@
    "assets/p.jpg",
    "assets/v.mp4",
    "assets/v.webm",
-   "assets/w.mp4"
+   "assets/w.mp4",
+   "agents.md"
   ],
   "big": [
    "assets/big.mp4"
   ],
   "fake": [
    "assets/fake.png"
+  ],
+  "binary": [
+   "bin.md"
   ]
  }
 }

@@ -153,6 +153,7 @@ const NEW: &[&str] = &[
     "data-shape-invalid",
     "data-too-many-rows",
     "data-expansion-too-large",
+    "data-code-unbalanced",
 ];
 const OLD: &[&str] = &[
     "link-scheme-refused",
@@ -324,6 +325,31 @@ fn the_page_has_the_elements_before_any_script_and_needs_nothing() {
         serde_json::json!(["example.org"]),
         "the hosts the data links to are listed like any link's"
     );
+}
+
+#[test]
+fn a_pair_of_backticks_in_data_text_is_a_code_and_a_value_is_its_text() {
+    let c = corpus();
+    let view = "Rich { \"{data.value(X, \\\"claim\\\")}\" } Text { \"on {json.get(data.value(X, \\\"obj\\\"), \\\"date\\\", \\\"\\\")}, {json.get(data.value(X, \\\"obj\\\"), \\\"n\\\", \\\"\\\")}\" } Text { \"{data.value(X, \\\"claim\\\")}\" }";
+    let f = program_with(&c, view, "code.json");
+    let (out, html) = page(&f);
+    let root = html
+        .split("<body>")
+        .nth(1)
+        .expect("body")
+        .split("<script")
+        .next()
+        .expect("root");
+    // in the sentence, a `Code`; in a text that is not a sentence of inline content, the backticks as they were written
+    assert!(
+        root.contains("<p>Refused as <code>linear-value-unconsumed</code> (19 fixtures), and <code>check</code> says so.</p><span>on 2026-10-15, 3</span><span>Refused as `linear-value-unconsumed` (19 fixtures), and `check` says so.</span>"),
+        "{root}"
+    );
+    let js = std::fs::read_to_string(out.join("app.js")).expect("app.js");
+    assert!(!js.contains("code.json") && !js.contains("data.value"));
+    // the value is a use of the file: `inspect data` counts it
+    let (_, o, _) = run(&["inspect", "data", p(&f)]);
+    assert!(o.contains("code.json"), "{o}");
 }
 
 #[test]

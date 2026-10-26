@@ -223,7 +223,6 @@ const TAGS: &[&str] = &[
     "island-prop-unknown",
     "island-prop-pointer-bound",
     "island-prop-bound-twice",
-    "island-prop-dynamic",
     "island-prop-missing",
     "island-event-undeclared",
     "island-event-args",

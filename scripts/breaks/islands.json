@@ -106,12 +106,6 @@
       "to": "if false && p.ty != IrIslandType::Pointer && !bound.contains(&p.name.as_str()) {"
     },
     {
-      "name": "a prop read from state is accepted",
-      "file": "crates/cancho-ui-ir/src/island.rs",
-      "from": "                if island.sealed {\n                    return Err(refuse(\n                        \"island-prop-dynamic\",",
-      "to": "                if island.sealed {\n                    if true {\n                        return Ok(());\n                    }\n                    return Err(refuse(\n                        \"island-prop-dynamic\","
-    },
-    {
       "name": "the arity of a handler is not checked",
       "file": "crates/cancho-ui-ir/src/island.rs",
       "from": "            if *params != want {",

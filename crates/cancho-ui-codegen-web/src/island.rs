@@ -77,9 +77,7 @@ pub(crate) fn dynamic_in(node: &IrViewNode, out: &mut Vec<(String, Vec<(String, 
             children,
             ..
         } => {
-            if let IrElementKind::Island(i) = kind
-                && !i.sealed
-            {
+            if let IrElementKind::Island(i) = kind {
                 let mut props = Vec::new();
                 for b in bindings {
                     if b.key != "on"
@@ -307,6 +305,22 @@ function __cui_isl_open_sync(en, vals) {
         en.listeners.slice().forEach(function (f) { try { f(en.props); } catch (x) {} });
     }
 }
+// The props a frame reads from state (docs/www-port/gaps.md section 5): a value is sent only if it has the type the island declared, and a change is
+// sent at most once in 50 ms (the latest one), so a state that moves fast is not a flood of messages.
+function __cui_isl_merge(en, vals) {
+    let changed = false;
+    for (const k in vals) {
+        const t = en.spec.typed && en.spec.typed[k];
+        if (t && !__cui_isl_ok(t, vals[k])) { __cui_isl.stats.dropped++; continue; }
+        if (JSON.stringify(en.props[k]) !== JSON.stringify(vals[k])) { en.props[k] = vals[k]; changed = true; }
+    }
+    return changed;
+}
+function __cui_isl_later(en) {
+    if (en.pending) { return; }
+    const wait = 50 - (Date.now() - (en.sentAt || 0));
+    en.pending = setTimeout(function () { en.pending = 0; en.sentAt = Date.now(); __cui_isl_post(en); }, wait > 0 ? wait : 0);
+}
 function __cui_islands_scan(root, handlers, dynamic) {
     __cui_isl.live = __cui_isl.live.filter(function (en) { return en.frame.isConnected; });
     const frames = root.querySelectorAll('[data-cui-island]');
@@ -315,7 +329,7 @@ function __cui_islands_scan(root, handlers, dynamic) {
         let en = __cui_isl.seen.get(f);
         if (en) {
             en.handlers = handlers;
-            if (en.open) { __cui_isl_open_sync(en, dynamic[en.spec.name] || {}); }
+            if (en.open) { __cui_isl_open_sync(en, dynamic[en.spec.name] || {}); } else if (__cui_isl_merge(en, dynamic[en.spec.name] || {})) { __cui_isl_later(en); }
             continue;
         }
         let spec;
@@ -328,6 +342,7 @@ function __cui_islands_scan(root, handlers, dynamic) {
             continue;
         }
         en = { frame: f, spec: spec, props: Object.assign({}, spec.props), handlers: handlers, ready: false, visible: typeof IntersectionObserver === 'undefined', window0: 0, count: 0 };
+        __cui_isl_merge(en, dynamic[spec.name] || {});
         if (spec.pointer) {
             en.props[spec.pointer] = { x: 0.5, y: 0.5 };
             __cui_isl_listen();

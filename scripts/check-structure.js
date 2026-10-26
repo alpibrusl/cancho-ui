@@ -45,6 +45,8 @@ function magic(file) {
   const head = { png: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], jpg: [0xff, 0xd8, 0xff, 0xe0], gif: [0x47, 0x49, 0x46, 0x38, 0x39, 0x61],
     webp: [0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50], avif: [0, 0, 0, 0x1c, 0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69, 0x66],
     mp4: [0, 0, 0, 0x1c, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d], webm: [0x1a, 0x45, 0xdf, 0xa3] }[ext];
+  // a file a link names (docs/www-port/gaps.md section 6) is text
+  if (!head) { return Buffer.from('# a file of the site\n'); }
   return Buffer.from([...head, ...new Array(16).fill(0)]);
 }
 for (const f of corpus.assets.ok) {
@@ -341,6 +343,7 @@ const SERIALISE = `(function () {
     fs.copyFileSync(path.join(ROOT, 'examples/theme/fonts/jetbrains-mono-latin-wght-normal.woff2'), path.join(work, 'src/fonts/jetbrains-mono-latin-wght-normal.woff2'));
     const body = fs.readFileSync(path.join(ROOT, 'examples/structure/structure.cui'), 'utf8');
     const f = path.join(work, 'src', 'themed.cui');
+    fs.copyFileSync(path.join(ROOT, 'examples/structure/agents.md'), path.join(work, 'src', 'agents.md'));
     fs.writeFileSync(f, theme + body);
     const b = build(f);
     check('D: the themed structure example builds', b.code === 0, b.err.slice(0, 160));

@@ -55,6 +55,8 @@ pub fn is_structure(kind: &IrElementKind) -> bool {
             | IrElementKind::Reveal
             | IrElementKind::CountUp
             | IrElementKind::Chip
+            | IrElementKind::List
+            | IrElementKind::Item
             | IrElementKind::Break
             | IrElementKind::Summary
             | IrElementKind::Code
@@ -156,6 +158,8 @@ fn name(kind: &IrElementKind) -> &'static str {
         IrElementKind::Reveal => "Reveal",
         IrElementKind::CountUp => "CountUp",
         IrElementKind::Chip => "Chip",
+        IrElementKind::List => "List",
+        IrElementKind::Item => "Item",
         IrElementKind::Break => "Break",
         IrElementKind::Summary => "Summary",
         IrElementKind::Code | IrElementKind::InlineCode => "Code",
@@ -176,6 +180,7 @@ fn keys(kind: &IrElementKind) -> &'static [&'static str] {
         IrElementKind::Header => &["id", "sticky"],
         IrElementKind::CountUp => &["to"],
         IrElementKind::Chip => &["tone"],
+        IrElementKind::List => &["ordered"],
         IrElementKind::Section
         | IrElementKind::Article
         | IrElementKind::Aside
@@ -332,6 +337,7 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
         "sticky",
         "visible",
         "hidden",
+        "ordered",
     ];
     let structure = is_structure(kind);
     if !structure && !(NEW.contains(&b.key.as_str())) {
@@ -367,6 +373,7 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                     "style" => "Text and Rich",
                     "copy" | "max_height" => "Code",
                     "sticky" => "Header",
+                    "ordered" => "List",
                     "visible" | "hidden" => "Section, Article, Aside and Figure",
                     _ => "the structure elements (Section, Article, Heading, ..)",
                 }
@@ -426,9 +433,19 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                 "`to:` of a Link is a string literal, or a text that a `For` over a `data` file writes out at build (docs/data.md): a text that reads state is not a link".to_string(),
                 b.span,
             )),
-            Some(s) => check_to(s)
-                .map(|()| true)
-                .map_err(|why| refuse("link-scheme-refused", why, b.span)),
+            Some(s) => {
+                check_to(s).map_err(|why| refuse("link-scheme-refused", why, b.span))?;
+                if crate::media::is_file_link(s) {
+                    crate::media::link_file_type(s).map_err(|why| {
+                        refuse(
+                            "link-file-invalid",
+                            format!("`to: \"{s}\"` is a file of this site, and {why}"),
+                            b.span,
+                        )
+                    })?;
+                }
+                Ok(true)
+            }
         },
         "style" => match string_of(b) {
             Some(s) if TEXT_STYLES.contains(&s) => Ok(true),
@@ -448,6 +465,16 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
             _ => Err(refuse(
                 "header-sticky-invalid",
                 "`sticky:` is `true` or `false`: `Header { sticky: true .. }`".to_string(),
+                b.span,
+            )),
+        },
+        "ordered" => match &b.value {
+            IrBindingValue::Const { expr, .. } if matches!(**expr, IrExpr::BoolLit { .. }) => {
+                Ok(true)
+            }
+            _ => Err(refuse(
+                "list-ordered-invalid",
+                "`ordered:` is `true` or `false`: `List { ordered: true Item { .. } }`".to_string(),
                 b.span,
             )),
         },
@@ -688,6 +715,22 @@ pub fn check_complete(
                 ));
             }
         }
+        IrElementKind::List | IrElementKind::Item => {
+            if children.is_empty() {
+                let (tag, why) = if matches!(kind, IrElementKind::List) {
+                    (
+                        "list-empty",
+                        "a List with no Item says nothing (a `For` over a data file with no rows writes none)",
+                    )
+                } else {
+                    (
+                        "item-empty",
+                        "an Item with nothing in it is an empty bullet",
+                    )
+                };
+                return Err(refuse(tag, why.to_string(), span));
+            }
+        }
         IrElementKind::Break if !children.is_empty() => {
             return Err(refuse(
                 "rich-child-invalid",
@@ -735,6 +778,7 @@ pub fn tag(kind: &IrElementKind, bindings: &[IrBinding]) -> &'static str {
             _ => "h2",
         },
         IrElementKind::Text if bindings.iter().any(|b| b.key == "style") => "p",
+        IrElementKind::List if is_ordered(bindings) => "ol",
         k => k.tag_name(),
     }
 }
@@ -807,6 +851,14 @@ pub fn class(kind: &IrElementKind, bindings: &[IrBinding]) -> Option<String> {
         .find(|b| b.key == "appearance")
         .and_then(string_of)
         .map(|a| format!("cui-link-{a}"))
+}
+
+/// Whether a `List` is written `ordered: true`: an `<ol>`.
+pub fn is_ordered(bindings: &[IrBinding]) -> bool {
+    bindings.iter().any(|b| {
+        b.key == "ordered"
+            && matches!(&b.value, IrBindingValue::Const { expr, .. } if matches!(**expr, IrExpr::BoolLit { value: true, .. }))
+    })
 }
 
 /// Whether a `Header` is written `sticky: true`.
@@ -934,6 +986,23 @@ fn walk<'a>(
                     *span,
                 ));
             }
+            if matches!(kind, IrElementKind::Item) && !matches!(parent, Some(IrElementKind::List)) {
+                return Err(refuse(
+                    "item-outside-list",
+                    "an Item is a `<li>`: it goes directly inside a `List { .. }`".to_string(),
+                    *span,
+                ));
+            }
+            if matches!(parent, Some(IrElementKind::List)) && !matches!(kind, IrElementKind::Item) {
+                return Err(refuse(
+                    "list-child-invalid",
+                    format!(
+                        "a List holds `Item`s (and a `For` or an `If` that writes them), and {} is not one",
+                        name(kind)
+                    ),
+                    *span,
+                ));
+            }
             if matches!(kind, IrElementKind::Summary)
                 && !matches!(parent, Some(IrElementKind::Details))
             {
@@ -1028,7 +1097,16 @@ fn walk<'a>(
                 walk(c, parent, w, last_level)?;
             }
         }
-        IrViewNode::Text { .. } => {}
+        IrViewNode::Text { span, .. } => {
+            if matches!(parent, Some(IrElementKind::List)) {
+                return Err(refuse(
+                    "list-child-invalid",
+                    "a List holds `Item`s: text written straight in it belongs in an `Item { .. }`"
+                        .to_string(),
+                    *span,
+                ));
+            }
+        }
     }
     Ok(())
 }
