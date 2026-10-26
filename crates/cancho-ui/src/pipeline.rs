@@ -174,6 +174,15 @@ struct ResolvedFile {
     ast: cancho_ui_syntax::ast::File,
 }
 
+/// The directory a program's files are read from: the directory of the program, which is `.` and not the empty path when the program is named by a bare
+/// file name (`cancho-ui check page.cui` in its own directory; the empty path is not a directory that can be looked at).
+pub(crate) fn program_dir(file: &Path) -> &Path {
+    match file.parent() {
+        Some(d) if !d.as_os_str().is_empty() => d,
+        _ => Path::new("."),
+    }
+}
+
 pub(crate) fn import_diag(
     code: &str,
     subject_name: String,
@@ -379,7 +388,20 @@ fn compile_inner(
     let tokens = cancho_ui_syntax::lexer::lex(&source)
         .map_err(|e| PipelineError::refused(lex_to_diag(e, file)))?;
 
-    let ast = parse(tokens).map_err(|e| PipelineError::refused(parse_to_diag(e, file)))?;
+    let mut ast = parse(tokens).map_err(|e| PipelineError::refused(parse_to_diag(e, file)))?;
+
+    // docs/data.md: the data files the program declares are read and checked, and every `For` over one is written out into the elements it stands for,
+    // before anything else looks at the program: the check, the lowering, replay, `diff` and the page all see the same elements
+    let mut loaded: Vec<crate::data::Loaded> = Vec::new();
+    let mut data_used = std::collections::BTreeMap::new();
+    if !ast.data.is_empty() || source.contains("data.items(") {
+        // a name, a path or a hash that is wrong as text is refused by the lowering, which says so with its own tag: it runs first
+        cancho_ui_ir::data::lower_decls(&ast)
+            .map_err(|e| PipelineError::refused(lower_to_diag(&e, file)))?;
+        let dir = program_dir(file);
+        loaded = crate::data::load(&ast.data, dir, file).map_err(PipelineError::Refused)?;
+        data_used = crate::data::expand(&mut ast, &loaded, file).map_err(PipelineError::Refused)?;
+    }
 
     // Tier 16: resolve the entry's imports (dependency order,
     // checked with their own file paths) and hand the entry a
@@ -411,6 +433,7 @@ fn compile_inner(
             themes: ast.themes.clone(),
             islands: ast.islands.clone(),
             pages: ast.pages.clone(),
+            data: ast.data.clone(),
             span: ast.span,
         },
     };
@@ -514,6 +537,7 @@ fn compile_inner(
         )));
     }
     let mut merged = cancho_ui_ir::merge_ir_files(&irs);
+    crate::data::record(&mut merged, &loaded, &data_used);
     // a sticky Header, a skip link and the Main it goes to: checks that need every component of the program
     cancho_ui_ir::page::check_program(&merged)
         .map_err(|e| PipelineError::refused(lower_to_diag(&e, file)))?;
@@ -521,30 +545,17 @@ fn compile_inner(
         .map_err(|e| PipelineError::refused(lower_to_diag(&e, file)))?;
     // the font files a theme declares exist and are the files it names (relative to the entry file's directory)
     if let Some(t) = &merged.theme {
-        let dir = file.parent().unwrap_or_else(|| Path::new(""));
+        let dir = program_dir(file);
         crate::theme::load_fonts(t, dir, file).map_err(PipelineError::Refused)?;
     }
     // the pictures and videos the views name exist, are the formats they say, and are hashed for `diff` (docs/structure.md section 10)
-    merged.assets = crate::assets::verify(
-        &merged,
-        file.parent().unwrap_or_else(|| Path::new("")),
-        file,
-    )
-    .map_err(PipelineError::Refused)?;
+    merged.assets =
+        crate::assets::verify(&merged, program_dir(file), file).map_err(PipelineError::Refused)?;
     // the files of the sealed islands exist, are the files the program pins, and become the documents of their frames (docs/islands.md)
-    crate::islands::load(
-        &mut merged,
-        file.parent().unwrap_or_else(|| Path::new("")),
-        file,
-    )
-    .map_err(PipelineError::Refused)?;
+    crate::islands::load(&mut merged, program_dir(file), file).map_err(PipelineError::Refused)?;
     // the files the page names (docs/page.md): read, checked, hashed; the card image's size is read from its header
-    crate::page_files::load(
-        &mut merged,
-        file.parent().unwrap_or_else(|| Path::new("")),
-        file,
-    )
-    .map_err(PipelineError::Refused)?;
+    crate::page_files::load(&mut merged, program_dir(file), file)
+        .map_err(PipelineError::Refused)?;
     Ok((merged, file.to_path_buf()))
 }
 
@@ -1803,6 +1814,7 @@ fn control_remediation(code: &str) -> String {
         "submit-event-invalid" => "Name an event of this component that takes no parameters: `submit: Apply` with `on Apply { ... }`.".to_string(),
         "disabled-not-bool" => "Write `disabled: true`, `disabled: false` or `disabled: sending` where `sending` is a `state sending: Bool`.".to_string(),
         c if c.starts_with("theme-") || c.starts_with("font-") => crate::theme::remediation(c),
+        c if c.starts_with("data-") => crate::data::remediation(c),
         c if c.starts_with("countup-") || c.starts_with("visible-") => "See docs/motion.md.".to_string(),
         c if c.starts_with("island-") => "See docs/islands.md.".to_string(),
         c if c.starts_with("page-") || c.starts_with("skip-link-") || c.starts_with("header-sticky-") => crate::page_files::remediation(c),

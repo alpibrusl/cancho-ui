@@ -81,6 +81,10 @@ impl Serialize for IrFile {
         if let Some(p) = &self.page {
             s.serialize_field("page", &crate::page::to_json(p))?;
         }
+        if !self.data.is_empty() {
+            let d: Vec<serde_json::Value> = self.data.iter().map(crate::data::describe).collect();
+            s.serialize_field("data", &d)?;
+        }
         s.end()
     }
 }

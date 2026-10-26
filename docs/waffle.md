@@ -1,6 +1,6 @@
 # Waffle, Chip, and the data a page is made from
 
-> **Status: `Waffle` and `Chip` BUILT (2026-10-26) with their measurements (section 6); data-driven sections are DECIDED, NOT BUILT (section 4).** Step 6 of [`www.md`](www.md) (5.5 and the
+> **Status: `Waffle` and `Chip` BUILT (2026-10-26) with their measurements (section 6); data-driven sections were decided here (section 4) and are BUILT in [`data.md`](data.md).** Step 6 of [`www.md`](www.md) (5.5 and the
 > data-driven lists of 5.1b). Measured against the real cancho-www page (`index.html`, `assets/site.js`, `assets/site.css`, `data/ecosystem.json`, commit `0579a80`, read-only) in
 > Chromium (Playwright, desktop Chromium on Linux; the `Pixel 7` profile is a viewport and a user agent, not a phone): `scripts/measure-waffle.js`, `scripts/measure-data.js`
 > and `scripts/check-waffle.js`.
@@ -40,7 +40,7 @@ So the squares are `<path>`s with square corners: 29 % of the bytes and 1 % of t
 * **Text alternative.** The `<svg>` is `role="img"` named `"<label>: <counted> of <of>[, <rest> known differences | not yet]"` and the figure has a `<figcaption>` and a closed `<details>` with a three-row table (counted, known differences or not yet, squares): the `Chart` contract, with the words fixed in English as `Chart`'s are.
 * **`Chip { tone: "good" "working" }`** *(decided from measurement: the page has 14 chips in prose and 4 stages; `structure.md` 6 left it to the port)*: an inline element, in a `Rich`, a `Heading` or a `Link`, holding **text and nothing else**. `tone:` is a closed set: `good`, `warn`, `accent`, `quiet`, each a colour the theme already pairs (`good` on `bg`, `warn` on `warn_bg`, `accent` on `bg`, `muted` on `bg`: 4.5:1). Its words are the message; the quiet tone also has a dashed border. A `Span { class }` is still not offered: the 14 chips are all the styled inline text of prose the page has.
 
-## 4. Data-driven sections: how the page's data gets in (DECIDED, not built)
+## 4. Data-driven sections: how the page's data gets in (DECIDED here; BUILT in [`data.md`](data.md))
 
 What is measured about the choices (`scripts/measure-data.js`, on the page's real `ecosystem.json`):
 
@@ -61,7 +61,7 @@ data Ecosystem { file: "data/ecosystem.json" sha256: ".." }
 ```
 
 * **Read at build, not fetched at run.** The compiler reads the file once (inside the program's directory, at most 1 MB, valid JSON, its SHA-256 equal to the declared one: a changed file is a changed program, as for an island), and the page's lists and numbers are **expanded at build time into static elements** (prerender, no hole), so a crawler, a reader without script and `agents.md` see the same content; **no `Network` capability and no fetch**. `authority` is unchanged (nothing is reached); `inspect effects` lists the data file with its hash and size; `diff` prints `~ data Ecosystem.sha256 ..` and the changes of the expanded view as any change, and counts them (exit 5). This is exactly what the runtime `net.get` version cannot do: it hides the file from `diff`, needs `Network`, and draws nothing before the script.
-* **What it needs, not built here**: a way to say "for each item of this list in the file" and "this field of it" that is evaluated by the compiler, not by the page (`For { over: data.items(Ecosystem, "projects") as: p .. }` and `json.get(p, "name", "")` run once, at build, over a literal list), and a replay that sees the same expanded view. It is a feature of its own (the expansion changes what `check`, `replay` and `diff` look at), so **it is a pull request of its own**, after this one.
+* **What it needed** *(built 2026-10-26; the decision above held, and what it needed is [`data.md`](data.md) 3)*: `For { over: data.items(Ecosystem, "projects") as: p .. }` and `json.get(p, "name", "")` evaluated by the compiler over the file, **before the program is checked**, so `check`, replay, `diff` and the page all see the written-out elements. Corrected in place: the note said it would change what replay looks at; it does not, because the expansion is on the syntax tree and replay receives the expanded program.
 * **What stays as it is**: `net.get("data/ecosystem.json")` for what a program wants to refresh while it runs (the map's filter, a live count), which is an own-origin read declared as `Network`, as today.
 * **Open, for the user**: whether `agents.md`, `llms.txt` and the page may then come from one file by two routes (the Python script and the compiler) without disagreeing: `www.md` 10 item 4 left it to be revisited after the page is built, and it still is.
 

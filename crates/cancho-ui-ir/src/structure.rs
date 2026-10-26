@@ -423,7 +423,7 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
         "to" => match string_of(b) {
             None => Err(refuse(
                 "link-to-invalid",
-                "`to:` of a Link is a string literal (a link built from data comes later)".to_string(),
+                "`to:` of a Link is a string literal, or a text that a `For` over a `data` file writes out at build (docs/data.md): a text that reads state is not a link".to_string(),
                 b.span,
             )),
             Some(s) => check_to(s)

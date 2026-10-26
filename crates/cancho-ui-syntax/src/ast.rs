@@ -33,6 +33,17 @@ pub struct File {
     /// `page { title: ".."; lang: ".."; .. }` (docs/page.md): the head of the document and the skip link, in source order. More than one is
     /// refused when the file is lowered (`page-duplicate`).
     pub pages: Vec<PageDecl>,
+    /// `data Name { file: ".." sha256: ".."; }` (docs/data.md): the data files the program is built from, in source order.
+    pub data: Vec<DataDecl>,
+    pub span: Span,
+}
+
+/// `data Name { file: "data/x.json" sha256: ".."; }`: a JSON file the compiler reads when it builds the page, pinned by its hash.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DataDecl {
+    pub name: String,
+    pub file: String,
+    pub sha256: String,
     pub span: Span,
 }
 

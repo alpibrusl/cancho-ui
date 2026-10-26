@@ -1,0 +1,425 @@
+{
+ "about": "docs/data.md. `valid`: a view that must check. `refusals`: a view and the rule tag that refuses it. A case has `decl` (the data declarations, default one for x.json), `view` and `state`; `{sha:name}` and `{SHA:name}` in a decl are the SHA-256 of the corpus file `name`, in lower and in upper case. `files` are written beside the program: a text, `hex` bytes, `fill`, `gen` items, `nest` levels or `huge`. Checked by crates/cancho-ui/tests/data.rs.",
+ "component": "{decl}\ncomponent C {\n    state n: Int = 0;\n    {state}\n    on Tick { n = n + 1; }\n    view { Column { {view} } }\n}\n",
+ "files": {
+  "x.json": "{\"title\": \"T\", \"items\": [{\"name\": \"alpha\", \"stage\": \"built\", \"url\": \"https://example.org/a\", \"n\": 3, \"tags\": [\"x\", \"y\"]}, {\"name\": \"beta\", \"stage\": \"alpha\", \"url\": \"https://example.org/b\", \"n\": 4, \"tags\": []}]}",
+  "empty.json": "{\"items\": []}",
+  "thousand.json": {
+   "gen": "items",
+   "count": 1000
+  },
+  "over.json": {
+   "gen": "items",
+   "count": 1001
+  },
+  "deep32.json": {
+   "nest": 31
+  },
+  "deep33.json": {
+   "nest": 33
+  },
+  "deep200.json": {
+   "nest": 200
+  },
+  "object.json": "{\"items\": {\"a\": 1}}",
+  "bad.json": "{\"items\": [}",
+  "trailing.json": "{\"items\": [1,],}",
+  "empty_file.json": "",
+  "bom.json": {
+   "hex": "efbbbf7b7d"
+  },
+  "nonutf.json": {
+   "hex": "7b2261223a2280ff227d"
+  },
+  "nan.json": "{\"a\": NaN}",
+  "bignum.json": "{\"a\": 1e999}",
+  "surrogate.json": "{\"a\": \"\\ud800\"}",
+  "ctrl.json": "{\"a\": \"x\ny\"}",
+  "dup.json": "{\"items\":[{\"name\":\"one\",\"name\":\"two\"}]}",
+  "hostile.json": "{\"items\": [{\"name\": \"<script>alert(1)</script> & \\\"q\\\" 'r'\", \"url\": \"https://example.org/?a=1&b=2\", \"stage\": \"built\"}]}",
+  "jsurl.json": "{\"items\": [{\"name\": \"x\", \"url\": \"javascript:alert(1)\"}]}",
+  "bigints.json": "{\"items\":[{\"n\": 9007199254740993, \"m\": 1e300, \"k\": -0, \"s\": 0.1}]}",
+  "weird.json": "{\"items\": [{\"n\": 0, \"stage\": \"weird\", \"big\": 2000000000, \"frac\": 4.5, \"tones\": [\"red\"]}]}",
+  "tones.json": "{\"items\":[{\"tones\":[\"good\",\"quiet\",\"warn\",\"accent\"]}]}",
+  "huge.json": {
+   "huge": 600000
+  },
+  "over1mb.json": {
+   "fill": "x",
+   "bytes": 1048577
+  },
+  "unicode.json": "{\"items\": [{\"name\": \"\u00f1and\u00fa \u2603 \ud83d\ude00 \u202e\"}]}"
+ },
+ "valid": [
+  {
+   "name": "a list of names",
+   "decl": "data X { file: \"x.json\" sha256: \"{sha:x.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "name": "a link, a chip and an If from the items",
+   "decl": "data X { file: \"x.json\" sha256: \"{sha:x.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Rich { Link { to: json.get(p, \"url\", \"\") \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } \" \" If { when: json.get(p, \"stage\", \"\") == \"built\" Chip { tone: \"accent\" \"built\" } } If { when: json.get(p, \"stage\", \"\") != \"built\" Chip { tone: \"warn\" \"{json.get(p, \\\"stage\\\", \\\"\\\")}\" } } } }",
+   "state": ""
+  },
+  {
+   "name": "a nested For over a list inside an item",
+   "decl": "data X { file: \"x.json\" sha256: \"{sha:x.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p For { over: json.items(p, \"tags\") as: t Text { \"{t}\" } } }",
+   "state": ""
+  },
+  {
+   "name": "a join with filter",
+   "decl": "data X { file: \"x.json\" sha256: \"{sha:x.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p For { over: filter(data.items(X, \"items\"), q => json.get(q, \"name\", \"\") == json.get(p, \"name\", \"\")) as: q Text { \"{json.get(q, \\\"url\\\", \\\"\\\")}\" } } }",
+   "state": ""
+  },
+  {
+   "name": "a CountUp and a Waffle from the items",
+   "decl": "data X { file: \"x.json\" sha256: \"{sha:x.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Rich { CountUp { to: num(json.get(p, \"n\", \"0\"), 0) } } Waffle { label: json.get(p, \"name\", \"\") of: num(json.get(p, \"n\", \"0\"), 0) counted: 1 columns: 2 } }",
+   "state": ""
+  },
+  {
+   "name": "a label from the items",
+   "decl": "data X { file: \"x.json\" sha256: \"{sha:x.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Button { label: json.get(p, \"name\", \"\") on: Tick } }",
+   "state": ""
+  },
+  {
+   "name": "no items",
+   "decl": "data X { file: \"empty.json\" sha256: \"{sha:empty.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "name": "exactly a thousand items",
+   "decl": "data X { file: \"thousand.json\" sha256: \"{sha:thousand.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \".\" } }",
+   "state": ""
+  },
+  {
+   "name": "a file that nests 32 deep",
+   "decl": "data X { file: \"deep32.json\" sha256: \"{sha:deep32.json}\"; }",
+   "view": "Text { \"x\" }",
+   "state": ""
+  },
+  {
+   "name": "duplicate keys: the last one, as JSON.parse reads them",
+   "decl": "data X { file: \"dup.json\" sha256: \"{sha:dup.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "name": "hostile text in names",
+   "decl": "data X { file: \"hostile.json\" sha256: \"{sha:hostile.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "name": "large and odd numbers",
+   "decl": "data X { file: \"bigints.json\" sha256: \"{sha:bigints.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"n\\\", \\\"-\\\")} {json.get(p, \\\"m\\\", \\\"-\\\")} {json.get(p, \\\"k\\\", \\\"-\\\")} {json.get(p, \\\"s\\\", \\\"-\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "name": "unicode",
+   "decl": "data X { file: \"unicode.json\" sha256: \"{sha:unicode.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "name": "a name of 600,000 characters",
+   "decl": "data X { file: \"huge.json\" sha256: \"{sha:huge.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "name": "a file that is declared and not used",
+   "decl": "data X { file: \"x.json\" sha256: \"{sha:x.json}\"; }",
+   "view": "Text { \"x\" }",
+   "state": ""
+  },
+  {
+   "name": "a For over state beside a For over data",
+   "decl": "data X { file: \"x.json\" sha256: \"{sha:x.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } } For { over: names as: n Text { \"{n}\" } }",
+   "state": "state names: List[String] = [\"a\"];"
+  },
+  {
+   "name": "a For over a literal list is left as it is",
+   "decl": "data X { file: \"x.json\" sha256: \"{sha:x.json}\"; }",
+   "view": "For { over: [\"a\", \"b\"] as: n Text { \"{n}\" } }",
+   "state": ""
+  }
+ ],
+ "refusals": [
+  {
+   "tag": "data-duplicate",
+   "name": "one name twice",
+   "decl": "data X { file: \"x.json\" sha256: \"{sha:x.json}\"; }\ndata X { file: \"empty.json\" sha256: \"{sha:empty.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-path-invalid",
+   "name": "a path with ..",
+   "decl": "data X { file: \"../x.json\" sha256: \"{sha:x.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-path-invalid",
+   "name": "a path that is not json",
+   "decl": "data X { file: \"x.txt\" sha256: \"{sha:x.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-path-invalid",
+   "name": "an absolute path",
+   "decl": "data X { file: \"/x.json\" sha256: \"{sha:x.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-path-invalid",
+   "name": "an address",
+   "decl": "data X { file: \"https://example.org/x.json\" sha256: \"{sha:x.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-hash-invalid",
+   "name": "a hash that is short",
+   "decl": "data X { file: \"x.json\" sha256: \"abc\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-hash-invalid",
+   "name": "a hash in capitals",
+   "decl": "data X { file: \"x.json\" sha256: \"{SHA:x.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-file-missing",
+   "name": "a file that is not there",
+   "decl": "data X { file: \"nowhere.json\" sha256: \"0000000000000000000000000000000000000000000000000000000000000000\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-hash-mismatch",
+   "name": "a hash that is not the file's",
+   "decl": "data X { file: \"x.json\" sha256: \"1111111111111111111111111111111111111111111111111111111111111111\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-hash-mismatch",
+   "name": "a hash of another file",
+   "decl": "data X { file: \"x.json\" sha256: \"{sha:empty.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-malformed",
+   "name": "an unclosed array",
+   "decl": "data X { file: \"bad.json\" sha256: \"{sha:bad.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-malformed",
+   "name": "a trailing comma",
+   "decl": "data X { file: \"trailing.json\" sha256: \"{sha:trailing.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-malformed",
+   "name": "an empty file",
+   "decl": "data X { file: \"empty_file.json\" sha256: \"{sha:empty_file.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-malformed",
+   "name": "a byte order mark",
+   "decl": "data X { file: \"bom.json\" sha256: \"{sha:bom.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-malformed",
+   "name": "bytes that are not UTF-8",
+   "decl": "data X { file: \"nonutf.json\" sha256: \"{sha:nonutf.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-malformed",
+   "name": "NaN",
+   "decl": "data X { file: \"nan.json\" sha256: \"{sha:nan.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-malformed",
+   "name": "a number out of range",
+   "decl": "data X { file: \"bignum.json\" sha256: \"{sha:bignum.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-malformed",
+   "name": "a lone surrogate",
+   "decl": "data X { file: \"surrogate.json\" sha256: \"{sha:surrogate.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-malformed",
+   "name": "a raw line break in a string",
+   "decl": "data X { file: \"ctrl.json\" sha256: \"{sha:ctrl.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-too-deep",
+   "name": "33 levels",
+   "decl": "data X { file: \"deep33.json\" sha256: \"{sha:deep33.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-too-deep",
+   "name": "200 levels",
+   "decl": "data X { file: \"deep200.json\" sha256: \"{sha:deep200.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-too-large",
+   "name": "over a megabyte",
+   "decl": "data X { file: \"over1mb.json\" sha256: \"{sha:over1mb.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-unknown",
+   "name": "a name that is not declared",
+   "decl": "data X { file: \"x.json\" sha256: \"{sha:x.json}\"; }",
+   "view": "For { over: data.items(Nope, \"items\") as: p Text { \"x\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-unknown",
+   "name": "no declaration at all",
+   "decl": " ",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"x\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-use-invalid",
+   "name": "one argument",
+   "decl": "data X { file: \"x.json\" sha256: \"{sha:x.json}\"; }",
+   "view": "For { over: data.items(X) as: p Text { \"x\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-use-invalid",
+   "name": "a path that is not a literal",
+   "decl": "data X { file: \"x.json\" sha256: \"{sha:x.json}\"; }",
+   "view": "For { over: data.items(X, n) as: p Text { \"x\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-use-invalid",
+   "name": "a function that data does not have",
+   "decl": "data X { file: \"x.json\" sha256: \"{sha:x.json}\"; }",
+   "view": "For { over: data.rows(X, \"items\") as: p Text { \"x\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-use-invalid",
+   "name": "the name as text",
+   "decl": "data X { file: \"x.json\" sha256: \"{sha:x.json}\"; }",
+   "view": "For { over: data.items(\"X\", \"items\") as: p Text { \"x\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-shape-invalid",
+   "name": "an object, not an array",
+   "decl": "data X { file: \"object.json\" sha256: \"{sha:object.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \"{json.get(p, \\\"name\\\", \\\"\\\")}\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-shape-invalid",
+   "name": "a path that is not there",
+   "decl": "data X { file: \"x.json\" sha256: \"{sha:x.json}\"; }",
+   "view": "For { over: data.items(X, \"nowhere\") as: p Text { \"x\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-shape-invalid",
+   "name": "a path that is a string",
+   "decl": "data X { file: \"x.json\" sha256: \"{sha:x.json}\"; }",
+   "view": "For { over: data.items(X, \"title\") as: p Text { \"x\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-too-many-rows",
+   "name": "1001 items",
+   "decl": "data X { file: \"over.json\" sha256: \"{sha:over.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Text { \".\" } }",
+   "state": ""
+  },
+  {
+   "tag": "data-expansion-too-large",
+   "name": "a thousand times a thousand",
+   "decl": "data X { file: \"thousand.json\" sha256: \"{sha:thousand.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p For { over: data.items(X, \"items\") as: q Text { \".\" } } }",
+   "state": ""
+  },
+  {
+   "tag": "link-scheme-refused",
+   "name": "a javascript: address in the data",
+   "decl": "data X { file: \"jsurl.json\" sha256: \"{sha:jsurl.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Link { to: json.get(p, \"url\", \"\") \"x\" } }",
+   "state": ""
+  },
+  {
+   "tag": "link-to-invalid",
+   "name": "a link built from state",
+   "decl": "data X { file: \"x.json\" sha256: \"{sha:x.json}\"; }",
+   "view": "Link { to: name_state \"x\" }",
+   "state": "state name_state: String = \"a\";"
+  },
+  {
+   "tag": "waffle-of-invalid",
+   "name": "a size of 0 in the data",
+   "decl": "data X { file: \"weird.json\" sha256: \"{sha:weird.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Waffle { label: \"w\" of: num(json.get(p, \"n\", \"0\"), 0) counted: 0 columns: 2 } }",
+   "state": ""
+  },
+  {
+   "tag": "countup-out-of-range",
+   "name": "two billion in the data",
+   "decl": "data X { file: \"weird.json\" sha256: \"{sha:weird.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Rich { CountUp { to: num(json.get(p, \"big\", \"0\"), 0) } } }",
+   "state": ""
+  },
+  {
+   "tag": "countup-not-number",
+   "name": "a fraction in the data",
+   "decl": "data X { file: \"weird.json\" sha256: \"{sha:weird.json}\"; }",
+   "view": "For { over: data.items(X, \"items\") as: p Rich { CountUp { to: num(json.get(p, \"frac\", \"0\"), 0) } } }",
+   "state": ""
+  }
+ ]
+}
