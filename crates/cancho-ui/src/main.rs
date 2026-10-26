@@ -27,6 +27,7 @@
 //! literal dash in `cancho-ui skill` output (Phase 2).
 
 mod assets;
+mod data;
 mod diff_cmd;
 mod islands;
 mod motion;
@@ -51,6 +52,7 @@ USAGE:
     cancho-ui inspect effects   <file.cui> <name> [--output json]
     cancho-ui inspect ir       <file.cui>          [--output json]
     cancho-ui inspect page     <file.cui>          [--output json]
+    cancho-ui inspect data     <file.cui>          [--output json]
     cancho-ui diff <base.cui> <candidate.cui>      [--output json]
     cancho-ui test <file.cui> <trace.json>         [--output json] [--full]
     cancho-ui report           <file.cui>...       [--output json]
@@ -185,7 +187,7 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
                 // a theme (docs/theme.md): its stylesheet, and its font files copied into the build
                 let theme = match ir.as_ref().and_then(|i| i.theme.as_ref()) {
                     Some(t) => {
-                        let dir = file.parent().unwrap_or_else(|| std::path::Path::new(""));
+                        let dir = pipeline::program_dir(file);
                         let fonts = theme::load_fonts(t, dir, file)
                             .map_err(|d| CliError::Env(d.message.clone()))?;
                         Some(pwa::ThemeAssets {
@@ -198,19 +200,15 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
                 // the pictures and videos the views name, copied into the build at the paths the page uses
                 let mut site = match ir.as_ref() {
                     Some(i) => {
-                        assets::load(i, file.parent().unwrap_or_else(|| std::path::Path::new("")))
-                            .map_err(CliError::Env)?
+                        assets::load(i, pipeline::program_dir(file)).map_err(CliError::Env)?
                     }
                     None => Vec::new(),
                 };
                 // the head and the skip link of a `page { .. }` (docs/page.md), and the files it names, copied beside `index.html`
                 let page = ir.as_ref().map(page_files::parts).unwrap_or_default();
                 if let Some(i) = ir.as_ref() {
-                    let files = page_files::copies(
-                        i,
-                        file.parent().unwrap_or_else(|| std::path::Path::new("")),
-                    )
-                    .map_err(CliError::Env)?;
+                    let files = page_files::copies(i, pipeline::program_dir(file))
+                        .map_err(CliError::Env)?;
                     for f in files {
                         if !site.iter().any(|(p, _)| *p == f.0) {
                             site.push(f);
@@ -331,6 +329,18 @@ fn run_inspect(args: &[String]) -> Result<ExitCode, CliError> {
                     o.insert("page_hosts".to_string(), serde_json::json!(hosts));
                 }
             }
+            // the data files this component's view is written from (docs/data.md): where they are and what they hash to
+            let data: Vec<serde_json::Value> = ir
+                .data
+                .iter()
+                .filter(|d| d.components.contains(&comp.name))
+                .map(cancho_ui_ir::data::describe)
+                .collect();
+            if !data.is_empty()
+                && let Some(o) = v.as_object_mut()
+            {
+                o.insert("data".to_string(), serde_json::json!(data));
+            }
             // the sealed islands the view instantiates (docs/islands.md section 6): what each runs, by hash, and what it reaches
             let used: Vec<serde_json::Value> = ir
                 .islands
@@ -345,6 +355,12 @@ fn run_inspect(args: &[String]) -> Result<ExitCode, CliError> {
             }
             cancho_ui_ir::pretty_json(&v)
         }
+        "data" => cancho_ui_ir::pretty_json(
+            &ir.data
+                .iter()
+                .map(cancho_ui_ir::data::describe)
+                .collect::<Vec<_>>(),
+        ),
         "page" => match &ir.page {
             // the whole head as it will be written: the checked values, the card's absolute address, the files with their hashes, the hosts
             Some(p) => cancho_ui_ir::pretty_json(&cancho_ui_ir::page::to_json(p)),
@@ -501,7 +517,7 @@ fn run_introspect(args: &[String]) -> Result<ExitCode, CliError> {
         "commands": [
             { "name": "check",       "args": ["<file.cui>...", "--output json"] },
             { "name": "build",       "args": ["<file.cui>...", "-o <path>", "--target web", "--no-auto-mount", "--pwa", "--page", "--name <text>", "--output json"] },
-            { "name": "inspect",     "subcommands": ["component <file> <name>", "effects <file> <name>", "page <file>", "ir <file>"], "args": ["--output json"] },
+            { "name": "inspect",     "subcommands": ["component <file> <name>", "effects <file> <name>", "page <file>", "data <file>", "ir <file>"], "args": ["--output json"] },
             { "name": "diff",        "args": ["<base.cui>", "<candidate.cui>", "--output json"], "exit_codes": { "0": "no semantic change", "1": "a file was refused", "2": "command line wrong", "3": "environment failed", "5": "the programs differ semantically" } },
             { "name": "test",        "args": ["<file.cui>", "<trace.json>", "--output json", "--full"], "exit_codes": { "0": "the trace passed", "1": "the program did not compile", "2": "command line wrong", "3": "environment failed", "4": "a test failed (expectation, malformed trace, or a construct replay refuses)" } },
             { "name": "report",      "args": ["<file.cui>...", "--output json"] },
@@ -713,7 +729,7 @@ impl InspectOpts {
         let mut out = InspectOpts::default();
         if args.is_empty() {
             return Err(CliError::Usage(
-                "`inspect` requires a subject (`component`, `effects`, `prerender`, `page`, `ir`)"
+                "`inspect` requires a subject (`component`, `effects`, `prerender`, `page`, `data`, `ir`)"
                     .into(),
             ));
         }

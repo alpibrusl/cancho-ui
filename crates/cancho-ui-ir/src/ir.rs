@@ -24,6 +24,22 @@ pub struct IrFile {
     /// `page { .. }` (docs/page.md): the head of the document and the skip link, checked. The files it names are read by the pipeline, which fills
     /// their size, hash and (for the card image) dimensions; `diff` and `inspect page` report it.
     pub page: Option<IrPage>,
+    /// The data files the program is built from (docs/data.md): the declaration, and what the pipeline read: size, rows expanded, the components that used it.
+    pub data: Vec<IrData>,
+}
+
+/// `data Name { file: ".." sha256: ".." }`, checked as text; `bytes`, `rows` and `components` are filled by the pipeline, which reads the file.
+#[derive(Debug, Clone, PartialEq)]
+pub struct IrData {
+    pub name: String,
+    pub file: String,
+    pub sha256: String,
+    pub bytes: u64,
+    /// how many times a `For` over this data was expanded into elements (one per item, nested ones too)
+    pub rows: u64,
+    /// the components whose view uses it
+    pub components: Vec<String>,
+    pub span: Span,
 }
 
 /// A checked `page { .. }`: what the document says about itself. Everything here is text or the path of a file of the program; the head is

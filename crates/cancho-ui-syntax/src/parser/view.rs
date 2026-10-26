@@ -519,6 +519,26 @@ impl Parser {
         //   - `on: EventName` (event reference),
         //   - `role: heading` etc.
         // Phase 2 adds typed expressions.
+        // `to:` of a Link or a CountUp, `of:` and `counted:` of a Waffle may be an expression of a `For` over a `data` file (docs/data.md section 3): the
+        // compiler folds it into a literal when it builds the page, and refuses what it cannot fold where the literal is checked
+        let dynamic_key = matches!(
+            (key, kind),
+            ("to", ElementKind::Link | ElementKind::CountUp)
+                | ("of" | "counted", ElementKind::Waffle)
+        );
+        if dynamic_key {
+            let starts_expr = match &self.peek().token {
+                Token::Ident(s) => s != "true" && s != "false",
+                Token::StringLit(_) => matches!(
+                    self.tokens.get(self.pos + 1).map(|t| &t.token),
+                    Some(Token::Plus)
+                ),
+                _ => false,
+            };
+            if starts_expr {
+                return Ok(BindingValue::Prop(self.parse_expr()?));
+            }
+        }
         match key {
             "on" | "submit" | "visible" | "hidden" => {
                 let name_tok = self.bump();

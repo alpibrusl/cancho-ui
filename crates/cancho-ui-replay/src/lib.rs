@@ -6,6 +6,7 @@
 //! deliberately does not claim are in `docs/replay.md`.
 
 mod chart;
+mod closed;
 mod eval;
 mod geo;
 mod locale;
@@ -29,6 +30,7 @@ use machine::{Machine, Status, StepEffects};
 use trace::{Action, Step, StreamAct, Trace, TraceError, parse_trace};
 use value::{Value, num_json, subset};
 
+pub use closed::{Closed, eval_closed};
 pub use eval::{
     JSON_ITEMS_MAX, arith, json_get, json_items, json_quote, math_builtin, move_item, num_of_text,
     page_count, sort_key_order_json, text_builtin_json,
@@ -42,6 +44,7 @@ pub use report::{
     render_human_full,
 };
 pub use trace::{SCHEMA as TRACE_SCHEMA, VERSION as TRACE_VERSION};
+pub use value::js_number;
 
 fn failure(
     rule: &'static str,

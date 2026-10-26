@@ -198,6 +198,23 @@ pub fn render_human(r: &DiffReport) -> String {
             (None, None) => Ok(()),
         };
     }
+    for t in &r.data {
+        let short = |h: &String| {
+            if t.setting.ends_with(".sha256") {
+                h.chars().take(12).collect::<String>()
+            } else {
+                h.clone()
+            }
+        };
+        let _ = match (&t.base, &t.candidate) {
+            (Some(b), Some(c)) => {
+                writeln!(out, "~ data {}: {} -> {}", t.setting, short(b), short(c))
+            }
+            (None, Some(c)) => writeln!(out, "+ data {} = {}", t.setting, short(c)),
+            (Some(b), None) => writeln!(out, "- data {} = {}", t.setting, short(b)),
+            (None, None) => Ok(()),
+        };
+    }
     for a in &r.assets {
         let short = |h: &String| h.chars().take(12).collect::<String>();
         let _ = match (&a.base, &a.candidate) {

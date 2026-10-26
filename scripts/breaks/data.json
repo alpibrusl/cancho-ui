@@ -1,0 +1,181 @@
+{
+  "checks": [
+    {
+      "name": "cargo test data",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "data"
+      ]
+    },
+    {
+      "name": "check-data.js",
+      "argv": [
+        "node",
+        "scripts/check-data.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "a file whose hash is not the pin is read",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "if actual != d.sha256.to_ascii_lowercase() {",
+      "to": "if false && actual != d.sha256.to_ascii_lowercase() {"
+    },
+    {
+      "name": "a data file may be twice the size",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "if meta.len() > FILE_MAX_BYTES {",
+      "to": "if meta.len() > FILE_MAX_BYTES * 2 {"
+    },
+    {
+      "name": "a data file may nest five deeper",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "if depth(&json) > DEPTH_MAX {",
+      "to": "if depth(&json) > DEPTH_MAX + 5 {"
+    },
+    {
+      "name": "a list may have twice the rows",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "if items.len() > ROWS_MAX {",
+      "to": "if items.len() > ROWS_MAX * 2 {"
+    },
+    {
+      "name": "the expansion has no bound",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "if self.nodes > EXPANDED_MAX {",
+      "to": "if self.nodes > EXPANDED_MAX * 1000 {"
+    },
+    {
+      "name": "an object is a list",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "Some(Json::Array(a)) => a.clone(),",
+      "to": "Some(Json::Array(a)) => a.clone(),\n                    Some(Json::Object(o)) => o.values().cloned().collect(),"
+    },
+    {
+      "name": "any name is the data",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "self.data.iter().find(|d| &d.name == name)",
+      "to": "self.data.first()"
+    },
+    {
+      "name": "a For over data is left as it is",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "    has_data_call(e) || names.iter()",
+      "to": "    names.iter()"
+    },
+    {
+      "name": "only the first row is written",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "for item in items {\n",
+      "to": "for item in items.into_iter().take(1) {\n"
+    },
+    {
+      "name": "an If that is false keeps its children",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "(Expr::BoolLit { value: false, .. }, true) => {}",
+      "to": "(Expr::BoolLit { value: false, .. }, true) => out.extend(self.nodes(children, env)?),"
+    },
+    {
+      "name": "a label from the data stays an expression",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "acc.label_expr = None;",
+      "to": ""
+    },
+    {
+      "name": "a link from the data stays an expression",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "Expr::StringLit { value, .. } if b.key == \"to\" => {",
+      "to": "Expr::StringLit { value, .. } if b.key == \"nothing\" => {"
+    },
+    {
+      "name": "the size of the file is not recorded",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "d.bytes = l.bytes;",
+      "to": ""
+    },
+    {
+      "name": "the rows read are counted one a call",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "entry.0 += items.len() as u64;",
+      "to": "entry.0 += 1;"
+    },
+    {
+      "name": "a program with no declaration is not looked at",
+      "file": "crates/cancho-ui/src/pipeline.rs",
+      "from": "if !ast.data.is_empty() || source.contains(\"data.items(\") {",
+      "to": "if !ast.data.is_empty() {"
+    },
+    {
+      "name": "a data file may be a text file",
+      "file": "crates/cancho-ui-ir/src/data.rs",
+      "from": "crate::media::asset_type(path, &[(\"json\", \"application/json\")])",
+      "to": "crate::media::asset_type(path, &[(\"json\", \"application/json\"), (\"txt\", \"text/plain\")])"
+    },
+    {
+      "name": "a hash in capitals is a hash",
+      "file": "crates/cancho-ui-ir/src/data.rs",
+      "from": "|| (b'a'..=b'f').contains(&b));",
+      "to": "|| b.is_ascii_uppercase() || (b'a'..=b'f').contains(&b));"
+    },
+    {
+      "name": "a name may be declared twice",
+      "file": "crates/cancho-ui-ir/src/data.rs",
+      "from": "if out.iter().any(|o| o.name == d.name) {",
+      "to": "if false && out.iter().any(|o| o.name == d.name) {"
+    },
+    {
+      "name": "a changed file's hash is not in the diff",
+      "file": "crates/cancho-ui-ir/src/data.rs",
+      "from": "out.push((format!(\"{}.sha256\", d.name), d.sha256.clone()));",
+      "to": ""
+    },
+    {
+      "name": "the data is not counted by diff",
+      "file": "crates/cancho-ui-diff/src/lib.rs",
+      "from": "        + page.len()\n        + data.len()\n",
+      "to": "        + page.len()\n"
+    },
+    {
+      "name": "a link from the data is not parsed",
+      "file": "crates/cancho-ui-syntax/src/parser/view.rs",
+      "from": "(\"to\", ElementKind::Link | ElementKind::CountUp)",
+      "to": "(\"to\", ElementKind::CountUp)"
+    },
+    {
+      "name": "effects does not list the file",
+      "file": "crates/cancho-ui/src/main.rs",
+      "from": ".filter(|d| d.components.contains(&comp.name))",
+      "to": ".filter(|_| false)"
+    },
+    {
+      "name": "a link out of the directory is the file",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "let Some(meta) = meta.filter(|_| inside) else {",
+      "to": "let Some(meta) = meta.filter(|_| true) else {"
+    },
+    {
+      "name": "a whole number of the data is written with a decimal point",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "Some(format!(\"{}\", *n as i64))",
+      "to": "Some(format!(\"{n:.1}\"))"
+    },
+    {
+      "name": "join is not a closed expression",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "    \"json.items\",\n    \"filter\",\n",
+      "to": "    \"json.items\",\n"
+    },
+    {
+      "name": "the bare file name is the empty directory",
+      "file": "crates/cancho-ui/src/pipeline.rs",
+      "from": "Some(d) if !d.as_os_str().is_empty() => d,",
+      "to": "Some(d) => d,"
+    }
+  ]
+}

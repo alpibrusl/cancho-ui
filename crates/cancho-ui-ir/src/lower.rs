@@ -206,6 +206,7 @@ pub fn lower_file(file: &File) -> Result<IrFile, LowerError> {
         assets: Vec::new(),
         islands: crate::island::lower_decls(file)?,
         page: crate::page::lower_decls(file)?,
+        data: crate::data::lower_decls(file)?,
     };
     crate::island::resolve_instances(&mut ir)?;
     crate::controls::check_controls(&ir)?;
@@ -232,6 +233,7 @@ pub fn merge_ir_files(files: &[IrFile]) -> IrFile {
             assets: Vec::new(),
             islands: Vec::new(),
             page: None,
+            data: Vec::new(),
         };
     };
     IrFile {
@@ -245,6 +247,7 @@ pub fn merge_ir_files(files: &[IrFile]) -> IrFile {
         islands: files.iter().flat_map(|f| f.islands.clone()).collect(),
         // one page per program (the pipeline refuses two): the last file's, which is the entry's when it has one
         page: files.iter().rev().find_map(|f| f.page.clone()),
+        data: files.iter().flat_map(|f| f.data.clone()).collect(),
     }
 }
 
@@ -1789,6 +1792,11 @@ const PURE_BUILTINS: &[(&str, usize, &str)] = &[
 /// map bodies, and list arguments must be pure: no effects (the
 /// capability check) and no suspends (`await`, `sleep`) — the
 /// list operation runs synchronously inside the render pass.
+/// A closed expression of the view, lowered (the build of a `For` over a `data` file evaluates it: docs/data.md).
+pub fn lower_expr_closed(e: &Expr) -> Result<IrExpr, LowerError> {
+    lower_expr_pure(e)
+}
+
 fn lower_expr_pure(e: &Expr) -> Result<IrExpr, LowerError> {
     let (ir, effects) = lower_expr_with_effects(e)?;
     if !effects.is_empty() {

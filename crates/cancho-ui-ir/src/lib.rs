@@ -17,6 +17,7 @@ pub mod casefold;
 pub mod conditions;
 pub mod controls;
 pub mod credential;
+pub mod data;
 pub mod file_field;
 pub mod i18n;
 pub mod i18n_data;

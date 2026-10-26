@@ -1,0 +1,104 @@
+// examples/ecosystem/ecosystem.cui — the data-driven parts of the cancho-www home page, written from the page's own `data/ecosystem.json` (docs/data.md).
+// `data Ecosystem { .. }` pins the file by its SHA-256; every `For` over `data.items(Ecosystem, "..")` is written out into the elements it stands for when the
+// page is built, so the proof figures, the list of the 24 projects, the three paths and the claims are in the HTML with no script and no request, `requires`
+// is empty, and `inspect effects` and `diff` name the file. The file is a copy of cancho-www at 0579a80 (MIT). What this does not reproduce is in docs/data.md section 6.
+
+data Ecosystem { file: "data/ecosystem.json" sha256: "870d4eb8e3bc5a1c22bb33b9b4ae72c6192251af0c7f283eb29db32b3c65ba52"; }
+
+component Home {
+    view {
+        Column {
+            Main {
+                id: "main"
+                Section {
+                    id: "try"
+                    Heading { level: 1 "The cancho ecosystem" }
+                }
+                Section {
+                    id: "proof"
+                    Heading { level: 2 "Proof, not promises" }
+                    For { over: data.items(Ecosystem, "measured.figures") as: f
+                        If { when: json.get(f, "id", "") == "conformance"
+                            Rich { CountUp { to: num(json.get(f, "passed", "0"), 0) } " of {json.get(f, \"of\", \"0\")} ({json.get(f, \"what\", \"\")})" }
+                            Waffle { label: json.get(f, "what", "") of: num(json.get(f, "of", "0"), 0) counted: num(json.get(f, "passed", "0"), 0) columns: 44 rest: "known" }
+                        }
+                        If { when: json.get(f, "id", "") == "refusals"
+                            Rich { CountUp { to: num(json.get(f, "passed", "0"), 0) } " of {json.get(f, \"of\", \"0\")} ({json.get(f, \"what\", \"\")})" }
+                            Waffle { label: json.get(f, "what", "") of: num(json.get(f, "of", "0"), 0) counted: num(json.get(f, "passed", "0"), 0) columns: 37 }
+                        }
+                        If { when: json.get(f, "id", "") == "rules"
+                            Rich { CountUp { to: num(json.get(f, "value", "0"), 0) } " ({json.get(f, \"what\", \"\")})" }
+                            Waffle { label: json.get(f, "what", "") of: num(json.get(f, "value", "0"), 0) counted: num(json.get(f, "value", "0"), 0) columns: 16 }
+                        }
+                    }
+                }
+                Section {
+                    id: "paths"
+                    Heading { level: 2 "Start with a path" }
+                    For { over: data.items(Ecosystem, "paths") as: path
+                        Article {
+                            Heading { level: 3 "{json.get(path, \"title\", \"\")}" }
+                            Text { "{json.get(path, \"blurb\", \"\")}" }
+                            For { over: json.items(path, "entries") as: e
+                                For { over: filter(data.items(Ecosystem, "projects"), q => json.get(q, "id", "") == json.get(e, "id", "")) as: p
+                                    Rich {
+                                        Link { to: json.get(p, "url", "") "{json.get(p, \"name\", \"\")}" }
+                                        " "
+                                        If { when: json.get(p, "stage", "") == "built" Chip { tone: "accent" "built" } }
+                        If { when: json.get(p, "stage", "") == "working" Chip { tone: "good" "working" } }
+                        If { when: json.get(p, "stage", "") == "alpha" Chip { tone: "warn" "alpha" } }
+                        If { when: json.get(p, "stage", "") == "early" Chip { tone: "warn" "early" } }
+                        If { when: json.get(p, "stage", "") == "design" Chip { tone: "quiet" "design" } }
+                                        " "
+                                        If { when: json.get(p, "page", "") != "" Link { to: json.get(p, "page", "") "page" } }
+                                    }
+                                    Text { "{json.get(e, \"can\", \"\")}" }
+                                    Link { to: json.get(e, "next_url", "") "{json.get(e, \"next\", \"\")}" }
+                                }
+                            }
+                        }
+                    }
+                }
+                Section {
+                    id: "verifies"
+                    Heading { level: 2 "What is verified" }
+                    Heading { level: 3 "Verified by the compiler" }
+                    For { over: data.items(Ecosystem, "verifies.compiler") as: c
+                        Rich { "{json.get(c, \"claim\", \"\")}" }
+                        For { over: json.items(c, "evidence") as: ev
+                            Link { to: json.get(ev, "1", "") "{json.get(ev, \"0\", \"\")}" }
+                        }
+                    }
+                    Heading { level: 3 "Exercised by tests" }
+                    For { over: data.items(Ecosystem, "verifies.tests") as: c
+                        Rich { "{json.get(c, \"claim\", \"\")}" }
+                        For { over: json.items(c, "evidence") as: ev
+                            Link { to: json.get(ev, "1", "") "{json.get(ev, \"0\", \"\")}" }
+                        }
+                    }
+                    Heading { level: 3 "Still being established" }
+                    For { over: data.items(Ecosystem, "verifies.open") as: c
+                        Rich { "{json.get(c, \"claim\", \"\")}" }
+                        For { over: json.items(c, "evidence") as: ev
+                            Link { to: json.get(ev, "1", "") "{json.get(ev, \"0\", \"\")}" }
+                        }
+                    }
+                }
+                Section {
+                    id: "ecosystem"
+                    Heading { level: 2 "Every public repository" }
+                    Details {
+                        summary: "The same map as a list"
+                        For { over: data.items(Ecosystem, "projects") as: p
+                            Rich {
+                                Link { to: json.get(p, "url", "") "{json.get(p, \"name\", \"\")}" }
+                                If { when: json.get(p, "page", "") != "" " · " Link { to: json.get(p, "page", "") "page" } }
+                                " ({json.get(p, \"stage\", \"\")}): {json.get(p, \"summary\", \"\")}"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
