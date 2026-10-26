@@ -27,8 +27,9 @@ Build: `cancho-ui build docs/www-port/site/home.cui --page -o dist`. Checks: `no
 
 ## Open defects of the port (not decided, not hidden)
 
-1. **With JavaScript off the comparison table is missing**: `Table` has no prerender in cancho-ui, so the port's HTML has no `<table>` until the script has run (the page's divs are in its HTML). A prerender recipe for
-   `Table` is the fix; it is a change to the compiler and not done here.
+1. ~~**With JavaScript off the comparison table is missing**~~ **Fixed** (the `Table` prerender PR, `prerender.md` section 12): `Table` is written into the page when its cells are literals or what a `For` over data wrote out, and is
+   the script's, whole, when anything in it reads state. Measured: with no script the port has the table (1 region, 1 table, 3 column headers, 3 row headers in the accessibility tree), and `parity.md` has no row for it any more
+   (the row "human tools, used by agents ..." of the page's JavaScript-off text is gone; the phone-width row is reclassified: the page hides its header row on a phone).
 2. **A layout shift of about 0.012 at load** (Pixel 7 profile, measured once; 0.0004 in a 1000 px window): the three fonts are `font-display: swap` and not preloaded, so the first screen's text moves once when they arrive. What the page's
    own number is, is B3's measurement; the fix would be a preload that `page { }` does not yet have.
 3. **The page is longer and plainer than the page**: 15,686 px against 12,532 at 1280 px, the baseline's look (dropped.md 10). B3 reports it, width by width.

@@ -56,6 +56,13 @@ component Port {
                             }
                         }
                     }
+                    Table {
+                        label: "The claims, in a table"
+                        Row { Text { role: columnheader "Claim" } }
+                        For { over: data.items(Claims, "claims") as: c
+                            Row { Text { "{json.get(c, \"claim\", \"\")}" } }
+                        }
+                    }
                     Rich { style: "note" "{data.value(Claims, \"stamp\")}" }
                     Link { to: "data/claims.json" "The data" }
                 }

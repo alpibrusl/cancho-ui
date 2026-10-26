@@ -1102,19 +1102,31 @@ pub(crate) fn emit_view_node(
             } else if matches!(kind, IrElementKind::Table) {
                 // A table that is wider than a narrow phone scrolls inside its own box, not the page (issue #144, docs/presentation.md
                 // section 4a). The box is a keyboard-focusable region named like the table, so a keyboard user can scroll it.
-                let name = match (&accessibility.label, &accessibility.label_expr) {
-                    (Some(l), _) => Some(js_string(l)),
-                    (None, Some(_)) => Some(label_var.clone()),
-                    _ => None,
-                };
                 out.push_str(&format!(
-                    "{0}const {1}_scroll = document.createElement('div');\n{0}{1}_scroll.classList.add('cui-table-scroll');\n{0}{1}_scroll.setAttribute('tabindex', '0');\n",
+                    "{0}const {1}_scroll = document.createElement('div');\n",
                     indent, var
                 ));
-                if let Some(n) = name {
+                if let Some(scroll) = cancho_ui_ir::recipe::table_scroll(accessibility) {
+                    // the box of the recipe the prerenderer writes from (docs/prerender.md)
+                    for (k, v) in &scroll.attrs {
+                        // the class, the tabindex and the role are fixed words of the recipe; the name is the program's text
+                        let value = if *k == "aria-label" {
+                            js_string(v)
+                        } else {
+                            format!("'{v}'")
+                        };
+                        let call = if *k == "class" {
+                            format!("classList.add({value})")
+                        } else {
+                            format!("setAttribute('{k}', {value})")
+                        };
+                        out.push_str(&format!("{0}{1}_scroll.{2};\n", indent, var, call));
+                    }
+                } else {
+                    // a name read from state: the name it has at this render
                     out.push_str(&format!(
-                        "{0}{1}_scroll.setAttribute('role', 'region');\n{0}{1}_scroll.setAttribute('aria-label', {2});\n",
-                        indent, var, n
+                        "{0}{1}_scroll.classList.add('cui-table-scroll');\n{0}{1}_scroll.setAttribute('tabindex', '0');\n{0}{1}_scroll.setAttribute('role', 'region');\n{0}{1}_scroll.setAttribute('aria-label', {2});\n",
+                        indent, var, label_var
                     ));
                 }
                 out.push_str(&format!(

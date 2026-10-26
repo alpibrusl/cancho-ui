@@ -90,6 +90,9 @@ const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e
     const want = ['compiler', 'tests', 'open'].map((k) => eco.verifies[k].map((c) => `${c.claim.replace(/`/g, '')} ${c.evidence.map((e) => e[0]).join(' ')}`.replace(/\s+/g, ' ').trim()));
     check('B: each of the three columns of the evidence is the data file\'s list, claim and evidence in order', JSON.stringify(r.columns) === JSON.stringify(want), JSON.stringify(r.columns.map((c) => c.length)));
     check('B: with no script, the 17 claims, the 9 path entries and the 24 projects are in the HTML', r.claims === 17 && r.paths === 9 && r.all === 24, JSON.stringify([r.claims, r.paths, r.all]));
+    const ax = (await (await ctx.newCDPSession(page)).send('Accessibility.getFullAXTree')).nodes.filter((n) => !n.ignored);
+    const roles = (name) => ax.filter((n) => n.role && n.role.value === name).length;
+    check('B: with no script the comparison is a table in the accessibility tree: a region and a table (the page has 4 table elements with the 3 data tables of the waffles; the tree has the one), 3 column headers, 3 row headers', r.table === 4 && roles('table') === 1 && roles('columnheader') === 3 && roles('rowheader') === 3 && ax.some((n) => n.role.value === 'region' && n.name && n.name.value.startsWith('Human tools')), `${r.table} table, ${roles('table')} table role, ${roles('columnheader')} columnheader, ${roles('rowheader')} rowheader`);
     check('B: the five backtick pairs of the claims are <code>', r.code === 5, String(r.code));
     check('B: the three final numbers are in the HTML, and the waffles are drawn', JSON.stringify(r.counts) === JSON.stringify(['697', '256', '62']) && r.waffles >= 3, JSON.stringify(r.counts));
     check('B: the pictures (4 img: the logo is no longer in a link, dropped.md 2) and the two videos are in the HTML', r.imgs === 4 && r.videos === 2, `${r.imgs} ${r.videos}`);
