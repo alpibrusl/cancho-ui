@@ -1,0 +1,73 @@
+{
+  "checks": [
+    {
+      "name": "check-www-port.js",
+      "argv": [
+        "node",
+        "scripts/check-www-port.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "a pressed button looks like the others",
+      "file": "crates/cancho-ui/src/theme.rs",
+      "from": "s.push_str(\"button[aria-pressed=\\\"true\\\"] { background: var(--cui-accent); color: var(--cui-accent-fg); border-color: var(--cui-accent); }\\n\");",
+      "to": ""
+    },
+    {
+      "name": "two cairns have the same seed",
+      "file": "docs/www-port/site/home.cui",
+      "from": "Cairn { seed: 3 }",
+      "to": "Cairn { seed: 2 }"
+    },
+    {
+      "name": "a cairn is missing",
+      "file": "docs/www-port/site/home.cui",
+      "from": "                Column { max_width: 10 Cairn { seed: 9 } }\n",
+      "to": ""
+    },
+    {
+      "name": "the hero is not on the page",
+      "file": "docs/www-port/site/home.cui",
+      "from": "                    Hero { }\n",
+      "to": ""
+    },
+    {
+      "name": "the canvas ignores the story",
+      "file": "docs/www-port/site/home.cui",
+      "from": "AuthorityCanvas { scenario: tab step: step }",
+      "to": "AuthorityCanvas { scenario: 0 step: step }"
+    },
+    {
+      "name": "the canvas ignores the step",
+      "file": "docs/www-port/site/home.cui",
+      "from": "AuthorityCanvas { scenario: tab step: step }",
+      "to": "AuthorityCanvas { scenario: tab step: 0 }"
+    },
+    {
+      "name": "play waits ten times as long",
+      "file": "docs/www-port/site/home.cui",
+      "from": "every 2600 Tick;",
+      "to": "every 26000 Tick;"
+    },
+    {
+      "name": "the tabs do not say which is pressed",
+      "file": "docs/www-port/site/home.cui",
+      "from": "on: Pick(num(json.get(s, \"i\", \"0\"), 0), len(json.items(s, \"steps\")) - 1) pressed: tab == num(json.get(s, \"i\", \"0\"), 0) }",
+      "to": "on: Pick(num(json.get(s, \"i\", \"0\"), 0), len(json.items(s, \"steps\")) - 1) }"
+    },
+    {
+      "name": "the stepper's first button has another name",
+      "file": "docs/www-port/site/home.cui",
+      "from": "Button { label: \"Previous step\" on: Prev }",
+      "to": "Button { label: \"Back\" on: Prev }"
+    },
+    {
+      "name": "a card has no drawing",
+      "file": "docs/www-port/site/home.cui",
+      "from": "                            CardRings { }\n",
+      "to": ""
+    }
+  ]
+}

@@ -214,6 +214,8 @@ pub fn css(theme: &IrTheme) -> String {
     }
     s.push_str("a { color: var(--cui-accent); }\n");
     s.push_str("button, input:not([type=\"checkbox\"]):not([type=\"file\"]), textarea, select { background: var(--cui-surface); color: var(--cui-fg); border-color: var(--cui-muted); }\n");
+    // a toggle button that is pressed (docs/www-port/gaps.md section 2) is seen to be: the accent, with the text colour its pair was checked at
+    s.push_str("button[aria-pressed=\"true\"] { background: var(--cui-accent); color: var(--cui-accent-fg); border-color: var(--cui-accent); }\n");
     s.push_str(".cui-table th, .cui-table td { border-bottom-color: var(--cui-line); }\n");
     s.push_str("[data-tone=\"ok\"] { color: var(--cui-good); }\n");
     s.push_str(

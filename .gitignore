@@ -17,6 +17,7 @@
 !scripts/*.js
 # the scripts of the sealed islands are the program's files, pinned by hash (docs/islands.md)
 !examples/*/assets/*.js
+!docs/www-port/site/islands/*.js
 !tests/fixtures/islands/*.js
 *.js.map
 *.cui.bak

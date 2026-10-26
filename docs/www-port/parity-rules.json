@@ -96,24 +96,8 @@
   },
   {
    "kind": "text",
-   "match": "hand it down",
-   "class": "deferred (B2)",
-   "why": "the authority animation (tabs, code pane, stepper, canvas) is PR B2",
-   "section": "authority",
-   "side": "page"
-  },
-  {
-   "kind": "text",
-   "match": "authority there is",
-   "class": "deferred (B2)",
-   "why": "the first caption of the authority animation",
-   "section": "authority",
-   "side": "page"
-  },
-  {
-   "kind": "text",
    "match": "^(all language and compiler|.*trail: a shop)",
-   "class": "deferred (B2)",
+   "class": "deferred (map PR)",
    "why": "the filter chips and trail buttons of the ecosystem map are PR B2",
    "section": "ecosystem",
    "side": "page"
@@ -121,30 +105,31 @@
   {
    "kind": "nojs",
    "match": "^[◀▶ |]+$",
-   "class": "deferred (B2)",
-   "why": "the stepper buttons of the authority animation",
-   "side": "page"
+   "class": "intentional",
+   "why": "the stepper's glyph buttons are text buttons (Previous step, Play/Pause, Next step); the glyphs are gone",
+   "side": "page",
+   "ref": "J7, dropped.md 11"
   },
   {
    "kind": "nojs",
    "match": "^a3f9… 7c21… e0b4…$",
-   "class": "deferred (B2)",
-   "why": "the text of the three drawings of the cards (islands)",
-   "ref": "J3",
+   "class": "intentional",
+   "why": "the text of the card drawings is inside their frames (a frame is named by its title); the page has it as svg text",
+   "ref": "J3, dropped.md 12",
    "side": "page"
   },
   {
    "kind": "nojs",
    "match": "\"rule\": \"linear-value-unconsumed\"",
-   "class": "deferred (B2)",
-   "why": "the text of a card drawing (island)",
-   "ref": "J3",
+   "class": "intentional",
+   "why": "the text of the card drawings is inside their frames",
+   "ref": "J3, dropped.md 12",
    "side": "page"
   },
   {
    "kind": "nojs",
    "match": "^exists design, not built",
-   "class": "deferred (B2)",
+   "class": "deferred (map PR)",
    "why": "the legend of the map",
    "side": "page"
   },
@@ -306,7 +291,7 @@
   {
    "kind": "heading",
    "match": "^h3 cancho$",
-   "class": "deferred (B2)",
+   "class": "deferred (map PR)",
    "why": "the heading of the map's detail pane",
    "side": "page"
   },
@@ -321,7 +306,7 @@
   {
    "kind": "landmark",
    "match": "^aside$",
-   "class": "deferred (B2)",
+   "class": "deferred (map PR)",
    "why": "the map's detail pane is an aside",
    "side": "page"
   },
@@ -335,22 +320,24 @@
   },
   {
    "kind": "id",
-   "match": "^(scene-svg|gran|gran-shade|soft|paper|mk-rest|road-path|river-path|rocks-defs|gr|shade|halo|speck)$",
-   "class": "deferred (B2)",
-   "why": "ids inside the drawings (hero, cairns, map)",
-   "side": "page"
+   "match": "^(scene-svg|gran|gran-shade|soft|rocks-defs|gr|shade|halo|speck)$",
+   "class": "intentional",
+   "why": "ids inside the page's drawings (hero, cairns, rocks' gradients); in the port they are inside the frames' own documents",
+   "side": "page",
+   "ref": "dropped.md 12"
   },
   {
    "kind": "id",
    "match": "^(auth-.*)$",
-   "class": "deferred (B2)",
-   "why": "the authority animation",
-   "side": "page"
+   "class": "intentional",
+   "why": "the ids of the nodes the page's script built for the animation; the port's tabs, buttons, captions and verdict are elements of the program and the canvas is a frame",
+   "side": "page",
+   "ref": "dropped.md 11"
   },
   {
    "kind": "id",
    "match": "^(map-chips|map-svg|detail|map-count)$",
-   "class": "deferred (B2)",
+   "class": "deferred (map PR)",
    "why": "the map and its filter",
    "side": "page"
   },
@@ -372,14 +359,14 @@
   {
    "kind": "ax",
    "match": "^(DescriptionList|term|definition):",
-   "class": "deferred (B2)",
+   "class": "deferred (map PR)",
    "why": "the map's detail pane has a `dl`",
    "ref": "J8"
   },
   {
    "kind": "ax",
    "match": "^log:",
-   "class": "deferred (B2)",
+   "class": "deferred (map PR)",
    "why": "the recorded session of the map",
    "ref": "J8"
   },
@@ -406,8 +393,8 @@
   {
    "kind": "ax",
    "match": "^button:",
-   "class": "deferred (B2)",
-   "why": "the page's buttons are the map's 24 rocks and chips, the tabs, the stepper, the switch; the port has the copy buttons, the pane's and the pressed ones that exist",
+   "class": "deferred (map PR)",
+   "why": "the page's buttons are the map's 24 rocks, chips and trail buttons, the copy buttons, the tabs and the stepper; the port has the copy buttons, the pane's, the tabs and the stepper; the map's are the next PR",
    "ref": "J4"
   },
   {
@@ -425,14 +412,14 @@
   {
    "kind": "ax",
    "match": "^heading:",
-   "class": "deferred (B2)",
+   "class": "deferred (map PR)",
    "why": "one heading fewer: the detail pane's"
   },
   {
    "kind": "ax",
    "match": "^image:",
-   "class": "deferred (B2)",
-   "why": "the drawings with role img (scene, cards, authority, map) are islands in B2; icons dropped",
+   "class": "intentional",
+   "why": "the page's drawings with role img (scene, three cards, animation, map) are frames in the port (the map is the next PR); the five icons, the star and the bars are dropped",
    "ref": "J3"
   },
   {
@@ -468,6 +455,45 @@
    "why": "on a phone the page hides the header row of its comparison; the port's table keeps it",
    "ref": "dropped.md 7",
    "side": "page"
+  },
+  {
+   "kind": "id",
+   "match": "^(paper|mk-rest|road-path|river-path)$",
+   "class": "deferred (map PR)",
+   "why": "ids inside the map's drawing",
+   "side": "page"
+  },
+  {
+   "kind": "ax",
+   "match": "^code:",
+   "class": "intentional",
+   "why": "the port writes each line of the program in the animation as a `code` element; the page's lines are divs",
+   "ref": "dropped.md 11"
+  },
+  {
+   "kind": "ax",
+   "match": "^status:",
+   "class": "intentional",
+   "why": "the port's caption and its verdict are both live regions; the page's caption is a polite paragraph and its verdict a status",
+   "ref": "dropped.md 11"
+  },
+  {
+   "kind": "text",
+   "section": "authority",
+   "match": "release\\(…\\) \\[io_write\\] greet\\(io\\)",
+   "class": "intentional",
+   "why": "the text drawn inside the canvas (the names of the five capabilities, the two boxes) is inside its frame, which has a text alternative in the page's caption",
+   "ref": "dropped.md 11",
+   "side": "page"
+  },
+  {
+   "kind": "text",
+   "section": "authority",
+   "match": "^previous step play next step$",
+   "class": "intentional",
+   "why": "the stepper's glyph buttons are text buttons",
+   "ref": "J7, dropped.md 11",
+   "side": "port"
   }
  ]
 }

@@ -1,0 +1,188 @@
+{
+ "scenarios": [
+  {
+   "i": 0,
+   "label": "Hand it down",
+   "code": [
+    {
+     "i": 0,
+     "t": "let Split { io, fs, ffi, heap, args } = split(world);"
+    },
+    {
+     "i": 1,
+     "t": "release(fs); release(ffi); release(heap); release(args);"
+    },
+    {
+     "i": 2,
+     "t": "borrow mut io as &!i in { greet(i, \"cancho\"); }"
+    },
+    {
+     "i": 3,
+     "t": "release(io);"
+    }
+   ],
+   "steps": [
+    {
+     "cap": "main starts with one value: all the authority there is.",
+     "hl": -1,
+     "i": 0,
+     "hl_bad": -1,
+     "verdict": "",
+     "verdict_text": ""
+    },
+    {
+     "cap": "split(world) hands it out once, as five separate values.",
+     "hl": 0,
+     "i": 1,
+     "hl_bad": -1,
+     "verdict": "",
+     "verdict_text": ""
+    },
+    {
+     "cap": "Four are not needed here, so they are released. An unused capability is still a linear value.",
+     "hl": 1,
+     "i": 2,
+     "hl_bad": -1,
+     "verdict": "",
+     "verdict_text": ""
+    },
+    {
+     "cap": "Only io is lent, and only to greet. greet’s signature says what it does with it.",
+     "hl": 2,
+     "i": 3,
+     "hl_bad": -1,
+     "verdict": "",
+     "verdict_text": ""
+    },
+    {
+     "cap": "io is released too. Nothing is left over.",
+     "hl": 3,
+     "verdict": "ok",
+     "verdict_text": "compiles · performs io_write only",
+     "i": 4,
+     "hl_bad": -1
+    }
+   ]
+  },
+  {
+   "i": 1,
+   "label": "Forget one",
+   "code": [
+    {
+     "i": 0,
+     "t": "let Split { io, fs, ffi, heap, args } = split(world);"
+    },
+    {
+     "i": 1,
+     "t": "release(fs); release(ffi); release(args);"
+    },
+    {
+     "i": 2,
+     "t": "borrow mut io as &!i in { greet(i, \"cancho\"); }"
+    },
+    {
+     "i": 3,
+     "t": "release(io);"
+    }
+   ],
+   "steps": [
+    {
+     "cap": "Same program, one release(…) left out.",
+     "hl": -1,
+     "i": 0,
+     "hl_bad": -1,
+     "verdict": "",
+     "verdict_text": ""
+    },
+    {
+     "cap": "split(world) hands out five values.",
+     "hl": 0,
+     "i": 1,
+     "hl_bad": -1,
+     "verdict": "",
+     "verdict_text": ""
+    },
+    {
+     "cap": "fs, ffi and args are released. heap is not.",
+     "hl": 1,
+     "i": 2,
+     "hl_bad": -1,
+     "verdict": "",
+     "verdict_text": ""
+    },
+    {
+     "cap": "io is lent to greet as before.",
+     "hl": 2,
+     "i": 3,
+     "hl_bad": -1,
+     "verdict": "",
+     "verdict_text": ""
+    },
+    {
+     "cap": "heap was never consumed. A leaked capability is a leaked power, so this is an error, not a warning.",
+     "hl": 3,
+     "hl_bad": 1,
+     "verdict": "bad",
+     "verdict_text": "refused · linear-value-unconsumed",
+     "i": 4
+    }
+   ]
+  },
+  {
+   "i": 2,
+   "label": "Do it without saying so",
+   "code": [
+    {
+     "i": 0,
+     "t": "let Split { io, fs, ffi, heap, args } = split(world);"
+    },
+    {
+     "i": 1,
+     "t": "release(fs); release(ffi); release(heap); release(args);"
+    },
+    {
+     "i": 2,
+     "t": "fn greet(io: &!i Io) -> [] int { io.write_all(io, \"hi\") }"
+    },
+    {
+     "i": 3,
+     "t": "borrow mut io as &!i in { greet(i); }"
+    }
+   ],
+   "steps": [
+    {
+     "cap": "This time greet’s signature claims it does nothing: its effect row is [].",
+     "hl": -1,
+     "i": 0,
+     "hl_bad": -1,
+     "verdict": "",
+     "verdict_text": ""
+    },
+    {
+     "cap": "split(world), then the unused four are released.",
+     "hl": 1,
+     "i": 1,
+     "hl_bad": -1,
+     "verdict": "",
+     "verdict_text": ""
+    },
+    {
+     "cap": "io is lent to greet, which writes with it.",
+     "hl": 3,
+     "i": 2,
+     "hl_bad": -1,
+     "verdict": "",
+     "verdict_text": ""
+    },
+    {
+     "cap": "Effect rows are exact: performing io_write without declaring it is refused. The row is not a comment.",
+     "hl": 2,
+     "hl_bad": 2,
+     "verdict": "bad",
+     "verdict_text": "refused · effect-not-declared",
+     "i": 3
+    }
+   ]
+  }
+ ]
+}
