@@ -48,7 +48,8 @@
    "fill": "x",
    "bytes": 1048577
   },
-  "unicode.json": "{\"items\": [{\"name\": \"\u00f1and\u00fa \u2603 \ud83d\ude00 \u202e\"}]}"
+  "unicode.json": "{\"items\": [{\"name\": \"\u00f1and\u00fa \u2603 \ud83d\ude00 \u202e\"}]}",
+  "code.json": "{\"claim\": \"Refused as `linear-value-unconsumed` (19 fixtures), and `check` says so.\", \"open\": \"a `b\", \"empty\": \"a `` b\", \"plain\": \"no code here\", \"obj\": {\"date\": \"2026-10-15\", \"platform\": \"macOS aarch64\", \"n\": 3, \"ok\": true}, \"nothing\": null, \"list\": [1, 2]}"
  },
  "valid": [
   {
@@ -151,6 +152,24 @@
    "name": "a For over a literal list is left as it is",
    "decl": "data X { file: \"x.json\" sha256: \"{sha:x.json}\"; }",
    "view": "For { over: [\"a\", \"b\"] as: n Text { \"{n}\" } }",
+   "state": ""
+  },
+  {
+   "name": "a pair of backticks in a text read from data, in a Rich, is a Code",
+   "decl": "data X { file: \"code.json\" sha256: \"{sha:code.json}\"; }",
+   "view": "Rich { \"{data.value(X, \\\"claim\\\")}\" } Heading { level: 2 \"{data.value(X, \\\"plain\\\")}\" } Link { to: \"https://example.org/\" \"{data.value(X, \\\"claim\\\")}\" }",
+   "state": ""
+  },
+  {
+   "name": "a value of the file: a text, a number, a part of an object",
+   "decl": "data X { file: \"code.json\" sha256: \"{sha:code.json}\"; }",
+   "view": "Text { \"{data.value(X, \\\"plain\\\")} {json.get(data.value(X, \\\"obj\\\"), \\\"n\\\", \\\"\\\")} {json.get(data.value(X, \\\"obj\\\"), \\\"date\\\", \\\"\\\")} {json.get(data.value(X, \\\"obj\\\"), \\\"ok\\\", \\\"\\\")}\" }",
+   "state": ""
+  },
+  {
+   "name": "backticks in a text that is not inline content stay as they are",
+   "decl": "data X { file: \"code.json\" sha256: \"{sha:code.json}\"; }",
+   "view": "Text { \"{data.value(X, \\\"claim\\\")}\" }",
    "state": ""
   }
  ],
@@ -419,6 +438,55 @@
    "name": "a fraction in the data",
    "decl": "data X { file: \"weird.json\" sha256: \"{sha:weird.json}\"; }",
    "view": "For { over: data.items(X, \"items\") as: p Rich { CountUp { to: num(json.get(p, \"frac\", \"0\"), 0) } } }",
+   "state": ""
+  },
+  {
+   "tag": "data-code-unbalanced",
+   "name": "a backtick that does not close",
+   "decl": "data X { file: \"code.json\" sha256: \"{sha:code.json}\"; }",
+   "view": "Rich { \"{data.value(X, \\\"open\\\")}\" }",
+   "state": ""
+  },
+  {
+   "tag": "data-code-unbalanced",
+   "name": "a pair of backticks with nothing between",
+   "decl": "data X { file: \"code.json\" sha256: \"{sha:code.json}\"; }",
+   "view": "Rich { \"{data.value(X, \\\"empty\\\")}\" }",
+   "state": ""
+  },
+  {
+   "tag": "data-shape-invalid",
+   "name": "a value that is null",
+   "decl": "data X { file: \"code.json\" sha256: \"{sha:code.json}\"; }",
+   "view": "Text { \"{data.value(X, \\\"nothing\\\")}\" }",
+   "state": ""
+  },
+  {
+   "tag": "data-shape-invalid",
+   "name": "a value that is not in the file",
+   "decl": "data X { file: \"code.json\" sha256: \"{sha:code.json}\"; }",
+   "view": "Text { \"{data.value(X, \\\"obj.missing\\\")}\" }",
+   "state": ""
+  },
+  {
+   "tag": "data-use-invalid",
+   "name": "a value with one argument",
+   "decl": "data X { file: \"code.json\" sha256: \"{sha:code.json}\"; }",
+   "view": "Text { \"{data.value(X)}\" }",
+   "state": ""
+  },
+  {
+   "tag": "data-unknown",
+   "name": "a value of a file that is not declared",
+   "decl": "data X { file: \"code.json\" sha256: \"{sha:code.json}\"; }",
+   "view": "Text { \"{data.value(Y, \\\"plain\\\")}\" }",
+   "state": ""
+  },
+  {
+   "tag": "data-use-invalid",
+   "name": "a value whose path is not a literal",
+   "decl": "data X { file: \"code.json\" sha256: \"{sha:code.json}\"; }",
+   "view": "Text { \"{data.value(X, n)}\" }",
    "state": ""
   }
  ]

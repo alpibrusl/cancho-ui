@@ -14,6 +14,7 @@ pub const ELEMENT_KEYS: &[&str] = &[
     "on",
     "value",
     "disabled",
+    "pressed",
     "placeholder",
     "submit",
     "tone",
@@ -175,6 +176,8 @@ fn element_name(kind: &IrElementKind) -> &'static str {
         IrElementKind::CountUp => "CountUp",
         IrElementKind::Waffle => "Waffle",
         IrElementKind::Chip => "Chip",
+        IrElementKind::List => "List",
+        IrElementKind::Item => "Item",
         IrElementKind::Break => "Break",
         IrElementKind::Summary => "Summary",
         IrElementKind::Code => "Code",
@@ -1085,6 +1088,16 @@ fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result
             }
             Some(_) => {}
         }
+    }
+    if b.key == "pressed" && !matches!(kind, IrElementKind::Button) {
+        return Err(LowerError::ControlRefused {
+            code: "binding-unknown",
+            message: format!(
+                "`pressed:` is a binding of Button (a toggle button says whether it is pressed), not of {}",
+                element_name(kind)
+            ),
+            span: b.span,
+        });
     }
     if b.key == "disabled" {
         let interactive = kind.is_focusable();

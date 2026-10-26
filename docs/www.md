@@ -143,7 +143,7 @@ of the rules, so the order in section 7 can be argued from numbers.
 | `<title>`, 13 `meta`, `canonical`, icons, 2 `alternate` links, `lang`, `color-scheme` | 1 title + 13 + 6 links | (b) | `Page` (5.3); today `--name` sets only `<title>` |
 | sticky header with blurred translucent background | 3 `sticky`, 3 `backdrop-filter`, 6 `color-mix` | (b) | a `Header { sticky }` binding; the glass is the compiler's stylesheet |
 | palette, light and dark, 3 fonts | 16 semantic tokens + 3 type + 22 art; 30 pairs checked | (b) | `Theme` (5.1); the 22 art tokens belong to the islands |
-| stateful widgets: tabs, pressed buttons, switch, chips, filters, detail pane, count | `aria-pressed` 2; chips, tabs | **(a)** | state, events, `if`, `For`, `Button`, `Select`; `aria-pressed` is not a binding (a `Toggle` exists as `Checkbox`; a pressed `Button` is (b), small: 5.2) |
+| stateful widgets: tabs, pressed buttons, switch, chips, filters, detail pane, count | `aria-pressed` 2; chips, tabs | **(a)** | state, events, `if`, `For`, `Button`, `Select`; `aria-pressed` is not a binding (a `Toggle` exists as `Checkbox`; a pressed `Button` is (b), small: 5.2) *(built 2026-10-26: `pressed:` takes a `Bool` expression, not a state field: `www-port/gaps.md` section 2)* |
 | the agent / human switch and the agent files pane | 1 switch + `agent-files.cui` | **(a)** | already half written; the switch is `if`; the fetch is `net.get` |
 | data-driven lists: projects, verifies, paths, the list under the map | 24 projects, 17 claims in 3 lists, 3 paths of 3 entries, the `<details>` list | **(a)** | measured above (24 rows); the Python generator's job moves to a `For` |
 | proof figures (3 numbers, 3 waffles) | 1,128 nodes | (b) | `Waffle` (5.5, built) and `CountUp` (5.4, built) |
@@ -180,7 +180,7 @@ set or a literal checked at compile time ([`controls.md`](controls.md) section 1
 
 ### 5.2 Structure
 
-> **B1, B2 and B3 are built: [`structure.md`](structure.md)** (2026-10-24): `Heading`, `Section`, the landmarks, `Article`, `Link` with `appearance` and the host listing, `Details`, `Figure`/`Caption`, `Text { style }`; `Rich` with `Strong`, `Em`, `Small`, `Break`, inline `Code` and `Summary`; `Code { copy, max_height }` and the `Clipboard` capability (`Span` was not added: structure.md section 7; `clipboard-write-not-from-tap` is not a tag, because the write is only in the button's click by construction and Chromium measures it). Where the bullets below differ from it, `structure.md` is right and the difference is marked here. `Image`, `Media`, `ratio` and `Grid` with `weights` are B3 (structure.md section 10). Not yet: the skip link (step 3), `pressed:`, and a live region for the copy button's "Copied" (a gap found in B2, structure.md sections 8 and 10.7).
+> **B1, B2 and B3 are built: [`structure.md`](structure.md)** (2026-10-24): `Heading`, `Section`, the landmarks, `Article`, `Link` with `appearance` and the host listing, `Details`, `Figure`/`Caption`, `Text { style }`; `Rich` with `Strong`, `Em`, `Small`, `Break`, inline `Code` and `Summary`; `Code { copy, max_height }` and the `Clipboard` capability (`Span` was not added: structure.md section 7; `clipboard-write-not-from-tap` is not a tag, because the write is only in the button's click by construction and Chromium measures it). Where the bullets below differ from it, `structure.md` is right and the difference is marked here. `Image`, `Media`, `ratio` and `Grid` with `weights` are B3 (structure.md section 10). Not yet: the skip link (step 3; *built*), `pressed:` (*built 2026-10-26, `www-port/gaps.md` section 2*), and a live region for the copy button's "Copied" (a gap found in B2, structure.md sections 8 and 10.7).
 
 * **`Heading { level: 1..4 "text" }`**, **`Section { id: "try" label: "..." ... }`**, landmarks `Header`, `Nav`, `Main`, `Footer`, `Aside`. A `Main` makes the compiler
   write the skip link *(not built in B1: it is a page-level element, step 3; corrected 2026-10-24)*. Tags: `heading-level-skipped` (an `h3` directly under an `h1`), `heading-empty`, `landmark-duplicate` (two `Main`s).
@@ -206,7 +206,7 @@ set or a literal checked at compile time ([`controls.md`](controls.md) section 1
   `aria-describedby`. A transcript or text alternative is *required to be declared* (`media-text-alternative-missing`), as the page's "the same session as text".
 * **`Code { copy: true "text" }`** *(5.2b: the page draws code on `--term-bg`/`--term-fg`, which are two of the 22 art colours and not tokens; a decision is needed)*: a `<pre tabindex="0"><code>`; `copy:` adds the Copy button; the **`Clipboard` capability** (`requires Clipboard;`, write only,
   on a user tap only) is declared and shown by `authority`. Tag: `clipboard-write-not-from-tap`.
-* **`pressed:` on `Button`** (`aria-pressed`, a `Bool` state field) for the tabs, chips and switch (`button-pressed-type`).
+* **`pressed:` on `Button`** (`aria-pressed`, a `Bool` state field) for the tabs, chips and switch (`button-pressed-type`). *(Built 2026-10-26, [`www-port/gaps.md`](www-port/gaps.md) section 2, with two differences: its value is a pure `Bool` **expression** (`pressed: tab == 0`), so a tab needs no field of its own, and the refusal of a value that is not a `Bool` is the existing `condition-not-bool`, so `button-pressed-type` is not a tag.)*
 * **`Grid { min: 18 }`** *(built in B3 with `weights:`; measured against the page's `.videos`, `.gallery` and `.try`: structure.md 10.4)*: a responsive grid with a column minimum in `rem` (`grid-min-invalid` outside a range), written `repeat(auto-fit, minmax(min(100%, 18rem), 1fr))`;
   `columns: 1 | 2 | 3` per width breakpoint is not offered. *(**The claim here was wrong and is replaced** by 5.2b: of the page's 19 width queries `min:` reproduces **1**, and 3 more
   approximately; 6 are asymmetric columns, 5 show or hide something, 3 scroll or collapse. A `weights:` binding is proposed for the asymmetric ones.)*
@@ -470,3 +470,10 @@ The program says what a thing is (every proposed binding is a closed set or a li
 by `authority` and `diff` (`Clipboard`, `Draw`, `Dom`, link hosts, islands). Every refusal has a rule tag (listed per primitive). Replay and the page agree on a shared corpus for
 each primitive, and an island is **reported as not replayed** rather than claimed. No new dependency (the islands are the page's own files, hashed). **Steps 1 to 5 are
 built; nothing was pushed to `cancho-www`.**
+
+## 12. Q11: the port (added 2026-10-26)
+
+Step 7 is the port itself: the home page written in cancho-ui under [`www-port/`](www-port/). It was done in two pull requests. **PR A** wrote the page as a spike to find what cancho-ui lacked and built
+only that ([`www-port/gaps.md`](www-port/gaps.md): `List`/`Item`, `pressed:`, `data.value`, backticks as `Code` in text from data, state-driven props of a sealed island, and links to files of the
+site that the build carries) and listed what is a judgment about the page, each with a recommendation (J1 to J9 there). **PR B** is the port and the parity checks against the live page; it follows the
+recommendations unless the user says otherwise, and it does not claim the port can replace the page: that is the user's decision.

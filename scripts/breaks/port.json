@@ -1,0 +1,284 @@
+{
+  "checks": [
+    {
+      "name": "cargo test port",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "port"
+      ]
+    },
+    {
+      "name": "cargo test structure",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "structure"
+      ]
+    },
+    {
+      "name": "cargo test data",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "data"
+      ]
+    },
+    {
+      "name": "cargo test islands",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "islands"
+      ]
+    },
+    {
+      "name": "check-port.js",
+      "argv": [
+        "node",
+        "scripts/check-port.js"
+      ]
+    },
+    {
+      "name": "check-structure.js",
+      "argv": [
+        "node",
+        "scripts/check-structure.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "an ordered list is a ul",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "IrElementKind::List if is_ordered(bindings) => \"ol\",",
+      "to": "IrElementKind::List if false => \"ol\","
+    },
+    {
+      "name": "an item is a div",
+      "file": "crates/cancho-ui-ir/src/ir.rs",
+      "from": "IrElementKind::Item => \"li\",",
+      "to": "IrElementKind::Item => \"div\","
+    },
+    {
+      "name": "a list is a div",
+      "file": "crates/cancho-ui-ir/src/ir.rs",
+      "from": "IrElementKind::List => \"ul\",",
+      "to": "IrElementKind::List => \"div\","
+    },
+    {
+      "name": "text straight in a list is accepted",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "            if matches!(parent, Some(IrElementKind::List)) {\n                return Err(refuse(\n                    \"list-child-invalid\",\n                    \"a List holds `Item`s: text",
+      "to": "            if false && matches!(parent, Some(IrElementKind::List)) {\n                return Err(refuse(\n                    \"list-child-invalid\",\n                    \"a List holds `Item`s: text"
+    },
+    {
+      "name": "an element that is not an item in a list is accepted",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "if matches!(parent, Some(IrElementKind::List)) && !matches!(kind, IrElementKind::Item)",
+      "to": "if false && matches!(parent, Some(IrElementKind::List)) && !matches!(kind, IrElementKind::Item)"
+    },
+    {
+      "name": "an item outside a list is accepted",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "if matches!(kind, IrElementKind::Item) && !matches!(parent, Some(IrElementKind::List)) {",
+      "to": "if false && matches!(kind, IrElementKind::Item) && !matches!(parent, Some(IrElementKind::List)) {"
+    },
+    {
+      "name": "an empty list is accepted",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "            if children.is_empty() {\n                let (tag, why) =",
+      "to": "            if children.is_empty() && matches!(kind, IrElementKind::Item) {\n                let (tag, why) ="
+    },
+    {
+      "name": "an empty item is accepted",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "            if children.is_empty() {\n                let (tag, why) =",
+      "to": "            if children.is_empty() && matches!(kind, IrElementKind::List) {\n                let (tag, why) ="
+    },
+    {
+      "name": "ordered takes any value",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "            IrBindingValue::Const { expr, .. } if matches!(**expr, IrExpr::BoolLit { .. }) => {\n                Ok(true)\n            }\n            _ => Err(refuse(\n                \"list-ordered-invalid\",",
+      "to": "            IrBindingValue::Const { .. } | IrBindingValue::String(_) => {\n                Ok(true)\n            }\n            _ => Err(refuse(\n                \"list-ordered-invalid\","
+    },
+    {
+      "name": "a list is a structure element that takes an id",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "IrElementKind::List => &[\"ordered\"],",
+      "to": "IrElementKind::List => &[\"ordered\", \"id\"],"
+    },
+    {
+      "name": "a pressed button writes no aria-pressed",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "IrBindingValue::Const { expr, .. } if b.key == \"pressed\" => {",
+      "to": "IrBindingValue::Const { expr, .. } if b.key == \"pressed-off\" => {"
+    },
+    {
+      "name": "a button is always pressed",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "setAttribute('aria-pressed', String(!!({2})));",
+      "to": "setAttribute('aria-pressed', String(!!({2}) || true));"
+    },
+    {
+      "name": "pressed is accepted on any element",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "if b.key == \"pressed\" && !matches!(kind, IrElementKind::Button) {",
+      "to": "if false && b.key == \"pressed\" && !matches!(kind, IrElementKind::Button) {"
+    },
+    {
+      "name": "pressed takes a number",
+      "file": "crates/cancho-ui-ir/src/conditions.rs",
+      "from": "want_bool(scope, expr, \"the `pressed:` of a Button\")?;",
+      "to": "kind(scope, expr)?;"
+    },
+    {
+      "name": "a null value is text",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "Some(Json::Null) | None => {",
+      "to": "None => {"
+    },
+    {
+      "name": "backticks are not made code",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "Some(t) if mine && self.inline && t.contains('`') => {",
+      "to": "Some(t) if false && mine && self.inline && t.contains('`') => {"
+    },
+    {
+      "name": "backticks are made code anywhere",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "Some(t) if mine && self.inline && t.contains('`') => {",
+      "to": "Some(t) if mine && t.contains('`') => {"
+    },
+    {
+      "name": "a backtick that does not close is accepted",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "if parts.len().is_multiple_of(2) {",
+      "to": "if false && parts.len().is_multiple_of(2) {"
+    },
+    {
+      "name": "a pair with nothing between is accepted",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "            if s.is_empty() {\n                return Err(format!(\n                    \"the text",
+      "to": "            if false && s.is_empty() {\n                return Err(format!(\n                    \"the text"
+    },
+    {
+      "name": "the text written for a Code is the whole text",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "out.push(Piece::Code((*s).to_string()));",
+      "to": "out.push(Piece::Code(t.to_string()));"
+    },
+    {
+      "name": "a value that is not a string is not its JSON text",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "Some(other) => other.to_string(),",
+      "to": "Some(_) => String::new(),"
+    },
+    {
+      "name": "a link to a file is not checked or carried",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "&& is_file_link(s)\n                        {\n                            let video",
+      "to": "&& false\n                        {\n                            let video"
+    },
+    {
+      "name": "a page is a file a link may name",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "(\"pdf\", \"application/pdf\"),\n];",
+      "to": "(\"pdf\", \"application/pdf\"),\n    (\"html\", \"text/html\"),\n];"
+    },
+    {
+      "name": "a vector picture is a file a link may name",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "(\"pdf\", \"application/pdf\"),\n];",
+      "to": "(\"pdf\", \"application/pdf\"),\n    (\"svg\", \"image/svg+xml\"),\n];"
+    },
+    {
+      "name": "a text that has a NUL is text",
+      "file": "crates/cancho-ui/src/assets.rs",
+      "from": "!b.contains(&0) && std::str::from_utf8(b).is_ok()",
+      "to": "std::str::from_utf8(b).is_ok()"
+    },
+    {
+      "name": "a link to a file is a file for any text",
+      "file": "crates/cancho-ui-ir/src/media.rs",
+      "from": "if to.is_empty() || to.starts_with('#') || to.starts_with(\"//\") {",
+      "to": "if to.is_empty() || to.starts_with(\"//\") {"
+    },
+    {
+      "name": "a file link is judged after the scheme check is skipped",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "if crate::media::is_file_link(s) {",
+      "to": "if false && crate::media::is_file_link(s) {"
+    },
+    {
+      "name": "a sealed island gets no state props",
+      "file": "crates/cancho-ui-codegen-web/src/island.rs",
+      "from": "            if let IrElementKind::Island(i) = kind {\n                let mut props = Vec::new();",
+      "to": "            if let IrElementKind::Island(i) = kind\n                && !i.sealed\n            {\n                let mut props = Vec::new();"
+    },
+    {
+      "name": "a frame is not given the state when it is first seen",
+      "file": "crates/cancho-ui-codegen-web/src/island.rs",
+      "from": "        __cui_isl_merge(en, dynamic[spec.name] || {});\n",
+      "to": ""
+    },
+    {
+      "name": "a change of the state is not sent",
+      "file": "crates/cancho-ui-codegen-web/src/island.rs",
+      "from": "else if (__cui_isl_merge(en, dynamic[en.spec.name] || {})) { __cui_isl_later(en); }",
+      "to": "else if (__cui_isl_merge(en, dynamic[en.spec.name] || {})) { }"
+    },
+    {
+      "name": "every change is a message at once",
+      "file": "crates/cancho-ui-codegen-web/src/island.rs",
+      "from": "    if (en.pending) { return; }\n    const wait",
+      "to": "    const wait"
+    },
+    {
+      "name": "a prop of any type is sent",
+      "file": "crates/cancho-ui-codegen-web/src/island.rs",
+      "from": "if (t && !__cui_isl_ok(t, vals[k])) {",
+      "to": "if (false) {"
+    },
+    {
+      "name": "the runtime is not told the types",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "} else if !dynamic.is_empty() {",
+      "to": "} else if false {"
+    },
+    {
+      "name": "a sealed island used twice with a prop read from state is accepted",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "if !dynamic_here && ctx.dynamic.contains(name) {",
+      "to": "if !dynamic_here && ctx.dynamic.contains(name) && !island.sealed {"
+    },
+    {
+      "name": "a state field of another type is accepted as a prop",
+      "file": "crates/cancho-ui-ir/src/island.rs",
+      "from": "if ty != Some(prop.ty) {\n                    return Err(refuse(\n                        \"island-prop-type\",\n                        format!(\n                            \"`{}:` is a {} of island `{name}`; the state field",
+      "to": "if false && ty != Some(prop.ty) {\n                    return Err(refuse(\n                        \"island-prop-type\",\n                        format!(\n                            \"`{}:` is a {} of island `{name}`; the state field"
+    },
+    {
+      "name": "any file is the one a value is read from",
+      "file": "crates/cancho-ui/src/data.rs",
+      "from": "self.data.iter().find(|d| d.name == *name)",
+      "to": "self.data.first()"
+    }
+  ]
+}

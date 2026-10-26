@@ -1,0 +1,72 @@
+// examples/port/port.cui — what the port of the cancho-www home page needed that cancho-ui did not have (docs/www-port/gaps.md), in one small page:
+// `List`/`Item` (a bulleted and a numbered list, and the items a `For` over a data file writes), a button that says whether it is `pressed:`, a text
+// read from a data file with `data.value` and with backticks that become `Code`, links to files of the site that the build checks, hashes and copies,
+// and a sealed island whose props are fields of the state. `requires` is empty: none of it needs a capability, and nothing asks the network.
+
+data Claims { file: "data/claims.json" sha256: "8ef72490d1681fce81b98e73886fc9394034d1574698afa34b0515de53013a75"; }
+
+island Meter {
+    script: "assets/meter.js" sha256: "4f99244350216c8136d1a08be593069cd5b0dc0ca4a78546c936a99b56927200";
+    style: "assets/meter.css" sha256: "6d8ae7d06976e9c70eae311afd701a308d787df349f31f2d5f8f20fedabcb512";
+    label: "The step the page is at, and how long its note is";
+    width: 320;
+    height: 60;
+    props { step: Int; note: String; }
+}
+
+component Port {
+    state tab: String = "facts";
+    state step: Int = 0;
+    state note: String = "0123456789";
+
+    on Facts { tab = "facts"; }
+    on Claims { tab = "claims"; }
+    on Next { step = step + 1; }
+    on Grow { note = note + note; }
+
+    view {
+        Column {
+            Main {
+                id: "main"
+                Section {
+                    id: "lists"
+                    Heading { level: 1 "Lists" }
+                    List {
+                        Item { "No ambient authority" }
+                        Item { "Content-addressed" }
+                        Item { Rich { "Diagnostics as " Strong { "data" } ", with " Code { "--output json" } } Link { to: "notes.md" "notes.md" } }
+                    }
+                    List {
+                        ordered: true
+                        Item { Heading { level: 2 "Generate" } Text { "An agent writes." } }
+                        Item { Heading { level: 2 "Verify" } Text { "The compiler checks it." } }
+                    }
+                }
+                Section {
+                    id: "claims"
+                    Row { label: "Show" role: group Button { label: "Facts" on: Facts pressed: tab == "facts" } Button { label: "Claims" on: Claims pressed: tab == "claims" } }
+                    Text { role: status "Showing {tab}" }
+                    List {
+                        For { over: data.items(Claims, "claims") as: c
+                            Item {
+                                Rich { "{json.get(c, \"claim\", \"\")}" }
+                                For { over: json.items(c, "links") as: l
+                                    Link { to: json.get(l, "1", "") "{json.get(l, \"0\", \"\")}" }
+                                }
+                            }
+                        }
+                    }
+                    Rich { style: "note" "{data.value(Claims, \"stamp\")}" }
+                    Link { to: "data/claims.json" "The data" }
+                }
+                Section {
+                    id: "meter"
+                    Heading { level: 2 "An island that reads the state" }
+                    Meter { step: step note: note }
+                    Row { Button { label: "Next" on: Next } Button { label: "Grow the note" on: Grow } }
+                    Text { "Step {step}" }
+                }
+            }
+        }
+    }
+}

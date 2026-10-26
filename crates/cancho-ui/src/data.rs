@@ -28,7 +28,8 @@ pub fn remediation(code: &str) -> String {
         "data-too-many-rows" => "`data.items` answers at most 1000 items, as `json.items` does: take fewer, or split the list.".to_string(),
         "data-expansion-too-large" => "The `For`s over data of this program write more than 20,000 nodes: show less of it, or split the page.".to_string(),
         "data-unknown" => "Declare it: `data Name { file: \"data/x.json\" sha256: \"..\"; }`, in the entry file.".to_string(),
-        "data-use-invalid" => "A data file is read by `For { over: data.items(Name, \"path\") as: item .. }`: two arguments, the name and a path in a string literal.".to_string(),
+        "data-use-invalid" => "A data file is read by `For { over: data.items(Name, \"path\") as: item .. }`, or a value of it by `data.value(Name, \"path\")`: two arguments, the name and a path in a string literal.".to_string(),
+        "data-code-unbalanced" => "In text read from a data file, inside inline content, a backtick opens a `Code` and the next one closes it: write them in pairs, with something between.".to_string(),
         "data-path-invalid" | "data-hash-invalid" | "data-duplicate" => "See docs/data.md section 2.".to_string(),
         _ => "See docs/data.md.".to_string(),
     }
@@ -191,6 +192,8 @@ struct Walk<'a> {
     /// per data name: items read, and the components that read them
     used: BTreeMap<String, (u64, Vec<String>)>,
     component: String,
+    /// inside a `Rich`, a `Heading`, a `Caption`, a `Link` .. (inline content): a pair of backticks in a text read from data is a `Code`
+    inline: bool,
 }
 
 type Env = Vec<(String, Closed)>;
@@ -352,11 +355,14 @@ impl Walk<'_> {
     fn resolve(&mut self, e: &Expr) -> R<Expr> {
         Ok(match e {
             Expr::Call { path, args, span } if path.first().is_some_and(|p| p == "data") => {
+                if path.as_slice() == ["data", "value"] {
+                    return self.value(args, *span);
+                }
                 if path.as_slice() != ["data", "items"] {
                     return Err(self.err(
                         "data-use-invalid",
                         format!(
-                            "`{}` is not a function of data: there is `data.items(Name, \"path\")`",
+                            "`{}` is not a function of data: there is `data.items(Name, \"path\")` and `data.value(Name, \"path\")`",
                             path.join(".")
                         ),
                         *span,
@@ -448,6 +454,42 @@ impl Walk<'_> {
         })
     }
 
+    /// `data.value(Name, "path")`: the one value at a path of the file, as the text `json.get` would answer: a string as it is, a number or a boolean as it is
+    /// written, an object or an array as its compact JSON text (which `json.get` and `json.items` read).
+    fn value(&mut self, args: &[Expr], span: Span) -> R<Expr> {
+        let (Some(Expr::Ident { name, .. }), Some(Expr::StringLit { value: at, .. }), 2) =
+            (args.first(), args.get(1), args.len())
+        else {
+            return Err(self.err("data-use-invalid", "`data.value` takes the name of a data file and a path in a string literal: `data.value(Ecosystem, \"measured.date\")`".to_string(), span));
+        };
+        let Some(file) = self.data.iter().find(|d| d.name == *name) else {
+            return Err(self.err(
+                "data-unknown",
+                format!("`data.value({name}, ..)`: the program declares no `data {name}`"),
+                span,
+            ));
+        };
+        let text = match at_path(&file.json, at) {
+            Some(Json::String(s)) => s.clone(),
+            Some(Json::Null) | None => {
+                return Err(self.err(
+                    "data-shape-invalid",
+                    format!(
+                        "`data.value({name}, \"{at}\")`: there is no value at `{at}` in the file"
+                    ),
+                    span,
+                ));
+            }
+            Some(other) => other.to_string(),
+        };
+        let entry = self.used.entry(name.clone()).or_default();
+        entry.0 += 1;
+        if !entry.1.contains(&self.component) {
+            entry.1.push(self.component.clone());
+        }
+        Ok(Expr::StringLit { value: text, span })
+    }
+
     /// The value of a closed expression, or `None`.
     fn fold(&self, e: &Expr, env: &Env) -> Option<Closed> {
         if !pure(e) {
@@ -524,30 +566,80 @@ impl Walk<'_> {
                 span,
             } => {
                 self.count(1, *span)?;
-                let mut merged: Vec<TextPart> = Vec::new();
+                // the nodes written for this text: one `Text`, or, when a text read from data has a pair of backticks inside inline content, the
+                // text before it, a `Code` and the text after it (docs/www-port/gaps.md)
+                let mut cur: Vec<TextPart> = Vec::new();
+                let mut nodes: Vec<ViewNode> = Vec::new();
+                let push = |cur: &mut Vec<TextPart>, part: TextPart| match (cur.last_mut(), &part) {
+                    (Some(TextPart::Literal(a)), TextPart::Literal(b)) => a.push_str(b),
+                    _ => cur.push(part),
+                };
                 for p in parts {
-                    let part = match p {
-                        TextPart::Literal(s) => TextPart::Literal(s.clone()),
+                    match p {
+                        TextPart::Literal(s) => push(&mut cur, TextPart::Literal(s.clone())),
                         TextPart::Expr { expr, span } => {
+                            let mine = touched(expr, env);
                             let e = self.maybe(expr, env)?;
                             match self.fold(&e, &Vec::new()).as_ref().and_then(text_of) {
-                                Some(t) => TextPart::Literal(t),
-                                None => TextPart::Expr {
-                                    expr: e,
-                                    span: *span,
-                                },
+                                Some(t) if mine && self.inline && t.contains('`') => {
+                                    for piece in backtick_pieces(&t).map_err(|why| {
+                                        self.err("data-code-unbalanced", why, *span)
+                                    })? {
+                                        match piece {
+                                            Piece::Text(s) if !s.is_empty() => {
+                                                push(&mut cur, TextPart::Literal(s))
+                                            }
+                                            Piece::Text(_) => {}
+                                            Piece::Code(s) => {
+                                                if !cur.is_empty() {
+                                                    nodes.push(ViewNode::Text {
+                                                        value: TextValue::Interpolated(
+                                                            std::mem::take(&mut cur),
+                                                        ),
+                                                        span: *span,
+                                                    });
+                                                }
+                                                self.count(2, *span)?;
+                                                nodes.push(ViewNode::Element {
+                                                    kind: ElementKind::Code,
+                                                    accessibility: Accessibility {
+                                                        role: None,
+                                                        label: None,
+                                                        label_expr: None,
+                                                        span: *span,
+                                                    },
+                                                    bindings: Vec::new(),
+                                                    children: vec![ViewNode::Text {
+                                                        value: TextValue::Interpolated(vec![
+                                                            TextPart::Literal(s),
+                                                        ]),
+                                                        span: *span,
+                                                    }],
+                                                    span: *span,
+                                                });
+                                            }
+                                        }
+                                    }
+                                }
+                                Some(t) => push(&mut cur, TextPart::Literal(t)),
+                                None => push(
+                                    &mut cur,
+                                    TextPart::Expr {
+                                        expr: e,
+                                        span: *span,
+                                    },
+                                ),
                             }
                         }
-                    };
-                    match (merged.last_mut(), &part) {
-                        (Some(TextPart::Literal(a)), TextPart::Literal(b)) => a.push_str(b),
-                        _ => merged.push(part),
                     }
                 }
-                out.push(ViewNode::Text {
-                    value: TextValue::Interpolated(merged),
-                    span: *span,
-                });
+                if !cur.is_empty() || nodes.is_empty() {
+                    nodes.push(ViewNode::Text {
+                        value: TextValue::Interpolated(cur),
+                        span: *span,
+                    });
+                }
+                out.extend(nodes);
             }
             ViewNode::Element {
                 kind,
@@ -557,6 +649,8 @@ impl Walk<'_> {
                 span,
             } => {
                 self.count(1, *span)?;
+                let was_inline = self.inline;
+                self.inline = cancho_ui_ir::structure::ast_is_inline_container(kind);
                 let mut acc = accessibility.clone();
                 if let Some(e) = &accessibility.label_expr {
                     let e = self.maybe(e, env)?;
@@ -597,11 +691,13 @@ impl Walk<'_> {
                         span: b.span,
                     });
                 }
+                let kids = self.nodes(children, env);
+                self.inline = was_inline;
                 out.push(ViewNode::Element {
                     kind: kind.clone(),
                     accessibility: acc,
                     bindings: bs,
-                    children: self.nodes(children, env)?,
+                    children: kids?,
                     span: *span,
                 });
             }
@@ -667,6 +763,38 @@ impl Walk<'_> {
         }
         Ok(())
     }
+}
+
+/// A text read from data, cut at its backticks: the text, and what is between a pair.
+enum Piece {
+    Text(String),
+    Code(String),
+}
+
+/// `a `b` c` is `a `, `b`, ` c`. An odd number of backticks, or a pair with nothing between, is refused with what is wrong.
+fn backtick_pieces(t: &str) -> Result<Vec<Piece>, String> {
+    let parts: Vec<&str> = t.split('`').collect();
+    if parts.len().is_multiple_of(2) {
+        return Err(format!(
+            "the text \"{}\" has a backtick that does not close",
+            t.chars().take(60).collect::<String>()
+        ));
+    }
+    let mut out = Vec::new();
+    for (i, s) in parts.iter().enumerate() {
+        if i % 2 == 1 {
+            if s.is_empty() {
+                return Err(format!(
+                    "the text \"{}\" has a pair of backticks with nothing between them",
+                    t.chars().take(60).collect::<String>()
+                ));
+            }
+            out.push(Piece::Code((*s).to_string()));
+        } else {
+            out.push(Piece::Text((*s).to_string()));
+        }
+    }
+    Ok(out)
 }
 
 /// The value at a path of a JSON value, in the language of `json.get`: names and indexes joined by `.`.
@@ -778,6 +906,7 @@ pub fn expand(
         nodes: 0,
         used: BTreeMap::new(),
         component: String::new(),
+        inline: false,
     };
     for c in file.components.iter_mut() {
         walk.component = c.name.clone();

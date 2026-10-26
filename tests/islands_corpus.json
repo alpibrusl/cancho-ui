@@ -33,6 +33,10 @@
  },
  "valid": [
   {
+   "name": "a prop of a sealed island read from a state field",
+   "view": "Stones { seed: n on: Picked }"
+  },
+  {
    "name": "the base island, bound to a literal and heard",
    "view": "Stones { seed: 1 on: Picked }"
   },
@@ -382,9 +386,9 @@
    "view": "Stones { seed: 1.5 }"
   },
   {
-   "name": "a prop read from state",
-   "code": "island-prop-dynamic",
-   "view": "Stones { seed: n }"
+   "name": "a prop of a sealed island read from a state field of another type",
+   "code": "island-prop-type",
+   "program": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; } events { Picked: Int; } }\ncomponent C {\n    state n: Int = 0;\n    state s: String = \"x\";\n    on Picked(v) { n = v; }\n    view { Column { Stones { seed: s } } }\n}\n"
   },
   {
    "name": "a prop that is missing",
@@ -505,9 +509,14 @@
    "program": "island Stones { sealed: false; script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; } events { Picked: Int; } }\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    state s: String = \"x\";\n    state b: Bool = false;\n    on Picked(v) { n = v; }\n    view { Column { Stones { seed: n text: \"alt\" } Stones { seed: n text: \"alt\" } Section { label: \"Alt\" id: \"alt\" Text { \"alt\" } } } }\n}\n"
   },
   {
-   "name": "a prop of a sealed island read from state is still refused",
-   "code": "island-prop-dynamic",
-   "view": "Stones { seed: n }"
+   "name": "a sealed island used twice with a prop read from state",
+   "code": "island-open-instance-twice",
+   "view": "Stones { seed: n } Stones { seed: n }"
+  },
+  {
+   "name": "a sealed island's prop that is not a literal and not a state field",
+   "code": "island-prop-source-unknown",
+   "view": "Stones { seed: nowhere }"
   }
  ]
 }

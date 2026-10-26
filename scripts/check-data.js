@@ -73,6 +73,7 @@ const norm = (s) => s.replace(/\s+/g, ' ').trim();
       list: [...document.querySelectorAll('#ecosystem details > p')].map((p) => ({ text: p.textContent.replace(/\s+/g, ' ').trim(), hrefs: [...p.querySelectorAll('a')].map((a) => a.getAttribute('href')) })),
       paths: [...document.querySelectorAll('#paths article')].map((a) => ({ title: a.querySelector('h3').textContent, chips: [...a.querySelectorAll('.cui-chip')].map((c) => [c.textContent, c.className.split('cui-chip-')[1]]), hrefs: [...a.querySelectorAll('a')].map((x) => x.getAttribute('href')) })),
       claims: [...document.querySelectorAll('#verifies p')].map((p) => p.textContent.replace(/\s+/g, ' ').trim()),
+      codes: [...document.querySelectorAll('#verifies p code')].map((c) => c.textContent),
       evidence: [...document.querySelectorAll('#verifies a')].map((a) => [a.textContent, a.getAttribute('href')]),
       counts: [...document.querySelectorAll('.cui-countup')].map((e) => e.textContent),
       waffles: [...document.querySelectorAll('figure.cui-waffle')].map((f) => ({ aria: f.querySelector('svg').getAttribute('aria-label'), counted: ((f.querySelector('.cui-wf-on') || { getAttribute: () => '' }).getAttribute('d').match(/M/g) || []).length, rest: [...f.querySelectorAll('.cui-wf-known, .cui-wf-open')].reduce((n, p) => n + (p.getAttribute('d').match(/M/g) || []).length, 0), cls: [...f.querySelectorAll('.cui-wf-known, .cui-wf-open')].map((p) => p.getAttribute('class')) })),
@@ -85,7 +86,11 @@ const norm = (s) => s.replace(/\s+/g, ' ').trim();
     const wantPaths = data.paths.map((p) => ({ title: p.title, chips: p.entries.map((e) => [byId[e.id].stage, { built: 'accent', working: 'good', alpha: 'warn', early: 'warn', design: 'quiet' }[byId[e.id].stage]]), hrefs: p.entries.flatMap((e) => [byId[e.id].url, ...(byId[e.id].page ? [byId[e.id].page] : []), e.next_url]) }));
     check('A the three paths: titles, the stage and tone of each chip, every address in order (the join of an entry with its project)', JSON.stringify(got.paths) === JSON.stringify(wantPaths), JSON.stringify(got.paths.map((p) => p.hrefs.length)));
     const claims = [...data.verifies.compiler, ...data.verifies.tests, ...data.verifies.open];
-    check(`A the ${claims.length} claims are the file's, in order`, got.claims.length === claims.length && claims.every((c, i) => norm(got.claims[i]) === norm(c.claim)), String(got.claims.length));
+    // a pair of backticks in a claim is a <code> (docs/www-port/gaps.md section 4): the text of the page is the claim without the backticks
+    const plain = (t) => t.replace(/`/g, '');
+    check(`A the ${claims.length} claims are the file's, in order`, got.claims.length === claims.length && claims.every((c, i) => norm(got.claims[i]) === norm(plain(c.claim))), String(got.claims.length));
+    const wantCodes = claims.flatMap((c) => [...c.claim.matchAll(/`([^`]+)`/g)].map((m) => m[1]));
+    check(`A the ${wantCodes.length} backtick pairs of the claims are <code> elements with their text, in order, and no backtick is left`, wantCodes.length === 5 && JSON.stringify(got.codes) === JSON.stringify(wantCodes) && got.claims.every((t) => !t.includes('`')), JSON.stringify(got.codes));
     const ev = claims.flatMap((c) => c.evidence);
     check(`A the ${ev.length} evidence links are the file's: label and address`, JSON.stringify(got.evidence) === JSON.stringify(ev), String(got.evidence.length));
     const f = Object.fromEntries(data.measured.figures.map((x) => [x.id, x]));

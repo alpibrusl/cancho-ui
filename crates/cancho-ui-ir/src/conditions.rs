@@ -184,6 +184,9 @@ fn node(scope: &mut Scope, n: &IrViewNode) -> Result<(), LowerError> {
                             kind(scope, a)?;
                         }
                     }
+                    IrBindingValue::Const { expr, .. } if b.key == "pressed" => {
+                        want_bool(scope, expr, "the `pressed:` of a Button")?;
+                    }
                     IrBindingValue::Const { expr, .. } => {
                         kind(scope, expr)?;
                     }

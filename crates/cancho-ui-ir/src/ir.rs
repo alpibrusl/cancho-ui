@@ -754,6 +754,10 @@ pub enum IrElementKind {
     Waffle,
     /// Drawing (docs/waffle.md): `Chip`, a `<span>` with a tone.
     Chip,
+    /// Lists (docs/structure.md section 11): `List`, a `<ul>` (an `<ol>` with `ordered: true`).
+    List,
+    /// Lists (docs/structure.md section 11): `Item`, a `<li>`, only inside a `List`.
+    Item,
     /// Inline content and code (docs/structure.md section 7): `Break`, a `<br>` (a `Code` is a box around a `<pre>`; an `InlineCode` is a `Code` inside inline content).
     Break,
     /// Inline content and code (docs/structure.md section 7): `Summary`, a `<summary>` (a `Code` is a box around a `<pre>`; an `InlineCode` is a `Code` inside inline content).
@@ -814,6 +818,8 @@ impl IrElementKind {
             IrElementKind::CountUp => "span",
             IrElementKind::Waffle => "figure",
             IrElementKind::Chip => "span",
+            IrElementKind::List => "ul",
+            IrElementKind::Item => "li",
             IrElementKind::Break => "br",
             IrElementKind::Summary => "summary",
             IrElementKind::Code => "div",

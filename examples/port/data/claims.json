@@ -1,0 +1,7 @@
+{
+  "stamp": "Counted at cancho 1d4c44e, 2026-10-20.",
+  "claims": [
+    {"claim": "A value is consumed exactly once. Refused as `linear-value-unconsumed` (19 fixtures).", "links": [["rule fixtures", "https://github.com/alpibrusl/cancho/blob/main/docs/agent-errors.md"]]},
+    {"claim": "Authority is derived, not declared: `cancho authority` lists what a program can reach.", "links": []}
+  ]
+}

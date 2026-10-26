@@ -149,7 +149,7 @@ island Stones {
 ...   Stones { seed: 3 on: Picked }                            // literals; the Pointer is never bound; `on: Name` -> `on Name(v)` of the component
 ```
 
-`examples/islands/` is this program with its files and a trace. **Props are literals** (a prop read from state is `island-prop-dynamic`): the only prop that changes after the first render is the `Pointer`, which the runtime feeds. Islands are declared in the file that uses them (imported modules have their own; the same name in two files is `island-duplicate`).
+`examples/islands/` is this program with its files and a trace. **Props are literals, or state fields** *(corrected 2026-10-26: this said "a prop read from state is `island-prop-dynamic`"; the tag is gone, and a sealed island's prop may be a `state` field of the component, as an open island's always was: [`www-port/gaps.md`](www-port/gaps.md) section 5, which the authority animation of the cancho-www page needs)*: a prop read from state reaches the frame when the state changes, and the `Pointer` is fed by the runtime. Islands are declared in the file that uses them (imported modules have their own; the same name in two files is `island-duplicate`).
 
 **The frame.** `<iframe sandbox="allow-scripts" title=".." width height style=".." referrerpolicy="no-referrer" data-cui-island="{..}" srcdoc="..">` is a **static element of the skeleton** (`inspect prerender` lists only the `Text` that reads state as a hole). Its document is: a `<meta>` policy `default-src 'none'; script-src <one sha256 per script, the shim and the ready line>; style-src 'unsafe-inline'; form-action 'none'; base-uri 'none'; frame-src 'none'`, the style, the shim, the island's files **byte for byte** in `<script>` elements in order, and `cancho.ready();`. The page gets `<meta http-equiv="Content-Security-Policy" content="frame-src about:">` (merged with the `img-src` of a map) when a program **uses** an island. **What `frame-src about:` rules out:** every other frame of that page (a video player, a payment form, a map embed by address): the browser refuses it and logs the directive (measured, `scripts/check-islands.js` E: 0 requests to the host, the console names `frame-src`); a frame with a `srcdoc` is not refused. The island's contract is four names, `cancho.props`, `cancho.onprops(fn)`, `cancho.emit(name, value)`, `cancho.ready()`; the compiler ends the document with `cancho.ready()` itself (calling it again is harmless), because the page answers a `ready` with the whole current props.
 
@@ -178,7 +178,7 @@ island Stones {
 * **Other browsers.** Chromium only; Safari and Firefox treat `sandbox`, CSP in `srcdoc` and cross-origin `IntersectionObserver` as their versions do, unmeasured.
 * **Events and props are not authority:** a heard event runs a handler of the program with a value of the declared type, and that handler can do whatever the component's `requires` allow. A flood is capped at 50 a second, not stopped.
 
-**Not built (PR 2 built the open island, section 12):** props of a *sealed* island read from state, an island declared in an imported module, and the lazy `srcdoc` for the cairns (the documented fallback of 4.5).
+**Not built (PR 2 built the open island, section 12):** props of a *sealed* island read from state (*built 2026-10-26: [`www-port/gaps.md`](www-port/gaps.md) section 5*), an island declared in an imported module, and the lazy `srcdoc` for the cairns (the documented fallback of 4.5).
 
 ## 12. The open island (PR 2): no sandbox, and it says so
 
