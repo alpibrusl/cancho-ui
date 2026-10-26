@@ -93,6 +93,12 @@ const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e
     const ax = (await (await ctx.newCDPSession(page)).send('Accessibility.getFullAXTree')).nodes.filter((n) => !n.ignored);
     const roles = (name) => ax.filter((n) => n.role && n.role.value === name).length;
     check('B: with no script the comparison is a table in the accessibility tree: a region and a table (the page has 4 table elements with the 3 data tables of the waffles; the tree has the one), 3 column headers, 3 row headers', r.table === 4 && roles('table') === 1 && roles('columnheader') === 3 && roles('rowheader') === 3 && ax.some((n) => n.role.value === 'region' && n.name && n.name.value.startsWith('Human tools')), `${r.table} table, ${roles('table')} table role, ${roles('columnheader')} columnheader, ${roles('rowheader')} rowheader`);
+    // the 3 data tables of the waffles are in a closed <details>: out of the tree until it is opened (a disclosure, not a hidden table)
+    const cdp2 = await ctx.newCDPSession(page);
+    const closedTables = (await cdp2.send('Accessibility.getFullAXTree')).nodes.filter((n) => !n.ignored && n.role && n.role.value === 'table').length;
+    await page.evaluate(() => document.querySelectorAll('details').forEach((d) => { d.open = true; }));
+    const openTables = (await cdp2.send('Accessibility.getFullAXTree')).nodes.filter((n) => !n.ignored && n.role && n.role.value === 'table').length;
+    check('B: the waffles\' data tables are in the accessibility tree once their <details> is opened (1 table with them closed, 4 open: a disclosure, not a hidden table)', closedTables === 1 && openTables === 4, `${closedTables} closed, ${openTables} open`);
     check('B: the five backtick pairs of the claims are <code>', r.code === 5, String(r.code));
     check('B: the three final numbers are in the HTML, and the waffles are drawn', JSON.stringify(r.counts) === JSON.stringify(['697', '256', '62']) && r.waffles >= 3, JSON.stringify(r.counts));
     check('B: the pictures (4 img: the logo is no longer in a link, dropped.md 2) and the two videos are in the HTML', r.imgs === 4 && r.videos === 2, `${r.imgs} ${r.videos}`);
@@ -169,6 +175,81 @@ const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e
     check('D: the layout shifts by less than 0.05 from load to the end of the page (the swap of the fonts is the one shift)', cls < 0.05, String(cls));
     check('D: every request was to this site', origins.size === 1 && [...origins][0] === base, [...origins].join(' '));
     check('D: no console error', errors.length === 0, errors.join(' | '));
+    await ctx.close();
+  }
+
+  // ---- F. the islands and the authority animation ------------------------------------------------------------------------------------------------
+  {
+    const ctx = await browser.newContext({ ...devices['Pixel 7'], viewport: { width: 1100, height: 900 }, reducedMotion: 'no-preference' });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    page.on('console', (m) => { if (m.type() === 'error') { errors.push(m.text()); } });
+    await page.goto(`${base}/`);
+    await sleep(1200);
+    const frames = await page.evaluate(() => [...document.querySelectorAll('iframe')].map((f) => ({ sandbox: f.getAttribute('sandbox'), title: f.title, hidden: f.getAttribute('aria-hidden'), name: JSON.parse(f.getAttribute('data-cui-island')).name })));
+    const count = (n) => frames.filter((f) => f.name === n).length;
+    check('F: the page has 15 sealed frames: the hero, 10 cairns, 3 card drawings and the canvas of the animation', frames.length === 15 && count('Hero') === 1 && count('Cairn') === 10 && count('CardChain') + count('CardRings') + count('CardJson') === 3 && count('AuthorityCanvas') === 1, JSON.stringify(frames.map((f) => f.name)));
+    check('F: every frame is sandboxed with allow-scripts and nothing else, the cairns are hidden from a screen reader and the others are named', frames.every((f) => f.sandbox === 'allow-scripts') && frames.filter((f) => f.name === 'Cairn').every((f) => f.hidden === 'true') && frames.filter((f) => f.name !== 'Cairn').every((f) => f.title.length > 10), '');
+    const csp = await page.evaluate(() => [...document.querySelectorAll('meta[http-equiv="Content-Security-Policy"]')].map((m) => m.content).join(' '));
+    check('F: the page allows frames of about: only', /frame-src about:/.test(csp), csp);
+    const fr = (name) => page.frames().filter((f) => f !== page.mainFrame());
+    const byTitle = async (start) => { for (const f of page.frames()) { if (f === page.mainFrame()) { continue; } const el = await f.frameElement(); if ((await el.getAttribute('title') || '').startsWith(start)) { return f; } } return null; };
+    const hero = await byTitle('A stack of granite');
+    const rocks = await hero.evaluate(() => document.querySelectorAll('.rock-shape').length);
+    check('F: the hero is the page\'s own drawing: 8 boulders and the sun, the ridges and the pines', rocks >= 8 && (await hero.evaluate(() => document.querySelectorAll('.pine').length)) === 26, String(rocks));
+    await page.mouse.move(100, 100);
+    await page.mouse.move(900, 600);
+    await sleep(300);
+    const px = await hero.evaluate(() => document.querySelector('svg.scene').style.getPropertyValue('--px'));
+    check('F: the pointer reaches the hero and moves its layers', px !== '' && Number(px) !== 0, px);
+    const cairnPaths = [];
+    for (const f of page.frames()) {
+      if (f === page.mainFrame()) { continue; }
+      const el = await f.frameElement();
+      if (JSON.parse(await el.getAttribute('data-cui-island')).name === 'Cairn') { cairnPaths.push(await f.evaluate(() => [...document.querySelectorAll('.st')].length + ':' + document.querySelector('.rock-shape').getAttribute('d').slice(0, 24))); }
+    }
+    check('F: ten cairns of three stones each, and no two alike (a seed each)', cairnPaths.length === 10 && cairnPaths.every((x) => x.startsWith('3:')) && new Set(cairnPaths).size === 10, JSON.stringify(cairnPaths.slice(0, 3)));
+    for (const t of ['Three blocks', 'Rings spreading', 'A diagnostic as JSON']) {
+      const f = await byTitle(t);
+      check(`F: the card drawing "${t}" is drawn`, !!f && (await f.evaluate(() => document.querySelectorAll('svg *').length)) >= 4, '');
+    }
+    // the animation: the page's text, and the canvas that follows the state
+    await page.evaluate(() => document.querySelector('#authority').scrollIntoView());
+    await sleep(500);
+    const canvas = await byTitle('Animation: the world splits');
+    await page.evaluate(() => { window.__canvas = document.querySelector('iframe[title^="Animation"]'); });
+    const vis = () => canvas.evaluate(() => [...document.querySelectorAll('.cap-rock')].filter((g) => g.style.opacity === '1').length);
+    const cap = () => page.evaluate(() => [...document.querySelectorAll('#authority [role=status]')].map((e) => e.textContent).join(' | '));
+    const data = JSON.parse(fs.readFileSync(path.join(SITE, 'data', 'authority.json'), 'utf8')).scenarios;
+    check('F: the first caption is the data file\'s, and only the world is drawn', (await cap()) === data[0].steps[0].cap && (await vis()) === 1, await cap());
+    await page.click('#authority button[aria-label="Next step"]');
+    await sleep(900);
+    check('F: next step: the caption is the next, the five capabilities are out of the world', (await cap()) === data[0].steps[1].cap && (await vis()) === 5, await cap());
+    await page.click('#authority button[aria-label="Forget one"]');
+    await sleep(300);
+    const tabs = await page.evaluate(() => [...document.querySelectorAll('#authority [role=group] button')].map((b) => b.getAttribute('aria-pressed')));
+    check('F: a tab says it is pressed, and starts again at its first step', JSON.stringify(tabs) === '["false","true","false"]' && (await cap()) === data[1].steps[0].cap, JSON.stringify(tabs));
+    const bg = await page.evaluate(() => { const b = document.querySelector('#authority [role=group] button[aria-pressed="true"]'); const s = getComputedStyle(b); return [s.backgroundColor, s.color]; });
+    check('F: and a pressed button looks pressed (the accent, with its text colour)', bg[0] === 'rgb(24, 95, 165)' && bg[1] === 'rgb(255, 255, 255)', JSON.stringify(bg));
+    for (let i = 0; i < 4; i++) { await page.click('#authority button[aria-label="Next step"]'); }
+    await sleep(900);
+    const last = await page.evaluate(() => document.querySelector('#authority').innerText);
+    check('F: the last step of "Forget one" says it is refused, by the rule, and the frame marks heap', last.includes('refused · linear-value-unconsumed') && (await canvas.evaluate(() => document.querySelectorAll('.cap-rock.bad').length)) === 1, '');
+    await page.click('#authority button[aria-label="Previous step"]');
+    await page.click('#authority button[aria-label="Previous step"]');
+    await page.click('#authority button[aria-label="Play"]');
+    const label = await page.evaluate(() => [...document.querySelectorAll('#authority button')].map((b) => b.textContent).join('|'));
+    // the schedule ticks every 2.6 s from the page's mount, so the first step after Play comes within 2.6 s, and the next one 2.6 s after it
+    const before = await cap();
+    let after = before;
+    for (let i = 0; i < 40 && after === before; i++) { await sleep(100); after = await cap(); }
+    check('F: Play moves on by itself, one step (step 2 to step 3), and its button says Pause while it plays', /Pause/.test(label) && after === data[1].steps[3].cap, `${label} / ${after}`);
+    const kept = await page.evaluate(() => document.querySelector('iframe[title^="Animation"]').isConnected && window.__canvas === document.querySelector('iframe[title^="Animation"]'));
+    check('F: the frame of the canvas is the same element after all that (a frame built again on every render would reload and forget its animation)', kept === true, String(kept));
+    const reach = await canvas.evaluate(() => { try { return typeof parent.document.title === 'string' ? 'reached' : 'no'; } catch (e) { return e.name; } });
+    check('F: the frame that reads the state cannot reach the page', reach === 'SecurityError', reach);
+    check('F: no console error with the frames', errors.length === 0, errors.join(' | '));
     await ctx.close();
   }
 

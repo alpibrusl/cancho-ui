@@ -99,7 +99,7 @@ A font is **a file of the program**, in the directory of the entry file, declare
 A themed page has the baseline stylesheet, unchanged, and **after it** a second `<style id="cui-theme">`. A program with no theme has no second block and its page is the same bytes as before
 (`a_program_without_a_theme_is_emitted_as_it_was`; and a program's script is the same bytes with and without a theme, so replay and the emitted module never read it).
 
-The theme block sets: the custom properties; `@font-face`; `background`, `color` on the body; `color` on links; `background`, `color`, `border-color` on controls; the border colour of table
+The theme block sets: the custom properties; `@font-face`; `background`, `color` on the body; `color` on links; `background`, `color`, `border-color` on controls, and on a button that is `pressed:` (`aria-pressed="true"`: the accent with `accent_fg`, a pair whose contrast the compiler already checks; added 2026-10-26, found by the port: a pressed tab looked like the others); the border colour of table
 cells; the tone colours; the font family; and **`:focus-visible { outline: 3px solid var(--cui-accent); outline-offset: 2px; }`**. It contains no rule about size, position, display, visibility
 or the outline's width or style. So:
 

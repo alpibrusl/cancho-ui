@@ -1,7 +1,6 @@
 # docs/www-port: the home page of cancho-www, written in cancho-ui
 
-**Status (PR B1 of three): the content, head, theme, fonts, pictures, videos, data and the agents pane are ported and measured. The islands (hero, cairns, card drawings, authority animation) and the map are B2; the
-byte, request and timing comparison and the pixel diff are B3. This is not a claim that the port can replace the page: that is the user's decision, and B1 is a third of the evidence.**
+**Status (B1, the `Table` prerender, and B2a, the islands, are in; the map is B2b, the pixel diff is B3): the content, head, theme, fonts, pictures, videos, data, the agents pane, the hero, the ten cairns, the three card drawings and the authority animation are ported and measured. The map (an open island) is the next PR; the pixel diff is B3 (the byte, request and timing comparison is already in [`cost.md`](cost.md)). This is not a claim that the port can replace the page: that is the user's decision, and B1 is a third of the evidence.**
 
 | file | what |
 |---|---|
@@ -17,8 +16,8 @@ Build: `cancho-ui build docs/www-port/site/home.cui --page -o dist`. Checks: `no
 
 ## Measured in B1
 
-* **Parity** ([`parity.md`](parity.md)): 124 differences between the page and the port in text, links, headings, landmarks, ids, anchors, accessibility-tree roles and the page with JavaScript off, at 1280 px and on the Pixel 7 profile
-  with reduced motion; **every one has a class** (intentional 80, deferred to B2 42, open defects 2) and a reason; the script exits 1 if one has none. The visible text of every section is the same except
+* **Parity** ([`parity.md`](parity.md)): 126 differences between the page and the port in text, links, headings, landmarks, ids, anchors, accessibility-tree roles and the page with JavaScript off, at 1280 px and on the Pixel 7 profile
+  with reduced motion; **every one has a class** (intentional 108, deferred to the map PR 18, open defects 0) and a reason; the script exits 1 if one has none. The visible text of every section is the same except
   for the rows listed. The 17 claims, 9 path entries, 24 projects, the 3 numbers and the date are the data file's (a check reads the file and compares).
 * **Without JavaScript** the port has its lists, claims, projects, final numbers, waffles, pictures, videos and links to files (each answers 200 with the bytes of its file); the page's numbers read 0 there.
 * **Authority**: `Home` requires `Clipboard` (the copy buttons) and nothing else; `AgentFiles` requires `Network` and nothing else (its `net.get` can only reach this site); `Ecosystem` data is named by its SHA-256;
@@ -30,10 +29,10 @@ Build: `cancho-ui build docs/www-port/site/home.cui --page -o dist`. Checks: `no
 1. ~~**With JavaScript off the comparison table is missing**~~ **Fixed** (the `Table` prerender PR, `prerender.md` section 12): `Table` is written into the page when its cells are literals or what a `For` over data wrote out, and is
    the script's, whole, when anything in it reads state. Measured: with no script the port has the table (1 region, 1 table, 3 column headers, 3 row headers in the accessibility tree), and `parity.md` has no row for it any more
    (the row "human tools, used by agents ..." of the page's JavaScript-off text is gone; the phone-width row is reclassified: the page hides its header row on a phone).
-2. **A layout shift of about 0.012 at load** (Pixel 7 profile, measured once; 0.0004 in a 1000 px window): the three fonts are `font-display: swap` and not preloaded, so the first screen's text moves once when they arrive. What the page's
-   own number is, is B3's measurement; the fix would be a preload that `page { }` does not yet have.
-3. **The page is longer and plainer than the page**: 15,686 px against 12,532 at 1280 px, the baseline's look (dropped.md 10). B3 reports it, width by width.
+2. **Layout shift**: the three fonts are `font-display: swap` and not preloaded, so the text can move once when they arrive. Measured over 5 loads ([`cost.md`](cost.md)): median CLS **0.0000** (Pixel 7) and **0.0001** (desktop) for the port, 0.0000 and 0.0007 for the page; a single earlier load of the port measured 0.012 at 135 ms, so the number moves with the order in which the fonts and the first paint arrive. Not a defect at these values; named because it is not zero in every load.
+3. **The cost of the frames** ([`cost.md`](cost.md), medians of 5, this machine): the port's HTML is **221.7 kB** against the page's 48.2 kB (gzip 34.4 against 13.7), its script 87.3 kB against the page's five scripts' 62.1 kB; **15 frames** carry their document in `srcdoc` (the page's `rocks.js` is in 12 of them: about 5.5 kB each); the JS heap of the page is **7.9 MB against 1.9 MB**; DOMContentLoaded 380 ms against 225 ms and load 438 against 371 on the Pixel 7 profile (desktop 304 against 212 and 376 against 353). Faster to first paint (FCP 76 against 160 ms; the page's 43 kB stylesheet and scripts come first) and fewer DOM nodes in the main document (783 against 2,955: the drawings are in the frames). **This is a regression in bytes, memory and time to load, and it is the price of sealing the drawings.** The fallback that was designed and not built (the document of a frame written when it is first near the screen, `islands.md` 4.5) would take the cairns' and the cards' share out of the first load.
+4. **The page is longer than the page**: 17,453 px against 12,532 at 1280 px (the baseline's look, dropped.md 10). B3 reports it, width by width.
 
-## Not measured in B1
+## Not measured yet
 
 Safari, Firefox, a phone, a screen reader; bytes, requests, FCP and LCP against the page (B3); pixels (B3); the islands (B2).

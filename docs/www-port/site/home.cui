@@ -53,6 +53,57 @@ theme {
     }
 }
 
+island Hero {
+    script: "islands/rocks.js" sha256: "ab5fffd81da37de020b59a17a03eb779d9cf0b4f35fca167d7b9fedd7fa8c008";
+    script: "islands/scene.js" sha256: "b183de180ff06f6db0ed7d3b56cc1778be0f0a22842e21628c95a02e8c660ead";
+    script: "islands/hero.js" sha256: "9852ad1c4991fc56ab7cb6c0ba2a75f82c7d08b1dd4b30a768c6deef5c78a06b";
+    style: "islands/hero.css" sha256: "66c9b992a91c15831035859c814fce86c81510e0c8e17e7fcd4cad5ca7920f19";
+    label: "A stack of granite boulders in front of a blue sun, as in the cancho logo";
+    width: 640;
+    height: 600;
+    props { pointer: Pointer; }
+}
+island Cairn {
+    script: "islands/rocks.js" sha256: "ab5fffd81da37de020b59a17a03eb779d9cf0b4f35fca167d7b9fedd7fa8c008";
+    script: "islands/cairn.js" sha256: "7c6122b1a9f9ce7573e9edf1d8010682faed3d43ba5f924c1b79508680710a95";
+    style: "islands/cairn.css" sha256: "8371f3c3b608585b2d9c4bbbc0cc9e2c2f9fbbcbf83a1d8120fa8c1168d1df37";
+    decorative: true;
+    width: 84;
+    height: 58;
+    props { seed: Int; }
+}
+island CardChain {
+    script: "islands/card-chain.js" sha256: "3ad6270ca46204cf7ec43b7b2dd3de1566bc58835a4e31312c809d8305066c88";
+    style: "islands/card-chain.css" sha256: "d2b390b7ae1851dfa6019e3977679325e36d5dd5db2dd6f940cba78eb7ca587d";
+    label: "Three blocks linked by their hashes";
+    width: 300;
+    height: 100;
+}
+island CardRings {
+    script: "islands/card-rings.js" sha256: "729453f7513651697549ac66ed3dd34bd8b04ff424e75e8d3dab499777d28ebb";
+    style: "islands/card-rings.css" sha256: "8981616ad1357ade20b28a86a19ffe27b84455490742985913c4455adfeb807a";
+    label: "Rings spreading from a core and stopping at a boundary";
+    width: 300;
+    height: 100;
+}
+island CardJson {
+    script: "islands/card-json.js" sha256: "82f8d0e255e12c3c9c8daee335f43a7a410f1937c1af070d4a6fc8a8b93b845a";
+    style: "islands/card-json.css" sha256: "7554efc0fbe693b5993816f659606b8ec4dcadf905e8f9bb5b0798f82ca3b18e";
+    label: "A diagnostic as JSON with a stable rule tag";
+    width: 300;
+    height: 100;
+}
+island AuthorityCanvas {
+    script: "islands/rocks.js" sha256: "ab5fffd81da37de020b59a17a03eb779d9cf0b4f35fca167d7b9fedd7fa8c008";
+    script: "islands/authority.js" sha256: "eb8f90376b4c2a96d726e1f19433c96b2b360dd0d814593cc129aa02903ba01a";
+    style: "islands/authority.css" sha256: "f0eb8ec176bdda3d757f1ec78a0aae7b271864a48678b0305e18d57c47fafe27";
+    label: "Animation: the world splits into five capabilities, which are released or lent";
+    width: 800;
+    height: 340;
+    props { scenario: Int; step: Int; }
+}
+data AuthorityData { file: "data/authority.json" sha256: "829ee6c67254b38b74431b19f30c759db7f4e5ff483b35e0e48e86369296a637"; }
+
 component AgentFiles {
     requires Network;
 
@@ -102,6 +153,19 @@ component AgentFiles {
 
 component Home {
     requires Clipboard;
+    state tab: Int = 0;
+    state step: Int = 0;
+    state last: Int = 4;
+    state playing: Bool = false;
+
+    on Pick(i, n) { tab = i; last = n; step = 0; playing = false; }
+    on Next { playing = false; if step < last { step = step + 1; } else { step = 0; } }
+    on Prev { playing = false; if step > 0 { step = step - 1; } else { step = last; } }
+    on Play { playing = !playing; }
+    on Tick { if playing { if step < last { step = step + 1; } else { playing = false; } } }
+
+    every 2600 Tick;
+
     view {
         Column {
             Header {
@@ -140,6 +204,7 @@ component Home {
                         Link { to: "https://alpibru.com/manifesto" appearance: "quiet" "Read the manifesto" }
                     }
                     List { Item { "No ambient authority" } Item { "Content-addressed" } Item { "Diagnostics as data" } }
+                    Hero { }
                     Rich { "cancho · Spanish for a boulder" }
                     Rich { Strong { "Comprehension was a strategy." } " It is not the only one. " Link { to: "https://alpibru.com/manifesto" "Trust Without Comprehension" } }
                 }
@@ -147,19 +212,23 @@ component Home {
                     Grid {
                         min: 15
                         Article {
+                            CardChain { }
                             Heading { level: 2 "Identity, not lines" }
                             Rich { "A canonical AST gives every declaration a stable hash, and dependencies pin to hashes, not version strings. Nothing changes under you because a maintainer published a new version." }
                         }
                         Article {
+                            CardRings { }
                             Heading { level: 2 "Authority, not trust" }
                             Rich { "What a program may do is in its type, so a reviewer checks the policy, not every line. " Code { "cancho authority" } " names what is reachable, and says “unbounded” when it can’t." }
                         }
                         Article {
+                            CardJson { }
                             Heading { level: 2 "Verified, not read" }
                             Rich { "The compiler answers in data: a rule tag, a position, a fix. Diagnostics, the command tree and a skill file come out of the binary for an agent to use directly." }
                         }
                     }
                 }
+                Column { max_width: 10 Cairn { seed: 0 } }
                 Section {
                     id: "try"
                     Text { style: "eyebrow" "Try it" }
@@ -228,6 +297,7 @@ component Home {
                     }
                     Rich { style: "note" "Not claimed: that agents do better with cancho-tools than with the usual tools. That needs an agent-in-the-loop evaluation that has not been run (" Link { to: "https://github.com/alpibrusl/cancho/issues/228" "cancho#228" } "). cancho-code reports its own measured results, with their conditions, in its README." }
                 }
+                Column { max_width: 10 Cairn { seed: 1 } }
                 Section {
                     id: "trust"
                     Text { style: "eyebrow" "Trust without comprehension" }
@@ -297,6 +367,7 @@ component Home {
                         }
                     }
                 }
+                Column { max_width: 10 Cairn { seed: 2 } }
                 Section {
                     id: "verifies"
                     Text { style: "eyebrow" "Evidence, with its limits" }
@@ -333,13 +404,60 @@ component Home {
                     }
                     Rich { style: "note" "{data.value(Ecosystem, \"verifies.disclaimer\")} {data.value(Ecosystem, \"verifies.stamp\")}" }
                 }
+                Column { max_width: 10 Cairn { seed: 3 } }
                 Section {
                     id: "authority"
                     Text { style: "eyebrow" "Effects, as a value" }
                     Heading { level: 2 "Authority is a value, and you can watch it move." }
                     Rich { style: "lead" Code { "split(world)" } " is the only place a program gets authority from. Every piece must then be handed on or released; a function that was never given one cannot use it. Pick a story." }
+            Column {
+                Row {
+                    label: "Scenarios"
+                    role: group
+                    For { over: data.items(AuthorityData, "scenarios") as: s
+                        Button { label: json.get(s, "label", "") on: Pick(num(json.get(s, "i", "0"), 0), len(json.items(s, "steps")) - 1) pressed: tab == num(json.get(s, "i", "0"), 0) }
+                    }
+                }
+                Grid {
+                    min: 19
+                    weights: [1, 1.75]
+                    Column {
+                        For { over: data.items(AuthorityData, "scenarios") as: s
+                            For { over: json.items(s, "steps") as: st
+                                If { when: tab == num(json.get(s, "i", "0"), 0) && step == num(json.get(st, "i", "0"), 0)
+                                    Column {
+                                        For { over: json.items(s, "code") as: l
+                                            If { when: num(json.get(l, "i", "0"), 0) == num(json.get(st, "hl", "-1"), -1) Rich { Strong { "▶ " Code { "{json.get(l, \"t\", \"\")}" } } } }
+                                            If { when: num(json.get(l, "i", "0"), 0) == num(json.get(st, "hl_bad", "-1"), -1) Rich { Em { "✗ " Code { "{json.get(l, \"t\", \"\")}" } } } }
+                                            If { when: num(json.get(l, "i", "0"), 0) != num(json.get(st, "hl", "-1"), -1) && num(json.get(l, "i", "0"), 0) != num(json.get(st, "hl_bad", "-1"), -1) Rich { Code { "{json.get(l, \"t\", \"\")}" } } }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Column {
+                        AuthorityCanvas { scenario: tab step: step }
+                        Row {
+                            Button { label: "Previous step" on: Prev }
+                            Button { label: join(filter(["Pause"], t => playing), "") + join(filter(["Play"], t => !playing), "") on: Play pressed: playing }
+                            Button { label: "Next step" on: Next }
+                        }
+                        For { over: data.items(AuthorityData, "scenarios") as: s
+                            For { over: json.items(s, "steps") as: st
+                                If { when: tab == num(json.get(s, "i", "0"), 0) && step == num(json.get(st, "i", "0"), 0)
+                                    Text { role: status "{json.get(st, \"cap\", \"\")}" }
+                                    If { when: json.get(st, "verdict", "") == "ok" Text { role: status tone: "ok" "{json.get(st, \"verdict_text\", \"\")}" } }
+                                    If { when: json.get(st, "verdict", "") == "bad" Text { role: status tone: "error" "{json.get(st, \"verdict_text\", \"\")}" } }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
                     Rich { style: "note" "The two refusals are real rules the compiler reports (" Code { "linear-value-unconsumed" } ", " Code { "effect-not-declared" } "). The scenes are drawn, the rule tags are not." }
                 }
+                Column { max_width: 10 Cairn { seed: 4 } }
                 Section {
                     id: "ecosystem"
                     Text { style: "eyebrow" "The ecosystem" }
@@ -396,6 +514,7 @@ component Home {
                         }
                     }
                 }
+                Column { max_width: 10 Cairn { seed: 5 } }
                 Section {
                     id: "proof"
                     Text { style: "eyebrow" "Proof, not promises" }
@@ -435,6 +554,7 @@ component Home {
                     }
                     Rich { style: "note" "Measured {json.get(data.value(Ecosystem, \"measured\"), \"date\", \"\")}, {json.get(data.value(Ecosystem, \"measured\"), \"platform\", \"\")}. The first two figures are what the repository’s tests say and move as the work does (" Link { to: "https://github.com/alpibrusl/cancho/issues/491" "epic #491" } "). " Link { to: "https://alpibrusl.github.io/cancho/bootstrap.html" "Bootstrap and self-hosting" } " has the record." }
                 }
+                Column { max_width: 10 Cairn { seed: 6 } }
                 Section {
                     id: "demo"
                     Text { style: "eyebrow" "Recorded, not staged" }
@@ -459,6 +579,7 @@ component Home {
                         Code { "# A program that opens a file.\n$ cat leak.cho\n// Open a file.\nimport std.io;\n\nfn main(world: World) -> [] int \{\n    let Split \{ io, ffi, fs, heap, args } = split(world);\n    release(args);\n    release(ffi);\n    release(heap);\n    var status = 1;\n    let tmp = narrow(fs, \"/tmp\");\n    borrow tmp as &c in \{\n        match open_read(c, \"/tmp/notes.txt\") \{\n            Opened::Ok(f) => \{\n                status = 0;\n            }\n            Opened::Failed(e) => \{\n            }\n        }\n    }\n    release(tmp);\n    borrow mut io as &!i in \{\n        if status == 0 \{\n            io.write_all(i, \"opened it, closed it\\n\");\n        } else \{\n            io.write_all(i, \"no such file\\n\");\n        }\n    }\n    release(io);\n    return status;\n}\n# It never closes it. The compiler refuses, and says which rule:\n$ cancho check leak.cho --std\nleak.cho:12:9: error: `f` is still live at the end of this block; nothing consumes it\n            match open_read(c, \"/tmp/notes.txt\") \{\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n$ cancho check leak.cho --std --output json | grep -E \"\\\"(rule|message)\\\"\"\n      \"rule\": \"linear-value-unconsumed\",\n      \"message\": \"`f` is still live at the end of this block; nothing consumes it\",\n# One line fixes it.\n$ diff leak.cho fixed.cho\n13a14\n>                 file_close(f);\n$ cancho build fixed.cho --std -o notes && ./notes\nopened it, closed it\n# What may it do? The compiler can say, because authority is in the types.\n$ cancho authority fixed.cho --std\nperforms\n    fs_read(\"/tmp\")\n    io_write\nnever touches\n    the network\n    the heap\n    the command line\n    signals\n    other programs\n    foreign code\n# And the compiler can be one written in cancho:\n$ cancho build fixed.cho --std --compiler auto -o notes2 && ./notes2\nopened it, closed it\n" }
                     }
                 }
+                Column { max_width: 10 Cairn { seed: 7 } }
                 Section {
                     id: "not-here"
                     Text { style: "eyebrow" "Deliberately not here" }
@@ -469,6 +590,7 @@ component Home {
                     }
                     Rich { style: "note" "Borrowing is lexical: a region is a block, so a reference’s validity is read off the syntax. " Code { "Io \{\}" } " does not compile. Macros would break stable, content-addressable identity. " Link { to: "https://alpibrusl.github.io/cancho/" "The docs" } " have the reasons." }
                 }
+                Column { max_width: 10 Cairn { seed: 8 } }
                 Section {
                     id: "agents"
                     Image { src: "assets/img/lichen.webp" fallback: "assets/img/lichen.jpg" decorative: true width: 1024 height: 768 ratio: "4:3" }
@@ -517,6 +639,7 @@ component Home {
                         Item { "Claims that turn out wrong are corrected in place in the docs, not quietly edited." }
                     }
                 }
+                Column { max_width: 10 Cairn { seed: 9 } }
                 Section {
                     id: "name"
                     Text { style: "eyebrow" "The name" }
