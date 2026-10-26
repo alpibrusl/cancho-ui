@@ -34,6 +34,7 @@ use crate::lexer::{SpannedToken, Token};
 use crate::span::Span;
 use thiserror::Error;
 
+mod page;
 mod view;
 
 #[derive(Debug, Clone, Error, PartialEq)]
@@ -326,6 +327,7 @@ impl Parser {
         let mut components = Vec::new();
         let mut themes = Vec::new();
         let mut islands = Vec::new();
+        let mut pages = Vec::new();
         while !self.at_eof() {
             // Tier 16: `import <module>.<Component>;` — only at the
             // top level, only before components in practice but the
@@ -341,6 +343,14 @@ impl Parser {
             {
                 // `theme` is a keyword only here, at the top level and followed by `{` (docs/theme.md section 2).
                 themes.push(self.parse_theme_decl()?);
+            } else if matches!(&self.peek().token, Token::Ident(s) if s == "page")
+                && matches!(
+                    self.tokens.get(self.pos + 1).map(|t| &t.token),
+                    Some(Token::LBrace)
+                )
+            {
+                // `page` is a keyword only here, at the top level and followed by `{` (docs/page.md section 3).
+                pages.push(self.parse_page_decl()?);
             } else if matches!(&self.peek().token, Token::Ident(s) if s == "island")
                 && matches!(
                     self.tokens.get(self.pos + 1).map(|t| &t.token),
@@ -360,6 +370,7 @@ impl Parser {
             components,
             themes,
             islands,
+            pages,
             span: Span::new(start, end),
         })
     }

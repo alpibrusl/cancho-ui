@@ -78,6 +78,12 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 .cui-media { display: block; width: 100%; max-width: 100%; height: auto; border-radius: 12px; background: #000; }
 [data-ratio="1:1"] { aspect-ratio: 1 / 1; } [data-ratio="4:3"] { aspect-ratio: 4 / 3; } [data-ratio="3:2"] { aspect-ratio: 3 / 2; }
 [data-ratio="16:9"] { aspect-ratio: 16 / 9; } [data-ratio="21:9"] { aspect-ratio: 21 / 9; } [data-ratio="3:4"] { aspect-ratio: 3 / 4; } [data-ratio="2:3"] { aspect-ratio: 2 / 3; }
+/* page (docs/page.md): a sticky Header stays at the top of the window, a skip link shows only while it has the focus, and a Main a link can start from is not outlined */
+.cui-sticky { position: sticky; top: 0; z-index: 10; box-sizing: border-box; min-height: 4rem; display: flex; flex-wrap: wrap; align-items: center; column-gap: 1rem; background: Canvas; border-bottom: 1px solid color-mix(in srgb, currentColor 25%, transparent); }
+.cui-skip { position: fixed; top: -4rem; left: 0.5rem; z-index: 20; display: inline-flex; align-items: center; min-height: 44px; padding: 0 1rem; border-radius: 8px; font-weight: 600; background: LinkText; color: Canvas; }
+.cui-skip:focus { top: 0.5rem; }
+main[tabindex="-1"]:focus { outline: none; }
+.cui-sticky nav { display: flex; flex-wrap: wrap; column-gap: 1rem; }
 </style>
 </head>
 <body>

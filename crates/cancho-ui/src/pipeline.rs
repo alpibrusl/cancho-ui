@@ -410,6 +410,7 @@ fn compile_inner(
             components: ast.components.clone(),
             themes: ast.themes.clone(),
             islands: ast.islands.clone(),
+            pages: ast.pages.clone(),
             span: ast.span,
         },
     };
@@ -496,7 +497,26 @@ fn compile_inner(
             Some("Keep the theme in the entry file and delete the other.".to_string()),
         )));
     }
+    // one page in a program, too: the head is the entry's
+    if let Some(second) = irs
+        .iter()
+        .filter(|i| i.page.is_some())
+        .nth(1)
+        .and_then(|i| i.page.as_ref())
+    {
+        return Err(PipelineError::refused(import_diag(
+            "page-duplicate",
+            String::new(),
+            "a program has one `page { .. }`; the entry file and an imported module each declare one".to_string(),
+            second.span,
+            file,
+            Some("Keep the page in the entry file and delete the other.".to_string()),
+        )));
+    }
     let mut merged = cancho_ui_ir::merge_ir_files(&irs);
+    // a sticky Header, a skip link and the Main it goes to: checks that need every component of the program
+    cancho_ui_ir::page::check_program(&merged)
+        .map_err(|e| PipelineError::refused(lower_to_diag(&e, file)))?;
     // the font files a theme declares exist and are the files it names (relative to the entry file's directory)
     if let Some(t) = &merged.theme {
         let dir = file.parent().unwrap_or_else(|| Path::new(""));
@@ -511,6 +531,13 @@ fn compile_inner(
     .map_err(PipelineError::Refused)?;
     // the files of the sealed islands exist, are the files the program pins, and become the documents of their frames (docs/islands.md)
     crate::islands::load(
+        &mut merged,
+        file.parent().unwrap_or_else(|| Path::new("")),
+        file,
+    )
+    .map_err(PipelineError::Refused)?;
+    // the files the page names (docs/page.md): read, checked, hashed; the card image's size is read from its header
+    crate::page_files::load(
         &mut merged,
         file.parent().unwrap_or_else(|| Path::new("")),
         file,
@@ -1775,6 +1802,7 @@ fn control_remediation(code: &str) -> String {
         "disabled-not-bool" => "Write `disabled: true`, `disabled: false` or `disabled: sending` where `sending` is a `state sending: Bool`.".to_string(),
         c if c.starts_with("theme-") || c.starts_with("font-") => crate::theme::remediation(c),
         c if c.starts_with("island-") => "See docs/islands.md.".to_string(),
+        c if c.starts_with("page-") || c.starts_with("skip-link-") || c.starts_with("header-sticky-") => crate::page_files::remediation(c),
         c if c.starts_with("image-")
             || c.starts_with("media-")
             || c.starts_with("grid-")

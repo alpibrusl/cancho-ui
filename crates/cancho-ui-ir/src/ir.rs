@@ -21,6 +21,53 @@ pub struct IrFile {
     /// The sealed islands the program declares (docs/islands.md), in source order. Their files are read by the pipeline, which fills each
     /// island's `srcdoc`; `diff` and `inspect effects` report them.
     pub islands: Vec<IrIsland>,
+    /// `page { .. }` (docs/page.md): the head of the document and the skip link, checked. The files it names are read by the pipeline, which fills
+    /// their size, hash and (for the card image) dimensions; `diff` and `inspect page` report it.
+    pub page: Option<IrPage>,
+}
+
+/// A checked `page { .. }`: what the document says about itself. Everything here is text or the path of a file of the program; the head is
+/// written from it at build time, in static HTML.
+#[derive(Debug, Clone, PartialEq)]
+pub struct IrPage {
+    pub title: String,
+    pub lang: String,
+    pub description: Option<String>,
+    pub share_description: Option<String>,
+    pub canonical: Option<String>,
+    pub image: Option<IrPageImage>,
+    pub icon: Option<IrPageFile>,
+    pub touch_icon: Option<IrPageFile>,
+    pub alternates: Vec<IrPageAlternate>,
+    pub skip_link: Option<String>,
+    /// where the skip link is written, for the refusals that need the whole program
+    pub skip_link_span: Option<Span>,
+    pub span: Span,
+}
+
+/// A file a page names: relative to the program, with the media type its extension says. `sha256` and `bytes` are filled by the pipeline.
+#[derive(Debug, Clone, PartialEq)]
+pub struct IrPageFile {
+    pub path: String,
+    pub mime: &'static str,
+    pub sha256: String,
+    pub bytes: u64,
+    pub span: Span,
+}
+
+/// The card image: a file, its alternative text, and the size read from the file by the pipeline (0 until then).
+#[derive(Debug, Clone, PartialEq)]
+pub struct IrPageImage {
+    pub file: IrPageFile,
+    pub alt: String,
+    pub width: u32,
+    pub height: u32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct IrPageAlternate {
+    pub file: IrPageFile,
+    pub title: String,
 }
 
 /// A declared island (docs/islands.md section 4): the files it runs, pinned by hash, and the typed props and events that are its only way of

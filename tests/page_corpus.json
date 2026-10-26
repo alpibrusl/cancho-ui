@@ -1,0 +1,573 @@
+{
+ "about": "docs/page.md. `valid`: a program that must check. `refusals`: a program and the rule tag that refuses it. A program is `page` (the declaration), `view` (the view of component C, default a Main with an id) and `extra_state`, or a whole `program`. `{N:c}` is the character c N times. `files` are written beside the program: a fixture of tests/fixtures/page, a text, `hex` bytes, or `sparse` (a file of that many bytes that starts with `head`). Checked by crates/cancho-ui/tests/page.rs.",
+ "component": "component C {\n    {state}\n    view { Column { {view} } }\n}\n",
+ "default_view": "Main { id: \"main\" Text { \"x\" } }",
+ "files": {
+  "card.png": {
+   "fixture": "card.png"
+  },
+  "card.jpg": {
+   "fixture": "card.jpg"
+  },
+  "lossy.webp": {
+   "fixture": "lossy.webp"
+  },
+  "lossless.webp": {
+   "fixture": "lossless.webp"
+  },
+  "icon.png": {
+   "fixture": "icon.png"
+  },
+  "icon.ico": {
+   "fixture": "icon.ico"
+  },
+  "a.md": "# a\n",
+  "a.json": "{\"a\": 1}\n",
+  "a.txt": "a\n",
+  "a.xml": "<a/>\n",
+  "bad.json": "{ not json",
+  "bad.md": {
+   "hex": "80ff"
+  },
+  "stub.png": {
+   "hex": "89504e470d0a1a0a0000"
+  },
+  "fake.png": "<html>not a png</html>",
+  "card.gif": {
+   "hex": "474946383961"
+  },
+  "big.png": {
+   "sparse": 20971521,
+   "head": "89504e470d0a1a0a"
+  },
+  "a.ico": "not an icon"
+ },
+ "valid": [
+  {
+   "name": "the smallest page",
+   "page": "page { title: \"T\"; lang: \"en\";  }"
+  },
+  {
+   "name": "every entry",
+   "page": "page { title: \"T\"; lang: \"en\"; description: \"A description.\"; share_description: \"A card text.\"; canonical: \"https://example.org/dir/\"; image: \"card.png\" alt: \"A card.\"; icon: \"icon.png\"; touch_icon: \"icon.png\"; alternate: \"a.md\" title: \"As text\"; alternate: \"a.json\" title: \"As data\"; skip_link: \"Skip to content\"; }",
+   "view": "Main { id: \"main\" Text { \"x\" } }"
+  },
+  {
+   "name": "a language with a region and a script",
+   "page": "page { title: \"T\"; lang: \"zh-Hant-TW\";  }"
+  },
+  {
+   "name": "an icon that is an ico, a jpeg and a webp",
+   "page": "page { title: \"T\"; lang: \"en\"; icon: \"icon.ico\"; touch_icon: \"card.jpg\"; }"
+  },
+  {
+   "name": "a card that is a jpeg, with a canonical that is a file",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org/dir/index.html\"; image: \"card.jpg\" alt: \"A.\"; }"
+  },
+  {
+   "name": "a card that is lossy and one lossless webp",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org:8443/\"; image: \"lossy.webp\" alt: \"A.\"; }"
+  },
+  {
+   "name": "an alternate of each kind",
+   "page": "page { title: \"T\"; lang: \"en\"; alternate: \"a.md\" title: \"m\"; alternate: \"a.txt\" title: \"t\"; alternate: \"a.xml\" title: \"x\"; alternate: \"a.json\" title: \"j\"; }"
+  },
+  {
+   "name": "a description of exactly 300 characters",
+   "page": "page { title: \"T\"; lang: \"en\"; description: \"{300:a}\"; }"
+  },
+  {
+   "name": "a sticky header of the page's column",
+   "page": "page { title: \"T\"; lang: \"en\";  }",
+   "view": "Header { sticky: true Link { to: \"#main\" \"Top\" } } Main { id: \"main\" Text { \"x\" } }"
+  },
+  {
+   "name": "a header that is not sticky inside a section",
+   "page": "page { title: \"T\"; lang: \"en\";  }",
+   "view": "Section { Header { sticky: false Text { \"h\" } } }"
+  },
+  {
+   "name": "the word page as a component's name and a state",
+   "program": "component Page {\n    state page: Int = 0;\n    view { Text { \"{page}\" } }\n}\n"
+  }
+ ],
+ "refusals": [
+  {
+   "tag": "page-duplicate",
+   "name": "two pages in a file",
+   "page": "page { title: \"T\"; lang: \"en\";  }\npage { title: \"T\"; lang: \"en\";  }"
+  },
+  {
+   "tag": "page-entry-unknown",
+   "name": "an entry that is not one",
+   "page": "page { title: \"T\"; lang: \"en\"; og_title: \"x\"; }"
+  },
+  {
+   "tag": "page-entry-unknown",
+   "name": "an alt on an icon",
+   "page": "page { title: \"T\"; lang: \"en\"; icon: \"icon.png\" alt: \"x\"; }"
+  },
+  {
+   "tag": "page-entry-unknown",
+   "name": "a title on an image",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org/\"; image: \"card.png\" alt: \"a\" title: \"x\"; }"
+  },
+  {
+   "tag": "page-entry-duplicate",
+   "name": "two titles",
+   "page": "page { title: \"T\"; lang: \"en\"; title: \"U\"; }"
+  },
+  {
+   "tag": "page-entry-duplicate",
+   "name": "two descriptions",
+   "page": "page { title: \"T\"; lang: \"en\"; description: \"a\"; description: \"b\"; }"
+  },
+  {
+   "tag": "page-entry-duplicate",
+   "name": "two icons",
+   "page": "page { title: \"T\"; lang: \"en\"; icon: \"icon.png\"; icon: \"icon.png\"; }"
+  },
+  {
+   "tag": "page-entry-duplicate",
+   "name": "two alts",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org/\"; image: \"card.png\" alt: \"a\" alt: \"b\"; }"
+  },
+  {
+   "tag": "page-entry-duplicate",
+   "name": "two skip links",
+   "page": "page { title: \"T\"; lang: \"en\"; skip_link: \"a\"; skip_link: \"b\"; }",
+   "view": "Main { id: \"main\" Text { \"x\" } }"
+  },
+  {
+   "tag": "page-title-missing",
+   "name": "no title",
+   "page": "page { lang: \"en\"; }"
+  },
+  {
+   "tag": "page-title-missing",
+   "name": "a blank title",
+   "page": "page { title: \"  \"; lang: \"en\";  }"
+  },
+  {
+   "tag": "page-lang-missing",
+   "name": "no lang",
+   "page": "page { title: \"T\"; }"
+  },
+  {
+   "tag": "page-lang-invalid",
+   "name": "a language of 'english'",
+   "page": "page { title: \"T\"; lang: \"english\";  }"
+  },
+  {
+   "tag": "page-lang-invalid",
+   "name": "a language of 'e'",
+   "page": "page { title: \"T\"; lang: \"e\";  }"
+  },
+  {
+   "tag": "page-lang-invalid",
+   "name": "a language of 'en_US'",
+   "page": "page { title: \"T\"; lang: \"en_US\";  }"
+  },
+  {
+   "tag": "page-lang-invalid",
+   "name": "a language of 'en-'",
+   "page": "page { title: \"T\"; lang: \"en-\";  }"
+  },
+  {
+   "tag": "page-lang-invalid",
+   "name": "a language of 'en--US'",
+   "page": "page { title: \"T\"; lang: \"en--US\";  }"
+  },
+  {
+   "tag": "page-lang-invalid",
+   "name": "a language of 'e1'",
+   "page": "page { title: \"T\"; lang: \"e1\";  }"
+  },
+  {
+   "tag": "page-lang-invalid",
+   "name": "a language of 'en-toolongpart1'",
+   "page": "page { title: \"T\"; lang: \"en-toolongpart1\";  }"
+  },
+  {
+   "tag": "page-description-length",
+   "name": "a blank description",
+   "page": "page { title: \"T\"; lang: \"en\"; description: \" \"; }"
+  },
+  {
+   "tag": "page-description-length",
+   "name": "an empty description",
+   "page": "page { title: \"T\"; lang: \"en\"; description: \"\"; }"
+  },
+  {
+   "tag": "page-description-length",
+   "name": "301 characters",
+   "page": "page { title: \"T\"; lang: \"en\"; description: \"{301:a}\"; }"
+  },
+  {
+   "tag": "page-description-length",
+   "name": "a share description of 301",
+   "page": "page { title: \"T\"; lang: \"en\"; share_description: \"{301:a}\"; }"
+  },
+  {
+   "tag": "page-text-invalid",
+   "name": "a line break in the title",
+   "page": "page { title: \"a\\nb\"; lang: \"en\";  }"
+  },
+  {
+   "tag": "page-text-invalid",
+   "name": "a tab in a description",
+   "page": "page { title: \"T\"; lang: \"en\"; description: \"a\\tb\"; }"
+  },
+  {
+   "tag": "page-text-invalid",
+   "name": "a line break in an alt",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org/\"; image: \"card.png\" alt: \"a\\nb\"; }"
+  },
+  {
+   "tag": "page-text-invalid",
+   "name": "a line break in the skip link",
+   "page": "page { title: \"T\"; lang: \"en\"; skip_link: \"a\\nb\"; }",
+   "view": "Main { id: \"main\" Text { \"x\" } }"
+  },
+  {
+   "tag": "page-canonical-not-https",
+   "name": "a canonical of http://example.org/",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"http://example.org/\"; }"
+  },
+  {
+   "tag": "page-canonical-not-https",
+   "name": "a canonical of example.org",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"example.org\"; }"
+  },
+  {
+   "tag": "page-canonical-not-https",
+   "name": "a canonical of //example.org/",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"//example.org/\"; }"
+  },
+  {
+   "tag": "page-canonical-not-https",
+   "name": "a canonical of ftp://example.org/",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"ftp://example.org/\"; }"
+  },
+  {
+   "tag": "page-canonical-not-https",
+   "name": "a canonical of javascript:alert(1)",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"javascript:alert(1)\"; }"
+  },
+  {
+   "tag": "page-canonical-not-https",
+   "name": "a canonical of /relative/",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"/relative/\"; }"
+  },
+  {
+   "tag": "page-canonical-invalid",
+   "name": "a canonical of https://",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://\"; }"
+  },
+  {
+   "tag": "page-canonical-invalid",
+   "name": "a canonical of https:///x",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https:///x\"; }"
+  },
+  {
+   "tag": "page-canonical-invalid",
+   "name": "a canonical of https://user@example.org/",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://user@example.org/\"; }"
+  },
+  {
+   "tag": "page-canonical-invalid",
+   "name": "a canonical of https://user:pw@example.org/",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://user:pw@example.org/\"; }"
+  },
+  {
+   "tag": "page-canonical-invalid",
+   "name": "a canonical of https://example.org/a b",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org/a b\"; }"
+  },
+  {
+   "tag": "page-canonical-invalid",
+   "name": "a canonical of https://example.org/#top",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org/#top\"; }"
+  },
+  {
+   "tag": "page-canonical-invalid",
+   "name": "a canonical of https://Example.org/",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://Example.org/\"; }"
+  },
+  {
+   "tag": "page-canonical-invalid",
+   "name": "a canonical of https://example.org/\\\"x",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org/\\\"x\"; }"
+  },
+  {
+   "tag": "page-canonical-invalid",
+   "name": "a canonical of https://example.org/<x>",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org/<x>\"; }"
+  },
+  {
+   "tag": "page-canonical-invalid",
+   "name": "a canonical of https://exa_mple.org/",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://exa_mple.org/\"; }"
+  },
+  {
+   "tag": "page-canonical-invalid",
+   "name": "a canonical of https://example.org:80a/",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org:80a/\"; }"
+  },
+  {
+   "tag": "page-image-alt-missing",
+   "name": "an image with no alt",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org/\"; image: \"card.png\"; }"
+  },
+  {
+   "tag": "page-image-alt-missing",
+   "name": "an image with a blank alt",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org/\"; image: \"card.png\" alt: \"  \"; }"
+  },
+  {
+   "tag": "page-image-needs-canonical",
+   "name": "an image with no canonical",
+   "page": "page { title: \"T\"; lang: \"en\"; image: \"card.png\" alt: \"a\"; }"
+  },
+  {
+   "tag": "page-image-size-unreadable",
+   "name": "a png that is only its signature",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org/\"; image: \"stub.png\" alt: \"a\"; }"
+  },
+  {
+   "tag": "page-file-invalid",
+   "name": "a card file of https://example.org/card.png",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org/\"; image: \"https://example.org/card.png\" alt: \"a\"; }"
+  },
+  {
+   "tag": "page-file-invalid",
+   "name": "a card file of //example.org/card.png",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org/\"; image: \"//example.org/card.png\" alt: \"a\"; }"
+  },
+  {
+   "tag": "page-file-invalid",
+   "name": "a card file of /card.png",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org/\"; image: \"/card.png\" alt: \"a\"; }"
+  },
+  {
+   "tag": "page-file-invalid",
+   "name": "a card file of ../card.png",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org/\"; image: \"../card.png\" alt: \"a\"; }"
+  },
+  {
+   "tag": "page-file-invalid",
+   "name": "a card file of dir/../card.png",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org/\"; image: \"dir/../card.png\" alt: \"a\"; }"
+  },
+  {
+   "tag": "page-file-invalid",
+   "name": "a card file of card.gif",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org/\"; image: \"card.gif\" alt: \"a\"; }"
+  },
+  {
+   "tag": "page-file-invalid",
+   "name": "a card file of card.svg",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org/\"; image: \"card.svg\" alt: \"a\"; }"
+  },
+  {
+   "tag": "page-file-invalid",
+   "name": "a card file of card",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org/\"; image: \"card\" alt: \"a\"; }"
+  },
+  {
+   "tag": "page-file-invalid",
+   "name": "a card file of a b.png",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org/\"; image: \"a b.png\" alt: \"a\"; }"
+  },
+  {
+   "tag": "page-file-invalid",
+   "name": "a card file of card.png/",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org/\"; image: \"card.png/\" alt: \"a\"; }"
+  },
+  {
+   "tag": "page-file-invalid",
+   "name": "an icon that is an address",
+   "page": "page { title: \"T\"; lang: \"en\"; icon: \"https://example.org/i.png\"; }"
+  },
+  {
+   "tag": "page-file-invalid",
+   "name": "an icon that is an svg",
+   "page": "page { title: \"T\"; lang: \"en\"; icon: \"icon.svg\"; }"
+  },
+  {
+   "tag": "page-file-invalid",
+   "name": "a touch icon with a dot segment",
+   "page": "page { title: \"T\"; lang: \"en\"; touch_icon: \"./icon.png\"; }"
+  },
+  {
+   "tag": "page-file-invalid",
+   "name": "an alternate that is html",
+   "page": "page { title: \"T\"; lang: \"en\"; alternate: \"index.html\" title: \"x\"; }"
+  },
+  {
+   "tag": "page-file-invalid",
+   "name": "an alternate that is an address",
+   "page": "page { title: \"T\"; lang: \"en\"; alternate: \"https://example.org/a.md\" title: \"x\"; }"
+  },
+  {
+   "tag": "page-alternate-title-missing",
+   "name": "an alternate with no title",
+   "page": "page { title: \"T\"; lang: \"en\"; alternate: \"a.md\"; }"
+  },
+  {
+   "tag": "page-alternate-title-missing",
+   "name": "an alternate with a blank title",
+   "page": "page { title: \"T\"; lang: \"en\"; alternate: \"a.md\" title: \" \"; }"
+  },
+  {
+   "tag": "page-skip-link-empty",
+   "name": "a blank skip link",
+   "page": "page { title: \"T\"; lang: \"en\"; skip_link: \" \"; }",
+   "view": "Main { id: \"main\" Text { \"x\" } }"
+  },
+  {
+   "tag": "skip-link-target-missing",
+   "name": "a skip link and no Main",
+   "page": "page { title: \"T\"; lang: \"en\"; skip_link: \"Skip\"; }",
+   "view": "Text { \"x\" }"
+  },
+  {
+   "tag": "skip-link-target-missing",
+   "name": "a skip link to a Main with no id",
+   "page": "page { title: \"T\"; lang: \"en\"; skip_link: \"Skip\"; }",
+   "view": "Main { Text { \"x\" } }"
+  },
+  {
+   "tag": "skip-link-target-dynamic",
+   "name": "a Main inside an If",
+   "page": "page { title: \"T\"; lang: \"en\"; skip_link: \"Skip\"; }",
+   "view": "If { when: shown Main { id: \"main\" Text { \"x\" } } }",
+   "extra_state": "state shown: Bool = true;"
+  },
+  {
+   "tag": "skip-link-target-dynamic",
+   "name": "a Main in another component",
+   "page": null,
+   "program": "page { title: \"T\"; lang: \"en\"; skip_link: \"Skip\"; }\ncomponent Inner {\n    view { Main { id: \"main\" Text { \"x\" } } }\n}\ncomponent Outer {\n    view { Inner { } }\n}\n"
+  },
+  {
+   "tag": "header-sticky-invalid",
+   "name": "sticky as a number",
+   "page": "page { title: \"T\"; lang: \"en\";  }",
+   "view": "Header { sticky: 1 Text { \"h\" } }"
+  },
+  {
+   "tag": "header-sticky-invalid",
+   "name": "sticky as text",
+   "page": "page { title: \"T\"; lang: \"en\";  }",
+   "view": "Header { sticky: \"yes\" Text { \"h\" } }"
+  },
+  {
+   "tag": "header-sticky-duplicate",
+   "name": "two sticky headers",
+   "page": "page { title: \"T\"; lang: \"en\";  }",
+   "view": "Header { sticky: true Text { \"a\" } } Header { sticky: true Text { \"b\" } }"
+  },
+  {
+   "tag": "header-sticky-misplaced",
+   "name": "a sticky header in a Section",
+   "page": "page { title: \"T\"; lang: \"en\";  }",
+   "view": "Section { Header { sticky: true Text { \"h\" } } }"
+  },
+  {
+   "tag": "header-sticky-misplaced",
+   "name": "a sticky header in a Article",
+   "page": "page { title: \"T\"; lang: \"en\";  }",
+   "view": "Article { Header { sticky: true Text { \"h\" } } }"
+  },
+  {
+   "tag": "header-sticky-misplaced",
+   "name": "a sticky header in a Aside",
+   "page": "page { title: \"T\"; lang: \"en\";  }",
+   "view": "Aside { Header { sticky: true Text { \"h\" } } }"
+  },
+  {
+   "tag": "header-sticky-misplaced",
+   "name": "a sticky header in a Main",
+   "page": "page { title: \"T\"; lang: \"en\";  }",
+   "view": "Main { Header { sticky: true Text { \"h\" } } }"
+  },
+  {
+   "tag": "header-sticky-misplaced",
+   "name": "a sticky header in a Nav",
+   "page": "page { title: \"T\"; lang: \"en\";  }",
+   "view": "Nav { Header { sticky: true Text { \"h\" } } }"
+  },
+  {
+   "tag": "header-sticky-misplaced",
+   "name": "a sticky header in a Footer",
+   "page": "page { title: \"T\"; lang: \"en\";  }",
+   "view": "Footer { Header { sticky: true Text { \"h\" } } }"
+  },
+  {
+   "tag": "header-sticky-misplaced",
+   "name": "a sticky header in a Figure",
+   "page": "page { title: \"T\"; lang: \"en\";  }",
+   "view": "Figure { Header { sticky: true Text { \"h\" } } }"
+  },
+  {
+   "tag": "header-sticky-misplaced",
+   "name": "a sticky header in a Details",
+   "page": "page { title: \"T\"; lang: \"en\";  }",
+   "view": "Details { summary: \"s\" Header { sticky: true Text { \"h\" } } }"
+  },
+  {
+   "tag": "header-sticky-misplaced",
+   "name": "a sticky header in a Header",
+   "page": "page { title: \"T\"; lang: \"en\";  }",
+   "view": "Header { Header { sticky: true Text { \"h\" } } }"
+  },
+  {
+   "tag": "asset-missing",
+   "name": "an icon that is not there",
+   "page": "page { title: \"T\"; lang: \"en\"; icon: \"nowhere.png\"; }"
+  },
+  {
+   "tag": "asset-missing",
+   "name": "an alternate that is not there",
+   "page": "page { title: \"T\"; lang: \"en\"; alternate: \"nowhere.md\" title: \"x\"; }"
+  },
+  {
+   "tag": "asset-missing",
+   "name": "a card that is not there",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org/\"; image: \"nowhere.png\" alt: \"a\"; }"
+  },
+  {
+   "tag": "asset-too-large",
+   "name": "an icon over 20 MB",
+   "page": "page { title: \"T\"; lang: \"en\"; icon: \"big.png\"; }"
+  },
+  {
+   "tag": "asset-type-mismatch",
+   "name": "a card that is html",
+   "page": "page { title: \"T\"; lang: \"en\"; canonical: \"https://example.org/\"; image: \"fake.png\" alt: \"a\"; }"
+  },
+  {
+   "tag": "asset-type-mismatch",
+   "name": "an alternate that is not JSON",
+   "page": "page { title: \"T\"; lang: \"en\"; alternate: \"bad.json\" title: \"x\"; }"
+  },
+  {
+   "tag": "asset-type-mismatch",
+   "name": "an alternate that is not UTF-8",
+   "page": "page { title: \"T\"; lang: \"en\"; alternate: \"bad.md\" title: \"x\"; }"
+  },
+  {
+   "tag": "asset-type-mismatch",
+   "name": "an ico that is not one",
+   "page": "page { title: \"T\"; lang: \"en\"; icon: \"a.ico\"; }"
+  },
+  {
+   "tag": "anchor-duplicate",
+   "name": "a Main with an id inside a For is refused before the skip link is looked at",
+   "page": "page { title: \"T\"; lang: \"en\"; skip_link: \"Skip\"; }",
+   "view": "For { over: items as: m Main { id: \"main\" Text { \"x\" } } }",
+   "extra_state": "state items: List[String] = [\"a\"];"
+  }
+ ]
+}

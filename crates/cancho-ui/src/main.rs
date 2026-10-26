@@ -29,6 +29,7 @@
 mod assets;
 mod diff_cmd;
 mod islands;
+mod page_files;
 mod pipeline;
 mod pwa;
 mod test_cmd;
@@ -48,6 +49,7 @@ USAGE:
     cancho-ui inspect component <file.cui> <name> [--output json]
     cancho-ui inspect effects   <file.cui> <name> [--output json]
     cancho-ui inspect ir       <file.cui>          [--output json]
+    cancho-ui inspect page     <file.cui>          [--output json]
     cancho-ui diff <base.cui> <candidate.cui>      [--output json]
     cancho-ui test <file.cui> <trace.json>         [--output json] [--full]
     cancho-ui report           <file.cui>...       [--output json]
@@ -193,13 +195,27 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
                     None => None,
                 };
                 // the pictures and videos the views name, copied into the build at the paths the page uses
-                let site = match ir.as_ref() {
+                let mut site = match ir.as_ref() {
                     Some(i) => {
                         assets::load(i, file.parent().unwrap_or_else(|| std::path::Path::new("")))
                             .map_err(CliError::Env)?
                     }
                     None => Vec::new(),
                 };
+                // the head and the skip link of a `page { .. }` (docs/page.md), and the files it names, copied beside `index.html`
+                let page = ir.as_ref().map(page_files::parts).unwrap_or_default();
+                if let Some(i) = ir.as_ref() {
+                    let files = page_files::copies(
+                        i,
+                        file.parent().unwrap_or_else(|| std::path::Path::new("")),
+                    )
+                    .map_err(CliError::Env)?;
+                    for f in files {
+                        if !site.iter().any(|(p, _)| *p == f.0) {
+                            site.push(f);
+                        }
+                    }
+                }
                 // the static part of the component that is mounted into the page, written into `index.html` (docs/prerender.md)
                 let prerender = if opts.no_auto_mount {
                     None
@@ -221,6 +237,7 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
                         theme.as_ref(),
                         &site,
                         prerender.as_ref(),
+                        &page,
                     )
                 } else {
                     pwa::generate_page(
@@ -230,6 +247,7 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
                         theme.as_ref(),
                         &site,
                         prerender.as_ref(),
+                        &page,
                     )
                 };
                 pwa::write_all(dir, &files).map_err(CliError::Env)?;
@@ -300,6 +318,18 @@ fn run_inspect(args: &[String]) -> Result<ExitCode, CliError> {
             {
                 o.insert("links".to_string(), serde_json::json!(links));
             }
+            // the hosts the page's head names (docs/page.md section 3): where a crawler is sent; the page makes no request to them. Listed on the
+            // component that is mounted into the page, which is the last
+            if ir.components.last().is_some_and(|c| c.name == comp.name)
+                && let Some(p) = &ir.page
+            {
+                let hosts = cancho_ui_ir::page::hosts(p);
+                if !hosts.is_empty()
+                    && let Some(o) = v.as_object_mut()
+                {
+                    o.insert("page_hosts".to_string(), serde_json::json!(hosts));
+                }
+            }
             // the sealed islands the view instantiates (docs/islands.md section 6): what each runs, by hash, and what it reaches
             let used: Vec<serde_json::Value> = ir
                 .islands
@@ -314,6 +344,11 @@ fn run_inspect(args: &[String]) -> Result<ExitCode, CliError> {
             }
             cancho_ui_ir::pretty_json(&v)
         }
+        "page" => match &ir.page {
+            // the whole head as it will be written: the checked values, the card's absolute address, the files with their hashes, the hosts
+            Some(p) => cancho_ui_ir::pretty_json(&cancho_ui_ir::page::to_json(p)),
+            None => cancho_ui_ir::pretty_json(&serde_json::Value::Null),
+        },
         "prerender" => {
             // what `build --page` writes into the page for this component and what it leaves to the script (docs/prerender.md)
             let name = opts.arg.as_ref().ok_or_else(|| {
@@ -465,7 +500,7 @@ fn run_introspect(args: &[String]) -> Result<ExitCode, CliError> {
         "commands": [
             { "name": "check",       "args": ["<file.cui>...", "--output json"] },
             { "name": "build",       "args": ["<file.cui>...", "-o <path>", "--target web", "--no-auto-mount", "--pwa", "--page", "--name <text>", "--output json"] },
-            { "name": "inspect",     "subcommands": ["component <file> <name>", "effects <file> <name>", "ir <file>"], "args": ["--output json"] },
+            { "name": "inspect",     "subcommands": ["component <file> <name>", "effects <file> <name>", "page <file>", "ir <file>"], "args": ["--output json"] },
             { "name": "diff",        "args": ["<base.cui>", "<candidate.cui>", "--output json"], "exit_codes": { "0": "no semantic change", "1": "a file was refused", "2": "command line wrong", "3": "environment failed", "5": "the programs differ semantically" } },
             { "name": "test",        "args": ["<file.cui>", "<trace.json>", "--output json", "--full"], "exit_codes": { "0": "the trace passed", "1": "the program did not compile", "2": "command line wrong", "3": "environment failed", "4": "a test failed (expectation, malformed trace, or a construct replay refuses)" } },
             { "name": "report",      "args": ["<file.cui>...", "--output json"] },
@@ -677,7 +712,8 @@ impl InspectOpts {
         let mut out = InspectOpts::default();
         if args.is_empty() {
             return Err(CliError::Usage(
-                "`inspect` requires a subject (`component`, `effects`, `prerender`, `ir`)".into(),
+                "`inspect` requires a subject (`component`, `effects`, `prerender`, `page`, `ir`)"
+                    .into(),
             ));
         }
         out.what = args[0].to_string();

@@ -1,6 +1,6 @@
 # The home page of cancho, written in cancho-ui: an inventory, a map, and an order
 
-> **Status: DESIGN; step 1 (the theme) is built, nothing else is** *(updated 2026-10-24: [`theme.md`](theme.md))*. Written 2026-10-24, before any code ([`CONTRIBUTING.md`](../CONTRIBUTING.md) section 1). The goal, set by the
+> **Status: DESIGN; steps 1 to 4 are built (theme, structure, prerender and islands, page-level: [`page.md`](page.md)); the rest is not**  *(updated 2026-10-24: [`theme.md`](theme.md))*. Written 2026-10-24, before any code ([`CONTRIBUTING.md`](../CONTRIBUTING.md) section 1). The goal, set by the
 > user: evolve cancho-ui until the home page in `alpibrusl/cancho-www` can be written in it. This note inventories that page, maps every part of it
 > to what cancho-ui does today, to a new primitive, or to a declared plain-JS island, and proposes the order in which to build. **Nothing here is a
 > commitment to build a step**: each step is its own draft PR after the user confirms the order. Every number is measured and says how; what could
@@ -297,11 +297,14 @@ sentence above.
 
 ### 5.3 Page-level
 
-* **`Page { title: ".." description: ".." lang: "en" canonical: ".." image: ".." alternates: [...] icon: ".." }`**: the 13 `meta`, `canonical`, `icon`,
-  `apple-touch-icon`, the two `alternate` links and `<html lang>`. Tags: `page-title-missing`, `page-description-length` (outside 50..160 chars),
-  `page-lang-invalid`, `page-canonical-not-https`, `page-image-size-missing` (the OG image's width and height), `anchor-unknown` (`Link { to: "#x" }` with no `Section { id: "x" }`),
-  `anchor-duplicate`. Authority: none; `diff` shows the metadata change. The generated `agents.md`/`llms.txt` URLs would still come from the data file.
-* **`Header { sticky: true }`**: sticky with `scroll-padding-top` set by the compiler so anchors are not hidden under it (the page sets `5rem` by hand).
+> **Built 2026-10-25: [`page.md`](page.md). Measured against the real page and corrected in place below.**
+
+* **`page { title: ".." lang: ".." description: ".." canonical: ".." image: ".." icon: ".." .. }`** *(corrected 2026-10-25, page.md 2 and 3: it is a top-level declaration like `theme`, not an element, and its entries are `title`, `lang`, `description`, `share_description`, `canonical`, `image` with `alt`, `icon`, `touch_icon`, `alternate` with `title`, and `skip_link`)*: the 13 `meta`, `canonical`, `icon`,
+  `apple-touch-icon`, the two `alternate` links and `<html lang>`, written into `index.html` as static HTML. Tags: `page-title-missing`, `page-description-length`, `page-lang-invalid` (and `page-lang-missing`), `page-canonical-not-https`, `anchor-unknown`, `anchor-duplicate` (the last two were built in B1).
+  *(Corrected 2026-10-25: this said **`page-description-length` outside 50..160 characters**; the real page's description is **261** characters (its `og:description`, the shorter card text, is 111), so that bound would have refused the page it was written for. It is 1 to 300, with a `share_description:` of its own; 300 is the smallest round number that admits the page and is not a measured limit of any search engine. It said **`page-image-size-missing`** (the card's width and height declared): the pair is `1200`/`630` and the file is 1200 x 630, so the compiler reads it from the file (PNG, JPEG, WebP) and `page-image-size-unreadable` replaces the tag. `image:` is a file, not a URL: the card needs an absolute address, which is the file's path joined to the directory of `canonical:` (`page-image-needs-canonical`). `alternates: [..]` is one `alternate:` per file, each with a `title:`.)*
+  Authority: none, and **no network access**: nothing in the head is fetched from another host by the page; the one host `canonical:` names is listed in `inspect effects` (`page_hosts`) and `diff` prints it as a line of its own. The generated `agents.md`/`llms.txt` URLs still come from the data file.
+* **`Header { sticky: true }`**: sticky, with the room above an anchor kept by the page: `scroll-padding-top` is the header's measured height and one rem *(corrected 2026-10-25: this said "set by the compiler"; the compiler cannot know a header's height, which is its content's, so a script in the page's own HTML measures it and a 4rem fallback holds without it: page.md 4 and 7. Measured on the real page: with its hand-set `scroll-padding-top: 5rem` 0 of 9 anchor targets are under its 64 px header, without it all 9; Shift+Tab from the end of the page leaves 1 of 120 focused elements under it with the padding and 23 of 120 without)*. The blur and the translucent `color-mix` of the page's header are **not** offered.
+* **The skip link** *(structure.md 2 said it was "step 3" and then not built; it is built here)*: `skip_link: ".."` in the `page`, the first element of the body, to the `Main`'s `id` (`skip-link-target-missing`, `skip-link-target-dynamic`).
 * The Python generator keeps writing `agents.md` and `llms.txt` (they are not the page). Whether `index.html` and `agents.md` can still not disagree once the
   page is not generated from the same file by the same script is a **decision for the user** (section 10).
 
@@ -461,11 +464,11 @@ If the user prefers the expected order, steps 3 and 5 swap with no other change:
 9. **The additions of 5.2b, as closed sets:** `Article`, `Figure`/`Caption`, link `appearance`, text `style`, inline content in `Heading`/`Link`/`Details` summary, `Code { max_height }`, `ratio` on `Image`/`Media`, and `weights:` on `Grid` (`min` stays). Any may be argued against by measurement in its PR. *Decided 2026-10-24 by the user.*
 10. **Order:** P0 the code tokens; B1 `Heading`, `Section`, landmarks, `Article`, `Link` (+ `appearance`, host listing), `Details`, `Figure`/`Caption`, text `style`; B2 `Rich` and `Code`; B3 `Image`, `Media`, `ratio`, `Grid` weights; then P1 prerender (design note first). *Decided 2026-10-24 by the user,* with leave to re-order if prerender must come first, reported before doing so.
 
-Step 1 is built and is the only step built.
+Steps 1 to 4 are built (theme, structure, prerender and islands, and the page-level elements: [`page.md`](page.md)).
 
 ## 11. Rules kept
 
 The program says what a thing is (every proposed binding is a closed set or a literal; the one drawing extension reuses `Chart`). Authority is declared in `requires` and printed
 by `authority` and `diff` (`Clipboard`, `Draw`, `Dom`, link hosts, islands). Every refusal has a rule tag (listed per primitive). Replay and the page agree on a shared corpus for
-each primitive, and an island is **reported as not replayed** rather than claimed. No new dependency (the islands are the page's own files, hashed). **Only step 1 is
-built (`theme.md`); nothing was pushed to `cancho-www`.**
+each primitive, and an island is **reported as not replayed** rather than claimed. No new dependency (the islands are the page's own files, hashed). **Steps 1 to 4 are
+built; nothing was pushed to `cancho-www`.**

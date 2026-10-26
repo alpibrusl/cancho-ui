@@ -1,0 +1,8 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "steps": [
+    { "event": "Click", "state": { "clicks": 1 }, "expect": { "outcome": "completed" } },
+    { "event": "Click", "state": { "clicks": 2 } }
+  ]
+}

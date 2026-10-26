@@ -17,6 +17,24 @@ pub struct ThemeAssets {
     pub fonts: Vec<(String, Vec<u8>)>,
 }
 
+/// What a `page { .. }` and a sticky `Header` add to the document (docs/page.md); the default is a program with neither.
+#[derive(Default)]
+pub struct PageParts {
+    /// replaces the `--name` as the `<title>`
+    pub title: Option<String>,
+    /// replaces `en` as `<html lang>`
+    pub lang: Option<String>,
+    /// the `<meta>` and `<link>` elements, already escaped (`cancho_ui_ir::page::head_html`)
+    pub head: String,
+    /// the skip link, the first element of `<body>`
+    pub skip: String,
+    /// the page declares an icon / a touch icon, so `--pwa` does not add its own
+    pub icon: bool,
+    pub touch_icon: bool,
+    /// the program has a sticky `Header`: the page reserves room for it above an anchor
+    pub sticky: bool,
+}
+
 const BACKGROUND: [u8; 3] = [0x1f, 0x6f, 0xeb];
 const MARK: [u8; 3] = [0xff, 0xff, 0xff];
 
@@ -28,12 +46,13 @@ pub fn generate(
     theme: Option<&ThemeAssets>,
     site: &[(String, Vec<u8>)],
     prerender: Option<&Prerender>,
+    page: &PageParts,
 ) -> PwaFiles {
     let mut files: PwaFiles = vec![
         ("app.js".into(), js.as_bytes().to_vec()),
         (
             "index.html".into(),
-            index_html(name, true, csp, theme, prerender).into_bytes(),
+            index_html(name, true, csp, theme, prerender, page).into_bytes(),
         ),
         ("manifest.webmanifest".into(), manifest(name).into_bytes()),
         ("icon-192.png".into(), icon_png(192)),
@@ -56,12 +75,13 @@ pub fn generate_page(
     theme: Option<&ThemeAssets>,
     site: &[(String, Vec<u8>)],
     prerender: Option<&Prerender>,
+    page: &PageParts,
 ) -> PwaFiles {
     let mut files: PwaFiles = vec![
         ("app.js".into(), js.as_bytes().to_vec()),
         (
             "index.html".into(),
-            index_html(name, false, csp, theme, prerender).into_bytes(),
+            index_html(name, false, csp, theme, prerender, page).into_bytes(),
         ),
     ];
     files.extend(theme.iter().flat_map(|t| t.fonts.iter().cloned()));
@@ -97,16 +117,17 @@ fn index_html(
     csp: Option<&str>,
     theme: Option<&ThemeAssets>,
     prerender: Option<&Prerender>,
+    page: &PageParts,
 ) -> String {
-    let title = html_escape(name);
+    let title = html_escape(page.title.as_deref().unwrap_or(name));
     let html = String::from(
         r##"<!DOCTYPE html>
-<html lang="en">
+<html lang="@LANG@">
 <head>
 <meta charset="UTF-8">
 @CSP@<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 @APP_THEME@<title>@TITLE@</title>
-@APP_LINKS@<style>
+@PAGE_HEAD@@APP_LINKS@<style>
 /* A default so a program is usable on a phone; the page owns presentation, replace it freely. */
 :root { color-scheme: light dark; }
 body {
@@ -179,10 +200,16 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 .cui-media { display: block; width: 100%; max-width: 100%; height: auto; border-radius: 12px; background: #000; }
 [data-ratio="1:1"] { aspect-ratio: 1 / 1; } [data-ratio="4:3"] { aspect-ratio: 4 / 3; } [data-ratio="3:2"] { aspect-ratio: 3 / 2; }
 [data-ratio="16:9"] { aspect-ratio: 16 / 9; } [data-ratio="21:9"] { aspect-ratio: 21 / 9; } [data-ratio="3:4"] { aspect-ratio: 3 / 4; } [data-ratio="2:3"] { aspect-ratio: 2 / 3; }
+/* page (docs/page.md): a sticky Header stays at the top of the window, a skip link shows only while it has the focus, and a Main a link can start from is not outlined */
+.cui-sticky { position: sticky; top: 0; z-index: 10; box-sizing: border-box; min-height: 4rem; display: flex; flex-wrap: wrap; align-items: center; column-gap: 1rem; background: Canvas; border-bottom: 1px solid color-mix(in srgb, currentColor 25%, transparent); }
+.cui-skip { position: fixed; top: -4rem; left: 0.5rem; z-index: 20; display: inline-flex; align-items: center; min-height: 44px; padding: 0 1rem; border-radius: 8px; font-weight: 600; background: LinkText; color: Canvas; }
+.cui-skip:focus { top: 0.5rem; }
+main[tabindex="-1"]:focus { outline: none; }
+.cui-sticky nav { display: flex; flex-wrap: wrap; column-gap: 1rem; }
 </style>
-@THEME_CSS@</head>
+@STICKY_CSS@@THEME_CSS@</head>
 <body>
-@ROOT@
+@SKIP@@ROOT@
 <script type="module" src="./app.js"></script>
 @APP_REGISTER@</body>
 </html>
@@ -204,34 +231,83 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
     let (theme, links, register) = if installable {
         (
             "<meta name=\"theme-color\" content=\"#1f6feb\">\n",
-            "<link rel=\"manifest\" href=\"./manifest.webmanifest\">\n<link rel=\"icon\" type=\"image/png\" sizes=\"192x192\" href=\"./icon-192.png\">\n<link rel=\"apple-touch-icon\" href=\"./icon-192.png\">\n",
+            // a page that declares its own icons keeps them: two `rel="icon"` would leave the browser to choose
+            format!(
+                "<link rel=\"manifest\" href=\"./manifest.webmanifest\">\n{}{}",
+                if page.icon {
+                    ""
+                } else {
+                    "<link rel=\"icon\" type=\"image/png\" sizes=\"192x192\" href=\"./icon-192.png\">\n"
+                },
+                if page.touch_icon {
+                    ""
+                } else {
+                    "<link rel=\"apple-touch-icon\" href=\"./icon-192.png\">\n"
+                }
+            ),
             "<script>\nif ('serviceWorker' in navigator) {\n    window.addEventListener('load', function () { navigator.serviceWorker.register('./sw.js'); });\n}\n</script>\n",
         )
     } else {
-        ("", "", "")
+        ("", String::new(), "")
     };
-    let fill = |part: &str| {
-        part.replace("@CSP@", &csp)
-            .replace("@TITLE@", &title)
-            .replace("@THEME_CSS@", &theme_css)
-            .replace("@APP_THEME@", theme)
-            .replace("@APP_LINKS@", links)
-            .replace("@APP_REGISTER@", register)
-    };
+    let sticky_css = if page.sticky { STICKY_CSS } else { "" };
+    let lang = html_escape(page.lang.as_deref().unwrap_or("en"));
+    // one pass over the template: the text of a program, a title or a description is never read as a token, whatever it says
+    let tokens: [(&str, &str); 10] = [
+        ("@CSP@", &csp),
+        ("@TITLE@", &title),
+        ("@LANG@", &lang),
+        ("@PAGE_HEAD@", &page.head),
+        ("@STICKY_CSS@", sticky_css),
+        ("@THEME_CSS@", &theme_css),
+        ("@APP_THEME@", theme),
+        ("@APP_LINKS@", &links),
+        ("@APP_REGISTER@", register),
+        ("@SKIP@", &page.skip),
+    ];
     // the program's own text goes in after every token is replaced, and the template is filled on either side of it, so that text can never be
     // read as a token
     let (head, tail) = html.split_once("@ROOT@").unwrap_or((html.as_str(), ""));
-    format!("{}{}{}", fill(head), root_block(prerender), fill(tail))
+    format!(
+        "{}{}{}",
+        expand(head, &tokens),
+        root_block(prerender, if page.sticky { STICKY_JS } else { "" }),
+        expand(tail, &tokens)
+    )
+}
+
+/// What a sticky `Header` adds: room above an anchor, 4rem (the header's least height) and one rem more, until the script has measured the header.
+const STICKY_CSS: &str =
+    "<style>html { scroll-padding-top: calc(var(--cui-header-h, 4rem) + 1rem); }</style>\n";
+/// Measures the sticky header (it may be taller than 4rem when its content wraps) and keeps `--cui-header-h` equal to it: at once, when the
+/// document is parsed, at load, when the window is resized and when a font arrives. Inline, so the page does not wait for `app.js`.
+const STICKY_JS: &str = "<script>(function(){var h,r=document.documentElement;function s(){if(!h){h=document.querySelector('.cui-sticky');if(h&&window.ResizeObserver){new ResizeObserver(s).observe(h)}}if(h){r.style.setProperty('--cui-header-h',h.offsetHeight+'px')}}s();addEventListener('DOMContentLoaded',s);addEventListener('load',s);addEventListener('resize',s);if(document.fonts&&document.fonts.ready){document.fonts.ready.then(s)}})()</script>\n";
+
+/// `template` with each token replaced by its value, in one pass from left to right: a value is never searched for tokens.
+fn expand(template: &str, tokens: &[(&str, &str)]) -> String {
+    let mut out = String::with_capacity(template.len());
+    let mut rest = template;
+    while let Some((at, token, value)) = tokens
+        .iter()
+        .filter_map(|(t, v)| rest.find(t).map(|i| (i, *t, *v)))
+        .min_by_key(|(i, _, _)| *i)
+    {
+        out.push_str(&rest[..at]);
+        out.push_str(value);
+        rest = &rest[at + token.len()..];
+    }
+    out.push_str(rest);
+    out
 }
 
 /// The root of the page: the static HTML the compiler wrote for it (docs/prerender.md), a script that goes to a `#fragment` link at once (a page
 /// whose script has not run is not finished parsing, and the browser would wait), and what a visitor without script is told. A program with
 /// nothing static keeps the old line; one with holes says some parts need script; one with none says nothing, because nothing is missing.
-fn root_block(prerender: Option<&Prerender>) -> String {
+fn root_block(prerender: Option<&Prerender>, measure: &str) -> String {
     const HASH: &str = "<script>var h=decodeURIComponent(location.hash.slice(1)),e=h&&document.getElementById(h);if(e)e.scrollIntoView()</script>\n";
     match prerender {
         Some(p) if p.content => format!(
-            "<div id=\"root\"{}>{}</div>\n{}{}",
+            "<div id=\"root\"{}>{}</div>\n{measure}{}{}",
             // a skeleton says which one it is, and the script built for it checks (docs/prerender.md)
             p.hash
                 .as_ref()
@@ -244,9 +320,9 @@ fn root_block(prerender: Option<&Prerender>) -> String {
                 "<noscript>Some parts of this page need JavaScript.</noscript>\n"
             }
         ),
-        _ => {
-            "<div id=\"root\"></div>\n<noscript>This app needs JavaScript.</noscript>\n".to_string()
-        }
+        _ => format!(
+            "<div id=\"root\"></div>\n{measure}<noscript>This app needs JavaScript.</noscript>\n"
+        ),
     }
 }
 
@@ -460,7 +536,15 @@ mod tests {
 
     #[test]
     fn a_name_is_escaped_in_the_page_and_in_the_manifest() {
-        let files = generate("//", "A \"b\" <c> & d", None, None, &[], None);
+        let files = generate(
+            "//",
+            "A \"b\" <c> & d",
+            None,
+            None,
+            &[],
+            None,
+            &PageParts::default(),
+        );
         let html = String::from_utf8(files[1].1.clone()).unwrap();
         assert!(html.contains("<title>A &quot;b&quot; &lt;c&gt; &amp; d</title>"));
         let manifest: serde_json::Value = serde_json::from_slice(&files[2].1).unwrap();
@@ -470,7 +554,7 @@ mod tests {
     #[test]
     fn a_page_is_not_an_app() {
         // `--page` (docs/mobile-backend.md section 5.2): the script and the page, and nothing a browser installs from.
-        let files = generate_page("//", "Demo", None, None, &[], None);
+        let files = generate_page("//", "Demo", None, None, &[], None, &PageParts::default());
         let names: Vec<&str> = files.iter().map(|(n, _)| n.as_str()).collect();
         assert_eq!(names, ["app.js", "index.html"]);
         let html = String::from_utf8(files[1].1.clone()).unwrap();
@@ -489,25 +573,40 @@ mod tests {
             "still a page for a phone"
         );
         // The page of `--pwa` is the same page plus those lines.
-        let app =
-            String::from_utf8(generate("//", "Demo", None, None, &[], None)[1].1.clone()).unwrap();
+        let app = String::from_utf8(
+            generate("//", "Demo", None, None, &[], None, &PageParts::default())[1]
+                .1
+                .clone(),
+        )
+        .unwrap();
         assert!(app.contains("manifest") && app.contains("serviceWorker"));
     }
 
     #[test]
     fn the_worker_version_follows_every_byte_it_caches() {
-        let a = generate("one", "x", None, None, &[], None);
-        let b = generate("two", "x", None, None, &[], None);
+        let a = generate("one", "x", None, None, &[], None, &PageParts::default());
+        let b = generate("two", "x", None, None, &[], None, &PageParts::default());
         let sw = |f: &PwaFiles| String::from_utf8(f.last().unwrap().1.clone()).unwrap();
         assert_ne!(sw(&a), sw(&b));
-        assert_eq!(sw(&a), sw(&generate("one", "x", None, None, &[], None)));
+        assert_eq!(
+            sw(&a),
+            sw(&generate(
+                "one",
+                "x",
+                None,
+                None,
+                &[],
+                None,
+                &PageParts::default()
+            ))
+        );
     }
 
     #[test]
     fn the_maskable_icon_keeps_its_mark_inside_the_safe_zone() {
         // #67: the manifest has a maskable entry for each icon, and the mark of that icon lies inside the circle of radius
         // 40% of the image, whatever the size, so a circular mask cuts nothing of it.
-        let files = generate("//", "x", None, None, &[], None);
+        let files = generate("//", "x", None, None, &[], None, &PageParts::default());
         let manifest: serde_json::Value = serde_json::from_slice(&files[2].1).unwrap();
         let icons = manifest["icons"].as_array().unwrap();
         for size in [192u32, 512] {

@@ -76,6 +76,11 @@ pub struct DiffReport {
     /// Absent from the JSON when they are the same files.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub assets: Vec<AssetChange>,
+    /// The settings of the program's `page { .. }` that differ (docs/page.md section 6): the title, language, description, canonical address, the host
+    /// it names, the card, the icons, the alternates and the skip link, and the SHA-256 of each file. No authority: the page makes no request to
+    /// the host. Absent from the JSON when the pages are equal.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub page: Vec<ThemeChange>,
     /// The settings of the sealed islands that differ (docs/islands.md section 6): an island added or removed, a file with a different SHA-256, a
     /// changed label, size, prop or event. A sealed island reaches nothing but the page, so none of it changes `authority`; it is reported first,
     /// because it is code the review has not read. Absent from the JSON when the islands are equal.
@@ -143,6 +148,26 @@ fn diff_assets(base: &IrFile, candidate: &IrFile) -> Vec<AssetChange> {
         .filter(|k| b.get(*k) != c.get(*k))
         .map(|k| AssetChange {
             path: k.clone(),
+            base: b.get(k).cloned(),
+            candidate: c.get(k).cloned(),
+        })
+        .collect()
+}
+
+fn diff_page(base: &IrFile, candidate: &IrFile) -> Vec<ThemeChange> {
+    let flat = |f: &IrFile| -> BTreeMap<String, String> {
+        f.page
+            .as_ref()
+            .map(|p| cancho_ui_ir::page::flatten(p).into_iter().collect())
+            .unwrap_or_default()
+    };
+    let (b, c) = (flat(base), flat(candidate));
+    let mut keys: BTreeSet<&String> = b.keys().collect();
+    keys.extend(c.keys());
+    keys.into_iter()
+        .filter(|k| b.get(*k) != c.get(*k))
+        .map(|k| ThemeChange {
+            setting: k.clone(),
             base: b.get(k).cloned(),
             candidate: c.get(k).cloned(),
         })
@@ -693,12 +718,14 @@ pub fn diff_ir(
     caps.removed.sort();
 
     let theme = diff_theme(base, candidate);
+    let page = diff_page(base, candidate);
     let assets = diff_assets(base, candidate);
     let islands = diff_islands(base, candidate);
     let change_count = components.added.len()
         + components.removed.len()
         + components.changed.iter().map(leaf_count).sum::<usize>()
         + theme.len()
+        + page.len()
         + assets.len()
         + islands.len();
     DiffReport {
@@ -712,6 +739,7 @@ pub fn diff_ir(
         capabilities: caps,
         components,
         theme,
+        page,
         assets,
         islands,
         not_compared: NOT_COMPARED.to_vec(),

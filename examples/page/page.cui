@@ -1,0 +1,116 @@
+// examples/page/page.cui — the head of a document, a skip link, a sticky header and the anchors it must not hide (docs/page.md).
+// `page { .. }` is written into `index.html` as static HTML (title, description, language, canonical address, card, icons, alternates);
+// the files it names are copied beside the page and hashed for `diff`; `inspect effects` lists the one host the metadata names, and the
+// page makes no request to it. `skip_link:` is the first element of the body and goes to the `Main`'s `id`. `Header { sticky: true }`
+// stays at the top of the window and the page keeps `scroll-padding-top` equal to its height, so a link to `#anchors` shows the section.
+
+page {
+    title: "Boulder: a page written in cancho-ui";
+    lang: "en";
+    description: "A page whose head is declared in the program: the title, the language, the description, the canonical address, the card image, the icons and the alternate files are written into the HTML at build time, with no script.";
+    share_description: "The head of a document, declared in the program.";
+    canonical: "https://example.org/boulder/";
+    image: "card.png" alt: "Boulder: the head of a document, declared in the program.";
+    icon: "logo.png";
+    touch_icon: "logo.png";
+    alternate: "agents.md" title: "Boulder, as an agent reads it";
+    alternate: "data/projects.json" title: "The projects as data";
+    skip_link: "Skip to content";
+}
+
+component Landing {
+    state clicks: Int = 0;
+
+    on Click { clicks = clicks + 1; }
+
+    view {
+        Column {
+            Header {
+                sticky: true
+                Link { to: "#top" "Boulder" }
+                Nav {
+                    label: "Sections"
+                    Link { to: "#why" "Why" }
+                    Link { to: "#how" "How" }
+                    Link { to: "#anchors" "Anchors" }
+                    Link { to: "#keys" "Keyboard" }
+                    Link { to: "#end" "End" }
+                }
+            }
+            Main {
+                id: "main"
+                Section {
+                    id: "top"
+                    Heading { level: 1 "Boulder" }
+                    Text { "A page whose head is declared in the program Paragraph 1. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "A page whose head is declared in the program Paragraph 2. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "A page whose head is declared in the program Paragraph 3. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "A page whose head is declared in the program Paragraph 4. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "A page whose head is declared in the program Paragraph 5. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "A page whose head is declared in the program Paragraph 6. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Code { "cancho-ui build page.cui --page -o dist" }
+                }
+                Section {
+                    id: "why"
+                    Heading { level: 2 "Why a head" }
+                    Text { "The card, the title and the language Paragraph 1. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "The card, the title and the language Paragraph 2. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "The card, the title and the language Paragraph 3. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "The card, the title and the language Paragraph 4. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "The card, the title and the language Paragraph 5. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "The card, the title and the language Paragraph 6. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Code { "cancho-ui build page.cui --page -o dist" }
+                }
+                Section {
+                    id: "how"
+                    Heading { level: 2 "How it is built" }
+                    Text { "Static HTML before any script Paragraph 1. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "Static HTML before any script Paragraph 2. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "Static HTML before any script Paragraph 3. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "Static HTML before any script Paragraph 4. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "Static HTML before any script Paragraph 5. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "Static HTML before any script Paragraph 6. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Code { "cancho-ui build page.cui --page -o dist" }
+                }
+                Section {
+                    id: "anchors"
+                    Heading { level: 2 "Anchors" }
+                    Text { "A link to a section is not hidden Paragraph 1. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "A link to a section is not hidden Paragraph 2. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "A link to a section is not hidden Paragraph 3. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "A link to a section is not hidden Paragraph 4. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "A link to a section is not hidden Paragraph 5. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "A link to a section is not hidden Paragraph 6. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Code { "cancho-ui build page.cui --page -o dist" }
+                }
+                Section {
+                    id: "keys"
+                    Heading { level: 2 "Keyboard" }
+                    Text { "The skip link and the focus Paragraph 1. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "The skip link and the focus Paragraph 2. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "The skip link and the focus Paragraph 3. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "The skip link and the focus Paragraph 4. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "The skip link and the focus Paragraph 5. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "The skip link and the focus Paragraph 6. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Code { "cancho-ui build page.cui --page -o dist" }
+                }
+                Section {
+                    id: "end"
+                    Heading { level: 2 "The end" }
+                    Text { "Nothing more Paragraph 1. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "Nothing more Paragraph 2. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "Nothing more Paragraph 3. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "Nothing more Paragraph 4. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "Nothing more Paragraph 5. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Text { "Nothing more Paragraph 6. A long enough line of prose that the page has to scroll to reach the section after this one, as a real page does, and that wraps on a phone." }
+                    Code { "cancho-ui build page.cui --page -o dist" }
+                }
+                Button { label: "Count" on: Click }
+                Text { "Counted {clicks} times" }
+            }
+            Footer {
+                Link { to: "agents.md" "agents.md" }
+            }
+        }
+    }
+}

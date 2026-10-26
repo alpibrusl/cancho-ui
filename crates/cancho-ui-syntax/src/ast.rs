@@ -30,6 +30,23 @@ pub struct File {
     pub themes: Vec<ThemeDecl>,
     /// `island Name { script: ".."  sha256: ".."; .. }` (docs/islands.md): the sealed islands declared in this file, in source order.
     pub islands: Vec<IslandDecl>,
+    /// `page { title: ".."; lang: ".."; .. }` (docs/page.md): the head of the document and the skip link, in source order. More than one is
+    /// refused when the file is lowered (`page-duplicate`).
+    pub pages: Vec<PageDecl>,
+    pub span: Span,
+}
+
+/// `page { .. }`: what the document says about itself. What each entry means, and which are refused, is decided when the file is lowered.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PageDecl {
+    pub entries: Vec<PageEntry>,
+    pub span: Span,
+}
+
+/// `key: "value" key: "value" ..;`: the first pair names the entry and the others are its attributes (`image: "og.png" alt: "..";`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct PageEntry {
+    pub pairs: Vec<(String, String, Span)>,
     pub span: Span,
 }
 
