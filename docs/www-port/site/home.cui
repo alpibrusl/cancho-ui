@@ -1,0 +1,547 @@
+// docs/www-port/site/home.cui — the home page of cancho-www (alpibrusl/cancho-www at 7578537), written in cancho-ui. Port, step 2 (PR B1): the page's
+// content, head, theme, fonts, pictures, videos and data. What is not here yet (the hero scene, the cairns, the three card drawings, the authority
+// animation and the ecosystem map: islands, PR B2) and what was dropped or changed on purpose (docs/www-port/dropped.md) are listed, not hidden.
+// The text of the page is the page's; the lists the page's Python generator writes from data/ecosystem.json are `For`s over that file, written out at build.
+
+data Ecosystem { file: "data/ecosystem.json" sha256: "870d4eb8e3bc5a1c22bb33b9b4ae72c6192251af0c7f283eb29db32b3c65ba52"; }
+
+page {
+    title: "cancho: tools built for agents, not adapted from humans";
+    lang: "en";
+    description: "cancho is a programming language and toolchain for software built by AI agents and checked by machines. Programs declare what they can do, dependencies have stable identities, and the compiler returns structured evidence other tools can read and check. Pre-1.0.";
+    share_description: "Trust without comprehension: a language where what code may do is in its type, and the ecosystem built with it.";
+    canonical: "https://alpibrusl.github.io/cancho-www/";
+    image: "og.png" alt: "cancho: Tools built for agents. Trust without comprehension.";
+    icon: "logo-mark.png";
+    touch_icon: "logo.png";
+    alternate: "agents.md" title: "cancho, as an agent reads it";
+    alternate: "data/ecosystem.json" title: "The cancho ecosystem as data";
+    skip_link: "Skip to content";
+}
+
+theme {
+    light {
+        bg: "#f7f4eb"; fg: "#121417"; muted: "#4f545b"; line: "#e2ddd0"; surface: "#ffffff"; soft: "#efece1"; ink: "#16283b";
+        accent: "#185fa5"; accent_fg: "#ffffff"; accent_soft: "#ebf3fc"; good: "#0f7b5f"; warn: "#8a4b0a"; warn_bg: "#f9efd9";
+        warn_line: "#d9a441"; bad: "#b91c1c"; bad_bg: "#fdeceb"; code_bg: "#12151a"; code_fg: "#d6dde8";
+    }
+    dark {
+        bg: "#0b1016"; fg: "#e9ecf1"; muted: "#9aa5b4"; line: "#222b36"; surface: "#121922"; soft: "#172029"; ink: "#0a121a";
+        accent: "#6ea3ee"; accent_fg: "#0a1220"; accent_soft: "#14233a"; good: "#4fd1a5"; warn: "#f1c577"; warn_bg: "#1c1810";
+        warn_line: "#7e6126"; bad: "#ff7a72"; bad_bg: "#2a1413"; code_bg: "#12151a"; code_fg: "#d6dde8";
+    }
+    font body {
+        family: "Plus Jakarta Sans";
+        file: "fonts/plus-jakarta-sans-latin-wght-normal.woff2";
+        sha256: "153fc85b70298beeb1d61a5f723331649e7f23bb77302a66e61cb3e2fbdb5e79";
+        licence: "OFL-1.1";
+        weight: "200 800";
+    }
+    font mono {
+        family: "JetBrains Mono";
+        file: "fonts/jetbrains-mono-latin-wght-normal.woff2";
+        sha256: "18be452724bfdc236c074ca94a249a7f41a86752c7d04ab258ce9ed5651f6a7e";
+        licence: "OFL-1.1";
+        weight: "100 800";
+    }
+    font hand {
+        family: "Caveat";
+        file: "fonts/caveat-latin-wght-normal.woff2";
+        sha256: "891951df5e8b5b0f0bc760d31375405e795c666b5add70437de12d4a6482b33f";
+        licence: "OFL-1.1";
+        weight: "400 700";
+    }
+}
+
+component AgentFiles {
+    requires Network;
+
+    state file: String = "agents.md";
+    state status: String = "loading";
+    state body: String = "";
+    state r: Result[String, String] = Ok("");
+
+    on ShowAgents {
+        file = "agents.md";
+        status = "loading";
+        r = await(net.get("agents.md"));
+        status = match r { Ok(_) => { "agents.md" } Err(why) => { "agents.md: {why}" } Cancelled => { "cancelled" } };
+        body = match r { Ok(text) => { text } Err(_) => { "" } Cancelled => { "" } };
+    }
+    on ShowJson {
+        file = "data/ecosystem.json";
+        status = "loading";
+        r = await(net.get("data/ecosystem.json"));
+        status = match r { Ok(_) => { "data/ecosystem.json" } Err(why) => { "data/ecosystem.json: {why}" } Cancelled => { "cancelled" } };
+        body = match r { Ok(text) => { text } Err(_) => { "" } Cancelled => { "" } };
+    }
+    on ShowLlms {
+        file = "llms.txt";
+        status = "loading";
+        r = await(net.get("llms.txt"));
+        status = match r { Ok(_) => { "llms.txt" } Err(why) => { "llms.txt: {why}" } Cancelled => { "cancelled" } };
+        body = match r { Ok(text) => { text } Err(_) => { "" } Cancelled => { "" } };
+    }
+
+    start ShowAgents;
+
+    view {
+        Column {
+            Row {
+                label: "Agent files"
+                role: group
+                Button { label: "agents.md" on: ShowAgents pressed: file == "agents.md" }
+                Button { label: "ecosystem.json" on: ShowJson pressed: file == "data/ecosystem.json" }
+                Button { label: "llms.txt" on: ShowLlms pressed: file == "llms.txt" }
+            }
+            Text { role: status "{status}" }
+            Text { body }
+        }
+    }
+}
+
+component Home {
+    requires Clipboard;
+    view {
+        Column {
+            Header {
+                sticky: true
+                Link { to: "#top" "cancho" }
+                Text { "Pre-1.0 · alpha" }
+                Link { to: "https://github.com/alpibrusl/cancho" "GitHub" }
+                Details {
+                    summary: "Menu"
+                    Nav {
+                        label: "Sections"
+                        Link { to: "#try" "Try it" }
+                        Link { to: "#trust" "Trust" }
+                        Link { to: "#verifies" "Evidence" }
+                        Link { to: "#ecosystem" "Ecosystem" }
+                        Link { to: "#demo" "Demo" }
+                        Link { to: "#agents" "Agents" }
+                        Link { to: "https://alpibru.com/manifesto" "Manifesto" }
+                        Link { to: "https://alpibrusl.github.io/cancho/" "Docs" }
+                        Link { to: "https://github.com/alpibrusl/cancho" "GitHub" }
+                    }
+                }
+            }
+            Main {
+                id: "main"
+                Section {
+                    id: "top"
+                    Text { style: "eyebrow" "Trust without comprehension" }
+                    Link { to: "#status" "Pre-1.0 · alpha products are built with it" }
+                    Heading { level: 1 "Tools built for agents." Break { } Em { "Not adapted from humans." } }
+                    Rich { style: "lead" Strong { "cancho" } " is a programming language and toolchain for software built by AI agents and checked by machines. Programs declare what they can do, dependencies have stable identities, and the compiler returns structured evidence that other tools can read and check." }
+                    Rich { "The bet: you should not have to read what an agent wrote to trust it." }
+                    Row {
+                        Link { to: "#try" appearance: "primary" "Try it on a real task →" }
+                        Link { to: "#demo" appearance: "secondary" "Watch the demo" }
+                        Link { to: "https://alpibru.com/manifesto" appearance: "quiet" "Read the manifesto" }
+                    }
+                    List { Item { "No ambient authority" } Item { "Content-addressed" } Item { "Diagnostics as data" } }
+                    Rich { "cancho · Spanish for a boulder" }
+                    Rich { Strong { "Comprehension was a strategy." } " It is not the only one. " Link { to: "https://alpibru.com/manifesto" "Trust Without Comprehension" } }
+                }
+                Reveal {
+                    Grid {
+                        min: 15
+                        Article {
+                            Heading { level: 2 "Identity, not lines" }
+                            Rich { "A canonical AST gives every declaration a stable hash, and dependencies pin to hashes, not version strings. Nothing changes under you because a maintainer published a new version." }
+                        }
+                        Article {
+                            Heading { level: 2 "Authority, not trust" }
+                            Rich { "What a program may do is in its type, so a reviewer checks the policy, not every line. " Code { "cancho authority" } " names what is reachable, and says “unbounded” when it can’t." }
+                        }
+                        Article {
+                            Heading { level: 2 "Verified, not read" }
+                            Rich { "The compiler answers in data: a rule tag, a position, a fix. Diagnostics, the command tree and a skill file come out of the binary for an agent to use directly." }
+                        }
+                    }
+                }
+                Section {
+                    id: "try"
+                    Text { style: "eyebrow" "Try it" }
+                    Heading { level: 2 "Three ways in, from sixty seconds to a real task." }
+                    Text { style: "lead" "Every command here was run before it went on this page. cancho is pre-1.0, building it needs Rust and clang, and what is not claimed is written down below." }
+                    Reveal {
+                        Article {
+                            Grid {
+                                min: 19
+                                weights: [1, 1.75]
+                                Column {
+                                    Text { style: "label" "60 seconds · nothing to install" }
+                                    Heading { level: 3 "See a refusal" }
+                                    Rich { "A program opens a file and never closes it. The compiler refuses it by a named rule; one added line fixes it. " Strong { "What this shows:" } " " Code { "check" } " found a resource that is never consumed and named the rule. Nothing was run, and a pass would not mean the program is correct in other ways." }
+                                    Row {
+                                        Link { to: "#demo" appearance: "primary" "Watch the recorded session" }
+                                        Link { to: "https://github.com/alpibrusl/cancho-www/tree/main/demo/src" appearance: "secondary" "The two files" }
+                                    }
+                                }
+                                Code { "$ cancho check leak.cho --std\nleak.cho:12:9: error: `f` is still live at the end of this block; nothing consumes it\n$ echo $?\n1\n$ cancho check fixed.cho --std     # one line added: file_close(f);\n$ echo $?\n0" }
+                            }
+                        }
+                    }
+                    Reveal {
+                        Article {
+                            Grid {
+                                min: 19
+                                weights: [1, 1.75]
+                                Column {
+                                    Text { style: "label" "5 minutes · Rust and clang" }
+                                    Heading { level: 3 "Run the compiler" }
+                                    Rich { Code { "check" } " only checks; " Code { "run" } " builds and executes. The first " Code { "run" } " builds the compiler written in cancho once. Green on linux-x86_64 and darwin-aarch64. " Code { "authority" } " is the one to try on something you did not write." }
+                                    Row {
+                                        Link { to: "https://github.com/alpibrusl/cancho#building" appearance: "secondary" "Build instructions" }
+                                        Link { to: "https://alpibrusl.github.io/cancho/" appearance: "secondary" "Docs" }
+                                    }
+                                }
+                                Column {
+                                    Code { copy: true "git clone https://github.com/alpibrusl/cancho && cd cancho\ncargo build -p cancho --release\n./target/release/cancho run examples/hello.cho --std\n./target/release/cancho authority examples/tally.cho --std" }
+                                    Code { "Hello, world!\nperforms\n    io_read\n    io_write\nnever touches\n    the filesystem\n    the network\n    the heap\n    the command line\n    foreign code\n(output shortened)" }
+                                }
+                            }
+                        }
+                    }
+                    Reveal {
+                        Article {
+                            Grid {
+                                min: 19
+                                weights: [1, 1.75]
+                                Column {
+                                    Text { style: "label" "A real task · an agent does the work" }
+                                    Heading { level: 3 "Give it to an agent" }
+                                    Rich { "The first line prints the page an agent should read; the rest is its loop: check (a rule tag, not a sentence), see what the program can reach, run the tests. Or paste " Link { to: "https://github.com/alpibrusl/cancho-code/blob/main/docs/agent-prompt.md" "cancho-code’s agent prompt" } " into Claude Code or Codex: it installs everything and proves the install with a test that needs no key." }
+                                    Row {
+                                        Link { to: "https://github.com/alpibrusl/cancho-code" appearance: "secondary" "cancho-code" }
+                                        Link { to: "https://alpibrusl.github.io/cancho-tools/" appearance: "secondary" "The ten tools" }
+                                    }
+                                }
+                                Column {
+                                    Code { copy: true "cancho agent-guidelines > AGENTS.md\ncancho check src/*.cho --std --output json\ncancho authority src/*.cho --std\ncancho test tests/*.cho --std" }
+                                    Rich { "What an agent sees when two of them collide, from " Link { to: "https://alpibrusl.github.io/cancho-tools/" "cancho-tools" } ":" }
+                                    Code { "\{\"rule\":\"precondition.hash-mismatch\",\"hint\":\"re-read the file, then decide\", ...}" }
+                                }
+                            }
+                        }
+                    }
+                    Rich { style: "note" "Not claimed: that agents do better with cancho-tools than with the usual tools. That needs an agent-in-the-loop evaluation that has not been run (" Link { to: "https://github.com/alpibrusl/cancho/issues/228" "cancho#228" } "). cancho-code reports its own measured results, with their conditions, in its README." }
+                }
+                Section {
+                    id: "trust"
+                    Text { style: "eyebrow" "Trust without comprehension" }
+                    Heading { level: 2 "An agent writes. Five links check it." }
+                    Text { style: "lead" "Comprehension is one basis for trust; verification is another, and it is the one that scales. Nothing in this chain asks a person to read the code first. Each link is checked, and none of them has to be understood." }
+                    Reveal {
+                        List {
+                            ordered: true
+                            Item {
+                                Heading { level: 3 "Generate" }
+                                Rich { "An agent writes" }
+                                Rich { "A brief becomes a plan of small units, each with a signature and examples, built one at a time." }
+                                Rich { Link { to: "https://github.com/alpibrusl/cancho-code" "cancho-code" } " " Chip { tone: "accent" "built" } }
+                            }
+                            Item {
+                                Heading { level: 3 "Verify" }
+                                Rich { "The compiler checks it" }
+                                Rich { "Refused by a named rule, or silent. The answer is a rule tag and a position, not a paragraph." }
+                                Rich { Link { to: "https://github.com/alpibrusl/cancho" "cancho check" } " " Chip { tone: "accent" "built" } }
+                            }
+                            Item {
+                                Heading { level: 3 "Test" }
+                                Rich { "The examples run" }
+                                Rich { "A contract’s tests call the candidate, and the verdict names the signature it satisfied." }
+                                Rich { Link { to: "https://github.com/alpibrusl/cancho" "cancho satisfy" } " " Chip { tone: "accent" "built" } }
+                            }
+                            Item {
+                                Heading { level: 3 "Constrain" }
+                                Rich { "It runs with only what it was given" }
+                                Rich { "The compiler lists what the program may do, and says “unbounded” when it cannot bound it." }
+                                Rich { Link { to: "https://github.com/alpibrusl/cancho" "cancho authority" } " " Chip { tone: "accent" "built" } }
+                            }
+                            Item {
+                                Heading { level: 3 "Record" }
+                                Rich { "What happened is on the record" }
+                                Rich { "An append-only journal. A worker saying “done” only moves a task to verification; the runtime accepts it." }
+                                Rich { Link { to: "https://github.com/alpibrusl/cancho-forge" "cancho-forge" } " " Chip { tone: "warn" "built · early" } }
+                            }
+                        }
+                    }
+                    Reveal {
+                        Grid {
+                            min: 15
+                            Rich { Strong { "Humans" } " set the goal, write the spec and the policy, and read the trace." }
+                            Rich { Strong { "Agents" } " generate, verify, compose and test." }
+                        }
+                    }
+                    Rich { style: "note" "Every link is a real command or repository, with the limits its README states: " Code { "cancho-forge" } " is Milestone 1’s core only, and " Code { "cancho-code" } " reports its own measured results with their conditions." }
+                    Heading { level: 3 "The shape of the tool" }
+                    Reveal {
+                        Table {
+                            label: "Human tools used by agents, against tools built for agents"
+                            Row { Text { role: columnheader "Question" } Text { role: columnheader "Human tools, used by agents" } Text { role: columnheader "Built for agents" } }
+                            Row {
+                                Text { role: rowheader "What changed?" }
+                                Rich { Code { "line 47 changed" } }
+                                Rich { Code { "authority: expanded" } " " Small { "(+ requires Network, from " Link { to: "https://github.com/alpibrusl/cancho-ui" "cancho-ui" } " diff)" } }
+                            }
+                            Row { Text { role: rowheader "Why trust it?" } Text { "Read it, and hold it in your head." } Text { "Check the contract: types, effects, examples." } }
+                            Row { Text { role: rowheader "What does the agent get?" } Text { "A codebase to read." } Text { "A contract to satisfy." } }
+                        }
+                    }
+                    Reveal {
+                        Figure {
+                            Rich { "“Comprehension was a strategy. It is not the only one.”" }
+                            Caption { "Alfonso Sastre, " Link { to: "https://alpibru.com/manifesto" "Trust Without Comprehension" } ", 2026" }
+                        }
+                    }
+                }
+                Section {
+                    id: "verifies"
+                    Text { style: "eyebrow" "Evidence, with its limits" }
+                    Heading { level: 2 "What cancho verifies today." }
+                    Text { style: "lead" "Three lists, kept apart: what the compiler refuses, what tests exercise, and what is still being established. Every line links the document, fixture or issue behind it." }
+                    Reveal {
+                        Grid {
+                            min: 19
+                            Column {
+                                Heading { level: 3 "Verified by the compiler" }
+                                List {
+                                    For { over: data.items(Ecosystem, "verifies.compiler") as: c
+                                        Item { Rich { "{json.get(c, \"claim\", \"\")} " For { over: json.items(c, "evidence") as: ev Link { to: json.get(ev, "1", "") "{json.get(ev, \"0\", \"\")}" } " " } } }
+                                    }
+                                }
+                            }
+                            Column {
+                                Heading { level: 3 "Exercised by tests" }
+                                List {
+                                    For { over: data.items(Ecosystem, "verifies.tests") as: c
+                                        Item { Rich { "{json.get(c, \"claim\", \"\")} " For { over: json.items(c, "evidence") as: ev Link { to: json.get(ev, "1", "") "{json.get(ev, \"0\", \"\")}" } " " } } }
+                                    }
+                                }
+                            }
+                            Column {
+                                Heading { level: 3 "Still being established" }
+                                List {
+                                    For { over: data.items(Ecosystem, "verifies.open") as: c
+                                        Item { Rich { "{json.get(c, \"claim\", \"\")} " For { over: json.items(c, "evidence") as: ev Link { to: json.get(ev, "1", "") "{json.get(ev, \"0\", \"\")}" } " " } } }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Rich { style: "note" "{data.value(Ecosystem, \"verifies.disclaimer\")} {data.value(Ecosystem, \"verifies.stamp\")}" }
+                }
+                Section {
+                    id: "authority"
+                    Text { style: "eyebrow" "Effects, as a value" }
+                    Heading { level: 2 "Authority is a value, and you can watch it move." }
+                    Rich { style: "lead" Code { "split(world)" } " is the only place a program gets authority from. Every piece must then be handed on or released; a function that was never given one cannot use it. Pick a story." }
+                    Rich { style: "note" "The two refusals are real rules the compiler reports (" Code { "linear-value-unconsumed" } ", " Code { "effect-not-declared" } "). The scenes are drawn, the rule tags are not." }
+                }
+                Section {
+                    id: "ecosystem"
+                    Text { style: "eyebrow" "The ecosystem" }
+                    Heading { level: 2 "Tools for the agentic world, one repository each." }
+                    Rich { style: "lead" "Every public " Code { "alpibrusl/cancho-*" } " repository, from the language to the tools an agent calls. A filled rock is code that exists; a dashed outline is a design not yet set in place. Click a rock for its repository and its page." }
+                    Heading { level: 3 "Start with a path" }
+                    Reveal {
+                        Grid {
+                            min: 19
+                            For { over: data.items(Ecosystem, "paths") as: path
+                                Article {
+                                    Heading { level: 3 "{json.get(path, \"title\", \"\")}" }
+                                    Rich { "{json.get(path, \"blurb\", \"\")}" }
+                                    List {
+                                        For { over: json.items(path, "entries") as: e
+                                            For { over: filter(data.items(Ecosystem, "projects"), q => json.get(q, "id", "") == json.get(e, "id", "")) as: p
+                                                Item {
+                                                    Rich {
+                                                        Link { to: json.get(p, "url", "") "{json.get(p, \"name\", \"\")}" }
+                                                        " "
+                                                        If { when: json.get(p, "stage", "") == "built" Chip { tone: "accent" "built" } }
+                                                        If { when: json.get(p, "stage", "") == "working" Chip { tone: "good" "working" } }
+                                                        If { when: json.get(p, "stage", "") == "alpha" Chip { tone: "warn" "alpha" } }
+                                                        If { when: json.get(p, "stage", "") == "early" Chip { tone: "warn" "early" } }
+                                                        If { when: json.get(p, "stage", "") == "design" Chip { tone: "quiet" "design" } }
+                                                        " "
+                                                        If { when: json.get(p, "page", "") != "" Link { to: json.get(p, "page", "") "page" } }
+                                                    }
+                                                    Rich { "{json.get(e, \"can\", \"\")}" }
+                                                    Link { to: json.get(e, "next_url", "") "{json.get(e, \"next\", \"\")} →" }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Heading { level: 3 "Or browse every repository" }
+                    Rich { style: "note" "Drawn like a walkers’ map of La Pedriza. Position is a layout, not a measurement: size, distance and footpaths mean nothing; only the outline (solid or dotted) and the blue “rests on” arrows do. Private repositories are not shown." }
+                    Details {
+                        id: "map-fallback"
+                        summary: "The same map as a list"
+                        List {
+                            For { over: data.items(Ecosystem, "projects") as: p
+                                Item {
+                                    Rich {
+                                        Link { to: json.get(p, "url", "") "{json.get(p, \"name\", \"\")}" }
+                                        If { when: json.get(p, "page", "") != "" " · " Link { to: json.get(p, "page", "") "page" } }
+                                        " ({json.get(p, \"stage\", \"\")}): {json.get(p, \"summary\", \"\")}"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                Section {
+                    id: "proof"
+                    Text { style: "eyebrow" "Proof, not promises" }
+                    Heading { level: 2 "The compiler is being written in cancho." }
+                    Text { style: "lead" "A second compiler, about twenty thousand lines of cancho, reads a program and writes LLVM IR. The Rust compiler is the oracle until the cancho one refuses everything the language refuses. One square is one test." }
+                    Reveal {
+                        Grid {
+                            min: 19
+                            Article {
+                                For { over: data.items(Ecosystem, "measured.figures") as: f
+                                    If { when: json.get(f, "id", "") == "conformance"
+                                        Rich { Strong { CountUp { to: num(json.get(f, "passed", "0"), 0) } " " Small { "/ {json.get(f, \"of\", \"0\")}" } } }
+                                        Waffle { label: "conformance tests that pass" of: num(json.get(f, "of", "0"), 0) counted: num(json.get(f, "passed", "0"), 0) columns: 44 rest: "known" }
+                                    }
+                                }
+                                Rich { "conformance tests pass when every build goes through the compiler written in cancho. The 7 amber outlines are known differences from the Rust compiler, each listed." }
+                            }
+                            Article {
+                                For { over: data.items(Ecosystem, "measured.figures") as: f
+                                    If { when: json.get(f, "id", "") == "refusals"
+                                        Rich { Strong { CountUp { to: num(json.get(f, "passed", "0"), 0) } " " Small { "/ {json.get(f, \"of\", \"0\")}" } } }
+                                        Waffle { label: "programs that must be refused, and are" of: num(json.get(f, "of", "0"), 0) counted: num(json.get(f, "passed", "0"), 0) columns: 37 }
+                                    }
+                                }
+                                Rich { "programs that must be refused are refused with the same rule as the Rust compiler. The empty squares are what it does not check yet." }
+                            }
+                            Article {
+                                For { over: data.items(Ecosystem, "measured.figures") as: f
+                                    If { when: json.get(f, "id", "") == "rules"
+                                        Rich { Strong { CountUp { to: num(json.get(f, "value", "0"), 0) } " " Small { "named rules" } } }
+                                        Waffle { label: "named rules" of: num(json.get(f, "value", "0"), 0) counted: num(json.get(f, "value", "0"), 0) columns: 16 }
+                                    }
+                                }
+                                Rich { "stable tags a program can match on, instead of sentences to parse." }
+                            }
+                        }
+                    }
+                    Rich { style: "note" "Measured {json.get(data.value(Ecosystem, \"measured\"), \"date\", \"\")}, {json.get(data.value(Ecosystem, \"measured\"), \"platform\", \"\")}. The first two figures are what the repository’s tests say and move as the work does (" Link { to: "https://github.com/alpibrusl/cancho/issues/491" "epic #491" } "). " Link { to: "https://alpibrusl.github.io/cancho/bootstrap.html" "Bootstrap and self-hosting" } " has the record." }
+                }
+                Section {
+                    id: "demo"
+                    Text { style: "eyebrow" "Recorded, not staged" }
+                    Heading { level: 2 "See it refuse, then run." }
+                    Text { style: "lead" "Real terminals, real output; only the typing is simulated. A leaked file is refused by a named rule, one line fixes it, and the compiler says what the program may do. Then the same idea, lifted to a UI." }
+                    Grid {
+                        min: 22
+                        Figure {
+                            Heading { level: 3 "cancho: a leak, a rule, a fix" }
+                            Media { label: "cancho: a leak, a rule, a fix" kind: "video" src: ["demo/demo.mp4", "demo/demo.webm"] poster: "demo/poster.png" ratio: "16:9" caption: "cap1" transcript: "demo-text" }
+                            Caption { id: "cap1" "1 minute. The last step builds the same program with the compiler written in cancho, which is not yet the default. " Link { to: "demo/demo.cast" "As text (asciicast)" } ", and " Link { to: "https://github.com/alpibrusl/cancho-www/blob/main/scripts/record_demo.sh" "the script that makes it" } "." }
+                        }
+                        Figure {
+                            Heading { level: 3 "cancho-ui: a component declares what it may do" }
+                            Media { label: "cancho-ui: a component declares what it may do" kind: "video" src: ["assets/media/ui-demo.mp4", "assets/media/ui-demo.webm"] poster: "assets/media/ui-demo.poster.jpg" ratio: "16:9" caption: "cap2" }
+                            Caption { id: "cap2" "20 seconds: real compiler output beside the compiled counter running, not a live session. " Link { to: "https://github.com/alpibrusl/cancho-ui" "cancho-ui" } "." }
+                        }
+                    }
+                    Details {
+                        id: "demo-text"
+                        Summary { "The same session as text " Small { "(a real run, written by scripts/demo_transcript.sh)" } }
+                        Code { "# A program that opens a file.\n$ cat leak.cho\n// Open a file.\nimport std.io;\n\nfn main(world: World) -> [] int \{\n    let Split \{ io, ffi, fs, heap, args } = split(world);\n    release(args);\n    release(ffi);\n    release(heap);\n    var status = 1;\n    let tmp = narrow(fs, \"/tmp\");\n    borrow tmp as &c in \{\n        match open_read(c, \"/tmp/notes.txt\") \{\n            Opened::Ok(f) => \{\n                status = 0;\n            }\n            Opened::Failed(e) => \{\n            }\n        }\n    }\n    release(tmp);\n    borrow mut io as &!i in \{\n        if status == 0 \{\n            io.write_all(i, \"opened it, closed it\\n\");\n        } else \{\n            io.write_all(i, \"no such file\\n\");\n        }\n    }\n    release(io);\n    return status;\n}\n# It never closes it. The compiler refuses, and says which rule:\n$ cancho check leak.cho --std\nleak.cho:12:9: error: `f` is still live at the end of this block; nothing consumes it\n            match open_read(c, \"/tmp/notes.txt\") \{\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n$ cancho check leak.cho --std --output json | grep -E \"\\\"(rule|message)\\\"\"\n      \"rule\": \"linear-value-unconsumed\",\n      \"message\": \"`f` is still live at the end of this block; nothing consumes it\",\n# One line fixes it.\n$ diff leak.cho fixed.cho\n13a14\n>                 file_close(f);\n$ cancho build fixed.cho --std -o notes && ./notes\nopened it, closed it\n# What may it do? The compiler can say, because authority is in the types.\n$ cancho authority fixed.cho --std\nperforms\n    fs_read(\"/tmp\")\n    io_write\nnever touches\n    the network\n    the heap\n    the command line\n    signals\n    other programs\n    foreign code\n# And the compiler can be one written in cancho:\n$ cancho build fixed.cho --std --compiler auto -o notes2 && ./notes2\nopened it, closed it\n" }
+                    }
+                }
+                Section {
+                    id: "not-here"
+                    Text { style: "eyebrow" "Deliberately not here" }
+                    Heading { level: 2 "What was left out is the design." }
+                    List {
+                        Item { "garbage collector" } Item { "destructors" } Item { "exceptions" } Item { "borrow checker" }
+                        Item { "implicit conversions" } Item { "ambient authority" } Item { "textual macros" } Item { "proc macros" }
+                    }
+                    Rich { style: "note" "Borrowing is lexical: a region is a block, so a reference’s validity is read off the syntax. " Code { "Io \{\}" } " does not compile. Macros would break stable, content-addressable identity. " Link { to: "https://alpibrusl.github.io/cancho/" "The docs" } " have the reasons." }
+                }
+                Section {
+                    id: "agents"
+                    Image { src: "assets/img/lichen.webp" fallback: "assets/img/lichen.jpg" decorative: true width: 1024 height: 768 ratio: "4:3" }
+                    Text { style: "eyebrow" "For agents" }
+                    Heading { level: 2 "The same page, as data." }
+                    Text { style: "lead" "Read this site the way an agent does, or fetch it. Every number and every project above comes from one JSON file." }
+                    Grid {
+                        min: 19
+                        List {
+                            Item { Link { to: "agents.md" "agents.md" } Rich { "This site as Markdown: what cancho is, the ecosystem, the commands, where to start." } }
+                            Item { Link { to: "data/ecosystem.json" "data/ecosystem.json" } Rich { "Every project with stage, summary, authority and links. The map is drawn from it." } }
+                            Item { Rich { Link { to: "llms.txt" "llms.txt" } " · " Link { to: "llms-full.txt" "llms-full.txt" } } Rich { "The index, and the whole thing in one file." } }
+                            Item { Link { to: "https://github.com/alpibrusl/cancho/blob/main/AGENTS.md" "AGENTS.md" } Rich { "One page for writing cancho programs." } }
+                            Item { Rich { Code { "cancho introspect" } " · " Code { "cancho skill" } } Rich { "The command tree and a SKILL.md, emitted by the binary as data." } }
+                        }
+                        Column {
+                            AgentFiles { }
+                            Rich { style: "note" "This pane is a component of this page's cancho-ui program. It declares " Code { "requires Network;" } " and nothing else, and its network can only reach this site." }
+                        }
+                    }
+                }
+                Section {
+                    id: "next"
+                    Text { style: "eyebrow" "Where next" }
+                    Heading { level: 2 "Pick the step that fits you." }
+                    Reveal {
+                        Grid {
+                            min: 15
+                            Link { to: "#demo" Strong { "Curious developer" } Break { } "Watch the recorded session" }
+                            Link { to: "#try" Strong { "New user" } Break { } "Run the compiler on a first program" }
+                            Link { to: "https://alpibrusl.github.io/cancho/" Strong { "Systems engineer" } Break { } "Read the docs and the source" }
+                            Link { to: "https://github.com/alpibrusl/cancho/blob/main/CONTRIBUTING.md" Strong { "Contributor" } Break { } "Read how the compiler is worked on" }
+                            Link { to: "#verifies" Strong { "Evaluating it" } Break { } "What is verified, and what is not" }
+                            Link { to: "agents.md" Strong { "An AI agent" } Break { } "Fetch " Code { "agents.md" } }
+                        }
+                    }
+                }
+                Aside {
+                    id: "status"
+                    Heading { level: 2 "Status: pre-1.0" }
+                    List {
+                        Item { "Alpha and early products are built with it (see the map), each with an authority report the compiler derives. Alpha means it runs and may change." }
+                        Item { "The compiler is still the Rust one. The cancho compiler builds real programs but does not yet refuse everything the language refuses, so it is not the default." }
+                        Item { "Dependencies resolve end to end, and a real TLS handshake compiles and runs." }
+                        Item { "There is no manifest-level version string: a hash is what you depend on." }
+                        Item { "Claims that turn out wrong are corrected in place in the docs, not quietly edited." }
+                    }
+                }
+                Section {
+                    id: "name"
+                    Text { style: "eyebrow" "The name" }
+                    Heading { level: 2 "A big rock." }
+                    Rich { style: "lead" Strong { "cancho" } " is Spanish for a boulder. In La Pedriza, a granite landscape north of Madrid, weathered, jointed rock left fields of boulders resting on one another with nothing between them. Each stays by its own weight and what it touches. The language is built the same way: every piece says what it rests on, and the compiler checks it." }
+                    Grid {
+                        min: 17
+                        Reveal { Figure { Image { src: "assets/img/field.webp" fallback: "assets/img/field.jpg" alt: "Aerial view of a hillside covered in tall stacks of rounded granite boulders, with a dirt path and scrub between them under an overcast sky." width: 1024 height: 768 ratio: "4:3" } Caption { "A field of boulders. None is held by anything but what it touches." } } }
+                        Reveal { Figure { Image { src: "assets/img/dawn.webp" fallback: "assets/img/dawn.jpg" alt: "Granite boulders in pink morning light and low mist, with one large rounded rock in the centre." width: 1024 height: 768 ratio: "4:3" } Caption { "First light on the granite." } } }
+                        Reveal { Figure { Image { src: "assets/img/balance.webp" fallback: "assets/img/balance.jpg" alt: "Two rounded granite boulders, one resting on the other, lit from behind by the setting sun over a wide valley." width: 1024 height: 768 ratio: "4:3" } Caption { "Two stones, no mortar." } } }
+                    }
+                    Rich { style: "note" "Illustrations generated with Mistral AI. They show the idea; they are not photographs of La Pedriza." }
+                }
+            }
+            Footer {
+                Row {
+                    Rich { "cancho · " Link { to: "https://alpibru.com" "Alpibru" } " · EUPL-1.2" }
+                    Link { to: "https://github.com/alpibrusl/cancho" "GitHub" }
+                    Link { to: "https://alpibru.com/manifesto" "Manifesto" }
+                    Link { to: "https://alpibrusl.github.io/cancho/" "Docs" }
+                    Link { to: "https://alpibrusl.github.io/cancho/ROADMAP.html" "Roadmap" }
+                    Link { to: "agents.md" "agents.md" }
+                    Link { to: "llms.txt" "llms.txt" }
+                }
+            }
+        }
+    }
+}
