@@ -63,4 +63,6 @@ svg.cmap .pin { stroke: var(--cui-surface); stroke-width: 2; }
 svg.cmap .pin.working { fill: var(--cui-good); } .pin.alpha, .pin.early { fill: #d98a1b; } .pin.built { fill: var(--cui-accent); } .pin.design { display: none; }
 svg.cmap .rests { fill: none; stroke: var(--cui-accent); stroke-width: 1.6; stroke-dasharray: 4 5; opacity: .7; transition: opacity .3s; }
 svg.cmap .rests.dim { opacity: .08; }
-svg.cmap .region { font: 700 12px var(--cui-mono); letter-spacing: .14em; text-transform: uppercase; fill: var(--cui-muted); opacity: .8; }
+
+/* the host holds a box of the declared aspect until the drawing is there; the legend is drawn under the map, inside the host, so the box gives way to it */
+.cmap-host { aspect-ratio: auto !important; }

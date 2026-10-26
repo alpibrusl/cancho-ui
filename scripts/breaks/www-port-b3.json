@@ -1,0 +1,27 @@
+{
+  "checks": [
+    { "name": "check-www-port.js", "argv": ["node", "scripts/check-www-port.js"] }
+  ],
+  "breaks": [
+    {
+      "name": "the pane for agents is not bounded",
+      "file": "docs/www-port/site/home.cui",
+      "from": "Code { max_height: 16 \"{body}\" }",
+      "to": "Code { \"{body}\" }"
+    },
+    {
+      "name": "the legend of the map is clipped by the aspect box again",
+      "file": "docs/www-port/site/islands/map.css",
+      "rehash": "docs/www-port/site/home.cui",
+      "from": ".cmap-host { aspect-ratio: auto !important; }",
+      "to": ".cmap-host { }"
+    },
+    {
+      "name": "the region names of the map are small mono again",
+      "file": "docs/www-port/site/islands/map.css",
+      "rehash": "docs/www-port/site/home.cui",
+      "from": "svg.cmap .region { font: 600 40px var(--cui-hand);",
+      "to": "svg.cmap .region { font: 700 12px var(--cui-mono);"
+    }
+  ]
+}

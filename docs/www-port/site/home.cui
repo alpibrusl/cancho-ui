@@ -108,7 +108,7 @@ island Places {
     sealed: false;
     script: "islands/rocks.js" sha256: "ab5fffd81da37de020b59a17a03eb779d9cf0b4f35fca167d7b9fedd7fa8c008";
     script: "islands/map.js" sha256: "275bb3bfe526f2b015e33e9eb0eace4ffffb1289b0529d19cb01ae5bc2e06d3e";
-    style: "islands/map.css" sha256: "76998e0808925fdf9c1a6331594cc93c6f1c15b16a743855165727eec491eb1f";
+    style: "islands/map.css" sha256: "1873ecbd5f3935c15bf7c4b8e75d0b65a4c397fed1e6ce83c674e0dc05f3f119";
     label: "Map of the cancho ecosystem: each repository is a rock; choose one for its details";
     width: 1300;
     height: 810;
@@ -159,7 +159,7 @@ component AgentFiles {
                 Button { label: "llms.txt" on: ShowLlms pressed: file == "llms.txt" }
             }
             Text { role: status "{status}" }
-            Text { body }
+            Code { max_height: 16 "{body}" }
         }
     }
 }

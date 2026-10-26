@@ -82,7 +82,7 @@ Console errors: page 0, port 0.
 | ax | * | both | blockquote: page 1, port 0 | **intentional** | the quote is a figure with a caption (J6, dropped.md 4) |
 | ax | * | both | button: page 58, port 54 | **intentional** | the page has the human/agent switch (2 buttons, J4), 'Walk here' and 'Whole map' (2, the hiker, J8) and copy buttons named 'Copy the commands'; the port has none of the first four and names its copy buttons 'Copy the code' (the compiler's name for a code block's button); the 24 rocks, the chips, the trails, the tabs and the stepper are the same on both (J4, J8, dropped.md 1, 14) |
 | ax | * | both | cell: page 0, port 6 | **intentional** | the port's comparison is a real table (cells); the page's is divs with ARIA roles |
-| ax | * | both | code: page 30, port 34 | **intentional** | the port writes each line of the program in the animation as a `code` element; the page's lines are divs (dropped.md 11) |
+| ax | * | both | code: page 30, port 35 | **intentional** | the port writes each line of the program in the animation as a `code` element; the page's lines are divs (dropped.md 11) |
 | ax | * | both | complementary: page 1, port 2 | **intentional** | the port's detail pane is named, so it is a landmark; the page's unnamed one is generic (dropped.md 13) |
 | ax | * | both | definition: page 2, port 0 | **intentional** | the detail pane's `dl` (STAGE, NOTE) is a list of 'Stage: ...', 'Note: ...', 'Rests on: ...' items in the port (J8, dropped.md 13) |
 | ax | * | both | figure: page 5, port 9 | **intentional** | the port's waffles are figures with a caption, and the quote is a figure (J6, waffle.md) |
