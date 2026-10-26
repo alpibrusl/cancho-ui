@@ -379,6 +379,17 @@ pub(crate) fn emit_view_node(
             if matches!(kind, IrElementKind::Image) {
                 return crate::media::emit_image(indent, &var, parent_var, bindings);
             }
+            if matches!(kind, IrElementKind::Waffle) {
+                let mut out = String::new();
+                crate::media::emit_dom(
+                    indent,
+                    &var,
+                    &cancho_ui_ir::waffle::dom(accessibility, bindings),
+                    parent_var,
+                    &mut out,
+                );
+                return out;
+            }
             if matches!(kind, IrElementKind::Media) {
                 return crate::media::emit_media(indent, &var, parent_var, accessibility, bindings);
             }

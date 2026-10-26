@@ -131,7 +131,7 @@ Details { Summary { "The same session as text " Small { "(a real run)" } } Code 
   section 8. `Strong`, `Em`, `Small` and `Break` anywhere else are `inline-outside-rich`.
 * **`Span` was not added**, though the decision listed it: a `<span>` with no attribute says nothing. Measured on the live page: 85 `span`s, **42 of them inside text blocks, and every one of those carries a class**
   (`n`, `chip built`, ..: the numbers and the stage chips of the generated lists), none is a bare span; the three sections measured in 5.2b have none. What those 42 need is a styled inline element (a chip), which is
-  not in the closed set and which a `Span` would not give. Whether the port (www.md Q11) needs a `Chip` is left to the port, which will say so by its parity report.
+  not in the closed set and which a `Span` would not give. *(Corrected 2026-10-26: measured in `waffle.md` 1, the 42 spans include 14 chips (built 9, early 2, alpha 2, design 1) and the other classes belong to the page's drawings; `Chip { tone }` is built there.)*
 * **`Strong` is `<strong>`**, and the page writes `<b>` (16 times, mostly a name: `<b>cancho</b>`). Both are bold; a screen reader reads them alike; `<strong>` says importance. A parity check against the live page will
   list the 16 as a difference rather than hide it.
 * Tags: `rich-child-invalid`, `rich-empty`, `inline-outside-rich`, `code-child-invalid`; a `Summary` outside a `Details`, or beside `summary:`, or not first, is `details-incomplete`.

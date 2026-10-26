@@ -1207,6 +1207,8 @@ fn lower_kind(k: &ElementKind) -> IrElementKind {
         ElementKind::Small => IrElementKind::Small,
         ElementKind::Reveal => IrElementKind::Reveal,
         ElementKind::CountUp => IrElementKind::CountUp,
+        ElementKind::Waffle => IrElementKind::Waffle,
+        ElementKind::Chip => IrElementKind::Chip,
         ElementKind::Break => IrElementKind::Break,
         ElementKind::Summary => IrElementKind::Summary,
         ElementKind::Code => IrElementKind::Code,

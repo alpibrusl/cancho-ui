@@ -46,6 +46,7 @@ fn has_shell(kind: &IrElementKind) -> bool {
             | IrElementKind::Small
             | IrElementKind::Reveal
             | IrElementKind::CountUp
+            | IrElementKind::Chip
             | IrElementKind::Break
             | IrElementKind::InlineCode
     )
@@ -484,6 +485,11 @@ fn walk(w: &mut Writer, node: &IrViewNode) {
                         w.out.content = true;
                         w.dom(&media::media_dom(accessibility, bindings));
                     }
+                    return;
+                }
+                IrElementKind::Waffle => {
+                    w.out.content = true;
+                    w.dom(&crate::waffle::dom(accessibility, bindings));
                     return;
                 }
                 IrElementKind::Island(i) => {

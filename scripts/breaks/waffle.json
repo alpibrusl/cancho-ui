@@ -1,0 +1,205 @@
+{
+  "checks": [
+    {
+      "name": "cargo test waffle",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "waffle"
+      ]
+    },
+    {
+      "name": "cargo test theme",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "theme"
+      ]
+    },
+    {
+      "name": "check-waffle.js",
+      "argv": [
+        "node",
+        "scripts/check-waffle.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "rows and columns swapped",
+      "file": "crates/cancho-ui-ir/src/waffle.rs",
+      "from": "let (x, y) = ((i % columns) * (CELL + GAP), (i / columns) * (CELL + GAP));",
+      "to": "let (x, y) = ((i / columns) * (CELL + GAP), (i % columns) * (CELL + GAP));"
+    },
+    {
+      "name": "a known square is drawn as an open one",
+      "file": "crates/cancho-ui-ir/src/waffle.rs",
+      "from": "if known { \"cui-wf-known\" } else { \"cui-wf-open\" }",
+      "to": "\"cui-wf-open\""
+    },
+    {
+      "name": "the last row is lost",
+      "file": "crates/cancho-ui-ir/src/waffle.rs",
+      "from": "let rows = (of + columns - 1) / columns;",
+      "to": "let rows = of / columns;"
+    },
+    {
+      "name": "one square too many is counted",
+      "file": "crates/cancho-ui-ir/src/waffle.rs",
+      "from": "let d = if i < value { &mut counted } else { &mut rest };",
+      "to": "let d = if i <= value { &mut counted } else { &mut rest };"
+    },
+    {
+      "name": "the sentence does not say what is left",
+      "file": "crates/cancho-ui-ir/src/waffle.rs",
+      "from": "    if rest > 0 {\n        s.push_str(&format!(",
+      "to": "    if false && rest > 0 {\n        s.push_str(&format!("
+    },
+    {
+      "name": "known and not yet are swapped in the sentence",
+      "file": "crates/cancho-ui-ir/src/waffle.rs",
+      "from": "                \"known differences\"\n            } else {\n                \"not yet\"",
+      "to": "                \"not yet\"\n            } else {\n                \"known differences\""
+    },
+    {
+      "name": "the drawing is not named by the label",
+      "file": "crates/cancho-ui-ir/src/waffle.rs",
+      "from": "format!(\"{label}: {}\", summary(bindings))",
+      "to": "summary(bindings)"
+    },
+    {
+      "name": "the drawing is not an image",
+      "file": "crates/cancho-ui-ir/src/waffle.rs",
+      "from": ".attr(\"role\", \"img\")",
+      "to": ""
+    },
+    {
+      "name": "the table is open",
+      "file": "crates/cancho-ui-ir/src/waffle.rs",
+      "from": "let mut details = Dom::element(\"details\");",
+      "to": "let mut details = Dom::element(\"details\").attr(\"open\", \"\");"
+    },
+    {
+      "name": "more than 5000 squares are allowed",
+      "file": "crates/cancho-ui-ir/src/waffle.rs",
+      "from": "pub const OF_MAX: i64 = 5000;",
+      "to": "pub const OF_MAX: i64 = 50000;"
+    },
+    {
+      "name": "more counted than there are",
+      "file": "crates/cancho-ui-ir/src/waffle.rs",
+      "from": "if value > of {",
+      "to": "if false && value > of {"
+    },
+    {
+      "name": "a hundred and one columns",
+      "file": "crates/cancho-ui-ir/src/waffle.rs",
+      "from": "(1..=COLUMNS_MAX).contains(&n) => Ok(true)",
+      "to": "(1..=COLUMNS_MAX * 2).contains(&n) => Ok(true)"
+    },
+    {
+      "name": "a third kind of rest",
+      "file": "crates/cancho-ui-ir/src/waffle.rs",
+      "from": "pub const RESTS: &[&str] = &[\"known\", \"open\"];",
+      "to": "pub const RESTS: &[&str] = &[\"known\", \"open\", \"other\"];"
+    },
+    {
+      "name": "a waffle may have children",
+      "file": "crates/cancho-ui-ir/src/waffle.rs",
+      "from": "    if !children.is_empty() {\n        return Err(refuse(\n            \"waffle-has-children\"",
+      "to": "    if false && !children.is_empty() {\n        return Err(refuse(\n            \"waffle-has-children\""
+    },
+    {
+      "name": "an open square is filled",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": ".cui-wf-open { fill: none; stroke: var(--cui-chart-open); stroke-width: 1; }",
+      "to": ".cui-wf-open { fill: var(--cui-chart-open); stroke: var(--cui-chart-open); stroke-width: 1; }"
+    },
+    {
+      "name": "a known square is outlined like an open one",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": ".cui-wf-known { fill: none; stroke: var(--cui-chart); stroke-width: 2; }",
+      "to": ".cui-wf-known { fill: none; stroke: var(--cui-chart); stroke-width: 1; }"
+    },
+    {
+      "name": "an open square is pale in light",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "--cui-chart-open: #57606a; }",
+      "to": "--cui-chart-open: #c0c6cc; }"
+    },
+    {
+      "name": "an open square is dark in dark",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "--cui-chart-open: #9198a1; }",
+      "to": "--cui-chart-open: #30363d; }"
+    },
+    {
+      "name": "a theme's open squares are its line colour",
+      "file": "crates/cancho-ui/src/theme.rs",
+      "from": "--cui-chart-open: var(--cui-muted);",
+      "to": "--cui-chart-open: var(--cui-line);"
+    },
+    {
+      "name": "a quiet chip is not dashed",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "border-style: dashed; }",
+      "to": "border-style: solid; }"
+    },
+    {
+      "name": "a warn chip is pale",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": ".cui-chip-warn { color: var(--cui-warn, #9a6700);",
+      "to": ".cui-chip-warn { color: var(--cui-warn, #d4a72c);"
+    },
+    {
+      "name": "a chip may have any tone",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "Some(s) if CHIP_TONES.contains(&s) => Ok(true),",
+      "to": "Some(_) => Ok(true),"
+    },
+    {
+      "name": "a chip has no base class",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "format!(\"cui-chip cui-chip-{t}\")",
+      "to": "format!(\"cui-chip-{t}\")"
+    },
+    {
+      "name": "a chip may be empty",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "        if text.as_deref().is_some_and(|t| t.trim().is_empty()) || children.is_empty() {\n            return Err(refuse(\n                \"chip-empty\"",
+      "to": "        if false {\n            return Err(refuse(\n                \"chip-empty\""
+    },
+    {
+      "name": "a chip may hold a Strong",
+      "file": "crates/cancho-ui-ir/src/structure.rs",
+      "from": "    if matches!(parent, IrElementKind::Chip) {\n        return false;",
+      "to": "    if matches!(parent, IrElementKind::Chip) {\n        return true;"
+    },
+    {
+      "name": "a drawing is made in the HTML namespace",
+      "file": "crates/cancho-ui-codegen-web/src/media.rs",
+      "from": "if matches!(dom.tag, \"svg\" | \"path\") {",
+      "to": "if false {"
+    },
+    {
+      "name": "script draws no waffle",
+      "file": "crates/cancho-ui-codegen-web/src/view.rs",
+      "from": "if matches!(kind, IrElementKind::Waffle) {\n                let mut out",
+      "to": "if false && matches!(kind, IrElementKind::Waffle) {\n                let mut out"
+    },
+    {
+      "name": "the page does not have the waffle",
+      "file": "crates/cancho-ui-ir/src/recipe.rs",
+      "from": "w.dom(&crate::waffle::dom(accessibility, bindings));",
+      "to": ""
+    }
+  ]
+}

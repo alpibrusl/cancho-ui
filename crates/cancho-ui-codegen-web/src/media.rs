@@ -8,10 +8,18 @@ use cancho_ui_ir::media::Dom;
 use crate::emit::js_string;
 
 pub(crate) fn emit_dom(indent: &str, var: &str, dom: &Dom, parent: &str, out: &mut String) {
-    out.push_str(&format!(
-        "{indent}const {var} = document.createElement('{}');\n",
-        dom.tag
-    ));
+    // the elements of a drawing (a Waffle) are in the SVG namespace
+    if matches!(dom.tag, "svg" | "path") {
+        out.push_str(&format!(
+            "{indent}const {var} = document.createElementNS('http://www.w3.org/2000/svg', '{}');\n",
+            dom.tag
+        ));
+    } else {
+        out.push_str(&format!(
+            "{indent}const {var} = document.createElement('{}');\n",
+            dom.tag
+        ));
+    }
     for (k, v) in &dom.attrs {
         out.push_str(&format!(
             "{indent}{var}.setAttribute('{k}', {});\n",

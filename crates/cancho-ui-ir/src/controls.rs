@@ -109,6 +109,7 @@ fn check_node(c: &IrComponent, node: &IrViewNode, in_for: bool) -> Result<(), Lo
                     in_for,
                 )?;
                 crate::media::check_complete(kind, accessibility, bindings, children, *span)?;
+                crate::waffle::check_complete(kind, accessibility, bindings, children, *span)?;
                 check_navlink_complete(kind, accessibility, bindings, *span)?;
                 check_file_field(kind, accessibility, bindings, *span, in_for)?;
                 check_chart(kind, accessibility, bindings, *span, in_for)?;
@@ -172,6 +173,8 @@ fn element_name(kind: &IrElementKind) -> &'static str {
         IrElementKind::Small => "Small",
         IrElementKind::Reveal => "Reveal",
         IrElementKind::CountUp => "CountUp",
+        IrElementKind::Waffle => "Waffle",
+        IrElementKind::Chip => "Chip",
         IrElementKind::Break => "Break",
         IrElementKind::Summary => "Summary",
         IrElementKind::Code => "Code",
@@ -908,6 +911,9 @@ fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result
         return Ok(());
     }
     if crate::media::check_binding(kind, b)? {
+        return Ok(());
+    }
+    if crate::waffle::check_binding(kind, b)? {
         return Ok(());
     }
     crate::sortlist::check_binding(c, kind, b)?;

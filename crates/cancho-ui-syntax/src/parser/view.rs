@@ -291,6 +291,8 @@ impl Parser {
             "Small" => ElementKind::Small,
             "Reveal" => ElementKind::Reveal,
             "CountUp" => ElementKind::CountUp,
+            "Waffle" => ElementKind::Waffle,
+            "Chip" => ElementKind::Chip,
             "Break" => ElementKind::Break,
             "Summary" => ElementKind::Summary,
             "Code" => ElementKind::Code,

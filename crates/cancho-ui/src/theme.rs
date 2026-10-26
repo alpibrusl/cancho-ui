@@ -197,7 +197,7 @@ pub fn css(theme: &IrTheme) -> String {
     }
     let _ = writeln!(
         s,
-        ":root {{ {}{fonts} --cui-chart: var(--cui-accent); }}",
+        ":root {{ {}{fonts} --cui-chart: var(--cui-accent); --cui-chart-open: var(--cui-muted); }}",
         set("light")
     );
     let _ = writeln!(

@@ -1,0 +1,213 @@
+{
+ "about": "docs/waffle.md. `valid`: a view that must check. `refusals`: a view (of component C, with `state n` and `state shown`) and the rule tag that refuses it. Checked by crates/cancho-ui/tests/waffle.rs.",
+ "component": "component C {\n    state n: Int = 0;\n    state shown: Bool = true;\n    view { Column { {view} } }\n}\n",
+ "valid": [
+  {
+   "name": "the smallest waffle",
+   "view": "Waffle { label: \"Tests\" of: 10 counted: 7 columns: 5 }"
+  },
+  {
+   "name": "a waffle whose rest is known",
+   "view": "Waffle { label: \"Tests\" of: 10 counted: 7 columns: 5 rest: \"known\" }"
+  },
+  {
+   "name": "a waffle whose rest is open",
+   "view": "Waffle { label: \"Tests\" of: 10 counted: 7 columns: 5 rest: \"open\" }"
+  },
+  {
+   "name": "none counted, and all counted",
+   "view": "Waffle { label: \"a\" of: 4 counted: 0 columns: 2 } Waffle { label: \"b\" of: 4 counted: 4 columns: 2 }"
+  },
+  {
+   "name": "the most squares and the most columns",
+   "view": "Waffle { label: \"a\" of: 5000 counted: 1 columns: 100 }"
+  },
+  {
+   "name": "more columns than squares",
+   "view": "Waffle { label: \"a\" of: 3 counted: 1 columns: 50 }"
+  },
+  {
+   "name": "a chip of each tone",
+   "view": "Rich { Chip { tone: \"good\" \"working\" } Chip { tone: \"warn\" \"alpha\" } Chip { tone: \"accent\" \"built\" } Chip { tone: \"quiet\" \"design\" } }"
+  },
+  {
+   "name": "a chip in a heading and a link",
+   "view": "Heading { level: 2 \"Stage \" Chip { tone: \"good\" \"ok\" } } Rich { Link { to: \"https://example.org/\" \"x \" Chip { tone: \"quiet\" \"y\" } } }"
+  },
+  {
+   "name": "a chip that reads state",
+   "view": "Rich { Chip { tone: \"warn\" \"{n}\" } }"
+  },
+  {
+   "name": "a waffle in a For and an If",
+   "view": "If { when: shown Waffle { label: \"Tests\" of: 10 counted: 7 columns: 5 } }"
+  }
+ ],
+ "refusals": [
+  {
+   "tag": "waffle-incomplete",
+   "name": "no label",
+   "view": "Waffle { of: 10 counted: 7 columns: 5 }"
+  },
+  {
+   "tag": "waffle-incomplete",
+   "name": "a blank label",
+   "view": "Waffle { label: \" \" of: 10 counted: 7 columns: 5 }"
+  },
+  {
+   "tag": "waffle-incomplete",
+   "name": "no of",
+   "view": "Waffle { label: \"a\" counted: 7 columns: 5 }"
+  },
+  {
+   "tag": "waffle-incomplete",
+   "name": "no counted",
+   "view": "Waffle { label: \"a\" of: 10 columns: 5 }"
+  },
+  {
+   "tag": "waffle-incomplete",
+   "name": "no columns",
+   "view": "Waffle { label: \"a\" of: 10 counted: 7 }"
+  },
+  {
+   "tag": "waffle-of-invalid",
+   "name": "of 0",
+   "view": "Waffle { label: \"a\" of: 0 counted: 0 columns: 5 }"
+  },
+  {
+   "tag": "waffle-of-invalid",
+   "name": "of 5001",
+   "view": "Waffle { label: \"a\" of: 5001 counted: 0 columns: 5 }"
+  },
+  {
+   "tag": "waffle-of-invalid",
+   "name": "of \"x\"",
+   "view": "Waffle { label: \"a\" of: \"x\" counted: 0 columns: 5 }"
+  },
+  {
+   "tag": "waffle-of-invalid",
+   "name": "of 1.5",
+   "view": "Waffle { label: \"a\" of: 1.5 counted: 0 columns: 5 }"
+  },
+  {
+   "tag": "waffle-of-invalid",
+   "name": "of true",
+   "view": "Waffle { label: \"a\" of: true counted: 0 columns: 5 }"
+  },
+  {
+   "tag": "waffle-counted-invalid",
+   "name": "counted is text",
+   "view": "Waffle { label: \"a\" of: 10 counted: \"7\" columns: 5 }"
+  },
+  {
+   "tag": "waffle-counted-invalid",
+   "name": "counted is a fraction",
+   "view": "Waffle { label: \"a\" of: 10 counted: 7.5 columns: 5 }"
+  },
+  {
+   "tag": "waffle-counted-invalid",
+   "name": "counted is more than of",
+   "view": "Waffle { label: \"a\" of: 10 counted: 11 columns: 5 }"
+  },
+  {
+   "tag": "waffle-columns-invalid",
+   "name": "columns 0",
+   "view": "Waffle { label: \"a\" of: 10 counted: 7 columns: 0 }"
+  },
+  {
+   "tag": "waffle-columns-invalid",
+   "name": "columns 101",
+   "view": "Waffle { label: \"a\" of: 10 counted: 7 columns: 101 }"
+  },
+  {
+   "tag": "waffle-columns-invalid",
+   "name": "columns \"5\"",
+   "view": "Waffle { label: \"a\" of: 10 counted: 7 columns: \"5\" }"
+  },
+  {
+   "tag": "waffle-columns-invalid",
+   "name": "columns 2.5",
+   "view": "Waffle { label: \"a\" of: 10 counted: 7 columns: 2.5 }"
+  },
+  {
+   "tag": "waffle-rest-invalid",
+   "name": "rest is another word",
+   "view": "Waffle { label: \"Tests\" of: 10 counted: 7 columns: 5 rest: \"other\" }"
+  },
+  {
+   "tag": "waffle-rest-invalid",
+   "name": "rest is a number",
+   "view": "Waffle { label: \"Tests\" of: 10 counted: 7 columns: 5 rest: 3 }"
+  },
+  {
+   "tag": "waffle-has-children",
+   "name": "a waffle with text",
+   "view": "Waffle { label: \"a\" of: 10 counted: 7 columns: 5 Text { \"x\" } }"
+  },
+  {
+   "tag": "binding-unknown",
+   "name": "of on a Column",
+   "view": "Column { of: 3 Text { \"x\" } }"
+  },
+  {
+   "tag": "binding-unknown",
+   "name": "counted on a Section",
+   "view": "Section { counted: 3 Text { \"x\" } }"
+  },
+  {
+   "tag": "binding-unknown",
+   "name": "rest on a Column",
+   "view": "Column { rest: \"known\" Text { \"x\" } }"
+  },
+  {
+   "tag": "binding-unknown",
+   "name": "columns on a Row",
+   "view": "Row { columns: 3 Text { \"x\" } }"
+  },
+  {
+   "tag": "binding-unknown",
+   "name": "a gap on a Waffle",
+   "view": "Waffle { label: \"Tests\" of: 10 counted: 7 columns: 5 gap: 2 }"
+  },
+  {
+   "tag": "binding-unknown",
+   "name": "a tone on a Waffle",
+   "view": "Waffle { label: \"Tests\" of: 10 counted: 7 columns: 5 tone: \"ok\" }"
+  },
+  {
+   "tag": "chip-tone-invalid",
+   "name": "a chip with no tone",
+   "view": "Rich { Chip { \"built\" } }"
+  },
+  {
+   "tag": "chip-tone-invalid",
+   "name": "a chip of a tone that is not one",
+   "view": "Rich { Chip { tone: \"red\" \"built\" } }"
+  },
+  {
+   "tag": "chip-empty",
+   "name": "a chip with no text",
+   "view": "Rich { \"a \" Chip { tone: \"good\" } }"
+  },
+  {
+   "tag": "chip-empty",
+   "name": "a chip of spaces",
+   "view": "Rich { \"a \" Chip { tone: \"good\" \"  \" } }"
+  },
+  {
+   "tag": "inline-outside-rich",
+   "name": "a chip in a Column",
+   "view": "Chip { tone: \"good\" \"x\" }"
+  },
+  {
+   "tag": "rich-child-invalid",
+   "name": "a Strong in a chip",
+   "view": "Rich { Chip { tone: \"good\" Strong { \"x\" } } }"
+  },
+  {
+   "tag": "binding-unknown",
+   "name": "a label on a chip",
+   "view": "Rich { Chip { label: \"x\" tone: \"good\" \"y\" } }"
+  }
+ ]
+}

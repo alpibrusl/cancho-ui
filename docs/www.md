@@ -146,7 +146,7 @@ of the rules, so the order in section 7 can be argued from numbers.
 | stateful widgets: tabs, pressed buttons, switch, chips, filters, detail pane, count | `aria-pressed` 2; chips, tabs | **(a)** | state, events, `if`, `For`, `Button`, `Select`; `aria-pressed` is not a binding (a `Toggle` exists as `Checkbox`; a pressed `Button` is (b), small: 5.2) |
 | the agent / human switch and the agent files pane | 1 switch + `agent-files.cui` | **(a)** | already half written; the switch is `if`; the fetch is `net.get` |
 | data-driven lists: projects, verifies, paths, the list under the map | 24 projects, 17 claims in 3 lists, 3 paths of 3 entries, the `<details>` list | **(a)** | measured above (24 rows); the Python generator's job moves to a `For` |
-| proof figures (3 numbers, 3 waffles) | 1,128 nodes | (b) | `Chart { kind: "waffle" }` (5.5); the numbers are `Text` |
+| proof figures (3 numbers, 3 waffles) | 1,128 nodes | (b) | `Waffle` (5.5, built) and `CountUp` (5.4, built) |
 | reveal on scroll | 14 + 10 + strike-throughs | (b) | `Reveal` (5.4) |
 | count-up numbers | 3 | (b) | `CountUp` (5.4) |
 | pointer parallax | 1 listener | (c) | stays in the hero island (section 6) |
@@ -325,10 +325,11 @@ sentence above.
 
 ### 5.5 Drawing, kept small
 
-* **`Chart { kind: "waffle" of: 1472 value: 1380 columns: 44 label: ".." }`**: the proof section's three charts (1,099 of the 2,951 nodes) are a grid of cells. This extends
-  the **existing `Chart`** (`charts.md`, one SVG, `role="img"` with a text alternative and a collapsed data table), not a new drawing language. Tags:
-  `chart-kind-invalid` (exists), `chart-waffle-of-invalid`. Replay: the cell counts. Accessible form: the label plus the table, already the `Chart` contract; the
-  site's `aria-label="passed of total"` is the same information.
+> **Built 2026-10-26: [`waffle.md`](waffle.md). Measured against the real page and corrected in place below.**
+
+* **`Waffle { label: ".." of: 704 counted: 697 columns: 44 rest: "known" }`** *(corrected 2026-10-26: this said `Chart { kind: "waffle" of: 1472 value: 1380 columns: 44 label: ".." }`, "extends the existing `Chart`", tags `chart-waffle-of-invalid`; the page's figures are 704/697, 333/256 and 62/62, not 1472/1380; a `Chart` draws state by script and is a hole in the prerendered page, a waffle is three numbers written in the program and is static, so it is its own element; `value:` is `counted:` because a key `value:` is parsed as a state field; the tags are `waffle-incomplete`, `waffle-of-invalid`, `waffle-counted-invalid`, `waffle-columns-invalid`, `waffle-rest-invalid`, `waffle-has-children`)*: the proof section's three charts (1,099 `<rect>`s, 1,128 of the 2,951 nodes) are written as **one `<path>` per kind of square**, measured: 20,355 bytes against 69,789 and 9 elements against 1,103 for the same squares, 0.5 ms against 7.5 ms to parse and lay out. Accessible form (the `Chart` contract): the drawing is one image named `"<label>: 697 of 704, 7 known differences"`, with a caption and a closed table; the page's `aria-label="697 of 704"` has no table, and the meaning of its amber outline is only in a paragraph. **Colour** *(measured: the page's known-difference outline is 2.05:1 of its background in light, and its empty squares 1.23:1, against the 3:1 WCAG 1.4.11 asks)*: counted squares are `accent`, filled; the others hollow, `known` in `accent` 2 wide and `open` in `muted` 1 wide: tokens that already have a pair with `bg`, 5.93:1 to 7.65:1 with the example theme.
+* **`Chip { tone: "good" "working" }`** *(added 2026-10-26; `structure.md` 6 left the styled inline text to the port)*: measured, the page has 14 chips in prose (built 9, early 2, alpha 2, design 1), and the other classes of inline spans are parts of its drawings. A closed inline element of text with `tone:` `good`, `warn`, `accent` or `quiet`; tags `chip-tone-invalid`, `chip-empty`. A general `Span { class }` is still not offered.
+* **Data-driven sections** *(decided 2026-10-26, not built: [`waffle.md`](waffle.md) 4)*: a hashed `data Ecosystem { file: ".." sha256: ".." }` read at build time and expanded into static elements, not `net.get` at run time. Measured on the page's `ecosystem.json` (23,489 bytes): the runtime version needs `requires Network`, shows **0 of 24** project names without script, and `diff` reports **"no semantic change"** when the data changes; the same 24 names as literals are visible without script and need no capability. The expansion is a pull request of its own.
 * **A general `Svg`/`Path`/`Circle` vocabulary is not proposed.** It would be a second UI language inside the first; the program would say *how it is
   drawn* (the opposite of "the program says what a thing is"), replay would have nothing to check, and every drawing would need its own accessible form.
   Section 9 argues the hero and the map should not be rewritten this way.
@@ -393,7 +394,7 @@ Counted against the page as it is. "Unblocks" is the share of the **page** that 
 | **3** | **Islands** (6), *moved up from step 5* | **the other 74 %** (the hero, the map, the authority drawing, the cairns), as sealed or open islands | **medium**: the compiler learns to refuse an undeclared script; a frame protocol | after steps 2 and 3 the **whole page is a cancho-ui program** and every opaque part is declared and visible in `authority`/`diff`. Doing it before motion and SVG means the page can be finished and *then* improved piece by piece, and the escape hatch is measured against the real page rather than designed in the abstract |
 | **4** | **Page-level** (5.3) | head: 13 `meta`, `canonical`, 2 `alternate`, `lang`; anchors; sticky header | **low** | needed before the page can *replace* `index.html` (link previews and agent discovery would otherwise silently disappear) |
 | **5** | **Scroll, viewport, motion** (5.4) | `Reveal` 14 uses *(corrected 2026-10-26: this said 24+; the page has 14 `.reveal` elements, 10 `.cairn` and 1 `.nope` that the same observer shows: 25, of which only the 14 are blocks of content)*, `CountUp` 3, the authority animation's start | **medium**: `IntersectionObserver` in Chromium only here | replay carries the event `visible:` names; reduced motion becomes impossible to forget |
-| **6** | **Data-driven sections and `Chart { kind: "waffle" }`** (5.5) | the 3 waffles (1,099 nodes), the lists the Python generator writes (17 `verifies` claims, 9 path entries, 24 projects) | **low**: mostly (a) already (spike: 24 rows) | last because it needs the least: the list part is **already possible today** |
+| **6** | **Data-driven sections and `Waffle`** (5.5; *corrected 2026-10-26: `Waffle` and `Chip` are built, data-driven sections are decided and not built*) | the 3 waffles (1,099 nodes), the lists the Python generator writes (17 `verifies` claims, 9 path entries, 24 projects) | **low**: mostly (a) already (spike: 24 rows) | last because it needs the least: the list part is **already possible today** |
 
 **Where this differs from the expected order, with the number:** islands move from 5 to 3 because (1) 74 % of the DOM is drawing that no primitive in steps 1, 2, 4 or 6
 covers, so until islands exist nothing can *finish* the page; (2) the island mechanism is the part with the highest **unknown** (the iframe costs in section 6 are measured
@@ -461,7 +462,7 @@ If the user prefers the expected order, steps 3 and 5 swap with no other change:
 9. **The additions of 5.2b, as closed sets:** `Article`, `Figure`/`Caption`, link `appearance`, text `style`, inline content in `Heading`/`Link`/`Details` summary, `Code { max_height }`, `ratio` on `Image`/`Media`, and `weights:` on `Grid` (`min` stays). Any may be argued against by measurement in its PR. *Decided 2026-10-24 by the user.*
 10. **Order:** P0 the code tokens; B1 `Heading`, `Section`, landmarks, `Article`, `Link` (+ `appearance`, host listing), `Details`, `Figure`/`Caption`, text `style`; B2 `Rich` and `Code`; B3 `Image`, `Media`, `ratio`, `Grid` weights; then P1 prerender (design note first). *Decided 2026-10-24 by the user,* with leave to re-order if prerender must come first, reported before doing so.
 
-Steps 1 to 5 are built (theme, structure, prerender and islands, the page-level elements [`page.md`](page.md), and motion [`motion.md`](motion.md)).
+Steps 1 to 5 are built (theme, structure, prerender and islands, the page-level elements [`page.md`](page.md), and motion [`motion.md`](motion.md)); step 6 is built for `Waffle` and `Chip` and decided for data ([`waffle.md`](waffle.md)).
 
 ## 11. Rules kept
 

@@ -36,6 +36,7 @@ pub mod stream;
 pub mod structure;
 pub mod table;
 pub mod theme;
+pub mod waffle;
 
 pub use ir::*;
 pub use lower::{LowerError, ir_expr_suspends, lower_file, merge_ir_files};
