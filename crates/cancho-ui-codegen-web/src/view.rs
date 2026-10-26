@@ -464,16 +464,6 @@ pub(crate) fn emit_view_node(
                         js_string(&style)
                     ));
                 }
-                if matches!(kind, IrElementKind::Details)
-                    && let Some(text) = cancho_ui_ir::structure::summary(bindings)
-                {
-                    out.push_str(&format!(
-                        "{0}const {1}_summary = document.createElement('summary');\n{0}{1}_summary.textContent = {2};\n{0}{1}.appendChild({1}_summary);\n",
-                        indent,
-                        var,
-                        js_string(&text)
-                    ));
-                }
                 if let Some(role) = &accessibility.role {
                     let r = match role {
                         IrRole::Text => "text",

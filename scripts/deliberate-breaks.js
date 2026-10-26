@@ -2,7 +2,8 @@
 // Deliberate breaks: does each check of a change fail when the change is spoiled on purpose? A break file (scripts/breaks/*.json)
 // lists source edits (`file`, an exact `from` that must occur once, a `to`) and the checks to run (`checks`: name and argv). For
 // each break the edit is applied, the compiler is rebuilt, every check is run, and the file is restored byte for byte; a break
-// that no check catches is reported and the exit status is 1. A file may also carry an `equivalent` list: mutations measured to change nothing observable (with the
+// that no check catches is reported and the exit status is 1. A break may carry `rehash`: the path of a program that names the spoiled file by its SHA-256; the hash there is
+// recomputed for the spoiled file, so that the program still builds. A file may also carry an `equivalent` list: mutations measured to change nothing observable (with the
 // measurement), kept as documentation and never run. A baseline run (no edit) must pass first. Outside the gate: it
 // rebuilds and runs the browser checks once per break (minutes).
 //   node scripts/deliberate-breaks.js scripts/breaks/view-if.json [only-break-name ...]
@@ -47,8 +48,18 @@ for (const b of spec.breaks) {
     uncaught.push(b.name);
     continue;
   }
+  // `rehash`: a program that names the spoiled file by its SHA-256 (an island's script or style, a data file) is edited too, so that the program still builds
+  // and the spoiled file is what the checks see
+  const rehash = b.rehash ? path.join(ROOT, b.rehash) : null;
+  const programOriginal = rehash ? fs.readFileSync(rehash, 'utf8') : null;
+  const sha = (t) => require('crypto').createHash('sha256').update(t).digest('hex');
   try {
-    fs.writeFileSync(file, original.replace(b.from, () => b.to));
+    const spoiled = original.replace(b.from, () => b.to);
+    fs.writeFileSync(file, spoiled);
+    if (rehash) {
+      if (!programOriginal.includes(sha(original))) { console.log(`BAD  ${b.name}: ${b.rehash} does not name ${b.file} by its SHA-256`); uncaught.push(b.name); continue; }
+      fs.writeFileSync(rehash, programOriginal.split(sha(original)).join(sha(spoiled)));
+    }
     const failed = runChecks();
     if (hung.length) {
       console.log(`HUNG ${b.name}: ${hung.join(', ')} did not end within ${LIMIT_MS / 60000} minutes and was killed; that is not a detection`);
@@ -64,6 +75,7 @@ for (const b of spec.breaks) {
     }
   } finally {
     fs.writeFileSync(file, original);
+    if (rehash) { fs.writeFileSync(rehash, programOriginal); }
   }
 }
 runChecks();
