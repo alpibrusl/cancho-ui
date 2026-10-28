@@ -100,7 +100,7 @@ A themed page has the baseline stylesheet, unchanged, and **after it** a second 
 (`a_program_without_a_theme_is_emitted_as_it_was`; and a program's script is the same bytes with and without a theme, so replay and the emitted module never read it).
 
 The theme block sets: the custom properties; `@font-face`; `background`, `color` on the body; `color` on links; `background`, `color`, `border-color` on controls, and on a button that is `pressed:` (`aria-pressed="true"`: the accent with `accent_fg`, a pair whose contrast the compiler already checks; added 2026-10-26, found by the port: a pressed tab looked like the others); the border colour of table
-cells; the tone colours; the font family; and **`:focus-visible { outline: 3px solid var(--cui-accent); outline-offset: 2px; }`**. It contains no rule about size, position, display, visibility
+cells; the tone colours; the font family; the shadow of a link button and its hover ring (`box-shadow`, `transition`, and `font-size` of the quiet link, added 2026-10-28: the port's buttons were outlined and flat, the page's are raised; no size, position or contrast is touched, and the hover is a ring, not a `filter`, because a filter would change the checked contrast of the accent pair); and **`:focus-visible { outline: 3px solid var(--cui-accent); outline-offset: 2px; }`**. It contains no rule about size, position, display, visibility
 or the outline's width or style. So:
 
 * **The 44 px targets** (`button, input, textarea { min-height: 44px; min-width: 44px; .. }`) are the baseline's, and the theme block comes after it and does not mention them.

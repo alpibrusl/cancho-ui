@@ -781,7 +781,8 @@ fn diff_reports_a_theme_change_as_its_own_line_and_authority_stays() {
     assert!(human.contains("authority: unchanged"), "{human}");
 }
 
-/// The properties a theme's stylesheet may set: colours, a font, and the colour of the focus ring. Nothing about size, position, display,
+/// The properties a theme's stylesheet may set: colours, a font, the colour of the focus ring, and the shadow and its transition on a link
+/// button (docs/theme.md section 6). Nothing about size, position, display,
 /// visibility or the outline's width and style.
 const ALLOWED: &[&str] = &[
     "background",
@@ -795,6 +796,9 @@ const ALLOWED: &[&str] = &[
     "src",
     "outline",
     "outline-offset",
+    "box-shadow",
+    "transition",
+    "font-size",
 ];
 
 fn properties(css: &str) -> Vec<String> {

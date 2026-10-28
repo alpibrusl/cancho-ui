@@ -149,7 +149,7 @@ fn font_stack(f: Option<&IrFont>, fallback: &str) -> Option<String> {
     f.map(|f| format!("\"{}\", {fallback}", f.family))
 }
 
-/// The stylesheet of a theme, written after the baseline stylesheet. It sets colours, a font and a focus ring colour and nothing else: it
+/// The stylesheet of a theme, written after the baseline stylesheet. It sets colours, a font, a focus ring colour and the shadow of a link button and nothing else: it
 /// has no rule about size, position, display or the outline's style or width, so the 44 px targets and the ring of the baseline stay the
 /// compiler's whatever the tokens are (docs/theme.md section 6).
 pub fn css(theme: &IrTheme) -> String {
@@ -224,13 +224,25 @@ pub fn css(theme: &IrTheme) -> String {
     s.push_str("[data-tone=\"error\"] { color: var(--cui-bad); background: var(--cui-bad-bg); }\n");
     s.push_str("[data-style=\"eyebrow\"], [data-style=\"label\"] { color: var(--cui-accent); }\n");
     s.push_str("[data-style=\"lead\"], [data-style=\"note\"] { color: var(--cui-muted); }\n");
+    // The buttons are raised, not outlined (the look of the page this port reproduces): a soft shadow in the light scheme and a hairline in
+    // the dark one, a surface-coloured secondary and a hover that adds a ring. No property here is about size, position or display.
+    s.push_str(":root { --cui-shadow: 0 1px 2px rgba(18, 20, 23, 0.05), 0 10px 28px -14px rgba(18, 20, 23, 0.16); }\n");
+    s.push_str("@media (prefers-color-scheme: dark) { :root { --cui-shadow: 0 0 0 1px var(--cui-line); } }\n");
     s.push_str(
-        "a.cui-link-primary { background: var(--cui-accent); color: var(--cui-accent-fg); }\n",
+        "a.cui-link-primary { background: var(--cui-accent); color: var(--cui-accent-fg); box-shadow: var(--cui-shadow); transition: box-shadow 0.15s ease, background-color 0.15s ease; }\n",
     );
     s.push_str(
-        "a.cui-link-secondary { color: var(--cui-accent); border-color: var(--cui-accent); }\n",
+        "a.cui-link-secondary { background: var(--cui-surface); color: var(--cui-fg); border-color: transparent; box-shadow: var(--cui-shadow); transition: box-shadow 0.15s ease, background-color 0.15s ease; }\n",
+    );
+    s.push_str("a.cui-link-secondary:hover { background: var(--cui-soft, var(--cui-surface)); }\n");
+    s.push_str(
+        "a.cui-link-primary:hover, a.cui-link-secondary:hover { box-shadow: var(--cui-shadow), 0 0 0 3px color-mix(in srgb, var(--cui-accent) 25%, transparent); }\n",
     );
     s.push_str("a.cui-link-quiet { color: var(--cui-muted); }\n");
+    s.push_str("a.cui-link-quiet:hover { color: var(--cui-fg); }\n");
+    if find("mono").is_some() {
+        s.push_str("a.cui-link-quiet { font-family: var(--cui-mono); font-weight: 500; font-size: 0.85rem; }\n");
+    }
     s.push_str(
         ".cui-sticky { background: var(--cui-bg); border-bottom-color: var(--cui-line); }\n",
     );
