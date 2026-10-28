@@ -1196,6 +1196,66 @@ pub const NOT_BOUNDED: &[&str] = &[
     "anything a browser adds after the attempts that were measured",
 ];
 
+/// The span of the first island instance of the view, if any.
+fn first_instance(node: &IrViewNode) -> Option<Span> {
+    match node {
+        IrViewNode::Element {
+            kind,
+            children,
+            span,
+            ..
+        } => {
+            if matches!(kind, IrElementKind::Island(_)) {
+                return Some(*span);
+            }
+            children.iter().find_map(first_instance)
+        }
+        IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
+            children.iter().find_map(first_instance)
+        }
+        IrViewNode::Text { .. } => None,
+    }
+}
+
+/// The program-wide check of docs/islands.md section 13: an island instance is in the page's own HTML, in the component that is mounted into the
+/// page, outside any `If` or `For` and not under anything else that the script draws again. A frame the script builds is a new `<iframe>` at every
+/// render (measured, 8 renders: 9 added and 10 loads, against 1 and 1 for a frame in the HTML), so it forgets what it drew; an open island's host
+/// is a new element the same way. A `For` over a data file is written out at build (docs/data.md), so what it holds is as static as what is around it.
+pub fn check_program(ir: &IrFile) -> Result<(), LowerError> {
+    let counts: Vec<usize> = ir
+        .components
+        .iter()
+        .map(|c| {
+            let mut used: Vec<&IrIsland> = Vec::new();
+            collect(&c.view.body, &mut used);
+            used.len()
+        })
+        .collect();
+    if counts.iter().all(|n| *n == 0) {
+        return Ok(());
+    }
+    let (mounted, skeleton) = match crate::recipe::hydrating(ir) {
+        Some((i, sk)) => (Some(i), Some(sk)),
+        None => (None, None),
+    };
+    let in_html = skeleton
+        .as_ref()
+        .map_or(0, |sk| sk.html.matches("data-cui-island=\"").count());
+    for (i, c) in ir.components.iter().enumerate() {
+        if counts[i] == 0 {
+            continue;
+        }
+        if mounted != Some(i) || in_html != counts[i] {
+            return Err(refuse(
+                "island-rebuilt",
+                "an island instance must be in the page's own HTML: in the component that is mounted into the page, outside any `If` or `For` and not under anything the script draws again. Anywhere else its frame is a new `<iframe>` at every render (measured over 8 renders: 9 frames added and 10 loads, against 1 and 1), and it forgets what it drew. Put the instance in the mounted component, outside every `If` and `For`, and pass what changes as props from that component's state".to_string(),
+                first_instance(&c.view.body).unwrap_or(c.view.span),
+            ));
+        }
+    }
+    Ok(())
+}
+
 /// Does the view instantiate the island of this name?
 pub fn view_uses(node: &IrViewNode, name: &str) -> bool {
     let mut used: Vec<&IrIsland> = Vec::new();

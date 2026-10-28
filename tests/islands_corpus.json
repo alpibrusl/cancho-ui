@@ -54,11 +54,6 @@
    "view": "Stones { seed: 1 } Stones { seed: 2 on: Picked }"
   },
   {
-   "name": "an island inside a For",
-   "view": "For { over: items as: m Stones { seed: 1 } }",
-   "extra_state": "state items: List[String] = [\"a\"];"
-  },
-  {
    "name": "an island with a style and two scripts",
    "decl": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; script: \"b.js\" sha256: \"{sha:b.js}\"; style: \"s.css\" sha256: \"{sha:s.css}\"; decorative: true; width: 100; height: 50; props { seed: Int; } }",
    "view": "Stones { seed: 3 }"
@@ -92,6 +87,14 @@
   {
    "name": "a prop of an open island read from a data file (data.value, written out at build)",
    "program": "data P { file: \"places.json\" sha256: \"{sha:places.json}\"; }\nisland Stones { sealed: false; script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { places: String; } events { Picked: Int; } }\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    on Picked(v) { n = v; }\n    view { Column { Stones { places: data.value(P, \"projects\") text: \"alt\" } Section { label: \"Alt\" id: \"alt\" Text { \"alt\" } } } }\n}\n"
+  },
+  {
+   "name": "a For over a data file with an island in it (written out at build: each copy is a frame in the HTML)",
+   "program": "data P { file: \"places.json\" sha256: \"{sha:places.json}\"; }\nisland Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }\ncomponent C {\n    state n: Int = 0;\n    on Picked(v) { n = v; }\n    view { Column { For { over: data.items(P, \"projects\") as: p Stones { seed: 1 } } } }\n}\n"
+  },
+  {
+   "name": "islands in a Column of the mounted component, with props from its state",
+   "view": "Column { Text { \"{n}\" } Stones { seed: n } Stones { seed: 2 } }"
   }
  ],
  "refusals": [
@@ -436,7 +439,7 @@
    "code": "island-duplicate",
    "program": "import m.M;\nisland Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }\ncomponent C {\n    state n: Int = 0;\n    on Picked(v) { n = v; }\n    view { Column { M { } Stones { seed: 1 } } }\n}\n",
    "module": {
-    "m.cui": "module m;\nisland Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }\ncomponent M {\n    view { Column { Stones { seed: 1 } } }\n}\n"
+    "m.cui": "module m;\nisland Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }\ncomponent M {\n    view { Column { Text { \"m\" } } }\n}\n"
    }
   },
   {
@@ -527,6 +530,61 @@
    "name": "a data.value prop of an island names a data that is not declared",
    "code": "data-unknown",
    "program": "data P { file: \"places.json\" sha256: \"{sha:places.json}\"; }\nisland Stones { sealed: false; script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { places: String; } events { Picked: Int; } }\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    on Picked(v) { n = v; }\n    view { Column { Stones { places: data.value(Q, \"projects\") text: \"alt\" } Section { label: \"Alt\" id: \"alt\" Text { \"alt\" } } } }\n}\n"
+  },
+  {
+   "name": "an island inside a For",
+   "code": "island-rebuilt",
+   "view": "For { over: items as: m Stones { seed: 1 } }",
+   "extra_state": "state items: List[String] = [\"a\"];"
+  },
+  {
+   "name": "an island under an If",
+   "code": "island-rebuilt",
+   "view": "If { when: n >= 0 Stones { seed: 1 } }"
+  },
+  {
+   "name": "an island under an If inside a For",
+   "code": "island-rebuilt",
+   "view": "For { over: items as: m If { when: n >= 0 Stones { seed: 1 } } }",
+   "extra_state": "state items: List[String] = [\"a\"];"
+  },
+  {
+   "name": "an island in a Column under an If",
+   "code": "island-rebuilt",
+   "view": "If { when: n >= 0 Column { Text { \"x\" } Stones { seed: 1 } } }"
+  },
+  {
+   "name": "one island outside and one under an If",
+   "code": "island-rebuilt",
+   "view": "Stones { seed: 1 } If { when: n >= 0 Stones { seed: 2 } }"
+  },
+  {
+   "name": "an island in a component that is not the mounted one",
+   "code": "island-rebuilt",
+   "program": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }\ncomponent Card {\n    view { Column { Stones { seed: 1 } } }\n}\ncomponent C {\n    state n: Int = 0;\n    on Picked(v) { n = v; }\n    view { Column { Card { } } }\n}\n"
+  },
+  {
+   "name": "an island in a component that another component draws (the mounted one is the last)",
+   "code": "island-rebuilt",
+   "program": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }\ncomponent C {\n    state n: Int = 0;\n    on Picked(v) { n = v; }\n    view { Column { Stones { seed: 1 } } }\n}\ncomponent Zed {\n    view { Column { C { } } }\n}\n"
+  },
+  {
+   "name": "an open island under an If",
+   "code": "island-rebuilt",
+   "program": "island Stones { sealed: false; script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; } events { Picked: Int; } }\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    on Picked(v) { n = v; }\n    view { Column { If { when: n >= 0 Stones { seed: 3 text: \"alt\" } } Section { label: \"Alt\" id: \"alt\" Text { \"alt\" } } } }\n}\n"
+  },
+  {
+   "name": "an island in a component of an imported module",
+   "code": "island-rebuilt",
+   "program": "import m.M;\nisland Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }\ncomponent C {\n    state n: Int = 0;\n    on Picked(v) { n = v; }\n    view { Column { M { } } }\n}\n",
+   "module": {
+    "m.cui": "module m;\nisland Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }\ncomponent M {\n    view { Column { Stones { seed: 1 } } }\n}\n"
+   }
+  },
+  {
+   "name": "an island in the mounted component and one in a component that is not (the counts alone would agree)",
+   "code": "island-rebuilt",
+   "program": "island Stones { script: \"a.js\" sha256: \"{sha:a.js}\"; label: \"Stones\"; width: 100; height: 50; props { seed: Int; pointer: Pointer; } events { Picked: Int; Closed; } }\ncomponent Card {\n    view { Column { Stones { seed: 1 } } }\n}\ncomponent C {\n    state n: Int = 0;\n    on Picked(v) { n = v; }\n    view { Column { Card { } Stones { seed: 2 } } }\n}\n"
   }
  ]
 }

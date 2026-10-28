@@ -543,6 +543,9 @@ fn compile_inner(
         .map_err(|e| PipelineError::refused(lower_to_diag(&e, file)))?;
     cancho_ui_ir::motion::check_program(&merged)
         .map_err(|e| PipelineError::refused(lower_to_diag(&e, file)))?;
+    // an island instance is in the page's own HTML, or the frame is a new `<iframe>` at every render (docs/islands.md section 13)
+    cancho_ui_ir::island::check_program(&merged)
+        .map_err(|e| PipelineError::refused(lower_to_diag(&e, file)))?;
     // the font files a theme declares exist and are the files it names (relative to the entry file's directory)
     if let Some(t) = &merged.theme {
         let dir = program_dir(file);

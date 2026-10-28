@@ -168,6 +168,85 @@ fn every_valid_program_of_the_corpus_checks() {
     }
 }
 
+/// The refusal says why and what to do instead (the measured cost, and where the instance goes), and carries its rule tag.
+#[test]
+fn island_rebuilt_says_why_and_what_to_do_instead() {
+    let c = corpus();
+    let case = c["refusals"]
+        .as_array()
+        .expect("refusals")
+        .iter()
+        .find(|r| r["name"] == "an island under an If")
+        .expect("the case");
+    let file = case_file(&c, case);
+    let (code, out, _) = run(&["check", p(&file), "--output", "json"]);
+    assert_eq!(code, 1);
+    let diags: Vec<Value> = serde_json::from_str(&out).expect("diagnostics are JSON");
+    assert_eq!(diags.len(), 1);
+    assert_eq!(diags[0]["code"], "island-rebuilt");
+    let message = diags[0]["message"].as_str().expect("message");
+    assert!(
+        message.contains("new `<iframe>` at every render"),
+        "says why: {message}"
+    );
+    assert!(
+        message.contains("9 frames added and 10 loads"),
+        "says what was measured: {message}"
+    );
+    assert!(
+        message.contains("Put the instance in the mounted component")
+            && message.contains("outside every `If` and `For`")
+            && message.contains("pass what changes as props"),
+        "says what to do: {message}"
+    );
+}
+
+/// `island-rebuilt` looks at the whole program, so a program cut anywhere (and one with a single character left out) must be a refusal or a pass and
+/// never a panic: every case of the corpus that is about where an instance sits is cut at every character.
+#[test]
+fn an_island_program_cut_anywhere_is_refused_and_never_a_panic() {
+    let c = corpus();
+    let mut cases: Vec<&Value> = c["refusals"]
+        .as_array()
+        .expect("refusals")
+        .iter()
+        .filter(|r| r["code"] == "island-rebuilt")
+        .collect();
+    cases.extend(c["valid"].as_array().expect("valid").iter().filter(|v| {
+        v["name"]
+            .as_str()
+            .is_some_and(|n| n.contains("For over a data file"))
+    }));
+    assert!(cases.len() >= 8, "the places of the corpus are there");
+    for case in cases {
+        let full = source_of(&c, case);
+        let file = workspace(&c, &full);
+        let dir = file.parent().expect("dir").to_path_buf();
+        let mut cuts: Vec<usize> = full.char_indices().map(|(i, _)| i).collect();
+        cuts.push(full.len());
+        for (n, at) in cuts.iter().enumerate() {
+            let f = dir.join(format!("cut{n}.cui"));
+            std::fs::write(&f, &full[..*at]).expect("cut");
+            let (code, _, err) = run(&["check", p(&f)]);
+            assert!(
+                code == 0 || code == 1,
+                "{}: prefix {at}: exit {code}: {err}",
+                case["name"]
+            );
+            if let Some(next) = cuts.get(n + 1) {
+                let g = dir.join(format!("del{n}.cui"));
+                std::fs::write(&g, format!("{}{}", &full[..*at], &full[*next..])).expect("cut");
+                let (code, _, err) = run(&["check", p(&g)]);
+                assert!(
+                    code == 0 || code == 1,
+                    "{}: deleting at {at}: exit {code}: {err}",
+                    case["name"]
+                );
+            }
+        }
+    }
+}
+
 #[test]
 fn every_refusal_of_the_corpus_is_refused_by_its_tag() {
     let c = corpus();
@@ -195,6 +274,7 @@ const TAGS: &[&str] = &[
     "island-name-invalid",
     "island-name-conflict",
     "island-duplicate",
+    "island-rebuilt",
     "island-entry-duplicate",
     "island-file-duplicate",
     "island-path-invalid",
