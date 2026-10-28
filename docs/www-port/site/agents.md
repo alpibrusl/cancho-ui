@@ -34,7 +34,7 @@ Docs: https://alpibrusl.github.io/cancho/
 
 Start with the language and the agent workflow: describe a task, let an agent build it, read the checks.
 
-- [cancho](https://github.com/alpibrusl/cancho) `built`: Refuses a leaked resource by a named rule, says what a program may do, and builds a native binary. Page: https://alpibrusl.github.io/cancho/ Next: Run the compiler: https://alpibrusl.github.io/cancho-www/#try
+- [cancho](https://github.com/alpibrusl/cancho) `built`: Refuses a leaked resource by a named rule, says what a program may do, and builds a native binary. Page: https://alpibrusl.github.io/cancho/ Next: Run the compiler: https://cancho.dev/#try
 - [cancho-code](https://github.com/alpibrusl/cancho-code) `built`: In its own evaluation (Claude Haiku 5.5, hidden tests), 13 small libraries from hand-written plans finished 38 of 39 units; conditions and caveats are in its eval/results. Page: https://alpibrusl.github.io/cancho-code/ Next: Paste its agent prompt into your coding agent: https://github.com/alpibrusl/cancho-code/blob/main/docs/agent-prompt.md
 - [cancho-tools](https://github.com/alpibrusl/cancho-tools) `early`: A stale write is refused with a rule tag and the hash to retry: two agents, one file (a transcript in its README). Page: https://alpibrusl.github.io/cancho-tools/ Next: Read the two-agents demo: https://github.com/alpibrusl/cancho-tools#one-complete-flow-two-agents-one-file
 
@@ -143,6 +143,6 @@ Record: https://alpibrusl.github.io/cancho/bootstrap.html
 
 ## Machine-readable
 
-- https://alpibrusl.github.io/cancho-www/data/ecosystem.json: every project above as JSON
-- https://alpibrusl.github.io/cancho-www/data/demos.json: recorded command sessions (real output) for the projects that have one
-- https://alpibrusl.github.io/cancho-www/llms.txt and https://alpibrusl.github.io/cancho-www/llms-full.txt
+- https://cancho.dev/data/ecosystem.json: every project above as JSON
+- https://cancho.dev/data/demos.json: recorded command sessions (real output) for the projects that have one
+- https://cancho.dev/llms.txt and https://cancho.dev/llms-full.txt

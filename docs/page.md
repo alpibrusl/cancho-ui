@@ -2,7 +2,7 @@
 
 > **Status: BUILT (2026-10-25), with its measurements (section 7); section 9 says what the build changed in this note.** Step 4 of [`www.md`](www.md) (5.3, "page-level"). It answers
 > what is left open by `www.md` 5.3 and by [`structure.md`](structure.md) 2 ("not built in B1: the skip link ... `sticky`"), against the real cancho-www page (`index.html`, `assets/site.css`, commit
-> `0579a80`; `index.html` is byte-identical at the later `7578537`), read-only. Every number says how it was measured: Chromium (Playwright, desktop Chromium on Linux; the `Pixel 7` profile is a viewport and a
+> `0579a80`; `index.html` is byte-identical at the later `7578537`, and differs at `4288356` only in the three head lines that name the site: canonical, `og:url` and `og:image`, now on `https://cancho.dev/`), read-only. Every number says how it was measured: Chromium (Playwright, desktop Chromium on Linux; the `Pixel 7` profile is a viewport and a
 > user agent, not a phone), `scripts/measure-page.js` for the page, `wc`/`file` for the files.
 
 ## 1. What the real page does, measured
@@ -11,7 +11,7 @@
 |---|---|---|
 | head | 13 `meta` (charset, viewport, `description`, `og:title`, `og:description`, `og:type`, `og:url`, `og:image`, `og:image:width`, `og:image:height`, `og:image:alt`, `twitter:card`, `color-scheme`), 6 `link` (`canonical`, `icon`, `apple-touch-icon`, two `alternate`, the stylesheet), `<html lang="en">` | regular expressions over `index.html` |
 | lengths | `<title>` 55 characters; **`description` 261**; `og:description` 111; `og:image:alt` 60 | same |
-| `og:image` | an **absolute** `https://alpibrusl.github.io/cancho-www/og.png`, the file `og.png` at the site root: **1200 x 630** PNG, 353,434 bytes; `og:url` and `canonical` are `https://alpibrusl.github.io/cancho-www/` | `file`, `ls` |
+| `og:image` | an **absolute** `https://cancho.dev/og.png`, the file `og.png` at the site root: **1200 x 630** PNG, 351,549 bytes; `og:url` and `canonical` are `https://cancho.dev/` *(corrected 2026-10-28 for cancho-www `4288356`, which moved the site to cancho.dev; at `7578537` they were `https://alpibrusl.github.io/cancho-www/` and the card was 353,434 bytes)* | `file`, `ls` |
 | icons | `logo-mark.png` (256 x 256 RGBA PNG) as `icon`, `logo.png` (256 x 256 RGB PNG) as `apple-touch-icon`: files of the site, relative | `file` |
 | alternates | `agents.md` (`text/markdown`, 19,114 bytes) and `data/ecosystem.json` (`application/json`, 23,489 bytes), relative, each with a `title` | `ls` |
 | CSP | none | no `Content-Security-Policy` in `index.html` |
@@ -54,7 +54,7 @@ page {
     lang: "en";
     description: "cancho is a programming language and toolchain for software built by AI agents and checked by machines. Pre-1.0.";
     share_description: "Trust without comprehension: a language where what code may do is in its type.";
-    canonical: "https://alpibrusl.github.io/cancho-www/";
+    canonical: "https://cancho.dev/";
     image: "og.png" alt: "cancho: Tools built for agents. Trust without comprehension.";
     icon: "logo-mark.png";
     touch_icon: "logo.png";

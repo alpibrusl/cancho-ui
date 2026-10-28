@@ -327,7 +327,7 @@ const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e
     const pane = eff('AgentFiles');
     check('E: the page asks for the clipboard (the copy buttons) and the DOM (the open map island), and nothing else', JSON.stringify(home.requires.map((x) => x.name)) === '["Clipboard","Dom"]' && home.reachable_effects.length === 0, JSON.stringify(home.requires.map((x) => x.name)));
     check('E: the pane asks for the network and nothing else', JSON.stringify(pane.requires.map((x) => x.name)) === '["Network"]', JSON.stringify(pane.requires.map((x) => x.name)));
-    check('E: the data file is named by its hash', home.data[0].sha256 === '870d4eb8e3bc5a1c22bb33b9b4ae72c6192251af0c7f283eb29db32b3c65ba52' && home.data[0].file === 'data/ecosystem.json', JSON.stringify(home.data));
+    check('E: the data file is named by its hash', home.data[0].sha256 === 'a52c94388823335830af426be6c9163b9cf7e78f6b76eb333f2ef265b488fd5f' && home.data[0].file === 'data/ecosystem.json', JSON.stringify(home.data));
     const js = fs.readFileSync(path.join(out, 'app.js'), 'utf8');
     check('E: the script holds no address of another host (the loopback address in two demo transcripts is text of the map\'s session boxes, not an address the page contacts)', !/https?:\/\/(?!www\.w3\.org|127\.0\.0\.1:18950)/.test(js.replace(/https:\/\/(github\.com|alpibru\.com|alpibrusl\.github\.io)[^"']*/g, '')), 'checked');
   }
