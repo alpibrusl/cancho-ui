@@ -2,7 +2,7 @@
 
 > **Status: the six gaps below are built** (2026-10-26). The port itself is PR B and is not in this PR. Everything the page needed that was **not** a gap but a
 > judgment about the page is section 7, with a recommendation each, and is **not** decided here. Measured in Chromium (Playwright, `Pixel 7` profile and desktop
-> Chromium, not a device) and in `cargo test`; numbers say which. The page is `alpibrusl/cancho-www` at `7578537` (its `index.html` is the one of `0579a80`, 564 lines;
+> Chromium, not a device) and in `cargo test`; numbers say which. The page is `alpibrusl/cancho-www` at `7578537` (*re-synced 2026-10-28 to `4288356`, which changes only the site's address, the data file's `site` field and the card: `THIRD_PARTY.md`*; its `index.html` is the one of `0579a80`, 564 lines;
 > `assets/map.js` and `assets/site.css` changed since, and `data/demos.json` is new); the clone is read-only and nothing was pushed to it.
 
 ## 0. The inventory, and how it was made

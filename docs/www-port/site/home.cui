@@ -1,16 +1,16 @@
-// docs/www-port/site/home.cui — the home page of cancho-www (alpibrusl/cancho-www at 7578537), written in cancho-ui. Port, step 2 (PR B1): the page's
+// docs/www-port/site/home.cui — the home page of cancho-www (alpibrusl/cancho-www at 4288356), written in cancho-ui. Port, step 2 (PR B1): the page's
 // content, head, theme, fonts, pictures, videos and data. What is not here yet (the hero scene, the cairns, the three card drawings, the authority
 // animation and the ecosystem map: islands, PR B2) and what was dropped or changed on purpose (docs/www-port/dropped.md) are listed, not hidden.
 // The text of the page is the page's; the lists the page's Python generator writes from data/ecosystem.json are `For`s over that file, written out at build.
 
-data Ecosystem { file: "data/ecosystem.json" sha256: "870d4eb8e3bc5a1c22bb33b9b4ae72c6192251af0c7f283eb29db32b3c65ba52"; }
+data Ecosystem { file: "data/ecosystem.json" sha256: "a52c94388823335830af426be6c9163b9cf7e78f6b76eb333f2ef265b488fd5f"; }
 
 page {
     title: "cancho: tools built for agents, not adapted from humans";
     lang: "en";
     description: "cancho is a programming language and toolchain for software built by AI agents and checked by machines. Programs declare what they can do, dependencies have stable identities, and the compiler returns structured evidence other tools can read and check. Pre-1.0.";
     share_description: "Trust without comprehension: a language where what code may do is in its type, and the ecosystem built with it.";
-    canonical: "https://alpibrusl.github.io/cancho-www/";
+    canonical: "https://cancho.dev/";
     image: "og.png" alt: "cancho: Tools built for agents. Trust without comprehension.";
     icon: "logo-mark.png";
     touch_icon: "logo.png";

@@ -1,6 +1,6 @@
 # What is copied into `site/`, where from, and under what licence
 
-Everything in `site/` is a copy of a file of [alpibrusl/cancho-www](https://github.com/alpibrusl/cancho-www) at commit `7578537` (read-only reference; nothing was pushed to it), made by `cp`,
+Everything in `site/` is a copy of a file of [alpibrusl/cancho-www](https://github.com/alpibrusl/cancho-www) at commit `4288356` (read-only reference; nothing was pushed to it; **re-synced 2026-10-28 from `7578537`**: that commit's successor #11 moved the site to `cancho.dev` and changed only `data/ecosystem.json` (its `site` field), `agents.md`, `llms.txt`, `llms-full.txt` (the site's own URLs) and `og.png` (the card), which are copied again, and the page's `index.html` head in 3 lines (canonical, `og:url`, `og:image`), which `home.cui`'s `page { }` now matches), made by `cp`,
 byte for byte (the hashes below are the ones the compiler checks). cancho-www and cancho-ui are both EUPL-1.2, Copyright (c) 2026 Alpibru S.L.; the text of the page and its data are the page's own
 and carry its licence, which is the licence of this repository.
 

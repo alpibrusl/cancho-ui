@@ -2,7 +2,7 @@
   "name": "cancho",
   "tagline": "Tools built for agents, not adapted from humans: a native systems language, and the ecosystem built with it, where trust comes from verification, not comprehension.",
   "as_of": "2026-10-20",
-  "site": "https://alpibrusl.github.io/cancho-www/",
+  "site": "https://cancho.dev/",
   "stages": {
     "working": "Does what its README claims.",
     "alpha": "Runs, may change, not for production.",

@@ -1,6 +1,6 @@
 # Status of the port of the cancho-www home page (B3)
 
-**This is a status, not a recommendation to replace the page, and nothing here says the port is ready to.** Whether the page is replaced is the user's decision, and this document says what the decision would be made on. Every number is measured by a script in `scripts/` against cancho-www `7578537` (see the links); the machine, the number of runs and the spread are in [`cost.md`](cost.md).
+**This is a status, not a recommendation to replace the page, and nothing here says the port is ready to.** Whether the page is replaced is the user's decision, and this document says what the decision would be made on. Every number is measured by a script in `scripts/` against cancho-www `4288356` (see the links); the machine, the number of runs and the spread are in [`cost.md`](cost.md).
 
 ## What is equal
 
@@ -25,15 +25,17 @@ The look (row 10) is the largest difference and is **a choice of the first plan,
 
 | | page | port |
 |---|---|---|
-| bytes of a load | 674.8 kB | **910.7 kB** (+35 %) |
-| HTML | 48.2 kB | **237.6 kB** |
+| bytes of a load | 674.6 kB | **910.6 kB** (+35 %) |
+| HTML | 48.2 kB | **237.5 kB** |
 | script | 62.1 kB (five files) | **276.1 kB** |
-| JS heap (Pixel 7 / desktop) | 1.97 / 1.97 MB | **7.3 / 7.2 MB** (3.7 times) |
-| DOMContentLoaded (Pixel 7 / desktop) | 205 / 209 ms [152 to 266] | **302 / 311 ms** [270 to 350] |
-| load (Pixel 7 / desktop) | 311 / 316 ms [260 to 420] | **370 / 391 ms** [338 to 435] |
-| the 24th map rock exists (Pixel 7 / desktop) | 227 / 232 ms [177 to 314] | **281 / 286 ms** [249 to 328] |
+| JS heap (Pixel 7 / desktop) | 1.95 / 1.92 MB | **7.3 / 7.2 MB** (3.8 times) |
+| DOMContentLoaded (Pixel 7 / desktop) | 291 / 264 ms [190 to 339] | **409 / 427 ms** [355 to 506] |
+| load (Pixel 7 / desktop) | 430 / 422 ms [357 to 493] | **509 / 546 ms** [441 to 605] |
+| the 24th map rock exists (Pixel 7 / desktop) | 323 / 306 ms [222 to 371] | **377 / 397 ms** [325 to 475] |
 
-What is **better** in the same measurement: requests 8 against 16; FCP and LCP 72 ms against 164 ms (the port's HTML paints before any script); long tasks beyond 50 ms (TBT-ish) 0 [0 to 15] ms against 41 to 48 [19 to 99]; DOM nodes in the document 1,321 against 2,955 (the drawings are in 15 frames, which are not counted). The causes, where they are known: the 15 sealed frames each carry a document (the page's `rocks.js` is in 12 of them) and cost the bytes and the heap; the `For` over data is unrolled at build time, which is most of the script's growth (the four trail panels alone are about 48 kB) and a design to change, not tried. **These are the numbers of this machine and a local server: no network, no device, no throttling**, so a mobile profile on a real connection would weigh the bytes more than this does.
+**These timings were re-measured on 2026-10-28 against cancho-www `4288356`, on a slower moment of the same machine** (the page's own DOMContentLoaded was 291 ms against 205 ms in the earlier run): compare the ratios and the gaps, not the absolute milliseconds with the earlier documents; the sizes did not move (only the card and the domain changed).
+
+What is **better** in the same measurement: requests 8 against 16; FCP and LCP 88 to 100 ms against 204 to 212 ms (the port's HTML paints before any script); long tasks beyond 50 ms (TBT-ish) 21 to 24 [10 to 59] ms against 86 to 87 [49 to 133]; DOM nodes in the document 1,321 against 2,955 (the drawings are in 15 frames, which are not counted). The causes, where they are known: the 15 sealed frames each carry a document (the page's `rocks.js` is in 12 of them) and cost the bytes and the heap; the `For` over data is unrolled at build time, which is most of the script's growth (the four trail panels alone are about 48 kB) and a design to change, not tried. **These are the numbers of this machine and a local server: no network, no device, no throttling**, so a mobile profile on a real connection would weigh the bytes more than this does.
 
 ## Open defects and gaps (not decided, not hidden)
 
@@ -50,10 +52,17 @@ What is **better** in the same measurement: requests 8 against 16; FCP and LCP 7
 None of this is done; this is the list, not a claim.
 
 1. **A decision on the look**: either accept the baseline look (dropped.md 10), or design the handful of roles that carry the page's (a `Card`, a centred column and a two-column hero, a header arrangement) in cancho-ui first, and re-run the pixel diff. The 15 section classes in `pixel-rules.json` are the work list.
-2. **A decision on each row of `dropped.md`** by the user (15 rows), and on the regressions above: whether 910 kB, 7 MB of heap and about 100 ms more to DOMContentLoaded (and 55 to 75 ms more to load) are acceptable, or whether the frames' documents are shared or built when first near the screen (`islands.md` 4.5, designed, not built) and the `For` over data stops being unrolled.
+2. **A decision on each row of `dropped.md`** by the user (15 rows), and on the regressions above: whether 910 kB, 7 MB of heap and about 120 to 160 ms more to DOMContentLoaded (and 80 to 125 ms more to load). are acceptable, or whether the frames' documents are shared or built when first near the screen (`islands.md` 4.5, designed, not built) and the `For` over data stops being unrolled.
 3. **The live region** for the detail pane, and a screen-reader pass on the whole page (the map, the stepper, the pane, the tabs) with at least one real screen reader; the accessibility tree has been compared, not listened to.
 4. **Browsers and devices**: Firefox and Safari (the sealed frames, `srcdoc`, CSP `frame-src about:` and the fonts are the risks), one real phone on a real connection, and a throttled run of `scripts/measure-www-port.js`.
 5. **The open island's review**: the map's drawing code is the page's own, which nobody has reviewed for this purpose; either accept UNBOUNDED for one named file with its hash, or try the sealed map (filters and choice as props and events; not tried).
 6. **Ownership of the generated files**: the page's `data/*.json` and the agents files are generated by the page's own scripts (`scripts/record_demos.py` and others) and are copies here (`THIRD_PARTY.md`); they would have to be generated into the new place, with their hashes updated in `home.cui`, or the program stays in step with the page by hand.
 7. **The licence question of the pictures** answered by the owner, in writing, in `THIRD_PARTY.md`.
 8. **A rollback**: the port is under `docs/www-port/` and builds with `cancho-ui build docs/www-port/site/home.cui --page`; nothing deploys it, and nothing in this repository touches the page's repository.
+
+## Serving the port beside the live page (a preview at `/next/`; notes of 2026-10-28, cancho-www `4288356`)
+
+* **Build**: `cargo build -p cancho-ui --release`, then `target/release/cancho-ui build docs/www-port/site/home.cui --page -o <dir>`. Measured on this machine (4 cores, cold, `CARGO_TARGET_DIR` empty): **34 s**, 69 MB of `target`, a 4.3 MB binary; the port builds in 0.13 s. `Cargo.lock` names 14 packages from the registry (`serde`, `serde_json`, `thiserror` and what they pull in), so a clean CI job needs crates.io or a cache; this 34 s used the registry cache already on the machine and a cold CI job, which also fetches them, measured 1 m 20 s.
+* **The output is relocatable**: measured, no `href`, `src`, `srcset` or `poster` of `index.html` starts with `/`, and `app.js` fetches only relative paths (`agents.md`, `data/ecosystem.json`, `llms.txt`), so the directory can be served at `/next/`.
+* **Canonical**: `page { canonical: "https://cancho.dev/"; }`, the live page's own. A preview that named itself canonical would ask search engines to index `/next/` as the home page; naming the live page makes `/next/` a duplicate that points at the original (`og:url` follows it, so a link shared from the preview shows the live address, and `og:image` is `https://cancho.dev/og.png`, which exists). The agent files carry the live page's absolute `cancho.dev` URLs, byte for byte, as the page's do.
+* **`noindex`**: `page { }` **cannot express** a robots meta (its keys are `title`, `lang`, `description`, `share_description`, `canonical`, `image`, `icon`, `touch_icon`, `alternate`, `skip_link`; `docs/page.md` section 3). Use `robots.txt` (`Disallow: /next/`) in cancho-www, or an `X-Robots-Tag` header; a `Disallow` stops crawling but not indexing of a URL linked from elsewhere, which the canonical above covers.

@@ -9,9 +9,9 @@ Source: https://github.com/alpibrusl/cancho
 Docs: https://alpibrusl.github.io/cancho/
 Roadmap: https://alpibrusl.github.io/cancho/ROADMAP.html
 Writing cancho programs (agents): https://github.com/alpibrusl/cancho/blob/main/AGENTS.md
-This site as Markdown: https://alpibrusl.github.io/cancho-www/agents.md
-Everything in one file: https://alpibrusl.github.io/cancho-www/llms-full.txt
-The ecosystem as JSON: https://alpibrusl.github.io/cancho-www/data/ecosystem.json
+This site as Markdown: https://cancho.dev/agents.md
+Everything in one file: https://cancho.dev/llms-full.txt
+The ecosystem as JSON: https://cancho.dev/data/ecosystem.json
 
 ## Ecosystem
 
