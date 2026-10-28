@@ -1,0 +1,68 @@
+{
+ "about": "Breaks of the island-rebuilt refusal (docs/islands.md 13.1): each must be caught by a check that fails on its own.",
+ "checks": [
+  {
+   "name": "cargo test islands",
+   "argv": [
+    "cargo",
+    "test",
+    "--quiet",
+    "-p",
+    "cancho-ui",
+    "--test",
+    "islands"
+   ]
+  },
+  {
+   "name": "check-islands.js",
+   "argv": [
+    "node",
+    "scripts/check-islands.js"
+   ]
+  }
+ ],
+ "breaks": [
+  {
+   "name": "the program is not checked for rebuilt islands",
+   "file": "crates/cancho-ui/src/pipeline.rs",
+   "from": "    cancho_ui_ir::island::check_program(&merged)\n        .map_err(|e| PipelineError::refused(lower_to_diag(&e, file)))?;\n",
+   "to": ""
+  },
+  {
+   "name": "an island under an If or a For is not noticed",
+   "file": "crates/cancho-ui-ir/src/island.rs",
+   "from": "if mounted != Some(i) || in_html != counts[i] {",
+   "to": "if mounted != Some(i) {"
+  },
+  {
+   "name": "an island in a component that is not mounted is not noticed",
+   "file": "crates/cancho-ui-ir/src/island.rs",
+   "from": "if mounted != Some(i) || in_html != counts[i] {",
+   "to": "if in_html != counts[i] {"
+  },
+  {
+   "name": "the frames of the HTML are not counted",
+   "file": "crates/cancho-ui-ir/src/island.rs",
+   "from": ".map_or(0, |sk| sk.html.matches(\"data-cui-island=\\\"\").count());",
+   "to": ".map_or(0, |sk| sk.html.matches(\"data-cui-islandx=\\\"\").count());"
+  },
+  {
+   "name": "the message does not say what to do",
+   "file": "crates/cancho-ui-ir/src/island.rs",
+   "from": "Put the instance in the mounted component, outside every `If` and `For`, and pass what changes as props from that component's state",
+   "to": "Fix it"
+  },
+  {
+   "name": "the message does not say what was measured",
+   "file": "crates/cancho-ui-ir/src/island.rs",
+   "from": "(measured over 8 renders: 9 frames added and 10 loads, against 1 and 1)",
+   "to": "(it is expensive)"
+  },
+  {
+   "name": "the tag is not documented",
+   "file": "spec/diagnostics/README.md",
+   "from": "| `island-rebuilt` | `Component` |",
+   "to": "| `island-rebuilt-x` | `Component` |"
+  }
+ ]
+}

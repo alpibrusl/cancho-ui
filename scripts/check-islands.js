@@ -211,25 +211,18 @@ const rx = (seed, i) => 34 + ((seed * 7 + i * 13) % 22);
     delete delays['/app.js'];
   }
   {
-    // a frame built by the script after the page loaded: its props come by the ready handshake, the only way they can
+    // a frame inside an `If` is refused (docs/islands.md 13.1): it would be a new <iframe> at every render. This was a check of what such a frame did (the ready
+    // handshake, its event); the build is refused now, by the exit code and by the rule tag, not by a word of the message
     const late = example.replace('Stones { seed: 3 on: Picked }', 'Button { label: "Show" on: Show } If { when: shown Stones { seed: 3 on: Picked } }')
       .replace('state picked: Int = 0;', 'state picked: Int = 0;\n    state shown: Bool = false;\n    on Show { shown = true; }');
-    const dir = build('late', late);
-    pageRoot = dir;
-    const { ctx, page, errors } = await open(`${A}/`);
-    await sleep(300);
-    check('C: a frame inside an If is not in the page until it is shown', (await page.evaluate(() => document.querySelectorAll('iframe').length)) === 0);
-    await page.click('button');
-    await sleep(900);
-    const f = frameOf(page);
-    const radii = f ? await f.evaluate(() => [...document.querySelectorAll('ellipse')].map((e) => Number(e.getAttribute('rx')))) : [];
-    check('C: a frame built by the script is given its props when it says it is ready', radii[0] === rx(3, 0), JSON.stringify(radii));
-    await f.evaluate(() => document.querySelectorAll('ellipse')[2].dispatchEvent(new MouseEvent('click', { bubbles: true })));
-    await sleep(150);
-    check('C: and its event is heard', (await text(page)).includes('Picked stone: 3'));
-    check('C: no script error', errors.length === 0, errors.join(' | '));
-    await ctx.close();
-    pageRoot = exDir;
+    const file = path.join(work, 'late.cui');
+    fs.writeFileSync(file, late);
+    const built = spawnSync(BIN, ['build', file, '--page', '-o', path.join(work, 'late-out')], { encoding: 'utf8' });
+    check('C: a frame inside an If is refused at build: the exit code is 1 and nothing is written', built.status === 1 && !fs.existsSync(path.join(work, 'late-out', 'index.html')), `exit ${built.status}`);
+    const checked = spawnSync(BIN, ['check', file, '--output', 'json'], { encoding: 'utf8' });
+    let tags = [];
+    try { tags = JSON.parse(checked.stdout).map((d) => d.code); } catch (e) { tags = [`not JSON: ${checked.stdout.slice(0, 80)}`]; }
+    check('C: and the one rule it is refused by is island-rebuilt', checked.status === 1 && tags.length === 1 && tags[0] === 'island-rebuilt', JSON.stringify(tags));
   }
   {
     // a render does not touch the frame
