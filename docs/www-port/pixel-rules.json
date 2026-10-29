@@ -4,85 +4,85 @@
   {
    "section": "header",
    "class": "intentional",
-   "why": "no logo, no inline links, no human/agent switch, no GitHub star: the brand, \"Pre-1.0 · alpha\", GitHub and a Menu button in plain type; the menu is the only navigation (looked at, light and dark, 1280)",
+   "why": "the brand (no logo), a warn chip, GitHub and a Menu button, on a sticky bar that is the page colour at 86 % over a blur (`look.md`); no inline links, no human/agent switch, no star icon, and the chip stays under 40 rem where the page hides it; the menu is the only navigation (looked at, 1280 and 412, light)",
    "ref": "dropped.md 1, 2, 3"
   },
   {
    "section": "top",
    "class": "intentional",
-   "why": "the hero drawing is the page's own script in a sealed frame, **under** the text at every width (the page puts it in a card beside the text from 1024 px); the second line of the title is italic, not blue; the pill is a link; the three principles are a list, not a strip (looked at, 1280)",
+   "why": "two columns from about 62 rem (text 7 : 5 beside the drawing), stacked below, a display-size title with the second line in the accent colour, the pill link; **not** the page's card around the drawing with the caption and the quote laid over it (they are under it, so the port is 129 px taller at 1280), the principles are a bullet list and not a strip, the bet line is plain text (looked at, 1280 and 412)",
    "ref": "dropped.md 10, 12"
   },
   {
    "section": "try",
    "class": "intentional",
-   "why": "the three steps are plain sections with their dark code boxes and bordered buttons, no cards; the Copy button sits over the end of the first line of a code box, as on the page (compared at 412, dark)",
+   "why": "cards with the page's radius, fill and shadow, the text and the code boxes centred in each; the inline `code` has no tinted chip, the Copy button is the 44 px baseline button where the page's is small, the vertical rhythm inside a card is 0.5 rem looser (looked at, 1280)",
    "ref": "dropped.md 10"
   },
   {
    "section": "trust",
    "class": "intentional",
-   "why": "the numbers 1 to 5 are the list's own, no icons, no chain drawing between the links",
+   "why": "the five links are cards in a responsive grid (`List { card: true }`), their numbers the list's own and drawn above the title, no icons and no dashed chain between the cards (looked at, 1280)",
    "ref": "dropped.md 2, 6, 10"
   },
   {
    "section": "verifies",
    "class": "intentional",
-   "why": "a real `<table>` with its header row on a phone; the cards and the three-column layout of the page are the baseline's blocks",
+   "why": "a real `<table>` for the comparison; the three evidence cards of the page are columns of the baseline (a `Column` takes no `card:`), so they have no chrome and the page's coloured top edge is absent",
    "ref": "dropped.md 7, 10"
   },
   {
    "section": "authority",
    "class": "intentional",
-   "why": "the tabs, the code lines (no dark panel; the lit line is marked with a word, not a colour), the canvas (a sealed frame without the page's white card), a stepper of three text buttons and no dots (looked at, 1280, light)",
+   "why": "the tabs, the code lines (no dark panel; the lit line is marked with a word), the canvas (a sealed frame without the page's white card), a stepper of three text buttons and no dots (looked at, 1280, light)",
    "ref": "dropped.md 11, 10"
   },
   {
    "section": "ecosystem",
    "class": "intentional",
-   "why": "the cards of 'Start with a path' are lists, the chips are bordered buttons, the detail pane is a list under a heading, the recorded session is a `Details`; the map is the page's own drawing code, with its region names in the hand font and its legend under it (looked at, 1280 light and dark, 360; **the legend, the region font and the pane's height were three defects found by this diff and fixed in this PR**)",
+   "why": "the path cards are cards; the chips are bordered buttons, the detail pane is a card holding a list, the recorded session is a `Details`; the map is the page's own drawing code, region names in the hand font, legend under it (looked at, 1280 light and dark, 360)",
    "ref": "dropped.md 13, 14, 15, 10"
   },
   {
    "section": "proof",
    "class": "intentional",
-   "why": "the waffles keep their squares, the \"Data table\" `Details` is visible as a line, the text is in the baseline type (looked at, 412)",
+   "why": "cards now; the waffles keep their squares, the \"Data table\" `Details` is visible as a line, the figures are the baseline's type (looked at, 412)",
    "ref": "dropped.md 10"
   },
   {
    "section": "demo",
    "class": "intentional",
-   "why": "the two videos and their captions are the same files; the section's two columns are the baseline's grid, the page's cards are not drawn; the transcript is a `Details` (looked at, 1280)",
+   "why": "the two videos and their captions are the same files in cards of the baseline's grid; the transcript is a `Details` (looked at, 1280)",
    "ref": "dropped.md 10"
   },
   {
    "section": "not-here",
    "class": "intentional",
-   "why": "what was left out: the same text in the baseline look",
+   "why": "what was left out: a bullet list in the display type where the page has a wrapped strip of chips (looked at, 1280)",
    "ref": "dropped.md 7, 10"
   },
   {
    "section": "agents",
    "class": "intentional",
-   "why": "the switch sentence is gone; the section's dark picture is an image block above the heading (the page lays the heading over it as a banner); the five endpoints are a list (no cards); the pane is a bordered code box of the baseline, bounded to 16 rem and scrolling (it was the whole `agents.md`, 7,000 px tall, before this PR: found by this diff and fixed)",
+   "why": "the switch sentence is gone; the section's dark picture is an image block above the heading (the page lays the heading over it as a banner); the five endpoints are a plain list (a card list in a half-width cell was measured taller, 1,632 px, and not kept); the pane is a bordered code box bounded to 16 rem",
    "ref": "dropped.md 1, 5, 10"
   },
   {
    "section": "next",
    "class": "intentional",
-   "why": "the six steps are links in a list, not cards (looked at, 412)",
+   "why": "the six steps are links in a grid, without the page's card around each (a `Link` takes no `card:`)",
    "ref": "dropped.md 10"
   },
   {
    "section": "status",
    "class": "intentional",
-   "why": "the status block (an `aside`) in the baseline look",
+   "why": "the status block (an `aside`) in the display type, no card (the page's has none either, the remaining difference is its width and spacing)",
    "ref": "dropped.md 10"
   },
   {
    "section": "name",
    "class": "intentional",
-   "why": "the three pictures and their captions are the same files; the section has the baseline's spacing, with the captions tight under the pictures (looked at, 1280)",
+   "why": "the three pictures and their captions are the same files; the baseline's spacing, captions tight under the pictures (looked at, 1280)",
    "ref": "dropped.md 10"
   },
   {

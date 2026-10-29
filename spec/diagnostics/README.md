@@ -207,7 +207,7 @@ in `examples/refusal/`, and by the evidence report.
 | `link-to-invalid` | `Component` | `Error` | `Static` | A `Link` with no `to:`, or one that is not a string literal. *(Built 2026-10-24; a link built from data comes later.)* |
 | `link-label-missing` | `Component` | `Error` | `Static` | A `Link` with no text. *(Built 2026-10-24.)* |
 | `link-label-generic` | `Component` | `Error` | `Static` | A `Link` whose literal text is "here", "click here", "click", "link", "this link", "this", "more", "read more" or "learn more" (case and punctuation ignored): it does not say where the link goes. *(Built 2026-10-24.)* |
-| `link-appearance-invalid` | `Component` | `Error` | `Static` | A link `appearance:` that is not `"primary"`, `"secondary"` or `"quiet"`. *(Built 2026-10-24.)* |
+| `link-appearance-invalid` | `Component` | `Error` | `Static` | A link `appearance:` that is not `"primary"`, `"secondary"`, `"quiet"` or `"pill"`. *(Built 2026-10-24; `"pill"` added 2026-10-29, docs/www-port/look.md.)* |
 | `text-style-invalid` | `Component` | `Error` | `Static` | A `Text` `style:` that is not `"eyebrow"`, `"lead"`, `"note"` or `"label"`. *(Built 2026-10-24.)* |
 | `details-incomplete` | `Component` | `Error` | `Static` | A `Details` with no `summary:` and no `Summary` child, or an empty `summary:`, or both, or a `Summary` that is not its first child, or a second one; a `Summary` outside a `Details`. *(Built 2026-10-24.)* |
 | `caption-misplaced` | `Component` | `Error` | `Static` | A `Caption` that is not a direct child of a `Figure`, or a `Figure` with two. *(Built 2026-10-24.)* |
@@ -243,6 +243,8 @@ in `examples/refusal/`, and by the evidence report.
 | `media-child-invalid` | `Component` | `Error` | `Static` | A `Media` with something in it. *(Built 2026-10-24.)* |
 | `grid-min-invalid` | `Component` | `Error` | `Static` | A `Grid` with no `min:`, or one that is not an integer literal from 8 to 60 (rem). *(Built 2026-10-24.)* |
 | `grid-weights-invalid` | `Component` | `Error` | `Static` | A `weights:` that is not a list of two to four number literals from 1 to 4 with at most two decimals, or a Grid with weights whose children are not written out one for each weight (a `For` or an `If` among them). *(Built 2026-10-24.)* |
+| `grid-align-invalid` | `Component` | `Error` | `Static` | An `align:` of a `Grid` that is not `"stretch"` or `"center"`. *(Built 2026-10-29, docs/www-port/look.md section 3.)* |
+| `card-invalid` | `Component` | `Error` | `Static` | A `card:` of a `Section`, `Article`, `Aside` or `Figure` that is not `true` or `false`; on any other element it is `binding-unknown`. *(Built 2026-10-29, docs/www-port/look.md section 3.)* |
 | `asset-missing` | `Component` | `Error` | `Static` | A file that an `Image`, a `Media` or a `page { .. }` names and that is not a file inside the directory of the program (a symbolic link out of it counts as not there). *(Built 2026-10-24, found by the build and by `check`.)* |
 | `asset-too-large` | `Component` | `Error` | `Static` | A file of the site over 20 MB (20,971,520 bytes). *(Built 2026-10-24.)* |
 | `asset-type-mismatch` | `Component` | `Error` | `Static` | A file whose first bytes are not those of the format its extension names (png, jpg, jpeg, gif, webp, avif, mp4, webm). *(Built 2026-10-24.)* |
@@ -306,6 +308,8 @@ in `examples/refusal/`, and by the evidence report.
 | `page-file-invalid` | `Component` | `Error` | `Static` | A file of a page (`image`, `icon`, `touch_icon`, `alternate`) written as an address, an absolute path, with `..`, with characters outside letters, digits, `.`, `_`, `-`, `/`, or with an extension its entry does not take. *(Built 2026-10-25, docs/page.md.)* |
 | `page-alternate-title-missing` | `Component` | `Error` | `Static` | An `alternate:` with no `title:`, or a blank one. *(Built 2026-10-25, docs/page.md.)* |
 | `page-skip-link-empty` | `Component` | `Error` | `Static` | A blank `skip_link:`. *(Built 2026-10-25, docs/page.md.)* |
+| `page-measure-invalid` | `Component` | `Error` | `Static` | A `measure:` of a `page { .. }` that is not a whole number from 30 to 100 written as a string (`"72"`: rem), with a unit, a sign or a space in it. *(Built 2026-10-29, docs/www-port/look.md section 3.)* |
+| `page-scale-invalid` | `Component` | `Error` | `Static` | A `scale:` of a `page { .. }` that is not `"display"`. *(Built 2026-10-29, docs/www-port/look.md section 3.)* |
 | `skip-link-target-missing` | `Component` | `Error` | `Static` | A `skip_link:` in a program with no `Main`, or whose `Main` has no `id:`. *(Built 2026-10-25, docs/page.md.)* |
 | `skip-link-target-dynamic` | `Component` | `Error` | `Static` | A `skip_link:` whose `Main` is not in the page's HTML: inside an `If` (inside a `For` it is `anchor-duplicate`, an id is one element), or in a component other than the one mounted into the page. *(Built 2026-10-25, docs/page.md.)* |
 | `header-sticky-invalid` | `Component` | `Error` | `Static` | A `sticky:` on a `Header` that is not the literal `true` or `false`. *(Built 2026-10-25, docs/page.md.)* |

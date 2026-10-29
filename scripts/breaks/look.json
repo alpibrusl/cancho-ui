@@ -1,0 +1,120 @@
+{
+ "checks": [
+  {
+   "name": "cargo test look (the roles of the look)",
+   "argv": [
+    "cargo",
+    "test",
+    "--quiet",
+    "-p",
+    "cancho-ui",
+    "--test",
+    "look"
+   ]
+  },
+  {
+   "name": "cargo test structure (corpus: DOM and refusals)",
+   "argv": [
+    "cargo",
+    "test",
+    "--quiet",
+    "-p",
+    "cancho-ui",
+    "--test",
+    "structure"
+   ]
+  },
+  {
+   "name": "cargo test page (corpus)",
+   "argv": [
+    "cargo",
+    "test",
+    "--quiet",
+    "-p",
+    "cancho-ui",
+    "--test",
+    "page"
+   ]
+  },
+  {
+   "name": "cargo test theme (allow-list)",
+   "argv": [
+    "cargo",
+    "test",
+    "--quiet",
+    "-p",
+    "cancho-ui",
+    "--test",
+    "theme"
+   ]
+  }
+ ],
+ "breaks": [
+  {
+   "name": "a card has no class",
+   "file": "crates/cancho-ui-ir/src/structure.rs",
+   "from": "return Some(\"cui-card\".to_string());",
+   "to": "return None;"
+  },
+  {
+   "name": "a grid that centres has no class",
+   "file": "crates/cancho-ui-ir/src/media.rs",
+   "from": "c.push(\"cui-align-center\");",
+   "to": "c.push(\"cui-align\");"
+  },
+  {
+   "name": "a grid may be aligned to the left",
+   "file": "crates/cancho-ui-ir/src/media.rs",
+   "from": "pub const GRID_ALIGNS: &[&str] = &[\"stretch\", \"center\"];",
+   "to": "pub const GRID_ALIGNS: &[&str] = &[\"stretch\", \"center\", \"left\"];"
+  },
+  {
+   "name": "a measure may be 1000 rem",
+   "file": "crates/cancho-ui-ir/src/page.rs",
+   "from": "pub const MEASURE_RANGE: (u32, u32) = (30, 100);",
+   "to": "pub const MEASURE_RANGE: (u32, u32) = (30, 1000);"
+  },
+  {
+   "name": "a measure may carry a sign",
+   "file": "crates/cancho-ui-ir/src/page.rs",
+   "from": "&& value.bytes().all(|b| b.is_ascii_digit())",
+   "to": "&& true"
+  },
+  {
+   "name": "any scale is the display scale",
+   "file": "crates/cancho-ui-ir/src/page.rs",
+   "from": "if value != \"display\" {",
+   "to": "if value.is_empty() {"
+  },
+  {
+   "name": "the gutter of the column can be nothing",
+   "file": "crates/cancho-ui/src/pwa.rs",
+   "from": "--cui-gutter: max(1.25rem, env(",
+   "to": "--cui-gutter: max(0rem, env("
+  },
+  {
+   "name": "every page has the rules of the roles",
+   "file": "crates/cancho-ui/src/pwa.rs",
+   "from": "    if page.roles {",
+   "to": "    if true {"
+  },
+  {
+   "name": "the theme sets the padding of a card",
+   "file": "crates/cancho-ui/src/theme.rs",
+   "from": ".cui-card, .cui-cards > li { background: var(--cui-surface);",
+   "to": ".cui-card, .cui-cards > li { padding: 0; background: var(--cui-surface);"
+  },
+  {
+   "name": "the end group of a header is not pushed",
+   "file": "crates/cancho-ui/src/pwa.rs",
+   "from": ".cui-sticky > .cui-row { margin-inline-start: auto; }",
+   "to": ".cui-sticky > .cui-rowx { margin-inline-start: auto; }"
+  },
+  {
+   "name": "a pill is not a 44 px target",
+   "file": "crates/cancho-ui/src/pwa.rs",
+   "from": "box-sizing: border-box; min-height: 44px; padding: 0 0.6rem; border: 7px solid transparent",
+   "to": "box-sizing: border-box; min-height: 30px; padding: 0 0.6rem; border: 7px solid transparent"
+  }
+ ]
+}

@@ -61,6 +61,8 @@ page {
     alternate: "agents.md" title: "cancho, as an agent reads it";
     alternate: "data/ecosystem.json" title: "The cancho ecosystem as data";
     skip_link: "Skip to content";
+    measure: "72";
+    scale: "display";
 }
 ```
 
@@ -77,6 +79,8 @@ A top-level declaration like `theme { }` (`page` is a keyword only at the top le
 | `icon:`, `touch_icon:` | `<link rel="icon" type="..">`, `<link rel="apple-touch-icon">` | no |
 | `alternate:` + `title:` | `<link rel="alternate" type=".." href=".." title="..">` | `title:` with it |
 | `skip_link:` | the skip link, the first element of `<body>`, to the `Main`'s `id` | no |
+| `measure:` | **added 2026-10-29** ([`www-port/look.md`](www-port/look.md)): the width in rem of the page's centred column, a whole number from 30 to 100 as a string. The page's `header`, `main` and `footer` are centred in it with a gutter of 1.25 rem (20 px) that is never less on a narrow window; the sticky header keeps its full-width background. Written as a `<style id="cui-look">` after the baseline and before the theme; there is none when neither `measure` nor `scale` is written | no |
+| `scale:` | **added 2026-10-29**: `"display"`, the one value: h1 `clamp(2.1rem, 4.6vw, 3.05rem)` at 800, h2 `clamp(1.6rem, 3.4vw, 2rem)`, h3 and a card's heading 1.05 rem, the `Em` of a heading upright and in the accent colour, line height 1.6, 5 rem above a section, a lead of 1.125 rem and at most 34 rem | no |
 
 Always, with a `page`: `og:type` = `website` and `<meta name="color-scheme" content="light dark">` (the page has both; the second restates what the baseline stylesheet already sets, so it is there for parity and its effect before the stylesheet loads was **not** measured). Everything is written into `index.html` by the build, **in the static HTML, before any script**; `title` replaces `--name` (which stays the fallback for a program with no `page`).
 
@@ -93,8 +97,8 @@ Authority and the network: a file is a file of the program's directory (the rule
 | tag | refused |
 |---|---|
 | `page-duplicate` | a second `page { }` in a file, or one in the entry and one in an imported module |
-| `page-entry-unknown` | an entry that is not one of `title`, `lang`, `description`, `share_description`, `canonical`, `image`, `icon`, `touch_icon`, `alternate`, `skip_link`; an attribute that its entry does not take (`alt` on an `icon`, `title` on an `image`) |
-| `page-entry-duplicate` | a second `title`, `lang`, `description`, `share_description`, `canonical`, `image`, `icon`, `touch_icon` or `skip_link` |
+| `page-entry-unknown` | an entry that is not one of `title`, `lang`, `description`, `share_description`, `canonical`, `image`, `icon`, `touch_icon`, `alternate`, `skip_link`, `measure`, `scale`; an attribute that its entry does not take (`alt` on an `icon`, `title` on an `image`) |
+| `page-entry-duplicate` | a second `title`, `lang`, `description`, `share_description`, `canonical`, `image`, `icon`, `touch_icon`, `skip_link`, `measure` or `scale` |
 | `page-title-missing` | no `title:`, or one that is blank |
 | `page-lang-missing`, `page-lang-invalid` | no `lang:`; one that is not a BCP 47 shape (`en`, `es-419`, `zh-Hant-TW`: letters and digits in 1 to 8 character parts, a 2 or 3 letter language first) |
 | `page-description-length` | a `description:` or `share_description:` that is blank or over 300 characters |
@@ -106,13 +110,14 @@ Authority and the network: a file is a file of the program's directory (the rule
 | `page-image-size-unreadable` | an image file whose width and height cannot be read from its header |
 | `page-alternate-title-missing` | an `alternate:` with no `title:` (a feed reader or an agent is shown the title, not the file name) |
 | `page-skip-link-empty` | a blank `skip_link:` |
+| `page-measure-invalid`, `page-scale-invalid` | a `measure:` that is not a whole number from 30 to 100 (a unit, a sign, a space, empty); a `scale:` that is not `"display"` (*added 2026-10-29*) |
 | `skip-link-target-missing`, `skip-link-target-dynamic` | see 4 |
 | `header-sticky-invalid`, `header-sticky-duplicate`, `header-sticky-misplaced` | see 4 |
 | `asset-missing`, `asset-too-large`, `asset-type-mismatch` | the three existing tags, now also for the files of a `page { }` |
 
 ## 6. `diff`
 
-`page` in the JSON of `diff` is a list of `{ setting, base, candidate }` (as `theme` is): `title`, `lang`, `description`, `share_description`, `canonical`, `canonical.host`, `image`, `image.alt`, `image.sha256`, `icon`, `icon.sha256`, `touch_icon`, `touch_icon.sha256`, `alternate agents.md` (its title), `alternate agents.md.sha256`, `skip_link`. Absent when equal. Human form `~ page title: .. -> ..`, `+ page host example.org`. It counts in `change_count` (exit 5) and **`authority` does not move**.
+`page` in the JSON of `diff` is a list of `{ setting, base, candidate }` (as `theme` is): `title`, `lang`, `description`, `share_description`, `canonical`, `canonical.host`, `image`, `image.alt`, `image.sha256`, `icon`, `icon.sha256`, `touch_icon`, `touch_icon.sha256`, `alternate agents.md` (its title), `alternate agents.md.sha256`, `skip_link`, `measure`, `scale`. Absent when equal. Human form `~ page title: .. -> ..`, `+ page host example.org`. It counts in `change_count` (exit 5) and **`authority` does not move**.
 
 ## 7. Measured in the build
 

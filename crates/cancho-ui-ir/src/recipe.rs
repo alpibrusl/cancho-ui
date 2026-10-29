@@ -123,7 +123,7 @@ pub fn shell(
         class.push(c);
     }
     if let Some(c) = media::class(kind, bindings) {
-        class.push(c.to_string());
+        class.push(c);
     }
     if let Some(n) = bindings.iter().find(|b| b.key == "gap").and_then(int_of) {
         class.push(format!("cui-gap-{n}"));

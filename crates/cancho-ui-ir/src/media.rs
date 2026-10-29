@@ -38,6 +38,8 @@ pub const GRID_MIN: (i64, i64) = (8, 60);
 /// How many weights a `Grid` has, and the range of each.
 pub const WEIGHTS_LEN: (usize, usize) = (2, 4);
 pub const WEIGHT_RANGE: (f64, f64) = (1.0, 4.0);
+/// The `align:` of a `Grid`: `start` is the default (the cells stretch), `center` centres each cell on the row's cross axis.
+pub const GRID_ALIGNS: &[&str] = &["stretch", "center"];
 /// How many sources a `Media` has.
 pub const SOURCES_MAX: usize = 4;
 /// The largest file of the site a program may name, in bytes (`asset-too-large`).
@@ -75,7 +77,7 @@ fn keys(kind: &IrElementKind) -> &'static [&'static str] {
             "priority",
         ],
         IrElementKind::Media => &["kind", "src", "poster", "ratio", "caption", "transcript"],
-        IrElementKind::Grid => &["min", "weights", "gap"],
+        IrElementKind::Grid => &["min", "weights", "gap", "align"],
         _ => &[],
     }
 }
@@ -95,6 +97,7 @@ const OWN_KEYS: &[&str] = &[
     "transcript",
     "min",
     "weights",
+    "align",
 ];
 
 fn refuse(code: &'static str, message: String, span: Span) -> LowerError {
@@ -273,7 +276,7 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                             "Image"
                         }
                         "poster" | "caption" | "transcript" => "Media",
-                        "min" | "weights" => "Grid",
+                        "min" | "weights" | "align" => "Grid",
                         _ => "Image and Media",
                     }
                 ),
@@ -426,6 +429,17 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                 format!(
                     "`min:` is an integer literal from {} to {}, in rem: the narrowest a column gets before the grid has one column fewer",
                     GRID_MIN.0, GRID_MIN.1
+                ),
+                b.span,
+            )),
+        },
+        "align" => match string_of(b) {
+            Some(s) if GRID_ALIGNS.contains(&s) => Ok(true),
+            _ => Err(refuse(
+                "grid-align-invalid",
+                format!(
+                    "`align:` is one of {} as a string literal: how the cells of a Grid sit across its rows",
+                    GRID_ALIGNS.join(", ")
                 ),
                 b.span,
             )),
@@ -734,8 +748,18 @@ pub fn media_dom(accessibility: &IrAccessibility, bindings: &[IrBinding]) -> Dom
 }
 
 /// The class a `Grid` gets beside `cui-grid`: `cui-grid-w` when it has weights.
-pub fn class(kind: &IrElementKind, bindings: &[IrBinding]) -> Option<&'static str> {
-    (matches!(kind, IrElementKind::Grid) && weights_of(bindings).is_some()).then_some("cui-grid-w")
+pub fn class(kind: &IrElementKind, bindings: &[IrBinding]) -> Option<String> {
+    if !matches!(kind, IrElementKind::Grid) {
+        return None;
+    }
+    let mut c = Vec::new();
+    if weights_of(bindings).is_some() {
+        c.push("cui-grid-w");
+    }
+    if find(bindings, "align").and_then(string_of) == Some("center") {
+        c.push("cui-align-center");
+    }
+    (!c.is_empty()).then(|| c.join(" "))
 }
 
 /// The `style` attribute of a `Grid`: the minimum, and the weights as custom properties the stylesheet reads.

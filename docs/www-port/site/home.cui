@@ -17,6 +17,8 @@ page {
     alternate: "agents.md" title: "cancho, as an agent reads it";
     alternate: "data/ecosystem.json" title: "The cancho ecosystem as data";
     skip_link: "Skip to content";
+    measure: "72";
+    scale: "display";
 }
 
 theme {
@@ -191,21 +193,23 @@ component Home {
             Header {
                 sticky: true
                 Link { to: "#top" "cancho" }
-                Text { "Pre-1.0 · alpha" }
-                Link { to: "https://github.com/alpibrusl/cancho" "GitHub" }
-                Details {
-                    summary: "Menu"
-                    Nav {
-                        label: "Sections"
-                        Link { to: "#try" "Try it" }
-                        Link { to: "#trust" "Trust" }
-                        Link { to: "#verifies" "Evidence" }
-                        Link { to: "#ecosystem" "Ecosystem" }
-                        Link { to: "#demo" "Demo" }
-                        Link { to: "#agents" "Agents" }
-                        Link { to: "https://alpibru.com/manifesto" "Manifesto" }
-                        Link { to: "https://alpibrusl.github.io/cancho/" "Docs" }
-                        Link { to: "https://github.com/alpibrusl/cancho" "GitHub" }
+                Rich { Chip { tone: "warn" "Pre-1.0 · alpha" } }
+                Row {
+                    Link { to: "https://github.com/alpibrusl/cancho" appearance: "secondary" "GitHub" }
+                    Details {
+                        summary: "Menu"
+                        Nav {
+                            label: "Sections"
+                            Link { to: "#try" "Try it" }
+                            Link { to: "#trust" "Trust" }
+                            Link { to: "#verifies" "Evidence" }
+                            Link { to: "#ecosystem" "Ecosystem" }
+                            Link { to: "#demo" "Demo" }
+                            Link { to: "#agents" "Agents" }
+                            Link { to: "https://alpibru.com/manifesto" "Manifesto" }
+                            Link { to: "https://alpibrusl.github.io/cancho/" "Docs" }
+                            Link { to: "https://github.com/alpibrusl/cancho" "GitHub" }
+                        }
                     }
                 }
             }
@@ -213,35 +217,48 @@ component Home {
                 id: "main"
                 Section {
                     id: "top"
-                    Text { style: "eyebrow" "Trust without comprehension" }
-                    Link { to: "#status" "Pre-1.0 · alpha products are built with it" }
-                    Heading { level: 1 "Tools built for agents." Break { } Em { "Not adapted from humans." } }
-                    Rich { style: "lead" Strong { "cancho" } " is a programming language and toolchain for software built by AI agents and checked by machines. Programs declare what they can do, dependencies have stable identities, and the compiler returns structured evidence that other tools can read and check." }
-                    Rich { "The bet: you should not have to read what an agent wrote to trust it." }
-                    Row {
-                        Link { to: "#try" appearance: "primary" "Try it on a real task →" }
-                        Link { to: "#demo" appearance: "secondary" "Watch the demo" }
-                        Link { to: "https://alpibru.com/manifesto" appearance: "quiet" "Read the manifesto" }
+                    Grid {
+                        min: 26
+                        weights: [1.4, 1]
+                        gap: 4
+                        align: "center"
+                        Column {
+                            Text { style: "eyebrow" "Trust without comprehension" }
+                            Link { to: "#status" appearance: "pill" "Pre-1.0 · alpha products are built with it" }
+                            Heading { level: 1 "Tools built for agents." Break { } Em { "Not adapted from humans." } }
+                            Rich { style: "lead" Strong { "cancho" } " is a programming language and toolchain for software built by AI agents and checked by machines. Programs declare what they can do, dependencies have stable identities, and the compiler returns structured evidence that other tools can read and check." }
+                            Rich { "The bet: you should not have to read what an agent wrote to trust it." }
+                            Row {
+                                Link { to: "#try" appearance: "primary" "Try it on a real task →" }
+                                Link { to: "#demo" appearance: "secondary" "Watch the demo" }
+                                Link { to: "https://alpibru.com/manifesto" appearance: "quiet" "Read the manifesto" }
+                            }
+                            List { Item { "No ambient authority" } Item { "Content-addressed" } Item { "Diagnostics as data" } }
+                        }
+                        Column {
+                            Hero { }
+                            Rich { "cancho · Spanish for a boulder" }
+                            Rich { Strong { "Comprehension was a strategy." } " It is not the only one. " Link { to: "https://alpibru.com/manifesto" "Trust Without Comprehension" } }
+                        }
                     }
-                    List { Item { "No ambient authority" } Item { "Content-addressed" } Item { "Diagnostics as data" } }
-                    Hero { }
-                    Rich { "cancho · Spanish for a boulder" }
-                    Rich { Strong { "Comprehension was a strategy." } " It is not the only one. " Link { to: "https://alpibru.com/manifesto" "Trust Without Comprehension" } }
                 }
                 Reveal {
                     Grid {
                         min: 15
                         Article {
+                            card: true
                             CardChain { }
                             Heading { level: 2 "Identity, not lines" }
                             Rich { "A canonical AST gives every declaration a stable hash, and dependencies pin to hashes, not version strings. Nothing changes under you because a maintainer published a new version." }
                         }
                         Article {
+                            card: true
                             CardRings { }
                             Heading { level: 2 "Authority, not trust" }
                             Rich { "What a program may do is in its type, so a reviewer checks the policy, not every line. " Code { "cancho authority" } " names what is reachable, and says “unbounded” when it can’t." }
                         }
                         Article {
+                            card: true
                             CardJson { }
                             Heading { level: 2 "Verified, not read" }
                             Rich { "The compiler answers in data: a rule tag, a position, a fix. Diagnostics, the command tree and a skill file come out of the binary for an agent to use directly." }
@@ -256,9 +273,11 @@ component Home {
                     Text { style: "lead" "Every command here was run before it went on this page. cancho is pre-1.0, building it needs Rust and clang, and what is not claimed is written down below." }
                     Reveal {
                         Article {
+                            card: true
                             Grid {
                                 min: 19
                                 weights: [1, 1.75]
+                                align: "center"
                                 Column {
                                     Text { style: "label" "60 seconds · nothing to install" }
                                     Heading { level: 3 "See a refusal" }
@@ -274,9 +293,11 @@ component Home {
                     }
                     Reveal {
                         Article {
+                            card: true
                             Grid {
                                 min: 19
                                 weights: [1, 1.75]
+                                align: "center"
                                 Column {
                                     Text { style: "label" "5 minutes · Rust and clang" }
                                     Heading { level: 3 "Run the compiler" }
@@ -295,9 +316,11 @@ component Home {
                     }
                     Reveal {
                         Article {
+                            card: true
                             Grid {
                                 min: 19
                                 weights: [1, 1.75]
+                                align: "center"
                                 Column {
                                     Text { style: "label" "A real task · an agent does the work" }
                                     Heading { level: 3 "Give it to an agent" }
@@ -326,6 +349,7 @@ component Home {
                     Reveal {
                         List {
                             ordered: true
+                            card: true
                             Item {
                                 Heading { level: 3 "Generate" }
                                 Rich { "An agent writes" }
@@ -489,6 +513,7 @@ component Home {
                             min: 19
                             For { over: data.items(Ecosystem, "paths") as: path
                                 Article {
+                                    card: true
                                     Heading { level: 3 "{json.get(path, \"title\", \"\")}" }
                                     Rich { "{json.get(path, \"blurb\", \"\")}" }
                                     List {
@@ -545,6 +570,7 @@ component Home {
                         Aside {
                             label: "Details of what is chosen on the map"
                             id: "detail"
+                            card: true
                             For { over: data.items(Ecosystem, "projects") as: p
                                 If { when: selected == json.get(p, "id", "")
                                     Rich {
@@ -677,6 +703,7 @@ component Home {
                         Grid {
                             min: 19
                             Article {
+                                card: true
                                 For { over: data.items(Ecosystem, "measured.figures") as: f
                                     If { when: json.get(f, "id", "") == "conformance"
                                         Rich { Strong { CountUp { to: num(json.get(f, "passed", "0"), 0) } " " Small { "/ {json.get(f, \"of\", \"0\")}" } } }
@@ -686,6 +713,7 @@ component Home {
                                 Rich { "conformance tests pass when every build goes through the compiler written in cancho. The 7 amber outlines are known differences from the Rust compiler, each listed." }
                             }
                             Article {
+                                card: true
                                 For { over: data.items(Ecosystem, "measured.figures") as: f
                                     If { when: json.get(f, "id", "") == "refusals"
                                         Rich { Strong { CountUp { to: num(json.get(f, "passed", "0"), 0) } " " Small { "/ {json.get(f, \"of\", \"0\")}" } } }
@@ -695,6 +723,7 @@ component Home {
                                 Rich { "programs that must be refused are refused with the same rule as the Rust compiler. The empty squares are what it does not check yet." }
                             }
                             Article {
+                                card: true
                                 For { over: data.items(Ecosystem, "measured.figures") as: f
                                     If { when: json.get(f, "id", "") == "rules"
                                         Rich { Strong { CountUp { to: num(json.get(f, "value", "0"), 0) } " " Small { "named rules" } } }

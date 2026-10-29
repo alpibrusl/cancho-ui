@@ -89,6 +89,10 @@
   {
    "name": "the word page as a component's name and a state",
    "program": "component Page {\n    state page: Int = 0;\n    view { Text { \"{page}\" } }\n}\n"
+  },
+  {
+   "name": "a measure and the display scale",
+   "page": "page { title: \"T\"; lang: \"en\"; measure: \"72\"; scale: \"display\"; }"
   }
  ],
  "refusals": [
@@ -568,6 +572,36 @@
    "page": "page { title: \"T\"; lang: \"en\"; skip_link: \"Skip\"; }",
    "view": "For { over: items as: m Main { id: \"main\" Text { \"x\" } } }",
    "extra_state": "state items: List[String] = [\"a\"];"
+  },
+  {
+   "tag": "page-measure-invalid",
+   "name": "a measure under 30",
+   "page": "page { title: \"T\"; lang: \"en\"; measure: \"29\"; }"
+  },
+  {
+   "tag": "page-measure-invalid",
+   "name": "a measure over 100",
+   "page": "page { title: \"T\"; lang: \"en\"; measure: \"101\"; }"
+  },
+  {
+   "tag": "page-measure-invalid",
+   "name": "a measure with a unit",
+   "page": "page { title: \"T\"; lang: \"en\"; measure: \"72rem\"; }"
+  },
+  {
+   "tag": "page-measure-invalid",
+   "name": "a measure that is empty",
+   "page": "page { title: \"T\"; lang: \"en\"; measure: \"\"; }"
+  },
+  {
+   "tag": "page-scale-invalid",
+   "name": "a scale that is not one",
+   "page": "page { title: \"T\"; lang: \"en\"; scale: \"big\"; }"
+  },
+  {
+   "tag": "page-entry-duplicate",
+   "name": "a measure written twice",
+   "page": "page { title: \"T\"; lang: \"en\"; measure: \"72\"; measure: \"80\"; }"
   }
  ]
 }
