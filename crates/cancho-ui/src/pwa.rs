@@ -35,6 +35,12 @@ pub struct PageParts {
     pub sticky: bool,
     /// what the program uses of the motion script (docs/motion.md)
     pub motion: crate::motion::MotionUse,
+    /// `page { measure: "72"; }`: the width in rem of the centred column
+    pub measure: Option<u32>,
+    /// `page { scale: "display"; }`
+    pub display_scale: bool,
+    /// the program uses `card:`, `align: "center"` or a pill link
+    pub roles: bool,
 }
 
 const BACKGROUND: [u8; 3] = [0x1f, 0x6f, 0xeb];
@@ -221,7 +227,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 main[tabindex="-1"]:focus { outline: none; }
 .cui-sticky nav { display: flex; flex-wrap: wrap; column-gap: 1rem; }
 @MOTION_CSS@</style>
-@STICKY_CSS@@THEME_CSS@</head>
+@STICKY_CSS@@LOOK_CSS@@THEME_CSS@</head>
 <body>
 @SKIP@@ROOT@
 <script type="module" src="./app.js"></script>
@@ -273,13 +279,15 @@ main[tabindex="-1"]:focus { outline: none; }
         String::new()
     };
     let measure = format!("{}{motion_js}", if page.sticky { STICKY_JS } else { "" });
-    let tokens: [(&str, &str); 11] = [
+    let look_css = look_css(page);
+    let tokens: [(&str, &str); 12] = [
         ("@MOTION_CSS@", crate::motion::CSS),
         ("@CSP@", &csp),
         ("@TITLE@", &title),
         ("@LANG@", &lang),
         ("@PAGE_HEAD@", &page.head),
         ("@STICKY_CSS@", sticky_css),
+        ("@LOOK_CSS@", &look_css),
         ("@THEME_CSS@", &theme_css),
         ("@APP_THEME@", theme),
         ("@APP_LINKS@", &links),
@@ -297,9 +305,52 @@ main[tabindex="-1"]:focus { outline: none; }
     )
 }
 
+/// The rules of the roles `card:`, `align: "center"` and `appearance: "pill"` (docs/www-port/look.md section 3), written only for a program that uses one. A pill is a 44 px
+/// target drawn 30 px tall: the transparent border is the target and the inset shadow the drawn edge.
+const ROLES_CSS: &str = r#".cui-card { box-sizing: border-box; padding: 1.1rem 1.2rem 1.3rem; border-radius: 16px; border: 1px solid color-mix(in srgb, currentColor 20%, transparent); }
+.cui-align-center { align-items: center; }
+a.cui-link-pill { display: inline-flex; align-self: flex-start; align-items: center; box-sizing: border-box; min-height: 44px; padding: 0 0.6rem; border: 7px solid transparent; background-clip: padding-box; border-radius: 999px; box-shadow: inset 0 0 0 1px currentColor; font-size: 0.82rem; text-decoration: none; }
+a.cui-link-pill::before { content: ""; width: 0.5rem; height: 0.5rem; margin-inline-end: 0.5rem; border-radius: 50%; background: currentColor; }
+"#;
+
+/// The rules of a page's `measure:` and `scale:` (docs/www-port/look.md section 3), written only for a page that declares them, after the baseline and before the theme.
+/// The gutter of a measured page is 1.25 rem (20 px), and the column is `measure` rem wide with the gutters inside it.
+fn look_css(page: &PageParts) -> String {
+    let mut css = String::new();
+    if page.roles {
+        css.push_str(ROLES_CSS);
+    }
+    if let Some(m) = page.measure {
+        css.push_str(&format!(
+            ":root {{ --cui-measure: {m}rem; --cui-gutter: max(1.25rem, env(safe-area-inset-left), env(safe-area-inset-right), calc((100% - var(--cui-measure)) / 2 + 1.25rem)); }}\nbody {{ padding-inline: 0; }}\nheader.cui-sticky, main, footer:not(:is(article, section, aside, main) footer) {{ box-sizing: border-box; padding-inline: var(--cui-gutter); }}\n"
+        ));
+    }
+    if page.display_scale {
+        css.push_str(concat!(
+            "body { line-height: 1.6; }\n",
+            "h1 { font-size: clamp(2.4rem, 6.4vw, 3.5rem); line-height: 1.02; letter-spacing: -0.035em; font-weight: 800; margin: 0 0 1.1rem; }\n",
+            "h1 em { font-style: normal; color: var(--cui-accent, LinkText); }\n",
+            "h2 { font-size: clamp(1.6rem, 3.4vw, 2rem); line-height: 1.18; letter-spacing: -0.025em; font-weight: 700; margin: 0 0 0.6rem; }\n",
+            "h3, .cui-card h2 { font-size: 1.05rem; line-height: 1.6; letter-spacing: normal; font-weight: 700; margin: 0 0 0.25rem; }\n",
+            ".cui-grid:not([class*=\"cui-gap-\"]) { gap: 1rem; }\n",
+            "main > section > .cui-reveal { margin-top: 1.2rem; }\n",
+            "main > section > [data-style=\"lead\"] { margin-bottom: 1rem; }\n",
+            "main > section { padding-top: 5rem; }\n",
+            "main > section:first-child { padding-top: 3rem; }\n",
+            "[data-style=\"eyebrow\"], [data-style=\"label\"] { letter-spacing: 0.12em; }\n",
+            "[data-style=\"eyebrow\"] { margin-bottom: 0.6rem; }\n",
+            "[data-style=\"lead\"] { font-size: 1.125rem; line-height: 1.6; max-width: 34rem; }\n",
+        ));
+    }
+    if css.is_empty() {
+        css
+    } else {
+        format!("<style id=\"cui-look\">\n{css}</style>\n")
+    }
+}
+
 /// What a sticky `Header` adds: room above an anchor, 4rem (the header's least height) and one rem more, until the script has measured the header.
-const STICKY_CSS: &str =
-    "<style>html { scroll-padding-top: calc(var(--cui-header-h, 4rem) + 1rem); }</style>\n";
+const STICKY_CSS: &str = "<style>html { scroll-padding-top: calc(var(--cui-header-h, 4rem) + 1rem); }\n.cui-sticky > .cui-row { margin-inline-start: auto; }</style>\n";
 /// Measures the sticky header (it may be taller than 4rem when its content wraps) and keeps `--cui-header-h` equal to it: at once, when the
 /// document is parsed, at load, when the window is resized and when a font arrives. Inline, so the page does not wait for `app.js`.
 const STICKY_JS: &str = "<script>(function(){var h,r=document.documentElement;function s(){if(!h){h=document.querySelector('.cui-sticky');if(h&&window.ResizeObserver){new ResizeObserver(s).observe(h)}}if(h){r.style.setProperty('--cui-header-h',h.offsetHeight+'px')}}s();addEventListener('DOMContentLoaded',s);addEventListener('load',s);addEventListener('resize',s);if(document.fonts&&document.fonts.ready){document.fonts.ready.then(s)}})()</script>\n";

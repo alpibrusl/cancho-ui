@@ -782,7 +782,8 @@ fn diff_reports_a_theme_change_as_its_own_line_and_authority_stays() {
 }
 
 /// The properties a theme's stylesheet may set: colours, a font, the colour of the focus ring, and the shadow and its transition on a link
-/// button (docs/theme.md section 6). Nothing about size, position, display,
+/// button, a card's fill and shadow, a pill's colours, the header's translucent colour and blur, and the brand's weight and underline
+/// (docs/theme.md section 6, docs/www-port/look.md). Nothing about size, position, display,
 /// visibility or the outline's width and style.
 const ALLOWED: &[&str] = &[
     "background",
@@ -799,6 +800,10 @@ const ALLOWED: &[&str] = &[
     "box-shadow",
     "transition",
     "font-size",
+    "background-color",
+    "backdrop-filter",
+    "-webkit-backdrop-filter",
+    "text-decoration",
 ];
 
 fn properties(css: &str) -> Vec<String> {

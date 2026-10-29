@@ -25,8 +25,8 @@ Footer { Link { to: "agents.md" "agents.md" } }
 | element | becomes | takes (beside `label:` on the containers) |
 |---|---|---|
 | `Heading` | `<h1>` to `<h4>` | `level:` (1 to 4, required), `id:`; its text is its name |
-| `Section`, `Article`, `Figure`, `Header`, `Nav`, `Main`, `Footer`, `Aside` | `<section>`, `<article>`, `<figure>`, `<header>`, `<nav>`, `<main>`, `<footer>`, `<aside>` | `id:` |
-| `Link` | `<a href>` | `to:` (a string literal, required), `appearance:` (`"primary"`, `"secondary"`, `"quiet"`); its text is its name |
+| `Section`, `Article`, `Figure`, `Header`, `Nav`, `Main`, `Footer`, `Aside` | `<section>`, `<article>`, `<figure>`, `<header>`, `<nav>`, `<main>`, `<footer>`, `<aside>` | `id:`; on `Section`, `Article`, `Aside` and `Figure` also `card: true` (section 12) |
+| `Link` | `<a href>` | `to:` (a string literal, required), `appearance:` (`"primary"`, `"secondary"`, `"quiet"`, `"pill"`); its text is its name |
 | `Details` | `<details>` with a `<summary>` first | `summary:` (required), `id:` |
 | `Caption` | `<figcaption>` | `id:` |
 | `Text { style: .. }` | `<p data-style="..">` (a `Text` without `style:` is still a `<span>`) | `style:` (`"eyebrow"`, `"lead"`, `"note"`, `"label"`) |
@@ -55,6 +55,7 @@ Every refusal below has a rule tag in [`spec/diagnostics/README.md`](../spec/dia
 | `link-to-invalid` | no `to:`, or one that is not a string literal |
 | `link-label-missing`, `link-label-generic` | no text; or "here", "click here", "click", "link", "this link", "this", "more", "read more", "learn more" |
 | `link-appearance-invalid`, `text-style-invalid`, `details-incomplete` | a value outside its closed set; no or empty `summary:` |
+| `card-invalid`, `grid-align-invalid` | a `card:` that is not `true` or `false`; an `align:` of a `Grid` that is not `"stretch"` or `"center"` (section 12, *added 2026-10-29*) |
 | `caption-misplaced` | a `Caption` that is not a direct child of a `Figure`, or a second one |
 | `landmark-duplicate`, `nav-label-missing` | a second `Main`; with more than one `Nav`, one without `label:` |
 
@@ -302,3 +303,15 @@ line" and "stacked" wrap as flex does (two and one, say), which `auto-fit` also 
   effect, step 5: not expressible).
 * **A gap found in B2 and not yet closed**: the label of the copy button changes to "Copied" with no live region, so a person who cannot see it is not told (`structure.md` section 8 says so; it stays for a later pass
   and is not part of B3).
+
+## 12. The roles of the look (2026-10-29)
+
+Designed and measured in [`www-port/look.md`](www-port/look.md): what the cancho-www page's look needed that the language could not say. Five small additions, each a declared role with the CSS in the compiler:
+
+* **`card: true`** on a `Section`, `Article`, `Aside` or `Figure`: the class `cui-card`. The baseline gives it padding (1.1 / 1.2 / 1.3 rem), a 16 px radius and a 1 px edge; **a theme** gives it the `surface` fill and the shadow the link buttons already use (a 1 px `line` ring in the dark scheme). `card-invalid` for anything but `true` or `false`; `binding-unknown` on any other element. Under `page { scale: "display" }` a heading of level 2 inside a card is set at the h3 size, as the page's card titles are.
+* **`align: "center"`** on a `Grid` (the default is `"stretch"`): the class `cui-align-center`, `align-items: center`. A Grid is the language's two-column row that stacks (`Grid { min: 26 .. }` is two columns where two of 26 rem fit and one where they do not), so a hero or a text beside a code box is a Grid and this key. `grid-align-invalid`.
+* **`appearance: "pill"`** on a `Link`: a small rounded link with a dot, drawn 30 px tall and a 44 px target (a transparent 7 px border is the target, an inset shadow the edge); in a theme it is the `warn` pair (`warn` on `warn_bg`, checked, with `warn_line` as the edge).
+* **A `Row` that is a child of a sticky `Header` is its end group** (`margin-inline-start: auto`): the brand and a `Chip` at the start, a GitHub link and the menu at the end. In a theme the header is the page's colour at 86 % over a 10 px blur with a soft shadow (a hairline in the dark scheme), and its first link is the brand (the theme's mono font, bold).
+* **`page { measure: ".."; scale: ".."; }`** ([`page.md`](page.md) section 3): the centred column and the display scale.
+
+The baseline rules of the first three are written **only for a program that uses one** (`cancho_ui_ir::page::uses_look_roles`), so every other page, and every committed gallery demo, is the bytes it was; the rule of the end group is in the sticky header's own `<style>`.

@@ -45,7 +45,11 @@ const ONCE: &[&str] = &[
     "icon",
     "touch_icon",
     "skip_link",
+    "measure",
+    "scale",
 ];
+/// The width of the centred column, in rem: from a phone held on its side to a wide desktop.
+pub const MEASURE_RANGE: (u32, u32) = (30, 100);
 const MANY: &[&str] = &["alternate"];
 
 fn refuse(code: &'static str, message: String, span: Span) -> LowerError {
@@ -216,6 +220,8 @@ fn lower_page(decl: &PageDecl) -> Result<IrPage, LowerError> {
         alternates: Vec::new(),
         skip_link: None,
         skip_link_span: None,
+        measure: None,
+        display_scale: false,
         span: decl.span,
     };
     let (mut has_title, mut has_lang) = (false, false);
@@ -355,6 +361,35 @@ fn lower_page(decl: &PageDecl) -> Result<IrPage, LowerError> {
                     *t_span,
                 )?;
                 page.alternates.push(IrPageAlternate { file: f, title });
+            }
+            "measure" => {
+                let n = value.parse::<u32>().ok().filter(|n| {
+                    (MEASURE_RANGE.0..=MEASURE_RANGE.1).contains(n)
+                        && value.bytes().all(|b| b.is_ascii_digit())
+                });
+                let Some(n) = n else {
+                    return Err(refuse(
+                        "page-measure-invalid",
+                        format!(
+                            "`measure: \"{value}\"` is a whole number of rem from {} to {}, as a string literal: `measure: \"72\";`",
+                            MEASURE_RANGE.0, MEASURE_RANGE.1
+                        ),
+                        *key_span,
+                    ));
+                };
+                page.measure = Some(n);
+            }
+            "scale" => {
+                if value != "display" {
+                    return Err(refuse(
+                        "page-scale-invalid",
+                        format!(
+                            "`scale: \"{value}\"` is not a scale; the one there is is `\"display\"`"
+                        ),
+                        *key_span,
+                    ));
+                }
+                page.display_scale = true;
             }
             _ => {
                 // `skip_link`
@@ -509,6 +544,8 @@ pub fn flatten(p: &IrPage) -> Vec<(String, String)> {
     add("share_description", &p.share_description);
     add("canonical", &p.canonical);
     add("skip_link", &p.skip_link);
+    add("measure", &p.measure.map(|m| m.to_string()));
+    add("scale", &p.display_scale.then(|| "display".to_string()));
     out.push((
         "host".into(),
         hosts(p).into_iter().next().unwrap_or_default(),
@@ -580,6 +617,12 @@ pub fn to_json(p: &IrPage) -> serde_json::Value {
         }
         if let Some(s) = &p.skip_link {
             put("skip_link", s.clone().into());
+        }
+        if let Some(m) = p.measure {
+            put("measure", m.into());
+        }
+        if p.display_scale {
+            put("scale", "display".into());
         }
     }
     v
@@ -717,6 +760,30 @@ pub fn has_sticky(ir: &IrFile) -> bool {
     for c in &ir.components {
         visit(&c.view.body, false, &mut |kind, bindings, _, _| {
             if matches!(kind, IrElementKind::Header) && crate::structure::is_sticky(bindings) {
+                any = true;
+            }
+        });
+    }
+    any
+}
+
+/// Whether any view uses a role of the look (docs/www-port/look.md section 3): `card: true`, a `Grid`'s `align: "center"`, or a `Link` that is a `pill`.
+/// The baseline writes the rules of those roles only for a program that does, so every other page is the bytes it was.
+pub fn uses_look_roles(ir: &IrFile) -> bool {
+    let mut any = false;
+    for c in &ir.components {
+        visit(&c.view.body, false, &mut |kind, bindings, _, _| {
+            let pill = matches!(kind, IrElementKind::Link)
+                && bindings.iter().any(|b| {
+                    b.key == "appearance"
+                        && matches!(&b.value, IrBindingValue::String(s) if s == "pill")
+                });
+            let center = matches!(kind, IrElementKind::Grid)
+                && bindings.iter().any(|b| {
+                    b.key == "align"
+                        && matches!(&b.value, IrBindingValue::String(s) if s == "center")
+                });
+            if crate::structure::is_card(bindings) || pill || center {
                 any = true;
             }
         });

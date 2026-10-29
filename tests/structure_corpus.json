@@ -262,6 +262,11 @@
    "view": "Table { label: \"Rows \" + n Row { Text { role: columnheader \"N\" } } Row { Text { \"v\" } } } Text { \"kept\" }",
    "html": "<div class=\"cui-col\"><div aria-label=\"Rows 0\" class=\"cui-table-scroll\" role=\"region\" tabindex=\"0\"><table aria-label=\"Rows 0\" class=\"cui-table\"><tbody><tr><th role=\"columnheader\" scope=\"col\">N</th></tr><tr><td>v</td></tr></tbody></table></div><span>kept</span></div>",
    "html_static": "<div class=\"cui-col\"><span>kept</span></div>"
+  },
+  {
+   "name": "the roles of the look: a card, a pill link, a grid that centres its cells",
+   "view": "Article { card: true Text { \"a\" } } Section { card: false Text { \"b\" } } Aside { card: true Text { \"c\" } } Figure { card: true Text { \"d\" } } Link { to: \"https://a.example/\" appearance: \"pill\" \"Pill\" } Grid { min: 17 align: \"center\" Text { \"e\" } Text { \"f\" } } Grid { min: 18 weights: [1, 2] align: \"center\" gap: 2 Text { \"g\" } Text { \"h\" } } Grid { min: 9 align: \"stretch\" Text { \"i\" } }",
+   "html": "<div class=\"cui-col\"><article class=\"cui-card\"><span>a</span></article><section><span>b</span></section><aside class=\"cui-card\"><span>c</span></aside><figure class=\"cui-card\"><span>d</span></figure><a class=\"cui-link-pill\" href=\"https://a.example/\">Pill</a><div class=\"cui-grid cui-align-center\" style=\"--cui-min: 17rem;\"><span>e</span><span>f</span></div><div class=\"cui-grid cui-grid-w cui-align-center cui-gap-2\" style=\"--cui-min: 18rem; --cui-w1: 1; --cui-w2: 2;\"><span>g</span><span>h</span></div><div class=\"cui-grid\" style=\"--cui-min: 9rem;\"><span>i</span></div></div>"
   }
  ],
  "refusals": [
@@ -1235,6 +1240,51 @@
    "name": "a link to a file that is bytes with a text name",
    "view": "Link { to: \"bin.md\" \"A file\" }",
    "code": "asset-type-mismatch"
+  },
+  {
+   "name": "a card that is a text",
+   "view": "Article { card: \"yes\" Text { \"x\" } }",
+   "code": "card-invalid"
+  },
+  {
+   "name": "a card that is a number",
+   "view": "Section { card: 1 Text { \"x\" } }",
+   "code": "card-invalid"
+  },
+  {
+   "name": "a card that names a state field (a name is not a literal)",
+   "view": "Figure { card: n Text { \"x\" } }",
+   "code": "parse-unexpected-token"
+  },
+  {
+   "name": "a card on a column",
+   "view": "Column { card: true Text { \"x\" } }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "a card on a link",
+   "view": "Link { to: \"https://a.example/\" card: true \"x\" }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "a grid aligned to the left",
+   "view": "Grid { min: 17 align: \"left\" Text { \"x\" } }",
+   "code": "grid-align-invalid"
+  },
+  {
+   "name": "a grid with an empty alignment",
+   "view": "Grid { min: 17 align: \"\" Text { \"x\" } }",
+   "code": "grid-align-invalid"
+  },
+  {
+   "name": "an alignment on a row",
+   "view": "Row { align: \"center\" Text { \"x\" } }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "an appearance that is a badge",
+   "view": "Link { to: \"https://a.example/\" appearance: \"badge\" \"x\" }",
+   "code": "link-appearance-invalid"
   }
  ],
  "assets": {

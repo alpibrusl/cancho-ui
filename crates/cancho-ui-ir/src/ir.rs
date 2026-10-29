@@ -58,6 +58,10 @@ pub struct IrPage {
     pub skip_link: Option<String>,
     /// where the skip link is written, for the refusals that need the whole program
     pub skip_link_span: Option<Span>,
+    /// `measure: "72";`: the width in rem of the page's centred column (docs/www-port/look.md section 3)
+    pub measure: Option<u32>,
+    /// `scale: "display";`: the page is set in the display type and rhythm
+    pub display_scale: bool,
     pub span: Span,
 }
 

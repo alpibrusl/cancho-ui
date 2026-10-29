@@ -448,11 +448,15 @@ pub(crate) fn emit_view_node(
                     ));
                 }
                 if let Some(cls) = cancho_ui_ir::structure::class(kind, bindings) {
-                    out.push_str(&format!("{0}{1}.classList.add('{2}');\n", indent, var, cls));
+                    for one in cls.split(' ') {
+                        out.push_str(&format!("{0}{1}.classList.add('{2}');\n", indent, var, one));
+                    }
                 }
                 // a Grid's minimum and weights are custom properties of its own, read by the stylesheet (docs/structure.md section 10)
                 if let Some(cls) = cancho_ui_ir::media::class(kind, bindings) {
-                    out.push_str(&format!("{0}{1}.classList.add('{2}');\n", indent, var, cls));
+                    for one in cls.split(' ') {
+                        out.push_str(&format!("{0}{1}.classList.add('{2}');\n", indent, var, one));
+                    }
                 }
                 if matches!(kind, IrElementKind::Grid)
                     && let Some(style) = cancho_ui_ir::media::grid_style(bindings)

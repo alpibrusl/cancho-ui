@@ -160,6 +160,8 @@ const TAGS: &[&str] = &[
     "page-file-invalid",
     "page-alternate-title-missing",
     "page-skip-link-empty",
+    "page-measure-invalid",
+    "page-scale-invalid",
     "skip-link-target-missing",
     "skip-link-target-dynamic",
     "header-sticky-invalid",

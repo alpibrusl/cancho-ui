@@ -24,7 +24,9 @@ pub fn remediation(code: &str) -> String {
         "page-image-size-unreadable" => "The card image is a PNG, a JPEG or a WebP whose header gives its width and height; re-export it.".to_string(),
         "page-alternate-title-missing" => "Write `alternate: \"agents.md\" title: \"..\";`.".to_string(),
         "page-file-invalid" => "A file of the page is relative to the program (`logo.png`, `data/ecosystem.json`), inside its directory, with an extension its entry takes (docs/page.md section 5).".to_string(),
-        "page-entry-unknown" | "page-entry-duplicate" | "page-duplicate" | "page-text-invalid" | "page-skip-link-empty" => "See docs/page.md section 3: the entries are title, lang, description, share_description, canonical, image (with alt), icon, touch_icon, alternate (with title) and skip_link, each once but `alternate`; a program has one `page { .. }`.".to_string(),
+        "page-measure-invalid" => "`measure: \"72\";` is the width of the page's centred column in rem, a whole number from 30 to 100 written as a string (docs/www-port/look.md section 3).".to_string(),
+        "page-scale-invalid" => "`scale: \"display\";` is the one scale there is: the display type and rhythm (docs/www-port/look.md section 3).".to_string(),
+        "page-entry-unknown" | "page-entry-duplicate" | "page-duplicate" | "page-text-invalid" | "page-skip-link-empty" => "See docs/page.md section 3: the entries are title, lang, description, share_description, canonical, image (with alt), icon, touch_icon, alternate (with title), skip_link, measure and scale, each once but `alternate`; a program has one `page { .. }`.".to_string(),
         "skip-link-target-missing" | "skip-link-target-dynamic" => "Write `Main { id: \"main\" .. }` in the component that is mounted into the page, outside any `For` or `If` (docs/page.md section 4).".to_string(),
         "header-sticky-invalid" | "header-sticky-duplicate" | "header-sticky-misplaced" => "`Header { sticky: true .. }` once, as a child of the page's column and not inside a Section, Article, Aside, Main, Nav, Footer, Figure, Details or Header (docs/page.md section 4).".to_string(),
         _ => "See docs/page.md.".to_string(),
@@ -255,10 +257,12 @@ pub fn copies(ir: &IrFile, dir: &Path) -> Result<Vec<(String, Vec<u8>)>, String>
 pub fn parts(ir: &IrFile) -> PageParts {
     let sticky = cancho_ui_ir::page::has_sticky(ir);
     let motion = crate::motion::uses(ir);
+    let roles = cancho_ui_ir::page::uses_look_roles(ir);
     let Some(p) = &ir.page else {
         return PageParts {
             sticky,
             motion,
+            roles,
             ..PageParts::default()
         };
     };
@@ -274,6 +278,9 @@ pub fn parts(ir: &IrFile) -> PageParts {
         touch_icon: p.touch_icon.is_some(),
         sticky,
         motion,
+        measure: p.measure,
+        display_scale: p.display_scale,
+        roles,
     }
 }
 
