@@ -1,6 +1,6 @@
 # The look of the port: the roles that carry it (design note, before the code)
 
-> **Status: designed 2026-10-29, measured before any code; built in the same branch (`ccr-look`), and each number below that the build changes is corrected in place at the end (section 6).** This answers
+> **Status: built 2026-10-29 (branch `ccr-look`); designed and measured before any code; sections 3 and 6 are corrected in place where the build found the design wrong (marked *corrected*).** This answers
 > item 1 of "What would be needed" in [`status.md`](status.md) and the work list in [`pixel-rules.json`](pixel-rules.json). The user's request was "match the styles". It is **not** a request to copy the page's
 > CSS into the program: the page has 106 classes and 19 viewport rules, and [`presentation.md`](../presentation.md) decides that a program says what a thing *is* and the stylesheet says how it looks. So the
 > question is the smallest set of declared, checked roles that closes the most pixels, with the CSS in the compiler.
@@ -38,10 +38,10 @@ gaps (the page is about 1.7 times as airy between sections), (5) the header. The
 
 | # | what | where it is written | the CSS it is | refused |
 |---|---|---|---|---|
-| 1 | **`card: true`** on a `Section`, `Article`, `Aside` or `Figure` | the program | class `cui-card`. Baseline: padding 1.1 / 1.2 / 1.3 rem, radius 16 px, a 1 px edge. Theme: the `surface` fill and `--cui-shadow` (the one the link buttons use; a 1 px `line` ring in the dark scheme) | `card-invalid` (not `true` or `false`); `binding-unknown` on any other element |
+| 1 | **`card: true`** on a `Section`, `Article`, `Aside`, `Figure` or (*added while building, section 6*) a `List` | the program | class `cui-card`. Baseline: padding 1.1 / 1.2 / 1.3 rem, radius 16 px, a 1 px edge. Theme: the `surface` fill and `--cui-shadow` (the one the link buttons use; a 1 px `line` ring in the dark scheme) | `card-invalid` (not `true` or `false`); `binding-unknown` on any other element |
 | 2 | **`align: "center"`** (or `"start"`) on a `Grid` | the program | `align-items` on the grid (`cui-align-center`). Default unchanged (stretch) | `grid-align-invalid` |
 | 3 | **`page { measure: "72"; }`**: the page's column, in rem (30 to 100) | the page declaration | the `header`, `main` and `footer` of the page are centred in a column that wide with a 20 px gutter; the sticky header stays full width with its content in the column | `page-measure-invalid` |
-| 4 | **`page { scale: "display"; }`**: the display type and rhythm | the page declaration | h1 `clamp(2.4rem, 6.4vw, 3.5rem)` at 800 and -0.035 em, h2 `clamp(1.6rem, 3.4vw, 2rem)`, h3 1.05 rem, the `Em` of a heading upright and in the accent, line height 1.6, `main > section` 5 rem above it, the eyebrow letter-spacing 0.12 em, the lead at 1.125 rem and 34 rem. **The theme's `mono` font is the eyebrow's and label's.** | `page-scale-invalid` (the only value is `"display"`) |
+| 4 | **`page { scale: "display"; }`**: the display type and rhythm | the page declaration | h1 `clamp(2.1rem, 4.6vw, 3.05rem)` at 800 *(corrected: the first design said `clamp(2.4rem, 6.4vw, 3.5rem)`, which is the page's rule for an h1 in general; the page's own hero overrides it with the smaller one, `.hero h1` at `site.css` 424, and the first build wrapped the title to three lines)* and -0.035 em, h2 `clamp(1.6rem, 3.4vw, 2rem)`, h3 1.05 rem, the `Em` of a heading upright and in the accent, line height 1.6, `main > section` 5 rem above it, the eyebrow letter-spacing 0.12 em, the lead at 1.125 rem and 34 rem. **The theme's `mono` font is the eyebrow's and label's.** | `page-scale-invalid` (the only value is `"display"`) |
 | 5 | **A header's `Row` is its end group**, and **`appearance: "pill"`** on a `Link` | the program | in a sticky `Header` a `Row` child has `margin-inline-start: auto` (brand and chip at the start, GitHub and the menu at the end); a pill is a small rounded `warn` link. Theme: the header is `bg` at 86 % with `backdrop-filter: blur(10px)` and the page's shadow | `link-appearance-invalid` (the set grows by one) |
 
 Why these and not others, each by the number it closes:
@@ -76,4 +76,33 @@ horizontal scroll; a card has the computed radius, fill and shadow; the hero is 
 
 ## 6. Result
 
-(Filled in at the end of the work, in place: the pixel numbers before and after, per section, and what is still different.)
+Measured with `scripts/pixel-diff-www.js` (Chromium 141, the page at cancho-www `4288356`, both served locally, six widths, light and dark; "differs" is the share of pixels in a section that move by more than 24 of 255 in a channel, the section compared at its top-left corner, so **a section that is taller or shorter than the page's, or whose content sits a few pixels lower, counts as different**). Before: `main` at `17f0cf1` (the numbers of the committed `pixel.md`); after: this branch.
+
+| section | mean of 12 (6 widths x 2 schemes) before | after | 1280 light | 412 light | height at 1280 light: page / port before -> after |
+|---|---|---|---|---|---|
+| header | 9.7 % | **15.7 %** | 7.4 -> 6.8 | 10.1 -> 15.5 | 64 / 64 -> 64 |
+| top | 51.5 % | **47.2 %** | 68.7 -> 37.1 | 36.4 -> 49.5 | 511 / 1170 -> 640 |
+| try | 28.7 % | **27.3 %** | 39 -> 36 | 37.1 -> 36.9 | 1362 / 1211 -> 1491 |
+| trust | 27.2 % | **21.5 %** | 22.2 -> 15.4 | 26.1 -> 19 | 1197 / 1420 -> 1124 |
+| verifies | 22.6 % | **23.4 %** | 21.1 -> 21 | 23.3 -> 25.9 | 1130 / 1057 -> 1229 |
+| authority | 26.1 % | **21.0 %** | 32.8 -> 26.8 | 36.2 -> 32.6 | 761 / 666 -> 716 |
+| ecosystem | 32.1 % | **30.2 %** | 38.4 -> 34.2 | 35.6 -> 39.1 | 2169 / 1805 -> 1933 |
+| proof | 32.7 % | **34.7 %** | 35.6 -> 30.9 | 34.4 -> 43.1 | 650 / 591 -> 775 |
+| demo | 35.1 % | **19.8 %** | 29.3 -> 14.9 | 39.7 -> 29.1 | 703 / 673 -> 687 |
+| not-here | 20.5 % | **26.7 %** | 16.4 -> 31.9 | 31.5 -> 16.4 | 309 / 344 -> 429 |
+| agents | 59.4 % | **60.7 %** | 82.5 -> 76.7 | 52.4 -> 54.8 | 742 / 1395 -> 1497 |
+| next | 47.8 % | **24.6 %** | 43.8 -> 19.3 | 46.3 -> 28.8 | 361 / 222 -> 310 |
+| status | 34.1 % | **28.4 %** | 40.5 -> 28.7 | 33.8 -> 32.4 | 255 / 176 -> 207 |
+| name | 58.6 % | **43.5 %** | 53 -> 44.4 | 69.6 -> 59.7 | 650 / 597 -> 682 |
+| footer | 21.5 % | **21.4 %** | 21.8 -> 21.6 | 15.6 -> 15.6 | 91 / 76 -> 76 |
+| **all 15** | **33.8 %** | **29.7 %** | | | |
+
+**What this says, honestly.** The mean over the 15 sections and the 12 width-and-scheme cells goes from **33.8 % to 29.7 %**; it is a modest number because the metric is position-sensitive and the port is now *taller* than the page where it was shorter. What moved:
+
+* **Better by 5 points or more** (mean of 12): `next` 47.8 to 24.6, `demo` 35.1 to 19.8, `name` 58.6 to 43.5, `trust` 27.2 to 21.5, `authority` 26.1 to 21.0, `status` 34.1 to 28.4, `top` 51.5 to 47.2 (and **at 1280 light 68.7 to 37.1**: the hero is beside its text, 640 px tall against 1,170 before and 511 on the page). Most of these are the cards, the shadows and the section spacing, which the `card`, `scale` and `measure` roles carry.
+* **Worse**: `header` 9.7 to 15.7 (at 1280 light it is better, 7.4 to 6.8; at 412 it is worse, 10.1 to 15.5: the page shows a logo, the human/agent switch and a menu there and hides the chip under 40 rem, the port shows the brand, the chip, GitHub and Menu, so more of the 64 px bar differs once the bar is translucent and shadowed like the page's); `not-here` 20.5 to 26.7 (the display type makes the bullet list taller than the page's wrapped strip of chips, 429 px against 309); `proof` 32.7 to 34.7; `verifies` 22.6 to 23.4; `agents` 59.4 to 60.7.
+* **Full-page height at 1280**: the page is 12,532 px, the port was 12,592 and is **12,955**; at 360 the page is 23,782 px and the port was 22,316 and is **25,020**. The port went from a little shorter to 2 to 11 % taller across the six widths (1,280: 3 %; 1,024: 11 %; 768: 2 %; 412 and 360: 5 %), because the page's section rhythm is now kept and the port's cards are looser inside.
+* **Still different, and why** (each is a decision the user can overturn): the page's cards are `Article`s, `li`s and `div`s with a `card` class, and the port can only put `card:` on the elements named in section 3, so the three evidence cards of `verifies` (which are `Column`s), the six links of `next` and the endpoints of `agents` stay plain; the hero drawing is in a plain block and its caption and quote are under it, where the page lays them over a card; the header has no logo, no inline links from 62 rem and no switch (`dropped.md` 1 to 3); the page's inline `code` has a tinted chip, the port's has none; the Copy button is the 44 px baseline button, not the page's small one; the page's 7 : 5 hero and its 60 rem breakpoint are a `Grid { weights: [1.4, 1] }` that stacks when the column is narrower than about 62 rem, **not at the window's 60 rem** (the same ten-pixel class of difference as `structure.md` 10.4); the numbers 1 to 5 of the chain are drawn above each title as the list's own markers, not in a circle; the page's hover lifts and its pictures' zoom (`dropped.md` 9).
+* **Tried and not kept** (recorded so it is not tried again): `List { card: true }` on the five endpoints of `agents` (the cards stacked in the half-width cell, the section went from 1,497 px to 1,632 px against the page's 742); the first scale's h1 (above).
+* **Not measured**: the roles in Safari and Firefox (`color-mix`, `backdrop-filter`, `:is()` inside `:not()` and `env()` are the features they lean on); a real phone; forced colours; print. The baseline sets `list-style-position: inside` on a card list, so a number sits above the title in a card: measured in Chromium at 1280 only.
+

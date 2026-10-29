@@ -249,7 +249,7 @@ pub fn css(theme: &IrTheme) -> String {
         ".cui-sticky { background: color-mix(in srgb, var(--cui-bg) 86%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-bottom-color: transparent; box-shadow: 0 1px 10px rgba(18, 20, 23, 0.05); }\n",
     );
     s.push_str("@media (prefers-color-scheme: dark) { .cui-sticky { border-bottom-color: var(--cui-line); box-shadow: none; } }\n");
-    s.push_str(".cui-card { background: var(--cui-surface); border-color: transparent; box-shadow: var(--cui-shadow); }\n");
+    s.push_str(".cui-card, .cui-cards > li { background: var(--cui-surface); border-color: transparent; box-shadow: var(--cui-shadow); }\n");
     s.push_str("a.cui-link-pill { color: var(--cui-warn); background-color: var(--cui-warn-bg); box-shadow: inset 0 0 0 1px var(--cui-warn-line); }\n");
     if find("mono").is_some() {
         s.push_str("[data-style=\"eyebrow\"], [data-style=\"label\"], .cui-sticky > a:first-child { font-family: var(--cui-mono); }\n");

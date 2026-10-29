@@ -267,6 +267,11 @@
    "name": "the roles of the look: a card, a pill link, a grid that centres its cells",
    "view": "Article { card: true Text { \"a\" } } Section { card: false Text { \"b\" } } Aside { card: true Text { \"c\" } } Figure { card: true Text { \"d\" } } Link { to: \"https://a.example/\" appearance: \"pill\" \"Pill\" } Grid { min: 17 align: \"center\" Text { \"e\" } Text { \"f\" } } Grid { min: 18 weights: [1, 2] align: \"center\" gap: 2 Text { \"g\" } Text { \"h\" } } Grid { min: 9 align: \"stretch\" Text { \"i\" } }",
    "html": "<div class=\"cui-col\"><article class=\"cui-card\"><span>a</span></article><section><span>b</span></section><aside class=\"cui-card\"><span>c</span></aside><figure class=\"cui-card\"><span>d</span></figure><a class=\"cui-link-pill\" href=\"https://a.example/\">Pill</a><div class=\"cui-grid cui-align-center\" style=\"--cui-min: 17rem;\"><span>e</span><span>f</span></div><div class=\"cui-grid cui-grid-w cui-align-center cui-gap-2\" style=\"--cui-min: 18rem; --cui-w1: 1; --cui-w2: 2;\"><span>g</span><span>h</span></div><div class=\"cui-grid\" style=\"--cui-min: 9rem;\"><span>i</span></div></div>"
+  },
+  {
+   "name": "a list whose items are cards",
+   "view": "List { card: true Item { \"a\" } Item { \"b\" } } List { ordered: true card: true Item { \"c\" } }",
+   "html": "<div class=\"cui-col\"><ul class=\"cui-cards\"><li><span>a</span></li><li><span>b</span></li></ul><ol class=\"cui-cards\"><li><span>c</span></li></ol></div>"
   }
  ],
  "refusals": [
@@ -1285,6 +1290,11 @@
    "name": "an appearance that is a badge",
    "view": "Link { to: \"https://a.example/\" appearance: \"badge\" \"x\" }",
    "code": "link-appearance-invalid"
+  },
+  {
+   "name": "a card on a list that is a text",
+   "view": "List { card: \"yes\" Item { \"a\" } }",
+   "code": "card-invalid"
   }
  ],
  "assets": {

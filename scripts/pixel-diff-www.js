@@ -8,6 +8,7 @@
 // classification (docs/www-port/pixel-rules.json) is what says why. Written: docs/www-port/pixel.md and one contact sheet per width and scheme in
 // docs/www-port/pixel/ (page | port | difference, one row per section, scaled; WebP).
 //   node scripts/pixel-diff-www.js <path to a cancho-www clone> [--write] [--widths=360,412] [--schemes=light]
+// The compiler is target/debug/cancho-ui of this checkout unless CANCHO_UI_BIN names another binary.
 'use strict';
 const fs = require('fs');
 const http = require('http');
@@ -89,7 +90,7 @@ const SHEET = async ({ rows, scale, label }) => {
 (async () => {
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'pixel-'));
   const out = path.join(work, 'port');
-  const b = spawnSync(path.join(ROOT, 'target', 'debug', 'cancho-ui'), ['build', 'docs/www-port/site/home.cui', '--page', '-o', out], { cwd: ROOT, encoding: 'utf8' });
+  const b = spawnSync(process.env.CANCHO_UI_BIN || path.join(ROOT, 'target', 'debug', 'cancho-ui'), ['build', 'docs/www-port/site/home.cui', '--page', '-o', out], { cwd: ROOT, encoding: 'utf8' });
   if (b.status !== 0) { console.error(b.stderr + b.stdout); process.exit(1); }
   const refSha = spawnSync('git', ['-C', REF, 'rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).stdout.trim();
   const servers = { page: await serve(REF), port: await serve(out) };

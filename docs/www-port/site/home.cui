@@ -219,6 +219,8 @@ component Home {
                     id: "top"
                     Grid {
                         min: 26
+                        weights: [1.4, 1]
+                        gap: 4
                         align: "center"
                         Column {
                             Text { style: "eyebrow" "Trust without comprehension" }
@@ -347,6 +349,7 @@ component Home {
                     Reveal {
                         List {
                             ordered: true
+                            card: true
                             Item {
                                 Heading { level: 3 "Generate" }
                                 Rich { "An agent writes" }

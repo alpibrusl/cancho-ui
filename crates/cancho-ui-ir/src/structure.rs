@@ -180,7 +180,7 @@ fn keys(kind: &IrElementKind) -> &'static [&'static str] {
         IrElementKind::Header => &["id", "sticky"],
         IrElementKind::CountUp => &["to"],
         IrElementKind::Chip => &["tone"],
-        IrElementKind::List => &["ordered"],
+        IrElementKind::List => &["ordered", "card"],
         IrElementKind::Section
         | IrElementKind::Article
         | IrElementKind::Aside
@@ -375,7 +375,7 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                     "copy" | "max_height" => "Code",
                     "sticky" => "Header",
                     "ordered" => "List",
-                    "card" => "Section, Article, Aside and Figure",
+                    "card" => "Section, Article, Aside, Figure and List",
                     "visible" | "hidden" => "Section, Article, Aside and Figure",
                     _ => "the structure elements (Section, Article, Heading, ..)",
                 }
@@ -843,6 +843,9 @@ pub fn class(kind: &IrElementKind, bindings: &[IrBinding]) -> Option<String> {
     if matches!(kind, IrElementKind::Header) {
         return is_sticky(bindings).then(|| "cui-sticky".to_string());
     }
+    if is_card(bindings) && matches!(kind, IrElementKind::List) {
+        return Some("cui-cards".to_string());
+    }
     if is_card(bindings)
         && matches!(
             kind,
@@ -884,7 +887,7 @@ pub fn is_ordered(bindings: &[IrBinding]) -> bool {
     })
 }
 
-/// Whether a `Section`, `Article`, `Aside` or `Figure` is written `card: true`.
+/// Whether a `Section`, `Article`, `Aside`, `Figure` or `List` is written `card: true`.
 pub fn is_card(bindings: &[IrBinding]) -> bool {
     bindings.iter().any(|b| {
         b.key == "card"

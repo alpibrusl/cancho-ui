@@ -116,7 +116,7 @@ fn the_roles_are_in_the_dom_and_their_rules_are_written_once() {
         );
     }
     // none of the page-level rules: a page without `measure:` and `scale:` has no such block of them
-    assert!(!html.contains("--cui-measure") && !html.contains("clamp(2.4rem"));
+    assert!(!html.contains("--cui-measure") && !html.contains("clamp(2.1rem"));
 }
 
 #[test]
@@ -230,7 +230,7 @@ fn a_page_that_declares_measure_and_scale_has_their_rules_and_only_theirs() {
     let (html, _) = page_of(&program(page, "Text { \"x\" }"));
     assert!(html.contains("<style id=\"cui-look\">"), "{html}");
     assert!(html.contains("--cui-measure: 72rem;"));
-    assert!(html.contains("h1 { font-size: clamp(2.4rem, 6.4vw, 3.5rem)"));
+    assert!(html.contains("h1 { font-size: clamp(2.1rem, 4.6vw, 3.05rem)"));
     // the column is wider than a phone only when the window is: the gutter is never under 1.25 rem
     assert!(html.contains("max(1.25rem,"));
     // measure alone has no type scale, scale alone has no column
@@ -238,12 +238,12 @@ fn a_page_that_declares_measure_and_scale_has_their_rules_and_only_theirs() {
         "page { title: \"T\"; lang: \"en\"; measure: \"60\"; }",
         "Text { \"x\" }",
     ));
-    assert!(m.contains("--cui-measure: 60rem;") && !m.contains("clamp(2.4rem"));
+    assert!(m.contains("--cui-measure: 60rem;") && !m.contains("clamp(2.1rem"));
     let (s, _) = page_of(&program(
         "page { title: \"T\"; lang: \"en\"; scale: \"display\"; }",
         "Text { \"x\" }",
     ));
-    assert!(!s.contains("--cui-measure") && s.contains("clamp(2.4rem"));
+    assert!(!s.contains("--cui-measure") && s.contains("clamp(2.1rem"));
     // and it comes before the theme (the theme's colours win), and after the baseline
     assert!(html.find("cui-look").expect("look") > html.find("</style>").expect("baseline"));
 }
@@ -333,7 +333,7 @@ fn the_theme_draws_the_roles_with_colours_and_shadows_only() {
     let html = std::fs::read_to_string(out.join("index.html")).expect("page");
     let at = html.find("<style id=\"cui-theme\">").expect("theme");
     let theme_css = &html[at..];
-    assert!(theme_css.contains(".cui-card { background: var(--cui-surface); border-color: transparent; box-shadow: var(--cui-shadow); }"));
+    assert!(theme_css.contains(".cui-card, .cui-cards > li { background: var(--cui-surface); border-color: transparent; box-shadow: var(--cui-shadow); }"));
     assert!(theme_css.contains("backdrop-filter: blur(10px)"));
     assert!(theme_css.contains(
         "a.cui-link-pill { color: var(--cui-warn); background-color: var(--cui-warn-bg);"
@@ -352,4 +352,15 @@ fn the_theme_draws_the_roles_with_colours_and_shadows_only() {
     }
     // the baseline's own card rule comes first
     assert!(html.find(".cui-card { box-sizing").expect("baseline") < at);
+}
+
+#[test]
+fn a_list_of_cards_is_a_grid_of_cards() {
+    let (html, js) = page_of(&program(
+        PAGE,
+        "List { ordered: true card: true Item { Text { \"a\" } } Item { Text { \"b\" } } }",
+    ));
+    assert!(html.contains("<ol class=\"cui-cards\">") || js.contains("cui-cards"));
+    assert_eq!(html.matches(".cui-cards {").count(), 1);
+    assert_eq!(html.matches(".cui-cards > li {").count(), 1);
 }

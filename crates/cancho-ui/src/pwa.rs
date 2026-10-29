@@ -309,6 +309,8 @@ main[tabindex="-1"]:focus { outline: none; }
 /// target drawn 30 px tall: the transparent border is the target and the inset shadow the drawn edge.
 const ROLES_CSS: &str = r#".cui-card { box-sizing: border-box; padding: 1.1rem 1.2rem 1.3rem; border-radius: 16px; border: 1px solid color-mix(in srgb, currentColor 20%, transparent); }
 .cui-align-center { align-items: center; }
+.cui-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: 1rem; margin: 0; padding: 0; list-style-position: inside; }
+.cui-cards > li { box-sizing: border-box; padding: 1.1rem 1.1rem 1.2rem; border-radius: 16px; border: 1px solid color-mix(in srgb, currentColor 20%, transparent); }
 a.cui-link-pill { display: inline-flex; align-self: flex-start; align-items: center; box-sizing: border-box; min-height: 44px; padding: 0 0.6rem; border: 7px solid transparent; background-clip: padding-box; border-radius: 999px; box-shadow: inset 0 0 0 1px currentColor; font-size: 0.82rem; text-decoration: none; }
 a.cui-link-pill::before { content: ""; width: 0.5rem; height: 0.5rem; margin-inline-end: 0.5rem; border-radius: 50%; background: currentColor; }
 "#;
@@ -322,16 +324,16 @@ fn look_css(page: &PageParts) -> String {
     }
     if let Some(m) = page.measure {
         css.push_str(&format!(
-            ":root {{ --cui-measure: {m}rem; --cui-gutter: max(1.25rem, env(safe-area-inset-left), env(safe-area-inset-right), calc((100% - var(--cui-measure)) / 2 + 1.25rem)); }}\nbody {{ padding-inline: 0; }}\nheader.cui-sticky, main, footer:not(:is(article, section, aside, main) footer) {{ box-sizing: border-box; padding-inline: var(--cui-gutter); }}\n"
+            ":root {{ --cui-measure: {m}rem; --cui-gutter: max(1.25rem, env(safe-area-inset-left), env(safe-area-inset-right), calc((100% - var(--cui-measure)) / 2 + 1.25rem)); }}\nbody {{ padding: 0; }}\nheader.cui-sticky, main, footer:not(:is(article, section, aside, main) footer) {{ box-sizing: border-box; padding-inline: var(--cui-gutter); }}\n"
         ));
     }
     if page.display_scale {
         css.push_str(concat!(
             "body { line-height: 1.6; }\n",
-            "h1 { font-size: clamp(2.4rem, 6.4vw, 3.5rem); line-height: 1.02; letter-spacing: -0.035em; font-weight: 800; margin: 0 0 1.1rem; }\n",
+            "h1 { font-size: clamp(2.1rem, 4.6vw, 3.05rem); line-height: 1.02; letter-spacing: -0.035em; font-weight: 800; margin: 0 0 1.1rem; }\n",
             "h1 em { font-style: normal; color: var(--cui-accent, LinkText); }\n",
             "h2 { font-size: clamp(1.6rem, 3.4vw, 2rem); line-height: 1.18; letter-spacing: -0.025em; font-weight: 700; margin: 0 0 0.6rem; }\n",
-            "h3, .cui-card h2 { font-size: 1.05rem; line-height: 1.6; letter-spacing: normal; font-weight: 700; margin: 0 0 0.25rem; }\n",
+            "h3, .cui-card h2, .cui-cards h2 { font-size: 1.05rem; line-height: 1.6; letter-spacing: normal; font-weight: 700; margin: 0 0 0.25rem; }\n",
             ".cui-grid:not([class*=\"cui-gap-\"]) { gap: 1rem; }\n",
             "main > section > .cui-reveal { margin-top: 1.2rem; }\n",
             "main > section > [data-style=\"lead\"] { margin-bottom: 1rem; }\n",
