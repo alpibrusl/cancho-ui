@@ -258,11 +258,13 @@ pub fn parts(ir: &IrFile) -> PageParts {
     let sticky = cancho_ui_ir::page::has_sticky(ir);
     let motion = crate::motion::uses(ir);
     let roles = cancho_ui_ir::page::uses_look_roles(ir);
+    let copy = cancho_ui_ir::page::uses_code_copy(ir);
     let Some(p) = &ir.page else {
         return PageParts {
             sticky,
             motion,
             roles,
+            copy,
             ..PageParts::default()
         };
     };
@@ -281,6 +283,7 @@ pub fn parts(ir: &IrFile) -> PageParts {
         measure: p.measure,
         display_scale: p.display_scale,
         roles,
+        copy,
     }
 }
 

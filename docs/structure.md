@@ -324,3 +324,9 @@ The baseline rules of the first three are written **only for a program that uses
 * **`overlay: true`** on a `Column`: the first child is a picture, the second a label over its top-start corner, the third a panel over its bottom. **`overlay: "banner"`**: the first child is a picture that fills the block, the rest is its text over it. `overlay-invalid`.
 * **`from: 40 | 48 | 60`** on a `Grid`: the cells stack under that window width in rem, whatever the column's. `grid-from-invalid`.
 * A sticky `Header`'s direct children: an `Image` is its round mark, a `Nav` is its inline nav from 62 rem (a `Details` of the header is hidden from 62 rem), a `Chip` is hidden under 40 rem.
+
+### 12.2 Round three (2026-10-29, [`www-port/look3.md`](www-port/look3.md))
+
+* A `Code { copy: true }` button is a small dark pill with a 44 px target, and the text has room above it (only for a page that has one).
+* A sticky header's `Details` summary is a hamburger and the GitHub link of its `Row` is hidden under 30 rem.
+* With `scale: "display"` a card's `Heading { level: 3 }` is 1.35 rem and its paragraphs are 0.93 rem, muted.

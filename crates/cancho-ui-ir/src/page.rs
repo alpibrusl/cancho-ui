@@ -792,3 +792,16 @@ pub fn uses_look_roles(ir: &IrFile) -> bool {
     }
     any
 }
+
+/// Whether any view has a `Code { copy: true }`: the button of its panel is drawn as a small pill and the text is kept clear of it.
+pub fn uses_code_copy(ir: &IrFile) -> bool {
+    let mut any = false;
+    for c in &ir.components {
+        visit(&c.view.body, false, &mut |kind, bindings, _, _| {
+            if matches!(kind, IrElementKind::Code) && crate::structure::code_spec(bindings).0 {
+                any = true;
+            }
+        });
+    }
+    any
+}

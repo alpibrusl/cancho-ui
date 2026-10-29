@@ -41,6 +41,8 @@ pub struct PageParts {
     pub display_scale: bool,
     /// the program uses `card:`, `align: "center"` or a pill link
     pub roles: bool,
+    /// the program has a `Code { copy: true }`: its button is the small dark pill (docs/www-port/look3.md)
+    pub copy: bool,
 }
 
 const BACKGROUND: [u8; 3] = [0x1f, 0x6f, 0xeb];
@@ -307,6 +309,11 @@ main[tabindex="-1"]:focus { outline: none; }
 
 /// The rules of the roles `card:`, `align: "center"` and `appearance: "pill"` (docs/www-port/look.md section 3), written only for a program that uses one. A pill is a 44 px
 /// target drawn 30 px tall: the transparent border is the target and the inset shadow the drawn edge.
+const COPY_CSS: &str = r#".cui-code[data-copy] pre { padding-top: 2.5rem; }
+.cui-copy { position: absolute; top: calc(0.45rem - 7px); right: calc(0.45rem - 7px); box-sizing: border-box; min-height: 44px; padding: 0 0.6rem; border: 7px solid transparent; border-radius: 15px; background: #1a212b; background-clip: padding-box; box-shadow: inset 0 0 0 1px #2d3644; color: #c3ccd8; font: 600 0.7rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; cursor: pointer; }
+.cui-copy:hover { box-shadow: inset 0 0 0 1px #6ea3ee; color: #fff; }
+"#;
+
 const ROLES_CSS: &str = r#".cui-card { box-sizing: border-box; padding: 1.1rem 1.2rem 1.3rem; border-radius: 16px; border: 1px solid color-mix(in srgb, currentColor 20%, transparent); }
 .cui-align-center { align-items: center; }
 .cui-overlay { display: grid; }
@@ -340,6 +347,9 @@ fn look_css(page: &PageParts) -> String {
     if page.roles {
         css.push_str(ROLES_CSS);
     }
+    if page.copy {
+        css.push_str(COPY_CSS);
+    }
     if let Some(m) = page.measure {
         css.push_str(&format!(
             ":root {{ --cui-measure: {m}rem; --cui-gutter: max(1.25rem, env(safe-area-inset-left), env(safe-area-inset-right), calc((100% - var(--cui-measure)) / 2 + 1.25rem)); }}\nbody {{ padding: 0; }}\nheader.cui-sticky, main, footer:not(:is(article, section, aside, main) footer) {{ box-sizing: border-box; padding-inline: var(--cui-gutter); }}\n"
@@ -352,6 +362,9 @@ fn look_css(page: &PageParts) -> String {
             "h1 { font-size: clamp(2.1rem, 4.6vw, 3.05rem); line-height: 1.02; letter-spacing: -0.035em; font-weight: 800; margin: 0 0 1.1rem; }\n",
             "h1 em { font-style: normal; color: var(--cui-accent, LinkText); }\n",
             "h2 { font-size: clamp(1.6rem, 3.4vw, 2rem); line-height: 1.18; letter-spacing: -0.025em; font-weight: 700; margin: 0 0 0.6rem; }\n",
+            ".cui-card h3 { font-size: 1.35rem; line-height: 1.25; letter-spacing: -0.02em; margin: 0; }\n",
+            ".cui-card > p:not([data-style]), .cui-card .cui-col > p:not([data-style]) { margin: 0; font-size: 0.93rem; }\n",
+            ".cui-card .cui-row a { font-size: 0.88rem; }\n",
             "h3, .cui-card h2, .cui-cards h2 { font-size: 1.05rem; line-height: 1.6; letter-spacing: normal; font-weight: 700; margin: 0 0 0.25rem; }\n",
             ".cui-grid:not([class*=\"cui-gap-\"]) { gap: 1rem; }\n",
             "main > section > .cui-reveal { margin-top: 1.2rem; }\n",
@@ -371,7 +384,7 @@ fn look_css(page: &PageParts) -> String {
 }
 
 /// What a sticky `Header` adds: room above an anchor, 4rem (the header's least height) and one rem more, until the script has measured the header.
-const STICKY_CSS: &str = "<style>html { scroll-padding-top: calc(var(--cui-header-h, 4rem) + 1rem); }\n.cui-sticky > .cui-row { margin-inline-start: auto; }\n.cui-sticky > img, .cui-sticky > picture { flex: none; margin-inline-end: -0.5rem; }\n.cui-sticky > img, .cui-sticky > picture img { display: block; width: 1.7rem; height: 1.7rem; border-radius: 50%; }\n.cui-sticky > nav { display: none; }\n.cui-sticky > nav a { text-decoration: none; }\n.cui-sticky .cui-chip { text-transform: none; letter-spacing: 0; }\n.cui-sticky .cui-row a { font-size: 0.85rem; font-weight: 600; }\n@media (max-width: 39.99rem) { .cui-sticky > :has(> .cui-chip) { display: none; } }\n@media (min-width: 62rem) { .cui-sticky > nav { display: flex; margin-inline-start: 0.5rem; } .cui-sticky details { display: none; } }</style>\n";
+const STICKY_CSS: &str = "<style>html { scroll-padding-top: calc(var(--cui-header-h, 4rem) + 1rem); }\n.cui-sticky > .cui-row { margin-inline-start: auto; align-self: center; }\n.cui-sticky > img, .cui-sticky > picture { flex: none; margin-inline-end: -0.5rem; }\n.cui-sticky > img, .cui-sticky > picture img { display: block; width: 1.7rem; height: 1.7rem; border-radius: 50%; }\n.cui-sticky > nav { display: none; }\n.cui-sticky > nav a { text-decoration: none; }\n.cui-sticky .cui-chip { text-transform: none; letter-spacing: 0; }\n.cui-sticky .cui-row a { font-size: 0.85rem; font-weight: 600; }\n.cui-sticky summary { display: grid; place-items: center; min-width: 44px; font-size: 0; list-style: none; }\n.cui-sticky summary::-webkit-details-marker { display: none; }\n.cui-sticky summary::before { content: \"\"; display: block; width: 1.25rem; height: 2px; background: currentColor; box-shadow: 0 -6px 0 currentColor, 0 6px 0 currentColor; }\n@media (max-width: 29.99rem) { .cui-sticky .cui-row > a { display: none; } }\n@media (max-width: 39.99rem) { .cui-sticky > :has(> .cui-chip) { display: none; } }\n@media (min-width: 62rem) { .cui-sticky > nav { display: flex; margin-inline-start: 0.5rem; } .cui-sticky details { display: none; } }</style>\n";
 /// Measures the sticky header (it may be taller than 4rem when its content wraps) and keeps `--cui-header-h` equal to it: at once, when the
 /// document is parsed, at load, when the window is resized and when a font arrives. Inline, so the page does not wait for `app.js`.
 const STICKY_JS: &str = "<script>(function(){var h,r=document.documentElement;function s(){if(!h){h=document.querySelector('.cui-sticky');if(h&&window.ResizeObserver){new ResizeObserver(s).observe(h)}}if(h){r.style.setProperty('--cui-header-h',h.offsetHeight+'px')}}s();addEventListener('DOMContentLoaded',s);addEventListener('load',s);addEventListener('resize',s);if(document.fonts&&document.fonts.ready){document.fonts.ready.then(s)}})()</script>\n";
