@@ -317,3 +317,10 @@ Designed and measured in [`www-port/look.md`](www-port/look.md): what the cancho
 Measured by `scripts/pixel-diff-www.js`: [`www-port/look.md`](www-port/look.md) section 6 (mean 33.8 % to 29.7 %).
 
 The baseline rules of the first three are written **only for a program that uses one** (`cancho_ui_ir::page::uses_look_roles`), so every other page, and every committed gallery demo, is the bytes it was; the rule of the end group is in the sticky header's own `<style>`.
+
+### 12.1 Round two (2026-10-29, [`www-port/look2.md`](www-port/look2.md))
+
+* **`card: true`** is also taken by a `Column`, a `Row` and a `Link` (a block card).
+* **`overlay: true`** on a `Column`: the first child is a picture, the second a label over its top-start corner, the third a panel over its bottom. **`overlay: "banner"`**: the first child is a picture that fills the block, the rest is its text over it. `overlay-invalid`.
+* **`from: 40 | 48 | 60`** on a `Grid`: the cells stack under that window width in rem, whatever the column's. `grid-from-invalid`.
+* A sticky `Header`'s direct children: an `Image` is its round mark, a `Nav` is its inline nav from 62 rem (a `Details` of the header is hidden from 62 rem), a `Chip` is hidden under 40 rem.

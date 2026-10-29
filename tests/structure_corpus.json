@@ -272,6 +272,11 @@
    "name": "a list whose items are cards",
    "view": "List { card: true Item { \"a\" } Item { \"b\" } } List { ordered: true card: true Item { \"c\" } }",
    "html": "<div class=\"cui-col\"><ul class=\"cui-cards\"><li><span>a</span></li><li><span>b</span></li></ul><ol class=\"cui-cards\"><li><span>c</span></li></ol></div>"
+  },
+  {
+   "name": "cards that are a column, a row and a link; a column that overlays; a grid that stacks under a window width",
+   "view": "Column { card: true Text { \"a\" } } Row { card: true Text { \"b\" } } Link { to: \"https://a.example/\" card: true \"c\" } Column { overlay: true Text { \"d\" } Text { \"e\" } } Column { overlay: \"banner\" Text { \"f\" } Heading { level: 2 \"g\" } } Grid { min: 9 from: 60 Text { \"h\" } }",
+   "html": "<div class=\"cui-col\"><div class=\"cui-col cui-card\"><span>a</span></div><div class=\"cui-row cui-card\"><span>b</span></div><a class=\"cui-card\" href=\"https://a.example/\">c</a><div class=\"cui-col cui-overlay\"><span>d</span><span>e</span></div><div class=\"cui-col cui-overlay cui-overlay-banner\"><span>f</span><h2>g</h2></div><div class=\"cui-grid cui-from-60\" style=\"--cui-min: 9rem;\"><span>h</span></div></div>"
   }
  ],
  "refusals": [
@@ -1262,13 +1267,13 @@
    "code": "parse-unexpected-token"
   },
   {
-   "name": "a card on a column",
-   "view": "Column { card: true Text { \"x\" } }",
+   "name": "a card on a nav",
+   "view": "Nav { card: true Link { to: \"#a\" \"a\" } }",
    "code": "binding-unknown"
   },
   {
-   "name": "a card on a link",
-   "view": "Link { to: \"https://a.example/\" card: true \"x\" }",
+   "name": "a card on a heading",
+   "view": "Heading { level: 2 card: true \"x\" }",
    "code": "binding-unknown"
   },
   {
@@ -1295,6 +1300,36 @@
    "name": "a card on a list that is a text",
    "view": "List { card: \"yes\" Item { \"a\" } }",
    "code": "card-invalid"
+  },
+  {
+   "name": "an overlay that is a text",
+   "view": "Column { overlay: \"yes\" Text { \"x\" } }",
+   "code": "overlay-invalid"
+  },
+  {
+   "name": "an overlay that is a number",
+   "view": "Column { overlay: 1 Text { \"x\" } }",
+   "code": "overlay-invalid"
+  },
+  {
+   "name": "an overlay on a row",
+   "view": "Row { overlay: true Text { \"x\" } }",
+   "code": "binding-unknown"
+  },
+  {
+   "name": "a grid that stacks from 50",
+   "view": "Grid { min: 9 from: 50 Text { \"x\" } }",
+   "code": "grid-from-invalid"
+  },
+  {
+   "name": "a grid that stacks from a text",
+   "view": "Grid { min: 9 from: \"60\" Text { \"x\" } }",
+   "code": "grid-from-invalid"
+  },
+  {
+   "name": "from on a column",
+   "view": "Column { from: 60 Text { \"x\" } }",
+   "code": "binding-unknown"
   }
  ],
  "assets": {

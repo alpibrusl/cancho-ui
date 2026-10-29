@@ -201,6 +201,8 @@ fn every_refusal_of_the_corpus_is_refused_by_its_tag() {
         "grid-weights-invalid",
         "grid-align-invalid",
         "card-invalid",
+        "overlay-invalid",
+        "grid-from-invalid",
         "layout-value-invalid",
         "asset-missing",
         "asset-too-large",

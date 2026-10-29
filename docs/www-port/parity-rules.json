@@ -2,44 +2,12 @@
  "about": "docs/www-port/parity.md: every difference measured by scripts/parity-www.js is explained by the first rule that matches its kind, section and side. A difference no rule matches is UNEXPLAINED. Classes: intentional (a decision in dropped.md or gaps.md), defect (open) (a fault of the port, listed in parity.md).",
  "rules": [
   {
-   "kind": "text",
-   "match": "^(phone only: |desktop only: )?(pre-1\\.0 · alpha )?try it trust evidence",
-   "class": "intentional",
-   "why": "the inline section links of the header (and the human/agent switch) are not in the port: the menu has them at every width",
-   "ref": "J4, J5, dropped.md 1 and 3",
-   "side": "page"
-  },
-  {
-   "kind": "nojs",
-   "match": "^(phone only: |desktop only: )?(pre-1\\.0 · alpha )?try it trust evidence",
-   "class": "intentional",
-   "why": "the inline section links of the header (and the human/agent switch) are not in the port: the menu has them at every width",
-   "ref": "J4, J5, dropped.md 1 and 3",
-   "side": "page"
-  },
-  {
    "kind": "width",
    "match": "^(phone only: |desktop only: )?(pre-1\\.0 · alpha )?try it trust evidence",
    "class": "intentional",
    "why": "the inline section links of the header (and the human/agent switch) are not in the port: the menu has them at every width",
    "ref": "J4, J5, dropped.md 1 and 3",
    "side": "page"
-  },
-  {
-   "kind": "text",
-   "match": "^menu$",
-   "class": "intentional",
-   "why": "the menu button is text (\"Menu\") and not the three bars of an icon",
-   "ref": "J2, dropped.md 2",
-   "side": "port"
-  },
-  {
-   "kind": "nojs",
-   "match": "^menu$",
-   "class": "intentional",
-   "why": "the menu button is text (\"Menu\") and not the three bars of an icon",
-   "ref": "J2, dropped.md 2",
-   "side": "port"
   },
   {
    "kind": "text",
@@ -376,13 +344,6 @@
   },
   {
    "kind": "ax",
-   "match": "^navigation:",
-   "class": "intentional",
-   "why": "the port's navigation is inside the closed menu, so the tree has none until it is opened",
-   "ref": "J5, dropped.md 3"
-  },
-  {
-   "kind": "ax",
    "match": "^paragraph:",
    "class": "intentional",
    "why": "the port writes a paragraph (`Rich`) where the page has a span or a div"
@@ -510,6 +471,46 @@
    "class": "intentional",
    "why": "the port's detail pane is named (see the row for the page's)",
    "ref": "dropped.md 13",
+   "side": "port"
+  },
+  {
+   "kind": "text",
+   "match": "^human agent$",
+   "class": "intentional",
+   "why": "the human/agent switch of the header is not in the port: it is a script that rewrites the page's text, and a declared role for it was judged not worth its surface (look2.md section 2)",
+   "ref": "dropped.md 1, look2.md 2",
+   "side": "page"
+  },
+  {
+   "kind": "nojs",
+   "match": "^human agent$",
+   "class": "intentional",
+   "why": "the human/agent switch of the header is not in the port: it is a script that rewrites the page's text, and a declared role for it was judged not worth its surface (look2.md section 2)",
+   "ref": "dropped.md 1, look2.md 2",
+   "side": "page"
+  },
+  {
+   "kind": "landmark",
+   "match": "^nav \"Sections\"$",
+   "class": "intentional",
+   "why": "the page's one header nav is the port's two: the inline `Page sections` from 62 rem and the `Menu` under it (a script-free swap by CSS), each with its own label",
+   "ref": "look2.md 1",
+   "side": "page"
+  },
+  {
+   "kind": "landmark",
+   "match": "^nav \"(Page sections|Menu)\"$",
+   "class": "intentional",
+   "why": "the page's one header nav is the port's two: the inline `Page sections` from 62 rem and the `Menu` under it (a script-free swap by CSS), each with its own label",
+   "ref": "look2.md 1",
+   "side": "port"
+  },
+  {
+   "kind": "width",
+   "match": "^phone only: menu$",
+   "class": "intentional",
+   "why": "the menu button is text and not the three bars of an icon, and is shown under 62 rem",
+   "ref": "J2, dropped.md 2",
    "side": "port"
   }
  ]

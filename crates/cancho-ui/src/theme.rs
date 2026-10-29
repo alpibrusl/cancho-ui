@@ -209,7 +209,9 @@ pub fn css(theme: &IrTheme) -> String {
     if find("body").is_some() {
         s.push_str("body { font-family: var(--cui-font); }\n");
     }
+    s.push_str(".cui-sticky > nav a { color: var(--cui-muted); }\n.cui-sticky .cui-chip { border-color: transparent; }\n");
     if find("mono").is_some() {
+        s.push_str(".cui-sticky .cui-row a { font-family: var(--cui-mono); }\n");
         s.push_str("code, pre, kbd, samp { font-family: var(--cui-mono); }\n");
     }
     s.push_str("a { color: var(--cui-accent); }\n");
@@ -250,12 +252,14 @@ pub fn css(theme: &IrTheme) -> String {
     );
     s.push_str("@media (prefers-color-scheme: dark) { .cui-sticky { border-bottom-color: var(--cui-line); box-shadow: none; } }\n");
     s.push_str(".cui-card, .cui-cards > li { background: var(--cui-surface); border-color: transparent; box-shadow: var(--cui-shadow); }\n");
+    s.push_str(".cui-overlay:not(.cui-overlay-banner) > :nth-child(n+2) { background: var(--cui-surface); color: var(--cui-fg); box-shadow: var(--cui-shadow); }\n");
     s.push_str("a.cui-link-pill { color: var(--cui-warn); background-color: var(--cui-warn-bg); box-shadow: inset 0 0 0 1px var(--cui-warn-line); }\n");
     if find("mono").is_some() {
-        s.push_str("[data-style=\"eyebrow\"], [data-style=\"label\"], .cui-sticky > a:first-child { font-family: var(--cui-mono); }\n");
-        s.push_str(".cui-sticky > a:first-child { color: var(--cui-fg); font-weight: 700; text-decoration: none; }\n");
+        s.push_str("[data-style=\"eyebrow\"], [data-style=\"label\"], .cui-sticky > a:first-of-type { font-family: var(--cui-mono); }\n");
+        s.push_str(".cui-sticky > a:first-of-type { color: var(--cui-fg); font-weight: 700; text-decoration: none; }\n");
     }
     s.push_str("a.cui-skip { background: var(--cui-accent); color: var(--cui-accent-fg); }\n");
+    s.push_str(":not(pre) > code { background: var(--cui-soft); }\n");
     s.push_str(".cui-code { background: var(--cui-code-bg); color: var(--cui-code-fg); }\n");
     s.push_str(":focus-visible { outline: 3px solid var(--cui-accent); outline-offset: 2px; }\n");
     s

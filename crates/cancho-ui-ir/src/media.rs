@@ -40,6 +40,8 @@ pub const WEIGHTS_LEN: (usize, usize) = (2, 4);
 pub const WEIGHT_RANGE: (f64, f64) = (1.0, 4.0);
 /// The `align:` of a `Grid`: `start` is the default (the cells stretch), `center` centres each cell on the row's cross axis.
 pub const GRID_ALIGNS: &[&str] = &["stretch", "center"];
+/// The `from:` of a `Grid`: the width of the window, in rem, under which the cells stack whatever the width of the column (a viewport rule, as the page's own).
+pub const GRID_FROMS: &[i64] = &[40, 48, 60];
 /// How many sources a `Media` has.
 pub const SOURCES_MAX: usize = 4;
 /// The largest file of the site a program may name, in bytes (`asset-too-large`).
@@ -77,7 +79,7 @@ fn keys(kind: &IrElementKind) -> &'static [&'static str] {
             "priority",
         ],
         IrElementKind::Media => &["kind", "src", "poster", "ratio", "caption", "transcript"],
-        IrElementKind::Grid => &["min", "weights", "gap", "align"],
+        IrElementKind::Grid => &["min", "weights", "gap", "align", "from"],
         _ => &[],
     }
 }
@@ -98,6 +100,7 @@ const OWN_KEYS: &[&str] = &[
     "min",
     "weights",
     "align",
+    "from",
 ];
 
 fn refuse(code: &'static str, message: String, span: Span) -> LowerError {
@@ -276,7 +279,7 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                             "Image"
                         }
                         "poster" | "caption" | "transcript" => "Media",
-                        "min" | "weights" | "align" => "Grid",
+                        "min" | "weights" | "align" | "from" => "Grid",
                         _ => "Image and Media",
                     }
                 ),
@@ -440,6 +443,17 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                 format!(
                     "`align:` is one of {} as a string literal: how the cells of a Grid sit across its rows",
                     GRID_ALIGNS.join(", ")
+                ),
+                b.span,
+            )),
+        },
+        "from" => match int_of(b) {
+            Some(n) if GRID_FROMS.contains(&n) => Ok(true),
+            _ => Err(refuse(
+                "grid-from-invalid",
+                format!(
+                    "`from:` is one of {} as an integer literal: the window width in rem under which the cells of a Grid stack",
+                    GRID_FROMS.iter().map(i64::to_string).collect::<Vec<_>>().join(", ")
                 ),
                 b.span,
             )),
@@ -758,6 +772,11 @@ pub fn class(kind: &IrElementKind, bindings: &[IrBinding]) -> Option<String> {
     }
     if find(bindings, "align").and_then(string_of) == Some("center") {
         c.push("cui-align-center");
+    }
+    let from = find(bindings, "from").and_then(int_of);
+    let from_class = from.map(|n| format!("cui-from-{n}"));
+    if let Some(f) = &from_class {
+        c.push(f);
     }
     (!c.is_empty()).then(|| c.join(" "))
 }
