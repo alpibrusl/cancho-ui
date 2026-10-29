@@ -1,0 +1,84 @@
+{
+ "checks": [
+  {
+   "name": "cargo test look",
+   "argv": [
+    "cargo",
+    "test",
+    "--quiet",
+    "-p",
+    "cancho-ui",
+    "--test",
+    "look"
+   ]
+  },
+  {
+   "name": "cargo test structure (corpus)",
+   "argv": [
+    "cargo",
+    "test",
+    "--quiet",
+    "-p",
+    "cancho-ui",
+    "--test",
+    "structure"
+   ]
+  }
+ ],
+ "breaks": [
+  {
+   "name": "a Link card has no class",
+   "file": "crates/cancho-ui-ir/src/structure.rs",
+   "from": "(true, None) => Some(\"cui-card\".to_string()),",
+   "to": "(true, None) => None,"
+  },
+  {
+   "name": "a banner overlay is an overlay panel",
+   "file": "crates/cancho-ui-ir/src/structure.rs",
+   "from": "return Some(\"cui-overlay cui-overlay-banner\".to_string());",
+   "to": "return Some(\"cui-overlay\".to_string());"
+  },
+  {
+   "name": "a grid may stack from 50",
+   "file": "crates/cancho-ui-ir/src/media.rs",
+   "from": "pub const GRID_FROMS: &[i64] = &[40, 48, 60];",
+   "to": "pub const GRID_FROMS: &[i64] = &[40, 48, 50, 60];"
+  },
+  {
+   "name": "the grid that stacks has no class",
+   "file": "crates/cancho-ui-ir/src/media.rs",
+   "from": "let from_class = from.map(|n| format!(\"cui-from-{n}\"));",
+   "to": "let from_class: Option<String> = from.map(|_| String::new());"
+  },
+  {
+   "name": "the inline nav shows under 62 rem",
+   "file": "crates/cancho-ui/src/pwa.rs",
+   "from": "@media (min-width: 62rem) { .cui-sticky > nav { display: flex;",
+   "to": "@media (min-width: 40rem) { .cui-sticky > nav { display: flex;"
+  },
+  {
+   "name": "the menu stays at 62 rem",
+   "file": "crates/cancho-ui/src/pwa.rs",
+   "from": ".cui-sticky details { display: none; }",
+   "to": ".cui-sticky detailsx { display: none; }"
+  },
+  {
+   "name": "the chip stays under 40 rem",
+   "file": "crates/cancho-ui/src/pwa.rs",
+   "from": "@media (max-width: 39.99rem) { .cui-sticky > :has(> .cui-chip) { display: none; } }",
+   "to": "@media (max-width: 39.99rem) { .cui-sticky > :has(> .cui-chipx) { display: none; } }"
+  },
+  {
+   "name": "the banner text is under its picture",
+   "file": "crates/cancho-ui/src/pwa.rs",
+   "from": ".cui-overlay-banner > :nth-child(n+2) { position: relative;",
+   "to": ".cui-overlay-banner > :nth-child(n+2) { position: static;"
+  },
+  {
+   "name": "every page has the overlay rules",
+   "file": "crates/cancho-ui-ir/src/page.rs",
+   "from": "|| bindings.iter().any(|b| b.key == \"overlay\");",
+   "to": "|| true;"
+  }
+ ]
+}

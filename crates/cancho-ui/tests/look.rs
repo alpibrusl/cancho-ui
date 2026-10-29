@@ -99,7 +99,7 @@ fn a_program_that_uses_none_of_the_roles_is_the_page_it_was() {
 #[test]
 fn the_roles_are_in_the_dom_and_their_rules_are_written_once() {
     let (html, js) = page_of(&program(PAGE, ROLES));
-    assert_eq!(html.matches(".cui-card {").count(), 1, "{html}");
+    assert_eq!(html.matches("\n.cui-card {").count(), 1, "{html}");
     assert_eq!(html.matches(".cui-align-center {").count(), 1);
     assert_eq!(html.matches("a.cui-link-pill {").count(), 1);
     // a pill is a 44 px target (the drawn pill is smaller: the transparent border is the target)
@@ -142,8 +142,8 @@ fn the_roles_are_refused_with_their_tags() {
             "card-invalid",
         ),
         (
-            "card on a column",
-            "Column { card: true Text { \"a\" } }",
+            "card on a nav",
+            "Nav { card: true Link { to: \"#a\" \"a\" } }",
             "binding-unknown",
         ),
         (
@@ -363,4 +363,44 @@ fn a_list_of_cards_is_a_grid_of_cards() {
     assert!(html.contains("<ol class=\"cui-cards\">") || js.contains("cui-cards"));
     assert_eq!(html.matches(".cui-cards {").count(), 1);
     assert_eq!(html.matches(".cui-cards > li {").count(), 1);
+}
+
+#[test]
+fn round_two_roles_have_their_classes_and_rules() {
+    let (html, js) = page_of(&program(
+        PAGE,
+        "Column { card: true Text { \"a\" } } Link { to: \"https://a.example/\" card: true \"c\" } Column { overlay: \"banner\" Text { \"f\" } Heading { level: 2 \"g\" } } Column { overlay: true Text { \"d\" } Text { \"e\" } } Grid { min: 9 weights: [1, 2] from: 60 Text { \"h\" } Text { \"i\" } }",
+    ));
+    for want in [
+        "class=\"cui-col cui-card\"",
+        "class=\"cui-card\">c",
+        "cui-overlay cui-overlay-banner",
+        "cui-grid-w cui-from-60\"",
+        "\na.cui-card { display: block;",
+        "@media (max-width: 59.99rem) { .cui-from-60.cui-grid-w > * { flex-basis: 100%; }",
+        ".cui-overlay-banner { position: relative;",
+        ".cui-overlay-banner > :nth-child(n+2) { position: relative;",
+    ] {
+        assert!(html.contains(want) || js.contains(want), "{want}");
+    }
+    // none of it for a page that uses none
+    let (plain, _) = page_of(&program(PAGE, "Text { \"x\" }"));
+    assert!(!plain.contains("cui-overlay") && !plain.contains("cui-from-"));
+}
+
+#[test]
+fn a_sticky_header_has_a_mark_an_inline_nav_and_a_menu_that_swap() {
+    let (html, _) = page_of(&program(
+        PAGE,
+        "Header { sticky: true Link { to: \"#a\" \"cancho\" } Nav { label: \"Page\" Link { to: \"#a\" \"A\" } } Row { Details { summary: \"Menu\" Nav { label: \"Menu\" Link { to: \"#a\" \"A\" } } } } } Main { id: \"main\" Section { id: \"a\" Text { \"x\" } } }",
+    ));
+    for want in [
+        ".cui-sticky > nav { display: none; }",
+        "@media (min-width: 62rem) { .cui-sticky > nav { display: flex;",
+        ".cui-sticky details { display: none; }",
+        "@media (max-width: 39.99rem) { .cui-sticky > :has(> .cui-chip) { display: none; } }",
+        ".cui-sticky > img, .cui-sticky > picture img { display: block;",
+    ] {
+        assert!(html.contains(want), "{want}");
+    }
 }

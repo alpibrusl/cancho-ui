@@ -4,13 +4,13 @@
   {
    "section": "header",
    "class": "intentional",
-   "why": "the brand (no logo), a warn chip, GitHub and a Menu button, on a sticky bar that is the page colour at 86 % over a blur (`look.md`); no inline links, no human/agent switch, no star icon, and the chip stays under 40 rem where the page hides it; the menu is the only navigation (looked at, 1280 and 412, light)",
+   "why": "the mark (not inside the brand link), a warn chip (hidden under 40 rem), the inline nav from 62 rem and the Menu under it, and a GitHub link button; no human/agent switch and no star icon (look2.md 1 and 2)",
    "ref": "dropped.md 1, 2, 3"
   },
   {
    "section": "top",
    "class": "intentional",
-   "why": "two columns from about 62 rem (text 7 : 5 beside the drawing), stacked below, a display-size title with the second line in the accent colour, the pill link; **not** the page's card around the drawing with the caption and the quote laid over it (they are under it, so the port is 129 px taller at 1280), the principles are a bullet list and not a strip, the bet line is plain text (looked at, 1280 and 412)",
+   "why": "two columns that stack at the window's 60 rem, a display title, the pill link, the drawing in a card with its label and panel laid over it; not the dark chip label, the principles strip with separators, or the page's proportions (look2.md 5)",
    "ref": "dropped.md 10, 12"
   },
   {
@@ -64,13 +64,13 @@
   {
    "section": "agents",
    "class": "intentional",
-   "why": "the switch sentence is gone; the section's dark picture is an image block above the heading (the page lays the heading over it as a banner); the five endpoints are a plain list (a card list in a half-width cell was measured taller, 1,632 px, and not kept); the pane is a bordered code box bounded to 16 rem",
+   "why": "the picture is a banner with the heading and lead over it (`overlay: \"banner\"`), 758 px against 742; the endpoints are a plain list and the pane a bordered code box, not the page's cards and dark panel (look2.md)",
    "ref": "dropped.md 1, 5, 10"
   },
   {
    "section": "next",
    "class": "intentional",
-   "why": "the six steps are links in a grid, without the page's card around each (a `Link` takes no `card:`)",
+   "why": "the six steps are card links (`Link { card: true }`) in a grid, with more padding than the page's (416 px against 361)",
    "ref": "dropped.md 10"
   },
   {

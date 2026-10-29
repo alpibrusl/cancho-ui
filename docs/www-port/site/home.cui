@@ -192,14 +192,26 @@ component Home {
         Column {
             Header {
                 sticky: true
+                Image { src: "logo-mark.png" decorative: true width: 32 height: 32 }
                 Link { to: "#top" "cancho" }
                 Rich { Chip { tone: "warn" "Pre-1.0 · alpha" } }
+                Nav {
+                    label: "Page sections"
+                    Link { to: "#try" "Try it" }
+                    Link { to: "#trust" "Trust" }
+                    Link { to: "#verifies" "Evidence" }
+                    Link { to: "#ecosystem" "Ecosystem" }
+                    Link { to: "#demo" "Demo" }
+                    Link { to: "#agents" "Agents" }
+                    Link { to: "https://alpibru.com/manifesto" "Manifesto" }
+                    Link { to: "https://alpibrusl.github.io/cancho/" "Docs" }
+                }
                 Row {
                     Link { to: "https://github.com/alpibrusl/cancho" appearance: "secondary" "GitHub" }
                     Details {
                         summary: "Menu"
                         Nav {
-                            label: "Sections"
+                            label: "Menu"
                             Link { to: "#try" "Try it" }
                             Link { to: "#trust" "Trust" }
                             Link { to: "#verifies" "Evidence" }
@@ -218,8 +230,9 @@ component Home {
                 Section {
                     id: "top"
                     Grid {
-                        min: 26
+                        min: 22
                         weights: [1.4, 1]
+                        from: 60
                         gap: 4
                         align: "center"
                         Column {
@@ -236,6 +249,8 @@ component Home {
                             List { Item { "No ambient authority" } Item { "Content-addressed" } Item { "Diagnostics as data" } }
                         }
                         Column {
+                            overlay: true
+                            card: true
                             Hero { }
                             Rich { "cancho · Spanish for a boulder" }
                             Rich { Strong { "Comprehension was a strategy." } " It is not the only one. " Link { to: "https://alpibru.com/manifesto" "Trust Without Comprehension" } }
@@ -775,10 +790,13 @@ component Home {
                 Column { max_width: 10 Cairn { seed: 8 } }
                 Section {
                     id: "agents"
-                    Image { src: "assets/img/lichen.webp" fallback: "assets/img/lichen.jpg" decorative: true width: 1024 height: 768 ratio: "4:3" }
-                    Text { style: "eyebrow" "For agents" }
-                    Heading { level: 2 "The same page, as data." }
-                    Text { style: "lead" "Read this site the way an agent does, or fetch it. Every number and every project above comes from one JSON file." }
+                    Column {
+                        overlay: "banner"
+                        Image { src: "assets/img/lichen.webp" fallback: "assets/img/lichen.jpg" decorative: true width: 1024 height: 768 ratio: "4:3" }
+                        Text { style: "eyebrow" "For agents" }
+                        Heading { level: 2 "The same page, as data." }
+                        Text { style: "lead" "Read this site the way an agent does, or fetch it. Every number and every project above comes from one JSON file." }
+                    }
                     Grid {
                         min: 19
                         List {
@@ -801,12 +819,12 @@ component Home {
                     Reveal {
                         Grid {
                             min: 15
-                            Link { to: "#demo" Strong { "Curious developer" } Break { } "Watch the recorded session" }
-                            Link { to: "#try" Strong { "New user" } Break { } "Run the compiler on a first program" }
-                            Link { to: "https://alpibrusl.github.io/cancho/" Strong { "Systems engineer" } Break { } "Read the docs and the source" }
-                            Link { to: "https://github.com/alpibrusl/cancho/blob/main/CONTRIBUTING.md" Strong { "Contributor" } Break { } "Read how the compiler is worked on" }
-                            Link { to: "#verifies" Strong { "Evaluating it" } Break { } "What is verified, and what is not" }
-                            Link { to: "agents.md" Strong { "An AI agent" } Break { } "Fetch " Code { "agents.md" } }
+                            Link { card: true to: "#demo" Strong { "Curious developer" } Break { } "Watch the recorded session" }
+                            Link { card: true to: "#try" Strong { "New user" } Break { } "Run the compiler on a first program" }
+                            Link { card: true to: "https://alpibrusl.github.io/cancho/" Strong { "Systems engineer" } Break { } "Read the docs and the source" }
+                            Link { card: true to: "https://github.com/alpibrusl/cancho/blob/main/CONTRIBUTING.md" Strong { "Contributor" } Break { } "Read how the compiler is worked on" }
+                            Link { card: true to: "#verifies" Strong { "Evaluating it" } Break { } "What is verified, and what is not" }
+                            Link { card: true to: "agents.md" Strong { "An AI agent" } Break { } "Fetch " Code { "agents.md" } }
                         }
                     }
                 }

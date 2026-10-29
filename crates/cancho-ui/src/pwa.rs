@@ -309,6 +309,24 @@ main[tabindex="-1"]:focus { outline: none; }
 /// target drawn 30 px tall: the transparent border is the target and the inset shadow the drawn edge.
 const ROLES_CSS: &str = r#".cui-card { box-sizing: border-box; padding: 1.1rem 1.2rem 1.3rem; border-radius: 16px; border: 1px solid color-mix(in srgb, currentColor 20%, transparent); }
 .cui-align-center { align-items: center; }
+.cui-overlay { display: grid; }
+.cui-overlay.cui-card { padding: 0; overflow: hidden; }
+.cui-overlay > * { grid-area: 1 / 1; min-width: 0; }
+.cui-overlay > :nth-child(n+2) { box-sizing: border-box; margin: 0.75rem; padding: 0.5rem 0.8rem; border-radius: 12px; background: Canvas; color: CanvasText; z-index: 1; }
+.cui-overlay:not(.cui-overlay-banner) > :nth-child(n+2) { font-size: 0.9rem; }
+.cui-overlay > :nth-child(2) { align-self: start; justify-self: start; }
+.cui-overlay > :nth-child(3) { align-self: end; }
+.cui-overlay-banner { position: relative; min-height: 11rem; align-content: center; border-radius: 16px; overflow: hidden; color: #fff; }
+.cui-overlay-banner > :first-child { position: absolute; inset: 0; background: #0b1016; }
+.cui-overlay-banner > :first-child img { display: block; width: 100%; height: 100%; max-width: none; aspect-ratio: auto; object-fit: cover; }
+.cui-overlay-banner > picture:first-child { max-width: none !important; }
+.cui-overlay-banner > :nth-child(n+2) { position: relative; grid-area: auto; grid-column: 1; background: none; color: inherit; margin: 0; padding: 0 1.5rem; align-self: auto; justify-self: auto; max-width: 40rem; }
+.cui-overlay-banner > :nth-child(2) { padding-top: 1.5rem; }
+.cui-overlay-banner > :last-child { padding-bottom: 1.5rem; }
+@media (max-width: 39.99rem) { .cui-from-40.cui-grid-w > * { flex-basis: 100%; } .cui-from-40:not(.cui-grid-w) { grid-template-columns: 1fr; } }
+@media (max-width: 47.99rem) { .cui-from-48.cui-grid-w > * { flex-basis: 100%; } .cui-from-48:not(.cui-grid-w) { grid-template-columns: 1fr; } }
+@media (max-width: 59.99rem) { .cui-from-60.cui-grid-w > * { flex-basis: 100%; } .cui-from-60:not(.cui-grid-w) { grid-template-columns: 1fr; } }
+a.cui-card { display: block; color: inherit; text-decoration: none; }
 .cui-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: 1rem; margin: 0; padding: 0; list-style-position: inside; }
 .cui-cards > li { box-sizing: border-box; padding: 1.1rem 1.1rem 1.2rem; border-radius: 16px; border: 1px solid color-mix(in srgb, currentColor 20%, transparent); }
 a.cui-link-pill { display: inline-flex; align-self: flex-start; align-items: center; box-sizing: border-box; min-height: 44px; padding: 0 0.6rem; border: 7px solid transparent; background-clip: padding-box; border-radius: 999px; box-shadow: inset 0 0 0 1px currentColor; font-size: 0.82rem; text-decoration: none; }
@@ -330,6 +348,7 @@ fn look_css(page: &PageParts) -> String {
     if page.display_scale {
         css.push_str(concat!(
             "body { line-height: 1.6; }\n",
+            ":not(pre) > code { padding: 0.08em 0.38em; border-radius: 6px; }\n",
             "h1 { font-size: clamp(2.1rem, 4.6vw, 3.05rem); line-height: 1.02; letter-spacing: -0.035em; font-weight: 800; margin: 0 0 1.1rem; }\n",
             "h1 em { font-style: normal; color: var(--cui-accent, LinkText); }\n",
             "h2 { font-size: clamp(1.6rem, 3.4vw, 2rem); line-height: 1.18; letter-spacing: -0.025em; font-weight: 700; margin: 0 0 0.6rem; }\n",
@@ -352,7 +371,7 @@ fn look_css(page: &PageParts) -> String {
 }
 
 /// What a sticky `Header` adds: room above an anchor, 4rem (the header's least height) and one rem more, until the script has measured the header.
-const STICKY_CSS: &str = "<style>html { scroll-padding-top: calc(var(--cui-header-h, 4rem) + 1rem); }\n.cui-sticky > .cui-row { margin-inline-start: auto; }</style>\n";
+const STICKY_CSS: &str = "<style>html { scroll-padding-top: calc(var(--cui-header-h, 4rem) + 1rem); }\n.cui-sticky > .cui-row { margin-inline-start: auto; }\n.cui-sticky > img, .cui-sticky > picture { flex: none; margin-inline-end: -0.5rem; }\n.cui-sticky > img, .cui-sticky > picture img { display: block; width: 1.7rem; height: 1.7rem; border-radius: 50%; }\n.cui-sticky > nav { display: none; }\n.cui-sticky > nav a { text-decoration: none; }\n.cui-sticky .cui-chip { text-transform: none; letter-spacing: 0; }\n.cui-sticky .cui-row a { font-size: 0.85rem; font-weight: 600; }\n@media (max-width: 39.99rem) { .cui-sticky > :has(> .cui-chip) { display: none; } }\n@media (min-width: 62rem) { .cui-sticky > nav { display: flex; margin-inline-start: 0.5rem; } .cui-sticky details { display: none; } }</style>\n";
 /// Measures the sticky header (it may be taller than 4rem when its content wraps) and keeps `--cui-header-h` equal to it: at once, when the
 /// document is parsed, at load, when the window is resized and when a font arrives. Inline, so the page does not wait for `app.js`.
 const STICKY_JS: &str = "<script>(function(){var h,r=document.documentElement;function s(){if(!h){h=document.querySelector('.cui-sticky');if(h&&window.ResizeObserver){new ResizeObserver(s).observe(h)}}if(h){r.style.setProperty('--cui-header-h',h.offsetHeight+'px')}}s();addEventListener('DOMContentLoaded',s);addEventListener('load',s);addEventListener('resize',s);if(document.fonts&&document.fonts.ready){document.fonts.ready.then(s)}})()</script>\n";

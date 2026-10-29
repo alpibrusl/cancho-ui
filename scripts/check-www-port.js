@@ -101,7 +101,7 @@ const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e
     check('B: the waffles\' data tables are in the accessibility tree once their <details> is opened (1 table with them closed, 4 open: a disclosure, not a hidden table)', closedTables === 1 && openTables === 4, `${closedTables} closed, ${openTables} open`);
     check('B: the five backtick pairs of the claims are <code>', r.code === 5, String(r.code));
     check('B: the three final numbers are in the HTML, and the waffles are drawn', JSON.stringify(r.counts) === JSON.stringify(['697', '256', '62']) && r.waffles >= 3, JSON.stringify(r.counts));
-    check('B: the pictures (4 img: the logo is no longer in a link, dropped.md 2) and the two videos are in the HTML', r.imgs === 4 && r.videos === 2, `${r.imgs} ${r.videos}`);
+    check('B: the pictures (5 img: the mark beside its brand link, which is no longer a link around the logo, dropped.md 2) and the two videos are in the HTML', r.imgs === 5 && r.videos === 2, `${r.imgs} ${r.videos}`);
     const rel = [...new Set(r.hrefs.filter((h) => !/^(https?:|mailto:|#)/.test(h)))].sort();
     check('B: the links to files of the site are the seven the page has', JSON.stringify(rel) === JSON.stringify(['agents.md', 'assets/media/ui-demo.mp4', 'data/ecosystem.json', 'demo/demo.cast', 'demo/demo.mp4', 'llms-full.txt', 'llms.txt'].sort()), JSON.stringify(rel));
     for (const f of rel) {

@@ -783,7 +783,9 @@ pub fn uses_look_roles(ir: &IrFile) -> bool {
                     b.key == "align"
                         && matches!(&b.value, IrBindingValue::String(s) if s == "center")
                 });
-            if crate::structure::is_card(bindings) || pill || center {
+            let wide = bindings.iter().any(|b| b.key == "from")
+                || bindings.iter().any(|b| b.key == "overlay");
+            if crate::structure::is_card(bindings) || pill || center || wide {
                 any = true;
             }
         });

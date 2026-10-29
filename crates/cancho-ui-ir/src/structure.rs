@@ -172,7 +172,9 @@ fn name(kind: &IrElementKind) -> &'static str {
 fn keys(kind: &IrElementKind) -> &'static [&'static str] {
     match kind {
         IrElementKind::Heading => &["level", "id"],
-        IrElementKind::Link => &["to", "appearance"],
+        IrElementKind::Link => &["to", "appearance", "card"],
+        IrElementKind::Column => &["card", "overlay"],
+        IrElementKind::Row => &["card"],
         IrElementKind::Details => &["summary", "id"],
         IrElementKind::Caption => &["id"],
         IrElementKind::Rich => &["style"],
@@ -339,8 +341,11 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
         "hidden",
         "ordered",
         "card",
+        "overlay",
     ];
-    let structure = is_structure(kind);
+    let structure = is_structure(kind)
+        || (b.key == "card" && matches!(kind, IrElementKind::Column | IrElementKind::Row))
+        || (b.key == "overlay" && matches!(kind, IrElementKind::Column));
     if !structure && !(NEW.contains(&b.key.as_str())) {
         return Ok(false);
     }
@@ -375,7 +380,8 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                     "copy" | "max_height" => "Code",
                     "sticky" => "Header",
                     "ordered" => "List",
-                    "card" => "Section, Article, Aside, Figure and List",
+                    "overlay" => "Column",
+                    "card" => "Section, Article, Aside, Figure, List, Column, Row and Link",
                     "visible" | "hidden" => "Section, Article, Aside and Figure",
                     _ => "the structure elements (Section, Article, Heading, ..)",
                 }
@@ -487,6 +493,17 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
             _ => Err(refuse(
                 "card-invalid",
                 "`card:` is `true` or `false`: `Article { card: true .. }` (docs/www-port/look.md section 3)".to_string(),
+                b.span,
+            )),
+        },
+        "overlay" => match &b.value {
+            IrBindingValue::Const { expr, .. } if matches!(**expr, IrExpr::BoolLit { .. }) => {
+                Ok(true)
+            }
+            _ if string_of(b) == Some("banner") => Ok(true),
+            _ => Err(refuse(
+                "overlay-invalid",
+                "`overlay:` is `true`, `false` or `\"banner\"`: `Column { overlay: true Hero { } Rich { \"..\" } }` (docs/www-port/look2.md)".to_string(),
                 b.span,
             )),
         },
@@ -843,6 +860,17 @@ pub fn class(kind: &IrElementKind, bindings: &[IrBinding]) -> Option<String> {
     if matches!(kind, IrElementKind::Header) {
         return is_sticky(bindings).then(|| "cui-sticky".to_string());
     }
+    if matches!(kind, IrElementKind::Column) {
+        if is_flag(bindings, "overlay") {
+            return Some("cui-overlay".to_string());
+        }
+        if bindings
+            .iter()
+            .any(|b| b.key == "overlay" && string_of(b) == Some("banner"))
+        {
+            return Some("cui-overlay cui-overlay-banner".to_string());
+        }
+    }
     if is_card(bindings) && matches!(kind, IrElementKind::List) {
         return Some("cui-cards".to_string());
     }
@@ -853,6 +881,8 @@ pub fn class(kind: &IrElementKind, bindings: &[IrBinding]) -> Option<String> {
                 | IrElementKind::Article
                 | IrElementKind::Aside
                 | IrElementKind::Figure
+                | IrElementKind::Column
+                | IrElementKind::Row
         )
     {
         return Some("cui-card".to_string());
@@ -872,11 +902,17 @@ pub fn class(kind: &IrElementKind, bindings: &[IrBinding]) -> Option<String> {
     if !matches!(kind, IrElementKind::Link) {
         return None;
     }
-    bindings
+    let look = bindings
         .iter()
         .find(|b| b.key == "appearance")
         .and_then(string_of)
-        .map(|a| format!("cui-link-{a}"))
+        .map(|a| format!("cui-link-{a}"));
+    // a link that is a card is the whole card: a block, drawn as the other cards (docs/www-port/look2.md)
+    match (is_card(bindings), look) {
+        (true, Some(l)) => Some(format!("cui-card {l}")),
+        (true, None) => Some("cui-card".to_string()),
+        (false, l) => l,
+    }
 }
 
 /// Whether a `List` is written `ordered: true`: an `<ol>`.
@@ -887,7 +923,15 @@ pub fn is_ordered(bindings: &[IrBinding]) -> bool {
     })
 }
 
-/// Whether a `Section`, `Article`, `Aside`, `Figure` or `List` is written `card: true`.
+/// Whether a key is written `true`.
+pub fn is_flag(bindings: &[IrBinding], key: &str) -> bool {
+    bindings.iter().any(|b| {
+        b.key == key
+            && matches!(&b.value, IrBindingValue::Const { expr, .. } if matches!(**expr, IrExpr::BoolLit { value: true, .. }))
+    })
+}
+
+/// Whether a `Section`, `Article`, `Aside`, `Figure`, `List`, `Column`, `Row` or `Link` is written `card: true`.
 pub fn is_card(bindings: &[IrBinding]) -> bool {
     bindings.iter().any(|b| {
         b.key == "card"
@@ -906,6 +950,7 @@ pub fn is_sticky(bindings: &[IrBinding]) -> bool {
 /// The bindings the structure recipe writes (`attrs`, `class`, a `Details`' summary): the generic binding loop skips them.
 pub fn handles(kind: &IrElementKind, key: &str) -> bool {
     (is_structure(kind) && keys(kind).contains(&key))
+        || (matches!(kind, IrElementKind::Column | IrElementKind::Row) && keys(kind).contains(&key))
         || (matches!(kind, IrElementKind::Text) && key == "style")
 }
 
