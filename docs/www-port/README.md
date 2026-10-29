@@ -10,6 +10,7 @@
 | [`dropped.md`](dropped.md) | **what the port drops or changes on purpose**, row by row, each with how to undo it |
 | [`gaps.md`](gaps.md) | PR A: what cancho-ui lacked, and the judgment calls |
 | [`status.md`](status.md) | **start here**: equal, different on purpose, regressed, open, and what a replacement would need |
+| [`look3.md`](look3.md) | round three, from a phone: the Copy pill, the card type, the hamburger; mean pixel difference 26.6 % to 24.9 % |
 | [`look2.md`](look2.md) | round two of the look: the header, the cards the language could not name, the hero's overlay, the `agents` banner; mean pixel difference 29.7 % to 26.6 % |
 | [`look.md`](look.md) | the roles of the look (`card:`, `align:`, a pill link, a header end group, `page { measure; scale }`): designed from a measurement, built, and measured again | 
 | [`pixel.md`](pixel.md), [`pixel-rules.json`](pixel-rules.json), [`pixel/`](pixel/) | the pixel diff at 360, 412, 768, 1024, 1280 and 1536 px, light and dark, and the contact sheets (`scripts/pixel-diff-www.js`) |

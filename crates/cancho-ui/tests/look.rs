@@ -125,7 +125,9 @@ fn a_sticky_header_has_its_end_group() {
         PAGE,
         "Header { sticky: true Link { to: \"#a\" \"cancho\" } Row { Link { to: \"https://a.example/\" \"GitHub\" } } } Main { id: \"main\" Section { id: \"a\" Text { \"x\" } } }",
     ));
-    assert!(html.contains(".cui-sticky > .cui-row { margin-inline-start: auto; }"));
+    assert!(
+        html.contains(".cui-sticky > .cui-row { margin-inline-start: auto; align-self: center; }")
+    );
 }
 
 #[test]
@@ -400,6 +402,48 @@ fn a_sticky_header_has_a_mark_an_inline_nav_and_a_menu_that_swap() {
         ".cui-sticky details { display: none; }",
         "@media (max-width: 39.99rem) { .cui-sticky > :has(> .cui-chip) { display: none; } }",
         ".cui-sticky > img, .cui-sticky > picture img { display: block;",
+    ] {
+        assert!(html.contains(want), "{want}");
+    }
+}
+
+#[test]
+fn a_copy_button_is_a_small_dark_pill_with_a_44_px_target_above_the_text() {
+    let src = "page { title: \"T\"; lang: \"en\"; }\ncomponent App {\n    requires Clipboard;\n    view { Code { copy: true \"$ cancho check\" } }\n}\n";
+    let (html, _) = page_of(src);
+    let (plain, _) = page_of(&program(PAGE, "Text { \"x\" }"));
+    assert!(!plain.contains(".cui-copy { position: absolute; top: calc("));
+    for want in [
+        ".cui-code[data-copy] pre { padding-top: 2.5rem; }",
+        ".cui-copy { position: absolute; top: calc(0.45rem - 7px); right: calc(0.45rem - 7px); box-sizing: border-box; min-height: 44px; padding: 0 0.6rem; border: 7px solid transparent;",
+        "background: #1a212b; background-clip: padding-box; box-shadow: inset 0 0 0 1px #2d3644;",
+    ] {
+        assert!(html.contains(want), "{want}");
+    }
+}
+
+#[test]
+fn a_sticky_header_has_a_hamburger_and_no_github_button_on_a_phone() {
+    let (html, _) = page_of(&program(
+        PAGE,
+        "Header { sticky: true Link { to: \"#a\" \"cancho\" } Row { Link { to: \"https://a.example/\" \"GitHub\" } Details { summary: \"Menu\" Nav { label: \"Menu\" Link { to: \"#a\" \"A\" } } } } } Main { id: \"main\" Section { id: \"a\" Text { \"x\" } } }",
+    ));
+    for want in [
+        ".cui-sticky summary { display: grid; place-items: center; min-width: 44px; font-size: 0;",
+        ".cui-sticky summary::before { content: \"\"; display: block; width: 1.25rem; height: 2px;",
+        "@media (max-width: 29.99rem) { .cui-sticky .cui-row > a { display: none; } }",
+    ] {
+        assert!(html.contains(want), "{want}");
+    }
+}
+
+#[test]
+fn the_display_scale_sets_a_cards_title_and_text_as_the_page_does() {
+    let page = "page { title: \"T\"; lang: \"en\"; scale: \"display\"; }";
+    let (html, _) = page_of(&program(page, "Text { \"x\" }"));
+    for want in [
+        ".cui-card h3 { font-size: 1.35rem;",
+        ".cui-card > p:not([data-style]), .cui-card .cui-col > p:not([data-style]) { margin: 0; font-size: 0.93rem; }",
     ] {
         assert!(html.contains(want), "{want}");
     }

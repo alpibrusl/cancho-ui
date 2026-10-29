@@ -134,8 +134,8 @@ Console errors: page 0, port 0.
 | width | header | page | desktop only: pre-1.0 · alpha try it trust evidence ecosystem demo agents manifesto docs | **intentional** | the inline section links of the header (and the human/agent switch) are not in the port: the menu has them at every width (J4, J5, dropped.md 1 and 3) |
 | width | header | page | desktop only: github | **intentional** | the GitHub link of the header is shown at every width in the port; on a phone the page hides it (J5, dropped.md 3) |
 | width | trust | page | desktop only: human tools, used by agents built for agents | **intentional** | on a phone the page hides the header row of its comparison; the port's table keeps it (dropped.md 7) |
-| width | header | port | desktop only: pre-1.0 · alpha try it trust evidence ecosystem demo agents manifesto docs | **intentional** | the GitHub link of the header is shown at every width in the port; on a phone the page hides it (J5, dropped.md 3) |
 | width | header | port | phone only: menu | **intentional** | the menu button is text and not the three bars of an icon, and is shown under 62 rem (J2, dropped.md 2) |
+| width | header | port | desktop only: pre-1.0 · alpha try it trust evidence ecosystem demo agents manifesto docs github | **intentional** | the GitHub link of the header is shown at every width in the port; on a phone the page hides it (J5, dropped.md 3) |
 
 JavaScript off: the page has 68 `li`, 17 `svg`, 5 `img`, 5 `button`; the port has 76, 3, 5, 0.
 

@@ -209,6 +209,7 @@ pub fn css(theme: &IrTheme) -> String {
     if find("body").is_some() {
         s.push_str("body { font-family: var(--cui-font); }\n");
     }
+    s.push_str(".cui-card > p:not([data-style]), .cui-card .cui-col > p:not([data-style]) { color: var(--cui-muted); }\n.cui-card > p:not([data-style]) strong, .cui-card .cui-col > p:not([data-style]) strong { color: var(--cui-fg); }\n");
     s.push_str(".cui-sticky > nav a { color: var(--cui-muted); }\n.cui-sticky .cui-chip { border-color: transparent; }\n");
     if find("mono").is_some() {
         s.push_str(".cui-sticky .cui-row a { font-family: var(--cui-mono); }\n");

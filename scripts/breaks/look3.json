@@ -1,0 +1,54 @@
+{
+ "checks": [
+  {
+   "name": "cargo test look",
+   "argv": [
+    "cargo",
+    "test",
+    "--quiet",
+    "-p",
+    "cancho-ui",
+    "--test",
+    "look"
+   ]
+  }
+ ],
+ "breaks": [
+  {
+   "name": "the copy button has no 44 px target",
+   "file": "crates/cancho-ui/src/pwa.rs",
+   "from": "box-sizing: border-box; min-height: 44px; padding: 0 0.6rem; border: 7px solid transparent; border-radius: 15px;",
+   "to": "box-sizing: border-box; min-height: 30px; padding: 0 0.6rem; border: 7px solid transparent; border-radius: 15px;"
+  },
+  {
+   "name": "the text is not kept under the copy button",
+   "file": "crates/cancho-ui/src/pwa.rs",
+   "from": ".cui-code[data-copy] pre { padding-top: 2.5rem; }",
+   "to": ".cui-code[data-copy] pre { padding-top: 0.9rem; }"
+  },
+  {
+   "name": "every page has the copy pill rules",
+   "file": "crates/cancho-ui/src/pwa.rs",
+   "from": "    if page.copy {",
+   "to": "    if true || page.copy {"
+  },
+  {
+   "name": "the github button stays on a phone",
+   "file": "crates/cancho-ui/src/pwa.rs",
+   "from": "@media (max-width: 29.99rem) { .cui-sticky .cui-row > a { display: none; } }",
+   "to": "@media (max-width: 0rem) { .cui-sticky .cui-row > a { display: none; } }"
+  },
+  {
+   "name": "the hamburger has no bars",
+   "file": "crates/cancho-ui/src/pwa.rs",
+   "from": ".cui-sticky summary::before { content: \\\"\\\"; display: block; width: 1.25rem; height: 2px;",
+   "to": ".cui-sticky summary::before { content: \\\"\\\"; display: block; width: 0; height: 2px;"
+  },
+  {
+   "name": "a card title is not the page's size",
+   "file": "crates/cancho-ui/src/pwa.rs",
+   "from": ".cui-card h3 { font-size: 1.35rem;",
+   "to": ".cui-card h3 { font-size: 1.05rem;"
+  }
+ ]
+}
