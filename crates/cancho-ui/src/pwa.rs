@@ -314,7 +314,11 @@ const COPY_CSS: &str = r#".cui-code[data-copy] pre { padding-top: 2.5rem; }
 .cui-copy:hover { box-shadow: inset 0 0 0 1px #6ea3ee; color: #fff; }
 "#;
 
-const ROLES_CSS: &str = r#".cui-card { box-sizing: border-box; padding: 1.1rem 1.2rem 1.3rem; border-radius: 16px; border: 1px solid color-mix(in srgb, currentColor 20%, transparent); }
+const ROLES_CSS: &str = r#":root button { border-radius: 999px; border-color: transparent; background: var(--cui-accent, #185fa5); color: var(--cui-accent-fg, #ffffff); font-weight: 600; }
+:root button:disabled { background: var(--cui-soft, #efece1); color: var(--cui-muted, #4f545b); }
+:root button[aria-pressed="true"] { box-shadow: 0 0 0 3px color-mix(in srgb, var(--cui-accent, #185fa5) 35%, transparent); }
+:root input:not([type="checkbox"]):not([type="file"]), :root textarea, :root select { border-radius: 12px; }
+.cui-card { box-sizing: border-box; padding: 1.1rem 1.2rem 1.3rem; border-radius: 16px; border: 1px solid color-mix(in srgb, currentColor 20%, transparent); }
 .cui-align-center { align-items: center; }
 .cui-overlay { display: grid; }
 .cui-overlay.cui-card { padding: 0; overflow: hidden; }
