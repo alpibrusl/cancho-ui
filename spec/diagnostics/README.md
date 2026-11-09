@@ -216,6 +216,11 @@ in `examples/refusal/`, and by the evidence report.
 | `list-empty` | `Component` | `Error` | `Static` | A `List` with nothing in it, which is also what a `For` over a data file with no rows writes. *(Built 2026-10-26, docs/www-port/gaps.md section 1.)* |
 | `item-empty` | `Component` | `Error` | `Static` | An `Item` with nothing in it: an empty bullet. *(Built 2026-10-26, docs/www-port/gaps.md section 1.)* |
 | `list-ordered-invalid` | `Component` | `Error` | `Static` | `ordered:` on a `List` that is not `true` or `false`. *(Built 2026-10-26, docs/www-port/gaps.md section 1.)* |
+| `aside-flag-invalid` | `Component` | `Error` | `Static` | `fab:` or `sheet:` on an `Aside` that is not the literal `true` or `false`. *(Built 2026-11-09, docs/structure.md 12.0g.)* |
+| `aside-mark-invalid` | `Component` | `Error` | `Static` | `marks:` on an `Aside` that is not `"fab"` or `"sheet"`. *(Built 2026-11-09, docs/structure.md 12.0g.)* |
+| `aside-fab-duplicate` | `Component` | `Error` | `Static` | A second `Aside { fab: true }` in a program. *(Built 2026-11-09, docs/structure.md 12.0g.)* |
+| `aside-sheet-duplicate` | `Component` | `Error` | `Static` | A second `Aside { sheet: true }` in a program. *(Built 2026-11-09, docs/structure.md 12.0g.)* |
+| `aside-unmarked` | `Component` | `Error` | `Static` | An `Aside { fab: true }` with no `Aside { marks: "fab" }` anywhere in the program, or a sheet with no `"sheet"` marker: it would never be shown. *(Built 2026-11-09, docs/structure.md 12.0g.)* |
 | `nav-dock-invalid` | `Component` | `Error` | `Static` | `dock:` on a `Nav` that is not the literal `true` or `false`. *(Built 2026-11-09, docs/structure.md 12.0b.)* |
 | `nav-dock-duplicate` | `Component` | `Error` | `Static` | A second `Nav { dock: true }` in a program. *(Built 2026-11-09, docs/structure.md 12.0b.)* |
 | `link-route-invalid` | `Component` | `Error` | `Static` | A `Link` whose `to:` starts with `/api/` (a route of the page's own backend, docs/structure.md section 12.2) and is not letters, digits, `-`, `_` and `/` only, has an empty segment, or is over 128 bytes. *(Built 2026-11-09.)* |

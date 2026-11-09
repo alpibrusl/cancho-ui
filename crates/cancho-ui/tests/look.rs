@@ -635,3 +635,50 @@ fn a_disclosure_summary_is_a_pill_with_a_plus_that_turns_into_a_minus() {
         assert!(html.contains(want), "{want}");
     }
 }
+
+#[test]
+fn a_floating_button_and_a_sheet_are_fixed_and_shown_only_while_their_marker_is_on_the_page() {
+    // docs/structure.md 12.0g
+    let src = "page { title: \"T\"; lang: \"en\"; }\ncomponent App {\n    state open: Bool = false;\n    on Toggle { open = !open; }\n    view {\n        Column {\n            Main { id: \"main\" Text { \"x\" } }\n            If { when: true Aside { marks: \"fab\" } }\n            If { when: open Aside { marks: \"sheet\" } }\n            Aside { label: \"Chat button\" fab: true Button { label: \"Chat\" on: Toggle } }\n            Aside { label: \"Chat\" sheet: true Text { \"hello\" } }\n        }\n    }\n}\n";
+    let (html, _) = page_of(src);
+    assert!(html.contains("class=\"cui-fab\""), "{html}");
+    assert!(html.contains("class=\"cui-sheet\""), "{html}");
+    for want in [
+        ".cui-fab, .cui-sheet { position: fixed; z-index: 11; box-sizing: border-box; margin: 0; }",
+        ".cui-fab { right: 1rem; bottom: calc(5.25rem + env(safe-area-inset-bottom)); }",
+        ".cui-sheet { left: 50%; bottom: calc(5.25rem + env(safe-area-inset-bottom)); transform: translateX(-50%);",
+        "max-height: calc(100dvh - 9.5rem); overflow-y: auto;",
+        "[data-mark] { display: none; }",
+        ":root:not(:has([data-mark=\"fab\"])) .cui-fab { display: none; }",
+        ":root:not(:has([data-mark=\"sheet\"])) .cui-sheet { display: none; }",
+    ] {
+        assert!(html.contains(want), "{want}");
+    }
+    // the marker is the empty element the `If` draws: its attribute is in the script that draws it
+    let (_, js) = page_of(src);
+    assert!(js.contains("data-mark") && js.contains("\"sheet\"") && js.contains("\"fab\""), "{js}");
+}
+
+#[test]
+fn a_floating_button_and_a_sheet_are_refused_when_badly_written_twice_or_never_marked() {
+    let base = |aside: &str, extra: &str| format!("{PAGE}\ncomponent App {{\n    view {{\n        Column {{\n            Main {{ id: \"main\" Text {{ \"x\" }} }}\n            {extra}\n            {aside}\n        }}\n    }}\n}}\n");
+    let marks = "If { when: true Aside { marks: \"fab\" } } If { when: true Aside { marks: \"sheet\" } }";
+    let ok = base("Aside { label: \"F\" fab: true Button { label: \"B\" on: Go } }", marks).replace("view {", "on Go { }\n    view {");
+    let got = codes(&ok);
+    assert!(got.is_empty(), "{got:?}");
+    let bad_flag = base("Aside { label: \"F\" fab: \"yes\" Text { \"x\" } }", marks);
+    assert!(codes(&bad_flag).iter().any(|t| t == "aside-flag-invalid"));
+    let bad_mark = base("Aside { label: \"F\" fab: true Text { \"x\" } }", "If { when: true Aside { marks: \"menu\" } }");
+    assert!(codes(&bad_mark).iter().any(|t| t == "aside-mark-invalid"));
+    let two = base("Aside { label: \"F\" fab: true Text { \"x\" } } Aside { label: \"G\" fab: true Text { \"y\" } }", marks);
+    assert!(codes(&two).iter().any(|t| t == "aside-fab-duplicate"));
+    let two_sheets = base("Aside { label: \"F\" sheet: true Text { \"x\" } } Aside { label: \"G\" sheet: true Text { \"y\" } }", marks);
+    assert!(codes(&two_sheets).iter().any(|t| t == "aside-sheet-duplicate"));
+    let unmarked_fab = base("Aside { label: \"F\" fab: true Text { \"x\" } }", "If { when: true Aside { marks: \"sheet\" } }");
+    assert!(codes(&unmarked_fab).iter().any(|t| t == "aside-unmarked"));
+    let unmarked_sheet = base("Aside { label: \"F\" sheet: true Text { \"x\" } }", "If { when: true Aside { marks: \"fab\" } }");
+    assert!(codes(&unmarked_sheet).iter().any(|t| t == "aside-unmarked"));
+    // the keys belong to Aside only
+    let on_section = base("Section { fab: true Text { \"x\" } }", marks);
+    assert!(!codes(&on_section).is_empty());
+}

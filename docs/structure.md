@@ -352,6 +352,14 @@ In a page that uses a look role a `TextField`, a `Select` and a `TextArea` are n
 
 In a page that uses a look role the `summary` of a `Details` is a pill (the same 44 px, 1 px `muted` border and 999 px corners as a field) with a "+" before the text that becomes a "−" when it is open, and the browser's own triangle is hidden; the inside has 0.75 rem above it. The summary of a `Chart`'s data table (`.cui-chart`) and the hamburger of a sticky header keep their own styles. It reads as something to press, which a bare line of text does not: a form behind it ("Start a group") is no longer mistaken for a heading. Guarantee tier: `tested` for the CSS text (`tests/look.rs`); the look was seen in the browser pane.
 
+### 12.0g A floating button and a sheet (2026-11-09)
+
+`Aside { label: "Chat" fab: true Button { .. } }` is a **floating button**: fixed at the end of the window above the tab bar, so it stays where it is when the page scrolls. `Aside { label: "Group chat" sheet: true .. }` is a **sheet**: a panel fixed over the foot of the page (28 rem wide at most, 24 px corners, scrolling inside when it is taller than the window less the bars), a flex column of what it holds. Neither is drawn by the page's script when it appears: both are in the page's own HTML, so **an island can sit inside a sheet** (the rule that an island is outside every `If` and `For` holds; the sheet is neither).
+What shows or hides them is a **marker**: an empty `Aside { marks: "fab" }` or `Aside { marks: "sheet" }` that the program draws inside an `If`. The button is shown while a `"fab"` marker is on the page and the sheet while a `"sheet"` marker is (`:root:has([data-mark=".."])`); a marker is never drawn itself (`[data-mark] { display: none }`), so it is not a landmark. A program says "open" by making the `If` true and "close" by making it false: state, so it survives the redraws a `Details` does not.
+* One button and one sheet to a page (`aside-fab-duplicate`, `aside-sheet-duplicate`); each needs a marker of its kind somewhere in the program (`aside-unmarked`: it would never be seen); `fab:` and `sheet:` are `true` or `false` (`aside-flag-invalid`); `marks:` is `"fab"` or `"sheet"` (`aside-mark-invalid`); the keys belong to `Aside` only (`binding-unknown` on anything else).
+* **What this is not:** a modal. Nothing behind it is made inert, focus is not trapped and Escape does not close it: a sheet is a panel you can leave open while you read the page. The program gives it a close button.
+* Guarantee tier: `tested` for the rules and the CSS text (`tests/look.rs`); the look and the marker working at run time are for the browser pane.
+
 ### 12.1 Round two (2026-10-29, [`www-port/look2.md`](www-port/look2.md))
 
 * **`card: true`** is also taken by a `Column`, a `Row` and a `Link` (a block card).

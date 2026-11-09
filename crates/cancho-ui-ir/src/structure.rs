@@ -184,10 +184,10 @@ fn keys(kind: &IrElementKind) -> &'static [&'static str] {
         IrElementKind::CountUp => &["to"],
         IrElementKind::Chip => &["tone"],
         IrElementKind::List => &["ordered", "card"],
-        IrElementKind::Section
-        | IrElementKind::Article
-        | IrElementKind::Aside
-        | IrElementKind::Figure => &["id", "visible", "hidden", "card"],
+        IrElementKind::Aside => &["id", "visible", "hidden", "card", "fab", "sheet", "marks"],
+        IrElementKind::Section | IrElementKind::Article | IrElementKind::Figure => {
+            &["id", "visible", "hidden", "card"]
+        }
         k if is_landmark_or_container(k) => &["id"],
         _ => &[],
     }
@@ -201,7 +201,7 @@ fn refuse(code: &'static str, message: String, span: Span) -> LowerError {
     }
 }
 
-fn string_of(b: &IrBinding) -> Option<&str> {
+pub fn string_of(b: &IrBinding) -> Option<&str> {
     match &b.value {
         IrBindingValue::String(s) => Some(s),
         _ => None,
@@ -339,6 +339,9 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
         "max_height",
         "sticky",
         "dock",
+        "fab",
+        "sheet",
+        "marks",
         "visible",
         "hidden",
         "ordered",
@@ -382,6 +385,7 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                     "copy" | "max_height" => "Code",
                     "sticky" => "Header",
                     "dock" => "Nav",
+                    "fab" | "sheet" | "marks" => "Aside",
                     "ordered" => "List",
                     "overlay" => "Column",
                     "card" => "Section, Article, Aside, Figure, List, Column, Row and Link",
@@ -495,6 +499,24 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
             _ => Err(refuse(
                 "nav-dock-invalid",
                 "`dock:` is `true` or `false`: `Nav { dock: true .. }`".to_string(),
+                b.span,
+            )),
+        },
+        "fab" | "sheet" => match &b.value {
+            IrBindingValue::Const { expr, .. } if matches!(**expr, IrExpr::BoolLit { .. }) => {
+                Ok(true)
+            }
+            _ => Err(refuse(
+                "aside-flag-invalid",
+                format!("`{}:` is `true` or `false`: `Aside {{ {}: true .. }}`", b.key, b.key),
+                b.span,
+            )),
+        },
+        "marks" => match string_of(b) {
+            Some("fab" | "sheet") => Ok(true),
+            _ => Err(refuse(
+                "aside-mark-invalid",
+                "`marks:` is `\"fab\"` or `\"sheet\"`: an empty `Aside { marks: \"sheet\" }` inside an `If` is what shows the sheet while the `If` is true".to_string(),
                 b.span,
             )),
         },
@@ -860,6 +882,9 @@ pub fn attrs(kind: &IrElementKind, bindings: &[IrBinding]) -> Vec<(&'static str,
                     ));
                 }
             }
+            ("marks", Some(m)) if matches!(kind, IrElementKind::Aside) => {
+                out.push(("data-mark", m.to_string()));
+            }
             ("to", _) if matches!(kind, IrElementKind::CountUp) => {
                 if let Some(n) = int_of(b) {
                     out.push(("data-to", n.to_string()));
@@ -884,6 +909,14 @@ pub fn class(kind: &IrElementKind, bindings: &[IrBinding]) -> Option<String> {
     }
     if matches!(kind, IrElementKind::Nav) && is_flag(bindings, "dock") {
         return Some("cui-dock".to_string());
+    }
+    if matches!(kind, IrElementKind::Aside) {
+        if is_flag(bindings, "fab") {
+            return Some("cui-fab".to_string());
+        }
+        if is_flag(bindings, "sheet") {
+            return Some("cui-sheet".to_string());
+        }
     }
     if matches!(kind, IrElementKind::Column) {
         if is_flag(bindings, "overlay") {

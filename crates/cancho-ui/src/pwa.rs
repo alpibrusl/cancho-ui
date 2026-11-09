@@ -238,6 +238,14 @@ main[tabindex="-1"]:focus { outline: none; }
 .cui-dock { position: fixed; left: 50%; bottom: max(0.75rem, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 10; box-sizing: border-box; width: min(calc(100% - 2rem), 28rem); display: flex; justify-content: space-around; gap: 0.25rem; padding: 0.4rem; border-radius: 999px; background: color-mix(in srgb, Canvas 86%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); box-shadow: 0 8px 28px -6px rgba(0,0,0,0.28); border: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
 .cui-dock > * { flex: 1 1 0; min-width: 0; }
 body:has(.cui-dock) { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
+/* a floating button and a sheet (docs/structure.md 12.0g): fixed over the page, above the tab bar, shown only while an `Aside { marks: .. }` of their kind is on the page */
+.cui-fab, .cui-sheet { position: fixed; z-index: 11; box-sizing: border-box; margin: 0; }
+.cui-fab { right: 1rem; bottom: calc(5.25rem + env(safe-area-inset-bottom)); }
+.cui-fab > button { min-height: 52px; padding: 0 1.4rem; box-shadow: 0 8px 24px -4px rgba(0,0,0,0.35); }
+.cui-sheet { left: 50%; bottom: calc(5.25rem + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(calc(100% - 1.5rem), 28rem); max-height: calc(100dvh - 9.5rem); overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem; border-radius: 24px; background: var(--cui-surface, Canvas); color: var(--cui-fg, CanvasText); border: 1px solid color-mix(in srgb, currentColor 18%, transparent); box-shadow: 0 16px 48px -8px rgba(0,0,0,0.45); }
+[data-mark] { display: none; }
+:root:not(:has([data-mark="fab"])) .cui-fab { display: none; }
+:root:not(:has([data-mark="sheet"])) .cui-sheet { display: none; }
 @MOTION_CSS@</style>
 @STICKY_CSS@@LOOK_CSS@@THEME_CSS@</head>
 <body>
