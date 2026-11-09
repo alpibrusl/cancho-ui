@@ -109,7 +109,7 @@ body:has(.cui-dock) { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom))
 .cui-fab, .cui-sheet { position: fixed; z-index: 11; box-sizing: border-box; margin: 0; }
 .cui-fab { right: 1rem; bottom: calc(5.25rem + env(safe-area-inset-bottom)); }
 .cui-fab > button { min-height: 52px; padding: 0 1.4rem; box-shadow: 0 8px 24px -4px rgba(0,0,0,0.35); }
-.cui-sheet { left: 50%; bottom: calc(5.25rem + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(calc(100% - 1.5rem), 28rem); max-height: calc(100dvh - 9.5rem); display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem; border-radius: 24px; background: var(--cui-surface, Canvas); color: var(--cui-fg, CanvasText); border: 1px solid color-mix(in srgb, currentColor 18%, transparent); box-shadow: 0 16px 48px -8px rgba(0,0,0,0.45); }
+.cui-sheet { left: 50%; bottom: calc(5.25rem + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(calc(100% - 1.5rem), 28rem); max-height: calc(100dvh - 9.5rem); overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem; border-radius: 24px; background: var(--cui-surface, Canvas); color: var(--cui-fg, CanvasText); border: 1px solid color-mix(in srgb, currentColor 18%, transparent); box-shadow: 0 16px 48px -8px rgba(0,0,0,0.45); }
 [data-mark] { display: none; }
 :root:not(:has([data-mark="fab"])) .cui-fab { display: none; }
 :root:not(:has([data-mark="sheet"])) .cui-sheet { display: none; }
