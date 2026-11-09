@@ -579,3 +579,21 @@ fn a_cover_card_in_a_themed_page_takes_the_surface_and_its_panel_is_not_a_floati
     assert!(html.contains(".cui-overlay:not(.cui-overlay-banner):not(.cui-overlay-cover) > :nth-child(n+2) {"), "the label rule must leave the cover card alone");
     assert!(html.contains(".cui-overlay-cover { background: var(--cui-surface); box-shadow: var(--cui-shadow); }"));
 }
+
+#[test]
+fn a_field_is_a_pill_with_a_soft_fill_and_a_ring_in_the_accent_on_the_focus() {
+    // docs/structure.md 12.0e
+    let th = "theme {\n    light { bg: \"#faf7f2\"; fg: \"#1e1b18\"; muted: \"#6b6560\"; line: \"#e9e1dc\"; surface: \"#ffffff\"; soft: \"#f4ece7\"; ink: \"#2e1a47\"; accent: \"#b41d26\"; accent_fg: \"#ffffff\"; accent_soft: \"#ffdad7\"; good: \"#1e7e34\"; warn: \"#884e00\"; warn_bg: \"#ffdcbe\"; warn_line: \"#aa6402\"; bad: \"#ba1a1a\"; bad_bg: \"#ffdad6\"; code_bg: \"#12151a\"; code_fg: \"#d6dde8\"; }\n    dark { bg: \"#141118\"; fg: \"#f5f2eb\"; muted: \"#a8a199\"; line: \"#352d3d\"; surface: \"#1f1a24\"; soft: \"#2a2330\"; ink: \"#141118\"; accent: \"#ff6b6b\"; accent_fg: \"#2b0509\"; accent_soft: \"#3b1d26\"; good: \"#6fdba5\"; warn: \"#ffb366\"; warn_bg: \"#2a200d\"; warn_line: \"#7e6126\"; bad: \"#ff9187\"; bad_bg: \"#331816\"; code_bg: \"#12151a\"; code_fg: \"#d6dde8\"; }\n}\n";
+    let app = "page { title: \"T\"; lang: \"en\"; }\ncomponent App {\n    state v: String = \"\";\n    on Set(x) { v = x; }\n    view { Column { Article { card: true Text { \"x\" } } TextField { label: \"Name\" value: v on: Set } } }\n}\n";
+    let (html, _) = page_of(&format!("{th}{app}"));
+    for want in [
+        ":root input:not([type=\"checkbox\"]):not([type=\"file\"]):not([type=\"range\"]), :root select { border-radius: 999px; padding-inline: 1.1rem; }",
+        ":root textarea { border-radius: 20px; padding: 0.7rem 1.1rem; }",
+        ":root input:focus-visible, :root textarea:focus-visible, :root select:focus-visible { outline: 3px solid color-mix(in srgb, var(--cui-accent, #185fa5) 55%, transparent);",
+        "outline-offset: 1px; border-color: var(--cui-accent, #185fa5); }",
+        "input:not([type=\"checkbox\"]):not([type=\"file\"]), textarea, select { background: var(--cui-soft); }",
+        "border-color: var(--cui-muted); }",
+    ] {
+        assert!(html.contains(want), "{want}");
+    }
+}
