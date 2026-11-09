@@ -217,6 +217,8 @@ pub fn css(theme: &IrTheme) -> String {
     }
     s.push_str("a { color: var(--cui-accent); }\n");
     s.push_str("button, input:not([type=\"checkbox\"]):not([type=\"file\"]), textarea, select { background: var(--cui-surface); color: var(--cui-fg); border-color: var(--cui-muted); }\n");
+    // a field is filled with `soft` and not `surface`: inside a card (which is `surface`) a field drawn in the same colour would show only its border
+    s.push_str("input:not([type=\"checkbox\"]):not([type=\"file\"]), textarea, select { background: var(--cui-soft); }\n");
     // a toggle button that is pressed (docs/www-port/gaps.md section 2) is seen to be: the accent, with the text colour its pair was checked at
     s.push_str("button[aria-pressed=\"true\"] { background: var(--cui-accent); color: var(--cui-accent-fg); border-color: var(--cui-accent); }\n");
     s.push_str(".cui-table th, .cui-table td { border-bottom-color: var(--cui-line); }\n");

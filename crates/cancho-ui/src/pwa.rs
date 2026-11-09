@@ -329,7 +329,16 @@ const ROLES_CSS: &str = r#":root button { border-radius: 999px; border-color: tr
 :root button[aria-pressed="true"] { box-shadow: 0 0 0 3px color-mix(in srgb, var(--cui-accent, #185fa5) 35%, transparent); }
 :root nav button { background: transparent; color: var(--cui-fg, currentColor); }
 :root nav button[aria-pressed="true"] { background: var(--cui-accent, #185fa5); color: var(--cui-accent-fg, #ffffff); box-shadow: none; }
-:root input:not([type="checkbox"]):not([type="file"]), :root textarea, :root select { border-radius: 12px; }
+/* fields (docs/structure.md 12.0e): a pill, a soft fill, one thin border, and a ring in the accent when it has the focus */
+:root input:not([type="checkbox"]):not([type="file"]):not([type="range"]), :root select { border-radius: 999px; padding-inline: 1.1rem; }
+:root textarea { border-radius: 20px; padding: 0.7rem 1.1rem; }
+/* a disclosure (docs/structure.md 12.0f): its summary is a pill with a plus that turns into a minus when it is open; the inside waits under it */
+:root details:not(.cui-chart) > summary { display: inline-flex; box-sizing: border-box; padding: 0 1.1rem; border: 1px solid var(--cui-muted, currentColor); border-radius: 999px; font-weight: 600; list-style: none; }
+:root details:not(.cui-chart) > summary::-webkit-details-marker { display: none; }
+:root details:not(.cui-chart) > summary::before { content: "+"; margin-inline-end: 0.5rem; font-weight: 700; }
+:root details[open]:not(.cui-chart) > summary::before { content: "\2212"; }
+:root details[open]:not(.cui-chart) > summary { margin-bottom: 0.75rem; }
+:root input:focus-visible, :root textarea:focus-visible, :root select:focus-visible { outline: 3px solid color-mix(in srgb, var(--cui-accent, #185fa5) 55%, transparent); outline-offset: 1px; border-color: var(--cui-accent, #185fa5); }
 .cui-card { box-sizing: border-box; padding: 1.1rem 1.2rem 1.3rem; border-radius: 16px; border: 1px solid color-mix(in srgb, currentColor 20%, transparent); }
 .cui-align-center { align-items: center; }
 .cui-overlay { display: grid; }
