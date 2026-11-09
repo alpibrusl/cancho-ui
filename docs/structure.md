@@ -348,6 +348,10 @@ The console's navbar (Home, Trips, Groups, Me) is a `Nav` of `Button`s whose ope
 
 In a page that uses a look role a `TextField`, a `Select` and a `TextArea` are no longer a square box: an input and a select are a **pill** (999 px, 1.1 rem each side), a text area has 20 px corners, and with a theme a field is filled with `soft` (not `surface`, which is a card's own colour, so a field inside a card showed only its border). The border stays one thin line at `muted`, which is what keeps a field's edge at 3:1 against the page (WCAG 1.4.11): a softer border would look more like the design this came from and would fail that. The focus is a 3 px ring of the accent at 55 % beside the browser's own outline, with the border in the accent. Guarantee tier: `tested` for the CSS text (`tests/look.rs`); the look was seen in the browser pane only.
 
+### 12.0f A disclosure (2026-11-09)
+
+In a page that uses a look role the `summary` of a `Details` is a pill (the same 44 px, 1 px `muted` border and 999 px corners as a field) with a "+" before the text that becomes a "−" when it is open, and the browser's own triangle is hidden; the inside has 0.75 rem above it. The summary of a `Chart`'s data table (`.cui-chart`) and the hamburger of a sticky header keep their own styles. It reads as something to press, which a bare line of text does not: a form behind it ("Start a group") is no longer mistaken for a heading. Guarantee tier: `tested` for the CSS text (`tests/look.rs`); the look was seen in the browser pane.
+
 ### 12.1 Round two (2026-10-29, [`www-port/look2.md`](www-port/look2.md))
 
 * **`card: true`** is also taken by a `Column`, a `Row` and a `Link` (a block card).

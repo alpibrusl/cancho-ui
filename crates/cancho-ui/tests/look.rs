@@ -597,3 +597,19 @@ fn a_field_is_a_pill_with_a_soft_fill_and_a_ring_in_the_accent_on_the_focus() {
         assert!(html.contains(want), "{want}");
     }
 }
+
+#[test]
+fn a_disclosure_summary_is_a_pill_with_a_plus_that_turns_into_a_minus() {
+    // docs/structure.md 12.0f
+    let src = "page { title: \"T\"; lang: \"en\"; }\ncomponent App {\n    view { Column { Article { card: true Text { \"x\" } } Details { summary: \"More\" Text { \"inside\" } } } }\n}\n";
+    let (html, _) = page_of(src);
+    for want in [
+        ":root details:not(.cui-chart) > summary { display: inline-flex; box-sizing: border-box; padding: 0 1.1rem; border: 1px solid var(--cui-muted, currentColor); border-radius: 999px;",
+        ":root details:not(.cui-chart) > summary::-webkit-details-marker { display: none; }",
+        ":root details:not(.cui-chart) > summary::before { content: \"+\";",
+        ":root details[open]:not(.cui-chart) > summary::before { content: \"\\2212\"; }",
+        ":root details[open]:not(.cui-chart) > summary { margin-bottom: 0.75rem; }",
+    ] {
+        assert!(html.contains(want), "{want}");
+    }
+}
