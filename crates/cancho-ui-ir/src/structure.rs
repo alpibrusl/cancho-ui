@@ -12,7 +12,7 @@ use crate::lower::LowerError;
 /// The `appearance:` of a `Link`: a closed set, drawn by the baseline stylesheet (and, with a theme, in the theme's colours).
 pub const APPEARANCES: &[&str] = &["primary", "secondary", "quiet", "pill"];
 /// The `style:` of a `Text`: a typographic role, a closed set.
-pub const TEXT_STYLES: &[&str] = &["eyebrow", "lead", "note", "label"];
+pub const TEXT_STYLES: &[&str] = &["eyebrow", "lead", "note", "label", "avatar"];
 /// The range of a code block's `max_height:`, in rem.
 pub const CODE_HEIGHT: (i64, i64) = (4, 100);
 /// The range of a heading's `level:`.
@@ -180,6 +180,7 @@ fn keys(kind: &IrElementKind) -> &'static [&'static str] {
         IrElementKind::Rich => &["style"],
         IrElementKind::Code => &["copy", "max_height"],
         IrElementKind::Header => &["id", "sticky"],
+        IrElementKind::Nav => &["id", "dock"],
         IrElementKind::CountUp => &["to"],
         IrElementKind::Chip => &["tone"],
         IrElementKind::List => &["ordered", "card"],
@@ -337,6 +338,7 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
         "copy",
         "max_height",
         "sticky",
+        "dock",
         "visible",
         "hidden",
         "ordered",
@@ -379,6 +381,7 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                     "style" => "Text and Rich",
                     "copy" | "max_height" => "Code",
                     "sticky" => "Header",
+                    "dock" => "Nav",
                     "ordered" => "List",
                     "overlay" => "Column",
                     "card" => "Section, Article, Aside, Figure, List, Column, Row and Link",
@@ -482,6 +485,16 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
             _ => Err(refuse(
                 "header-sticky-invalid",
                 "`sticky:` is `true` or `false`: `Header { sticky: true .. }`".to_string(),
+                b.span,
+            )),
+        },
+        "dock" => match &b.value {
+            IrBindingValue::Const { expr, .. } if matches!(**expr, IrExpr::BoolLit { .. }) => {
+                Ok(true)
+            }
+            _ => Err(refuse(
+                "nav-dock-invalid",
+                "`dock:` is `true` or `false`: `Nav { dock: true .. }`".to_string(),
                 b.span,
             )),
         },
@@ -868,6 +881,9 @@ pub fn attrs(kind: &IrElementKind, bindings: &[IrBinding]) -> Vec<(&'static str,
 pub fn class(kind: &IrElementKind, bindings: &[IrBinding]) -> Option<String> {
     if matches!(kind, IrElementKind::Header) {
         return is_sticky(bindings).then(|| "cui-sticky".to_string());
+    }
+    if matches!(kind, IrElementKind::Nav) && is_flag(bindings, "dock") {
+        return Some("cui-dock".to_string());
     }
     if matches!(kind, IrElementKind::Column) {
         if is_flag(bindings, "overlay") {

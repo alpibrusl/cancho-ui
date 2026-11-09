@@ -479,3 +479,72 @@ fn a_button_in_a_nav_is_a_tab_quiet_until_it_is_the_open_one() {
     let (plain_html, plain_js) = page_of(&program(PAGE, "Text { \"x\" }"));
     assert!(!format!("{plain_html}{plain_js}").contains(":root nav button"));
 }
+
+#[test]
+fn a_docked_nav_is_a_tab_bar_fixed_at_the_foot_and_the_page_keeps_room_under_it() {
+    // docs/structure.md 12.0b
+    let (html, _) = page_of(&program(
+        PAGE,
+        "Main { id: \"main\" Text { \"x\" } } Nav { label: \"Main\" dock: true Link { to: \"#main\" \"Home\" } }",
+    ));
+    assert!(html.contains("<nav class=\"cui-dock\" aria-label=\"Main\""), "{html}");
+    for want in [
+        ".cui-dock { position: fixed; left: 50%; bottom: max(0.75rem, env(safe-area-inset-bottom));",
+        "backdrop-filter: blur(16px);",
+        "body:has(.cui-dock) { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }",
+    ] {
+        assert!(html.contains(want), "{want}");
+    }
+    // `dock: false` is an ordinary Nav
+    let (plain, _) = page_of(&program(
+        PAGE,
+        "Main { id: \"main\" Text { \"x\" } } Nav { label: \"Main\" dock: false Link { to: \"#main\" \"Home\" } }",
+    ));
+    assert!(!plain.contains("class=\"cui-dock\""));
+}
+
+#[test]
+fn a_docked_nav_is_refused_when_it_is_not_a_flag_or_not_alone_or_not_a_nav() {
+    let one = "Nav { label: \"A\" dock: true Link { to: \"#a\" \"A\" } }";
+    let got = codes(&program(PAGE, &format!("Main {{ id: \"a\" Text {{ \"x\" }} }} {one}")));
+    assert!(got.is_empty(), "{got:?}");
+    let got = codes(&program(PAGE, "Main { id: \"a\" Text { \"x\" } } Nav { label: \"A\" dock: \"bottom\" Link { to: \"#a\" \"A\" } }"));
+    assert!(got.iter().any(|t| t == "nav-dock-invalid"), "{got:?}");
+    let got = codes(&program(PAGE, "Main { id: \"a\" Text { \"x\" } } Nav { label: \"A\" dock: 1 Link { to: \"#a\" \"A\" } }"));
+    assert!(got.iter().any(|t| t == "nav-dock-invalid"), "{got:?}");
+    let two = "Nav { label: \"A\" dock: true Link { to: \"#a\" \"A\" } } Nav { label: \"B\" dock: true Link { to: \"#a\" \"B\" } }";
+    let got = codes(&program(PAGE, &format!("Main {{ id: \"a\" Text {{ \"x\" }} }} {two}")));
+    assert!(got.iter().any(|t| t == "nav-dock-duplicate"), "{got:?}");
+    let got = codes(&program(PAGE, "Section { dock: true Text { \"x\" } }"));
+    assert!(!got.is_empty(), "dock on a Section was accepted");
+}
+
+#[test]
+fn an_avatar_is_a_round_disc_of_initials_that_overlaps_the_next_and_each_colour_reads() {
+    let (html, _) = page_of(&program(
+        PAGE,
+        "Row { Text { style: \"avatar\" \"EA\" } Text { style: \"avatar\" \"MS\" } }",
+    ));
+    assert!(html.contains("data-style=\"avatar\""), "{html}");
+    for want in [
+        "[data-style=\"avatar\"] { display: inline-flex;",
+        "border-radius: 50%;",
+        "background: #b41d26; color: #fff; }",
+        "[data-style=\"avatar\"] + [data-style=\"avatar\"] { margin-left: -0.6rem; }",
+    ] {
+        assert!(html.contains(want), "{want}");
+    }
+    // each fixed disc colour against white text: WCAG relative luminance, written out, not looked up
+    fn lum(hex: &str) -> f64 {
+        let c = |i: usize| {
+            let v = f64::from(u8::from_str_radix(&hex[i..i + 2], 16).expect("hex")) / 255.0;
+            if v <= 0.03928 { v / 12.92 } else { ((v + 0.055) / 1.055).powf(2.4) }
+        };
+        0.2126 * c(1) + 0.7152 * c(3) + 0.0722 * c(5)
+    }
+    for bg in ["#b41d26", "#6b5585", "#1e7e34", "#884e00"] {
+        assert!(html.contains(bg), "{bg} is not in the page");
+        let ratio = 1.05 / (lum(bg) + 0.05);
+        assert!(ratio >= 4.5, "{bg}: {ratio:.2}");
+    }
+}

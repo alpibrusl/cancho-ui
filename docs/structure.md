@@ -29,7 +29,7 @@ Footer { Link { to: "agents.md" "agents.md" } }
 | `Link` | `<a href>` | `to:` (a string literal, required), `appearance:` (`"primary"`, `"secondary"`, `"quiet"`, `"pill"`); its text is its name |
 | `Details` | `<details>` with a `<summary>` first | `summary:` (required), `id:` |
 | `Caption` | `<figcaption>` | `id:` |
-| `Text { style: .. }` | `<p data-style="..">` (a `Text` without `style:` is still a `<span>`) | `style:` (`"eyebrow"`, `"lead"`, `"note"`, `"label"`) |
+| `Text { style: .. }` | `<p data-style="..">` (a `Text` without `style:` is still a `<span>`) | `style:` (`"eyebrow"`, `"lead"`, `"note"`, `"label"`, `"avatar"`) |
 
 * **Accessibility keys come first, as everywhere in the language**: `Section { label: "Try it" id: "try" .. }`, not the other way round (a `label:` after a binding is a parse error).
 * A heading, a link, a caption and a details are named by their text: `label:` and `role:` on them are `binding-unknown`. A landmark takes `label:` (an `aria-label`) and no `role:`.
@@ -329,6 +329,16 @@ A program that signs a person in through a provider has to send the browser to i
 ### 12.0a A Button in a Nav is a tab (2026-11-09)
 
 The console's navbar (Home, Trips, Groups, Me) is a `Nav` of `Button`s whose open one says `pressed:`. A link cannot be used there: the sticky header hides the links it holds under a width (measured: `display: none` at 390 px), and a `Nav` that is a direct child of a sticky `Header` is hidden under 62 rem. So, **in a page that uses a look role** (the rules below are written only then, like the others of section 12): a `Button` inside a `Nav` is drawn without its fill (the theme's `fg` on the page), and the one with `aria-pressed="true"` is filled (`accent`, `accent_fg`, a checked pair) with no ring. Everywhere else a button is what it was. Guarantee tier: `tested` for the rule's presence (`crates/cancho-ui/tests/look.rs`); the look was seen in the browser pane at 390 px, not measured.
+
+### 12.0b A docked Nav is the tab bar (2026-11-09)
+
+`Nav { label: "Main" dock: true Button { .. } .. }` is the bar at the foot of the window that phone apps use for their main places. It is `position: fixed`, centred, at most 28 rem wide (the window less 1 rem on each side), a pill with a blurred `Canvas` behind it, a shadow and the safe-area inset under it; its children share the width equally. The page keeps `5.5rem` of room at its foot (`body:has(.cui-dock)`), so the last thing on the page is not under the bar. Its `Button`s are tabs as in 12.0a.
+* `dock:` is `true` or `false` as a literal (`nav-dock-invalid`); a page has one docked `Nav` (`nav-dock-duplicate`); the key is taken by a `Nav` only.
+* Guarantee tier: `tested` for the rules and the CSS text (`crates/cancho-ui/tests/look.rs`); the look is for the browser pane.
+
+### 12.0c An avatar (2026-11-09)
+
+`Text { style: "avatar" "EA" }` is the initials of a person (two letters, upper-cased by the page) on a 2.25 rem round disc with a 2 px ring of the page's own background. Side by side in a `Row` the discs overlap by 0.6 rem, and their colours go coral, plum, green, amber-brown, by position (`#b41d26`, `#6b5585`, `#1e7e34`, `#884e00`: each is at least 4.5:1 against the white text, computed, not looked up). The colours are fixed, not tokens: an avatar is a person's colour, not the page's. There is no picture avatar: a face is a user upload and is for the app's media, not the toolkit. Guarantee tier: `tested` for the CSS text (`tests/look.rs`).
 
 ### 12.1 Round two (2026-10-29, [`www-port/look2.md`](www-port/look2.md))
 

@@ -682,6 +682,7 @@ fn has_main(html: &str, id: &str) -> bool {
 /// written with.
 pub fn check_program(ir: &IrFile) -> Result<(), LowerError> {
     let mut sticky: Vec<Span> = Vec::new();
+    let mut docks: Vec<Span> = Vec::new();
     let mut mains: Vec<(Option<String>, bool, Span, usize)> = Vec::new();
     for (n, c) in ir.components.iter().enumerate() {
         visit(
@@ -689,6 +690,9 @@ pub fn check_program(ir: &IrFile) -> Result<(), LowerError> {
             false,
             &mut |kind, bindings, span, dynamic| match kind {
                 IrElementKind::Header if crate::structure::is_sticky(bindings) => sticky.push(span),
+                IrElementKind::Nav if crate::structure::is_flag(bindings, "dock") => {
+                    docks.push(span)
+                }
                 IrElementKind::Main => {
                     mains.push((id_of(bindings).map(str::to_string), dynamic, span, n))
                 }
@@ -700,6 +704,14 @@ pub fn check_program(ir: &IrFile) -> Result<(), LowerError> {
         return Err(refuse(
             "header-sticky-duplicate",
             "a page has one sticky Header: the room reserved above an anchor is one number"
+                .to_string(),
+            *second,
+        ));
+    }
+    if let Some(second) = docks.get(1) {
+        return Err(refuse(
+            "nav-dock-duplicate",
+            "a page has one docked Nav: two bars fixed to the foot of the window would overlap"
                 .to_string(),
             *second,
         ));

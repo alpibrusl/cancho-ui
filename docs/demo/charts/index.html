@@ -61,6 +61,12 @@ figure { margin: 0; } figcaption { font-size: 0.88rem; }
 [data-style] { margin: 0; }
 [data-style="eyebrow"], [data-style="label"] { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
 [data-style="eyebrow"] { color: LinkText; }
+/* an avatar (docs/structure.md 12.0c): the initials of a person on a coloured disc; the colours are fixed, each is 4.5:1 or better with the white text */
+[data-style="avatar"] { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; flex: none; width: 2.25rem; height: 2.25rem; margin: 0; border: 2px solid Canvas; border-radius: 50%; font-size: 0.78rem; font-weight: 700; line-height: 1; text-transform: uppercase; background: #b41d26; color: #fff; }
+[data-style="avatar"]:nth-of-type(4n+2) { background: #6b5585; }
+[data-style="avatar"]:nth-of-type(4n+3) { background: #1e7e34; }
+[data-style="avatar"]:nth-of-type(4n) { background: #884e00; }
+[data-style="avatar"] + [data-style="avatar"] { margin-left: -0.6rem; }
 [data-style="lead"] { font-size: 1.1rem; max-width: 40rem; }
 [data-style="note"] { font-size: 0.88rem; }
 /* inline content and code (docs/structure.md sections 7 and 8): a code box is dark in both schemes, as the cancho-www page draws it */
@@ -95,6 +101,10 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 .cui-skip:focus { top: 0.5rem; }
 main[tabindex="-1"]:focus { outline: none; }
 .cui-sticky nav { display: flex; flex-wrap: wrap; column-gap: 1rem; }
+/* a docked Nav (docs/structure.md 12.0b) is the tab bar at the foot of the window: fixed, centred, and the page keeps room under it */
+.cui-dock { position: fixed; left: 50%; bottom: max(0.75rem, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 10; box-sizing: border-box; width: min(calc(100% - 2rem), 28rem); display: flex; justify-content: space-around; gap: 0.25rem; padding: 0.4rem; border-radius: 999px; background: color-mix(in srgb, Canvas 86%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); box-shadow: 0 8px 28px -6px rgba(0,0,0,0.28); border: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+.cui-dock > * { flex: 1 1 0; min-width: 0; }
+body:has(.cui-dock) { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
 /* motion (docs/motion.md): an element is hidden only while the page's script has it armed and has not yet seen it, and never when the visitor asks for less motion */
 .cui-reveal.cui-armed { transition: opacity 0.7s ease, transform 0.7s ease; }
 .cui-reveal.cui-armed:not(.cui-in) { opacity: 0; transform: translateY(18px); }
