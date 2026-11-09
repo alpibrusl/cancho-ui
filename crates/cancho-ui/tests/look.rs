@@ -466,3 +466,16 @@ fn a_render_keeps_the_scroll_unless_a_new_screen_appeared() {
     assert!(plain.contains("window.scrollTo(__cui_sx, __cui_sy)"));
     assert!(!plain.contains("__cui_newscreen = __cui_screen_of"));
 }
+
+#[test]
+fn a_button_in_a_nav_is_a_tab_quiet_until_it_is_the_open_one() {
+    // docs/structure.md section 12.0a: a Button inside a Nav is a tab; `pressed:` is the open one and is filled; only a page that uses a look role has the rule
+    let tabs = "Nav { label: \"Main\" Row { Button { label: \"Home\" on: Go pressed: true } Button { label: \"Me\" on: Go pressed: false } } } Article { card: true Text { \"a\" } }";
+    let text = format!("{PAGE}\ncomponent App {{\n    on Go {{ }}\n    view {{\n        Column {{ {tabs} }}\n    }}\n}}\n");
+    let (html, js) = page_of(&text);
+    let css = format!("{html}{js}");
+    assert!(css.contains(":root nav button { background: transparent; color: var(--cui-fg, currentColor); }"));
+    assert!(css.contains(":root nav button[aria-pressed=\"true\"] { background: var(--cui-accent, #185fa5); color: var(--cui-accent-fg, #ffffff); box-shadow: none; }"));
+    let (plain_html, plain_js) = page_of(&program(PAGE, "Text { \"x\" }"));
+    assert!(!format!("{plain_html}{plain_js}").contains(":root nav button"));
+}

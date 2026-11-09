@@ -326,6 +326,10 @@ A program that signs a person in through a provider has to send the browser to i
 * Everything else about a link is as before: it needs text, and `rel` and the target are what a same-origin link gets.
 * Guarantee tier: `static` for the shape of the path; that the server answers there is not known here.
 
+### 12.0a A Button in a Nav is a tab (2026-11-09)
+
+The console's navbar (Home, Trips, Groups, Me) is a `Nav` of `Button`s whose open one says `pressed:`. A link cannot be used there: the sticky header hides the links it holds under a width (measured: `display: none` at 390 px), and a `Nav` that is a direct child of a sticky `Header` is hidden under 62 rem. So, **in a page that uses a look role** (the rules below are written only then, like the others of section 12): a `Button` inside a `Nav` is drawn without its fill (the theme's `fg` on the page), and the one with `aria-pressed="true"` is filled (`accent`, `accent_fg`, a checked pair) with no ring. Everywhere else a button is what it was. Guarantee tier: `tested` for the rule's presence (`crates/cancho-ui/tests/look.rs`); the look was seen in the browser pane at 390 px, not measured.
+
 ### 12.1 Round two (2026-10-29, [`www-port/look2.md`](www-port/look2.md))
 
 * **`card: true`** is also taken by a `Column`, a `Row` and a `Link` (a block card).
