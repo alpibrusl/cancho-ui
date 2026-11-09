@@ -469,6 +469,25 @@ fn view_has_details(node: &IrViewNode) -> bool {
     }
 }
 
+fn view_has_chatlog(node: &IrViewNode) -> bool {
+    match node {
+        IrViewNode::Element {
+            kind,
+            bindings,
+            children,
+            ..
+        } => {
+            (matches!(kind, IrElementKind::Column)
+                && cancho_ui_ir::structure::is_flag(bindings, "chatlog"))
+                || children.iter().any(view_has_chatlog)
+        }
+        IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
+            children.iter().any(view_has_chatlog)
+        }
+        IrViewNode::Text { .. } => false,
+    }
+}
+
 fn view_has_file(node: &IrViewNode) -> bool {
     match node {
         IrViewNode::Element { kind, children, .. } => {
@@ -911,6 +930,10 @@ fn emit_component(
     if view_has_details(&c.view.body) {
         out.push_str("            const __cui_open = {};\n            { const __n = {}; root.querySelectorAll('details').forEach((d) => { const s = d.querySelector(':scope > summary'); const t = s ? s.textContent : ''; __n[t] = (__n[t] || 0) + 1; __cui_open[t + '#' + __n[t]] = d.open; }); }\n");
     }
+    // docs/structure.md 12.0h: a chat log that was at its foot stays at its foot when a message is added; one the reader had scrolled up keeps its place
+    if view_has_chatlog(&c.view.body) {
+        out.push_str("            const __cui_log = [];\n            root.querySelectorAll('.cui-chatlog').forEach((e) => { __cui_log.push({ foot: e.scrollHeight - e.scrollTop - e.clientHeight < 48, top: e.scrollTop }); });\n");
+    }
     // docs/drag-and-drop.md section 3: a drag does not survive a rebuild, so the page is not rebuilt under one; the render runs once, after it.
     if view_has_sortlist(&c.view.body) {
         out.push_str("            if (__cui_drag.on) { if (__cui_drag.defer.indexOf(__render) < 0) { __cui_drag.defer.push(__render); } return; }\n");
@@ -996,6 +1019,9 @@ fn emit_component(
     }
     if view_body.contains("__cui_ifs_now[") {
         out.push_str("            const __cui_drawn = [];\n            for (const k in __cui_ifs_now) { if (!__cui_ifs_prev[k]) { __cui_drawn.push(__cui_ifs_now[k]); } }\n            __cui_ifs_prev = {};\n            for (const k in __cui_ifs_now) { __cui_ifs_prev[k] = true; }\n            if (__cui_drawn.length) { __cui_screen_of = { path: __cui_appeared(root, __cui_drawn) }; __cui_newscreen = __cui_screen_of.path !== null; }\n");
+    }
+    if view_has_chatlog(&c.view.body) {
+        out.push_str("            root.querySelectorAll('.cui-chatlog').forEach((e, i) => { const k = __cui_log[i]; if (!k || k.foot) { e.scrollTop = e.scrollHeight; } else { e.scrollTop = k.top; } });\n");
     }
     // the disclosures that were open are open again before the focus is given back: a field inside one cannot take it while the disclosure is closed
     if view_has_details(&c.view.body) {

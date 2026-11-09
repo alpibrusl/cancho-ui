@@ -221,6 +221,8 @@ in `examples/refusal/`, and by the evidence report.
 | `aside-fab-duplicate` | `Component` | `Error` | `Static` | A second `Aside { fab: true }` in a program. *(Built 2026-11-09, docs/structure.md 12.0g.)* |
 | `aside-sheet-duplicate` | `Component` | `Error` | `Static` | A second `Aside { sheet: true }` in a program. *(Built 2026-11-09, docs/structure.md 12.0g.)* |
 | `aside-unmarked` | `Component` | `Error` | `Static` | An `Aside { fab: true }` with no `Aside { marks: "fab" }` anywhere in the program, or a sheet with no `"sheet"` marker: it would never be shown. *(Built 2026-11-09, docs/structure.md 12.0g.)* |
+| `bubble-invalid` | `Component` | `Error` | `Static` | `bubble:` on a `Column` that is not `"mine"`, `"theirs"` or `"system"`. *(Built 2026-11-09, docs/structure.md 12.0h.)* |
+| `chat-flag-invalid` | `Component` | `Error` | `Static` | `chatlog:` on a `Column` or `composer:` on a `Row` that is not the literal `true` or `false`. *(Built 2026-11-09, docs/structure.md 12.0h.)* |
 | `nav-dock-invalid` | `Component` | `Error` | `Static` | `dock:` on a `Nav` that is not the literal `true` or `false`. *(Built 2026-11-09, docs/structure.md 12.0b.)* |
 | `nav-dock-duplicate` | `Component` | `Error` | `Static` | A second `Nav { dock: true }` in a program. *(Built 2026-11-09, docs/structure.md 12.0b.)* |
 | `link-route-invalid` | `Component` | `Error` | `Static` | A `Link` whose `to:` starts with `/api/` (a route of the page's own backend, docs/structure.md section 12.2) and is not letters, digits, `-`, `_` and `/` only, has an empty segment, or is over 128 bytes. *(Built 2026-11-09.)* |

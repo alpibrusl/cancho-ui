@@ -244,6 +244,21 @@ body:has(.cui-dock) { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom))
 .cui-fab > button { min-height: 52px; padding: 0 1.4rem; box-shadow: 0 8px 24px -4px rgba(0,0,0,0.35); }
 .cui-sheet { left: 50%; bottom: calc(5.25rem + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(calc(100% - 1.5rem), 28rem); max-height: calc(100dvh - 9.5rem); overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem; border-radius: 24px; background: var(--cui-surface, Canvas); color: var(--cui-fg, CanvasText); border: 1px solid color-mix(in srgb, currentColor 18%, transparent); box-shadow: 0 16px 48px -8px rgba(0,0,0,0.45); }
 [data-mark] { display: none; }
+/* a chat (docs/structure.md 12.0h): a log that scrolls inside itself, bubbles that lean to one side, and a composer with a round send button */
+.cui-chatlog { display: flex; flex-direction: column; gap: 0.3rem; flex: 1 1 auto; min-height: 9rem; overflow-y: auto; padding: 0.6rem; border-radius: 18px; background: var(--cui-soft, color-mix(in srgb, currentColor 6%, transparent)); }
+.cui-bubble { box-sizing: border-box; max-width: 82%; gap: 0.1rem; padding: 0.4rem 0.7rem 0.3rem; border-radius: 16px; background: var(--cui-surface, Canvas); color: var(--cui-fg, CanvasText); box-shadow: 0 1px 1px rgba(0,0,0,0.2); overflow-wrap: anywhere; }
+.cui-bubble-theirs { align-self: flex-start; border-bottom-left-radius: 4px; }
+.cui-bubble-mine { align-self: flex-end; border-bottom-right-radius: 4px; background: var(--cui-accent-soft, #dcf8c6); }
+.cui-bubble-system { align-self: center; max-width: 92%; background: transparent; box-shadow: none; color: var(--cui-muted, inherit); font-size: 0.8rem; text-align: center; }
+.cui-bubble [data-style="eyebrow"] { text-transform: none; letter-spacing: 0; font-size: 0.78rem; font-weight: 700; }
+.cui-bubble [data-style="note"] { align-self: flex-end; font-size: 0.68rem; color: var(--cui-muted, inherit); }
+.cui-sheet:has(> .cui-chatlog) { overflow: hidden; height: min(34rem, calc(100dvh - 9.5rem)); }
+.cui-sheet > .cui-chatlog { min-height: 0; }
+.cui-composer { display: flex; align-items: center; gap: 0.5rem; }
+.cui-composer > .cui-field { flex: 1 1 auto; min-width: 0; font-size: 0; }
+.cui-composer > .cui-field input { width: 100%; box-sizing: border-box; font-size: 1rem; }
+.cui-composer > button:last-child { flex: none; width: 46px; min-width: 46px; height: 46px; padding: 0; border-radius: 50%; font-size: 0; display: inline-flex; align-items: center; justify-content: center; }
+.cui-composer > button:last-child::before { content: "\27A4"; font-size: 1.25rem; line-height: 1; }
 :root:not(:has([data-mark="fab"])) .cui-fab { display: none; }
 :root:not(:has([data-mark="sheet"])) .cui-sheet { display: none; }
 @MOTION_CSS@</style>

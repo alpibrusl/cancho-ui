@@ -173,8 +173,8 @@ fn keys(kind: &IrElementKind) -> &'static [&'static str] {
     match kind {
         IrElementKind::Heading => &["level", "id"],
         IrElementKind::Link => &["to", "appearance", "card"],
-        IrElementKind::Column => &["card", "overlay"],
-        IrElementKind::Row => &["card"],
+        IrElementKind::Column => &["card", "overlay", "bubble", "chatlog"],
+        IrElementKind::Row => &["card", "composer"],
         IrElementKind::Details => &["summary", "id"],
         IrElementKind::Caption => &["id"],
         IrElementKind::Rich => &["style"],
@@ -342,6 +342,9 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
         "fab",
         "sheet",
         "marks",
+        "bubble",
+        "chatlog",
+        "composer",
         "visible",
         "hidden",
         "ordered",
@@ -350,7 +353,9 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
     ];
     let structure = is_structure(kind)
         || (b.key == "card" && matches!(kind, IrElementKind::Column | IrElementKind::Row))
-        || (b.key == "overlay" && matches!(kind, IrElementKind::Column));
+        || (b.key == "overlay" && matches!(kind, IrElementKind::Column))
+        || (matches!(b.key.as_str(), "bubble" | "chatlog") && matches!(kind, IrElementKind::Column))
+        || (b.key == "composer" && matches!(kind, IrElementKind::Row));
     if !structure && !(NEW.contains(&b.key.as_str())) {
         return Ok(false);
     }
@@ -386,6 +391,8 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                     "sticky" => "Header",
                     "dock" => "Nav",
                     "fab" | "sheet" | "marks" => "Aside",
+                    "bubble" | "chatlog" => "Column",
+                    "composer" => "Row",
                     "ordered" => "List",
                     "overlay" => "Column",
                     "card" => "Section, Article, Aside, Figure, List, Column, Row and Link",
@@ -509,6 +516,24 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
             _ => Err(refuse(
                 "aside-flag-invalid",
                 format!("`{}:` is `true` or `false`: `Aside {{ {}: true .. }}`", b.key, b.key),
+                b.span,
+            )),
+        },
+        "chatlog" | "composer" => match &b.value {
+            IrBindingValue::Const { expr, .. } if matches!(**expr, IrExpr::BoolLit { .. }) => {
+                Ok(true)
+            }
+            _ => Err(refuse(
+                "chat-flag-invalid",
+                format!("`{}:` is `true` or `false`", b.key),
+                b.span,
+            )),
+        },
+        "bubble" => match string_of(b) {
+            Some("mine" | "theirs" | "system") => Ok(true),
+            _ => Err(refuse(
+                "bubble-invalid",
+                "`bubble:` is `\"mine\"`, `\"theirs\"` or `\"system\"`: `Column { bubble: \"mine\" Text { .. } }`".to_string(),
                 b.span,
             )),
         },
@@ -918,7 +943,20 @@ pub fn class(kind: &IrElementKind, bindings: &[IrBinding]) -> Option<String> {
             return Some("cui-sheet".to_string());
         }
     }
+    if matches!(kind, IrElementKind::Row) && is_flag(bindings, "composer") {
+        return Some("cui-composer".to_string());
+    }
     if matches!(kind, IrElementKind::Column) {
+        if is_flag(bindings, "chatlog") {
+            return Some("cui-chatlog".to_string());
+        }
+        if let Some(who) = bindings
+            .iter()
+            .find(|b| b.key == "bubble")
+            .and_then(string_of)
+        {
+            return Some(format!("cui-bubble cui-bubble-{who}"));
+        }
         if is_flag(bindings, "overlay") {
             return Some("cui-overlay".to_string());
         }

@@ -360,6 +360,16 @@ What shows or hides them is a **marker**: an empty `Aside { marks: "fab" }` or `
 * **What this is not:** a modal. Nothing behind it is made inert, focus is not trapped and Escape does not close it: a sheet is a panel you can leave open while you read the page. The program gives it a close button.
 * Guarantee tier: `tested` for the rules and the CSS text (`tests/look.rs`); the look and the marker working at run time are for the browser pane.
 
+### 12.0h A chat: a log, bubbles, a composer (2026-11-09)
+
+Three flags of two elements make a messenger's layout, with nothing it needs from a script but one rule:
+* **`Column { chatlog: true .. }`** is the log: a column that scrolls inside itself (`overflow-y: auto`, 9 rem at least, soft fill, 18 px corners). **A log that was at its foot stays at its foot when a message is added** (within 48 px of it before the render); one the reader scrolled up keeps its place. The emitted script reads each log's place before a render and sets it after, before the focus is given back; a page with no log has none of it.
+* **`Column { bubble: "mine" | "theirs" | "system" .. }`** is a message: at most 82 % wide, 16 px corners with the corner nearest its side at 4 px, `surface` for theirs (at the start), `accent_soft` for mine (at the end), no fill and centred for a system line. Inside, a `Text { style: "eyebrow" }` is the author's name (not upper-cased, 0.78 rem, bold) and a `Text { style: "note" }` is the time (0.68 rem, at the end).
+* **`Row { composer: true TextField { .. } Button { .. } }`** is the box to write in: the field takes the width and shows no label (its `aria-label` and `placeholder:` are what name it), and the **last `Button` is a round 46 px send button** with the glyph ➤ in place of its text (the label stays its accessible name).
+* In a sheet (12.0g) that holds a log, the sheet has a height of 34 rem at most (the window less the bars) and does not scroll as a whole: the log does, and the composer stays under it.
+* `bubble:` is one of the three (`bubble-invalid`); `chatlog:` and `composer:` are `true` or `false` (`chat-flag-invalid`); the keys belong to `Column` (`bubble`, `chatlog`) and `Row` (`composer`) only.
+* **Not here:** a picture or a voice note in a bubble (a picture's address is a literal), reactions on a long press, read ticks, a day heading, "typing". Guarantee tier: `tested` for the CSS text and the script (`tests/look.rs`); the look is for the browser pane.
+
 ### 12.1 Round two (2026-10-29, [`www-port/look2.md`](www-port/look2.md))
 
 * **`card: true`** is also taken by a `Column`, a `Row` and a `Link` (a block card).

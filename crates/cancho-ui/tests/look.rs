@@ -682,3 +682,57 @@ fn a_floating_button_and_a_sheet_are_refused_when_badly_written_twice_or_never_m
     let on_section = base("Section { fab: true Text { \"x\" } }", marks);
     assert!(!codes(&on_section).is_empty());
 }
+
+const CHAT: &str = "page { title: \"T\"; lang: \"en\"; }\ncomponent App {\n    state v: String = \"\";\n    on Set(x) { v = x; }\n    on Go { }\n    view {\n        Column {\n            Column { chatlog: true Column { bubble: \"mine\" Text { \"hi\" } } Column { bubble: \"theirs\" Text { \"yo\" } } Column { bubble: \"system\" Text { \"Ana joined\" } } }\n            Row { composer: true TextField { label: \"Write\" value: v on: Set placeholder: \"Message\" } Button { label: \"Send\" on: Go } }\n        }\n    }\n}\n";
+
+#[test]
+fn a_chat_is_a_log_with_bubbles_that_lean_and_a_composer_with_a_round_send_button() {
+    // docs/structure.md 12.0h
+    let (html, js) = page_of(CHAT);
+    for want in [
+        "class=\"cui-col cui-chatlog\"",
+        "class=\"cui-col cui-bubble cui-bubble-mine\"",
+        "class=\"cui-col cui-bubble cui-bubble-theirs\"",
+        "class=\"cui-col cui-bubble cui-bubble-system\"",
+        "class=\"cui-row cui-composer\"",
+        ".cui-chatlog { display: flex; flex-direction: column; gap: 0.3rem; flex: 1 1 auto; min-height: 9rem; overflow-y: auto;",
+        ".cui-bubble-theirs { align-self: flex-start; border-bottom-left-radius: 4px; }",
+        ".cui-bubble-mine { align-self: flex-end; border-bottom-right-radius: 4px; background: var(--cui-accent-soft, #dcf8c6); }",
+        ".cui-bubble-system { align-self: center; max-width: 92%; background: transparent;",
+        ".cui-bubble [data-style=\"eyebrow\"] { text-transform: none;",
+        ".cui-bubble [data-style=\"note\"] { align-self: flex-end;",
+        ".cui-composer > .cui-field { flex: 1 1 auto; min-width: 0; font-size: 0; }",
+        ".cui-composer > button:last-child { flex: none; width: 46px; min-width: 46px; height: 46px; padding: 0; border-radius: 50%; font-size: 0;",
+        ".cui-composer > button:last-child::before { content: \"\\27A4\";",
+        ".cui-sheet:has(> .cui-chatlog) { overflow: hidden;",
+    ] {
+        assert!(html.contains(want), "{want}");
+    }
+    // the log that was at its foot stays at its foot; one scrolled up keeps its place
+    assert!(js.contains("const __cui_log = [];"), "{js}");
+    assert!(js.contains("foot: e.scrollHeight - e.scrollTop - e.clientHeight < 48, top: e.scrollTop"), "{js}");
+    assert!(js.contains("if (!k || k.foot) { e.scrollTop = e.scrollHeight; } else { e.scrollTop = k.top; }"), "{js}");
+    let read = js.find("const __cui_log = [];").expect("read");
+    let put = js.find("e.scrollTop = e.scrollHeight;").expect("put");
+    let focus = js.find("__cui_focus_restore(root, __focus)").expect("focus");
+    assert!(read < put && put < focus, "{read} {put} {focus}");
+    // a page with no chat log has none of that script
+    let (_, plain) = page_of(&program(PAGE, "Text { \"x\" }"));
+    assert!(!plain.contains("__cui_log"));
+}
+
+#[test]
+fn a_bubble_a_chat_log_and_a_composer_are_refused_when_badly_written() {
+    let bad_bubble = CHAT.replace("bubble: \"mine\"", "bubble: \"loud\"");
+    assert!(codes(&bad_bubble).iter().any(|t| t == "bubble-invalid"));
+    let bad_log = CHAT.replace("chatlog: true", "chatlog: \"yes\"");
+    assert!(codes(&bad_log).iter().any(|t| t == "chat-flag-invalid"));
+    let bad_composer = CHAT.replace("composer: true", "composer: 1");
+    assert!(codes(&bad_composer).iter().any(|t| t == "chat-flag-invalid"));
+    assert!(codes(CHAT).is_empty());
+    // the keys belong to Column (bubble, chatlog) and Row (composer)
+    let on_row = CHAT.replace("Row { composer: true", "Row { bubble: \"mine\"");
+    assert!(!codes(&on_row).is_empty());
+    let on_column = CHAT.replace("Row { composer: true", "Column { composer: true");
+    assert!(!codes(&on_column).is_empty());
+}
