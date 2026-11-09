@@ -892,6 +892,8 @@ fn emit_component(
     // screen that last appeared is.
     out.push_str("        let __cui_ifs_prev = {};\n        let __cui_screen_of = null;\n");
     out.push_str("        function __render() {\n            const __cui_ifs_now = {};\n");
+    // docs/screen-focus.md section 9: the page is rebuilt at every render, which would put the reader back at the top; the scroll is kept unless a new screen appeared
+    out.push_str("            const __cui_sx = window.scrollX, __cui_sy = window.scrollY;\n            let __cui_newscreen = false;\n");
     // docs/drag-and-drop.md section 3: a drag does not survive a rebuild, so the page is not rebuilt under one; the render runs once, after it.
     if view_has_sortlist(&c.view.body) {
         out.push_str("            if (__cui_drag.on) { if (__cui_drag.defer.indexOf(__render) < 0) { __cui_drag.defer.push(__render); } return; }\n");
@@ -976,7 +978,7 @@ fn emit_component(
         out.push_str("            __cui_status_end(root);\n");
     }
     if view_body.contains("__cui_ifs_now[") {
-        out.push_str("            const __cui_drawn = [];\n            for (const k in __cui_ifs_now) { if (!__cui_ifs_prev[k]) { __cui_drawn.push(__cui_ifs_now[k]); } }\n            __cui_ifs_prev = {};\n            for (const k in __cui_ifs_now) { __cui_ifs_prev[k] = true; }\n            if (__cui_drawn.length) { __cui_screen_of = { path: __cui_appeared(root, __cui_drawn) }; }\n");
+        out.push_str("            const __cui_drawn = [];\n            for (const k in __cui_ifs_now) { if (!__cui_ifs_prev[k]) { __cui_drawn.push(__cui_ifs_now[k]); } }\n            __cui_ifs_prev = {};\n            for (const k in __cui_ifs_now) { __cui_ifs_prev[k] = true; }\n            if (__cui_drawn.length) { __cui_screen_of = { path: __cui_appeared(root, __cui_drawn) }; __cui_newscreen = __cui_screen_of.path !== null; }\n");
     }
     if keep_focus {
         // A control that had the focus and could not get it back: the screen changed under it (docs/screen-focus.md).
@@ -985,6 +987,7 @@ fn emit_component(
             routed
         ));
     }
+    out.push_str("            if (!__cui_newscreen && (__cui_sx > 0 || __cui_sy > 0)) { window.scrollTo(__cui_sx, __cui_sy); }\n");
     out.push_str("        }\n");
 
     out.push_str("        __render();\n");

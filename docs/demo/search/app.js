@@ -269,6 +269,8 @@ function mount_Search(root) {
         let __cui_screen_of = null;
         function __render() {
             const __cui_ifs_now = {};
+            const __cui_sx = window.scrollX, __cui_sy = window.scrollY;
+            let __cui_newscreen = false;
             const __focus = __cui_focus_save(root);
             __cui_status_begin(root);
             root.textContent = '';
@@ -318,6 +320,7 @@ function mount_Search(root) {
             root.appendChild(__n0);
             __cui_status_end(root);
             if (!__cui_focus_restore(root, __focus) && __focus) { __cui_screen(root, true, false, __cui_screen_of); }
+            if (!__cui_newscreen && (__cui_sx > 0 || __cui_sy > 0)) { window.scrollTo(__cui_sx, __cui_sy); }
         }
         __render();
         return {

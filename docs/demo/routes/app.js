@@ -247,6 +247,8 @@ function mount_Routes(root) {
         let __cui_screen_of = null;
         function __render() {
             const __cui_ifs_now = {};
+            const __cui_sx = window.scrollX, __cui_sy = window.scrollY;
+            let __cui_newscreen = false;
             const __focus = __cui_focus_save(root);
             __cui_status_begin(root);
             root.textContent = '';
@@ -321,8 +323,9 @@ function mount_Routes(root) {
             for (const k in __cui_ifs_now) { if (!__cui_ifs_prev[k]) { __cui_drawn.push(__cui_ifs_now[k]); } }
             __cui_ifs_prev = {};
             for (const k in __cui_ifs_now) { __cui_ifs_prev[k] = true; }
-            if (__cui_drawn.length) { __cui_screen_of = { path: __cui_appeared(root, __cui_drawn) }; }
+            if (__cui_drawn.length) { __cui_screen_of = { path: __cui_appeared(root, __cui_drawn) }; __cui_newscreen = __cui_screen_of.path !== null; }
             if (!__cui_focus_restore(root, __focus) && __focus) { __cui_screen(root, true, true, __cui_screen_of); }
+            if (!__cui_newscreen && (__cui_sx > 0 || __cui_sy > 0)) { window.scrollTo(__cui_sx, __cui_sy); }
         }
         __render();
         function __cui_hash(e) { const p = __cui_route_of(e.newURL); if (p !== null) { Promise.resolve(__on_Navigated(p)).finally(function () { __cui_screen(root, true, true, __cui_screen_of); }); } }

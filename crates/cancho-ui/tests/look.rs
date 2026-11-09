@@ -448,3 +448,21 @@ fn the_display_scale_sets_a_cards_title_and_text_as_the_page_does() {
         assert!(html.contains(want), "{want}");
     }
 }
+
+#[test]
+fn a_render_keeps_the_scroll_unless_a_new_screen_appeared() {
+    // docs/screen-focus.md section 9: the page is rebuilt at every render; the window's scroll is read before and put back after, except when the render drew a screen that was not there
+    let with_if = "component App {\n    state shown: Bool = false;\n    on Flip { shown = !shown; }\n    view {\n        Column {\n            Button { label: \"Flip\" on: Flip }\n            If { when: shown Section { Heading { level: 2 \"Next\" } Text { \"x\" } } }\n        }\n    }\n}\n";
+    let (_, js) = page_of(with_if);
+    assert!(js.contains("const __cui_sx = window.scrollX, __cui_sy = window.scrollY;"));
+    assert!(js.contains("__cui_newscreen = __cui_screen_of.path !== null;"));
+    assert!(js.contains("if (!__cui_newscreen && (__cui_sx > 0 || __cui_sy > 0)) { window.scrollTo(__cui_sx, __cui_sy); }"));
+    // the restore comes after the page was built and after the focus was given back, so it is the last word on where the window is
+    let build = js.find("__cui_ifs_prev = {};").expect("bookkeeping");
+    let restore = js.find("window.scrollTo(__cui_sx, __cui_sy)").expect("restore");
+    assert!(build < restore);
+    // a page with no `If` has one screen: its scroll is always kept
+    let (_, plain) = page_of(&program(PAGE, "Text { \"x\" }"));
+    assert!(plain.contains("window.scrollTo(__cui_sx, __cui_sy)"));
+    assert!(!plain.contains("__cui_newscreen = __cui_screen_of"));
+}

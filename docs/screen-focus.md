@@ -108,3 +108,15 @@ Found building this, in the order found:
   `document.activeElement` through sign-in: input, heading, body). The restore writes `tabindex="-1"` back first. A ticker page that redraws while its heading is focused checks it.
 * **Timing, in the check.** `check-tickets.js` read the focus when the text "You are signed out." appeared, which is the render before the screen swap; it waits for the
   heading now.
+
+## 9. The scroll is kept (2026-11-09)
+
+> **Status: BUILT.** Found in the cancho-ota console: a page that polls (`every 5000`) was put back at the top every five seconds, and so was a page that a tap or a request redrew, so a long screen could not be read.
+
+**Measured (Chromium in the app's browser pane, the console's home screen, 2,915 px tall).** The page is rebuilt from nothing at every render (section 1 of `docs/presentation.md` 3a), so for an instant it has no height and the window's scroll is clamped to 0. After `window.scrollTo(0, 1200)` the scroll was 0 within 2.4 s (the first tick of a 5 s timer), and a node taken before was no longer connected.
+
+**The rule.** A render reads `window.scrollX` and `scrollY` before it rebuilds, and puts them back after the page, the focus and the screen bookkeeping are done, **unless the render drew a new screen** (an `If` outside a `For` that was not drawn in the render before and that holds a heading: the same test as section 3, rule 3). A new screen starts at the top, where its heading takes the focus (rule 1 and rule 2 are unchanged). A page with no `If` has one screen, so its scroll is always kept. A scroll of 0 is not written back.
+
+**Measured after.** The same page, `scrollTo(0, 1200)`, sampled every 100 ms for 11 s (two timer ticks): 1200 throughout. A tap on "All my trips" from 800 px: 0, at the heading of the new screen. Opening a trip from the home screen: 0.
+
+**Not covered.** A scroll that is not the window's (a scrolling element of its own) is not kept. A render that draws a new screen **and** something else (a banner at the top that changes the height) goes to the top of the new screen. A page whose screens are not `If`s (section 4) never counts as a new screen, so it keeps the scroll across its own screen changes; a program like that scrolls itself. `crates/cancho-ui/tests/look.rs` checks the emitted script (the reads, the condition, the order); the behaviour was checked by hand in the browser, not by a script of this repository.
