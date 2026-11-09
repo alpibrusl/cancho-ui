@@ -121,6 +121,9 @@ body:has(.cui-dock) { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom))
 .cui-bubble [data-style="note"] { align-self: flex-end; font-size: 0.68rem; color: var(--cui-muted, inherit); }
 .cui-sheet:has(> .cui-chatlog) { overflow: hidden; height: min(34rem, calc(100dvh - 9.5rem)); }
 .cui-sheet > .cui-chatlog { min-height: 0; }
+.cui-bubble button { min-height: 28px; min-width: 0; padding: 0 0.7rem; font-size: 0.78rem; background: transparent; color: var(--cui-accent, LinkText); border: 1px solid color-mix(in srgb, currentColor 35%, transparent); box-shadow: none; }
+.cui-sheet > .cui-row:first-child { justify-content: space-between; align-items: center; }
+.cui-sheet > .cui-row:first-child button { background: transparent; color: var(--cui-fg, CanvasText); border: 1px solid color-mix(in srgb, currentColor 35%, transparent); }
 .cui-composer { display: flex; align-items: center; gap: 0.5rem; }
 .cui-composer > .cui-field { flex: 1 1 auto; min-width: 0; font-size: 0; }
 .cui-composer > .cui-field input { width: 100%; box-sizing: border-box; font-size: 1rem; }

@@ -705,6 +705,8 @@ fn a_chat_is_a_log_with_bubbles_that_lean_and_a_composer_with_a_round_send_butto
         ".cui-composer > button:last-child { flex: none; width: 46px; min-width: 46px; height: 46px; padding: 0; border-radius: 50%; font-size: 0;",
         ".cui-composer > button:last-child::before { content: \"\\27A4\";",
         ".cui-sheet:has(> .cui-chatlog) { overflow: hidden;",
+        ".cui-bubble button { min-height: 28px; min-width: 0; padding: 0 0.7rem; font-size: 0.78rem; background: transparent;",
+        ".cui-sheet > .cui-row:first-child { justify-content: space-between; align-items: center; }",
     ] {
         assert!(html.contains(want), "{want}");
     }
