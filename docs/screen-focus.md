@@ -120,3 +120,16 @@ Found building this, in the order found:
 **Measured after.** The same page, `scrollTo(0, 1200)`, sampled every 100 ms for 11 s (two timer ticks): 1200 throughout. A tap on "All my trips" from 800 px: 0, at the heading of the new screen. Opening a trip from the home screen: 0.
 
 **Not covered.** A scroll that is not the window's (a scrolling element of its own) is not kept. A render that draws a new screen **and** something else (a banner at the top that changes the height) goes to the top of the new screen. A page whose screens are not `If`s (section 4) never counts as a new screen, so it keeps the scroll across its own screen changes; a program like that scrolls itself. `crates/cancho-ui/tests/look.rs` checks the emitted script (the reads, the condition, the order); the behaviour was checked by hand in the browser, not by a script of this repository.
+
+## 10. An open `Details` stays open (2026-11-09)
+
+**Found by typing in one.** A `Details` opens and closes by itself (`docs/structure.md` section 1: it is not program state), and the page is drawn again at every state change. A form behind a disclosure
+("Start a group") closed under the reader at the first letter typed: measured in Chromium, `details.open` true before the `input` event and false after, and the node was a new one. The same held for
+any disclosure that holds a field, and for the five-second poll of a page that has one.
+
+**The rule.** Before a render the page reads which `Details` are open, each by its summary text and by its place among those with the same summary text; after the render, and unless a new screen
+appeared (section 9), it opens again each one that was open and is there again. A disclosure that is new, or has another summary, is closed. Two with the same text are told apart by their order.
+**Limit:** a program whose summary text changes while it is open (a count in the summary) loses the open state at each change; a program that moves two disclosures with the same text past each other swaps
+their states.
+
+Guarantee tier: `tested` for the emitted script (`tests/look.rs`, `a_render_keeps_an_open_disclosure_open`); the behaviour is checked in the browser pane (see the console's section 30.66).

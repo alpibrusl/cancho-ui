@@ -579,3 +579,23 @@ fn a_cover_card_in_a_themed_page_takes_the_surface_and_its_panel_is_not_a_floati
     assert!(html.contains(".cui-overlay:not(.cui-overlay-banner):not(.cui-overlay-cover) > :nth-child(n+2) {"), "the label rule must leave the cover card alone");
     assert!(html.contains(".cui-overlay-cover { background: var(--cui-surface); box-shadow: var(--cui-shadow); }"));
 }
+
+#[test]
+fn a_render_keeps_an_open_disclosure_open() {
+    // docs/screen-focus.md section 10: a `Details` is not program state, and the page is rebuilt at every render, so the open ones are read before and opened again after
+    let src = "component App {\n    state v: String = \"\";\n    on Set(x) { v = x; }\n    view {\n        Column {\n            Details { summary: \"More\" TextField { label: \"Name\" value: v on: Set } }\n        }\n    }\n}\n";
+    let (_, js) = page_of(src);
+    let collect = "root.querySelectorAll('details').forEach((d) => { const s = d.querySelector(':scope > summary'); const t = s ? s.textContent : ''; __n[t] = (__n[t] || 0) + 1; __cui_open[t + '#' + __n[t]] = d.open; });";
+    let reopen = "if (__cui_open[t + '#' + __n[t]] === true && !__cui_newscreen) { d.open = true; }";
+    assert!(js.contains(collect), "{js}");
+    assert!(js.contains(reopen), "{js}");
+    assert!(js.contains("__n[t] = (__n[t] || 0) + 1; if (__cui_open["), "the second disclosure with the same text is told from the first: {js}");
+    // the open flags are read before the page is rebuilt and put back after it
+    let read = js.find("__cui_open[t + '#' + __n[t]] = d.open;").expect("read");
+    let put = js.find("d.open = true;").expect("put back");
+    let focus = js.find("__cui_focus_restore").unwrap_or(put);
+    assert!(read < put, "{read} {put}");
+    // and it is put back before the scroll is, so the page has its height when the window is moved
+    let scroll = js.find("window.scrollTo(__cui_sx, __cui_sy)").expect("scroll");
+    assert!(put < scroll && focus <= scroll, "{put} {scroll}");
+}

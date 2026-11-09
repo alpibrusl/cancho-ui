@@ -457,6 +457,18 @@ fn view_has_sortlist(node: &IrViewNode) -> bool {
     }
 }
 
+fn view_has_details(node: &IrViewNode) -> bool {
+    match node {
+        IrViewNode::Element { kind, children, .. } => {
+            matches!(kind, IrElementKind::Details) || children.iter().any(view_has_details)
+        }
+        IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
+            children.iter().any(view_has_details)
+        }
+        IrViewNode::Text { .. } => false,
+    }
+}
+
 fn view_has_file(node: &IrViewNode) -> bool {
     match node {
         IrViewNode::Element { kind, children, .. } => {
@@ -894,6 +906,11 @@ fn emit_component(
     out.push_str("        function __render() {\n            const __cui_ifs_now = {};\n");
     // docs/screen-focus.md section 9: the page is rebuilt at every render, which would put the reader back at the top; the scroll is kept unless a new screen appeared
     out.push_str("            const __cui_sx = window.scrollX, __cui_sy = window.scrollY;\n            let __cui_newscreen = false;\n");
+    // docs/screen-focus.md section 10: a `Details` opens and closes by itself (it is not program state), so the rebuild would close it under a reader who is typing in it; each one that is open is
+    // opened again, found by its summary text and by its place among those with the same text
+    if view_has_details(&c.view.body) {
+        out.push_str("            const __cui_open = {};\n            { const __n = {}; root.querySelectorAll('details').forEach((d) => { const s = d.querySelector(':scope > summary'); const t = s ? s.textContent : ''; __n[t] = (__n[t] || 0) + 1; __cui_open[t + '#' + __n[t]] = d.open; }); }\n");
+    }
     // docs/drag-and-drop.md section 3: a drag does not survive a rebuild, so the page is not rebuilt under one; the render runs once, after it.
     if view_has_sortlist(&c.view.body) {
         out.push_str("            if (__cui_drag.on) { if (__cui_drag.defer.indexOf(__render) < 0) { __cui_drag.defer.push(__render); } return; }\n");
@@ -986,6 +1003,9 @@ fn emit_component(
             "            if (!__cui_focus_restore(root, __focus) && __focus) {{ __cui_screen(root, true, {}, __cui_screen_of); }}\n",
             routed
         ));
+    }
+    if view_has_details(&c.view.body) {
+        out.push_str("            { const __n = {}; root.querySelectorAll('details').forEach((d) => { const s = d.querySelector(':scope > summary'); const t = s ? s.textContent : ''; __n[t] = (__n[t] || 0) + 1; if (__cui_open[t + '#' + __n[t]] === true && !__cui_newscreen) { d.open = true; } }); }\n");
     }
     out.push_str("            if (!__cui_newscreen && (__cui_sx > 0 || __cui_sy > 0)) { window.scrollTo(__cui_sx, __cui_sy); }\n");
     out.push_str("        }\n");
