@@ -595,7 +595,9 @@ fn a_render_keeps_an_open_disclosure_open() {
     let put = js.find("d.open = true;").expect("put back");
     let focus = js.find("__cui_focus_restore").unwrap_or(put);
     assert!(read < put, "{read} {put}");
-    // and it is put back before the scroll is, so the page has its height when the window is moved
+    // it is put back before the focus is given back (a field inside a closed disclosure cannot take it) and before the scroll is moved (so the page has its height)
     let scroll = js.find("window.scrollTo(__cui_sx, __cui_sy)").expect("scroll");
-    assert!(put < scroll && focus <= scroll, "{put} {scroll}");
+    let focus_at = js.find("__cui_focus_restore(root, __focus)").expect("focus");
+    assert!(put < focus_at && focus_at < scroll, "{put} {focus_at} {scroll}");
+    let _ = focus;
 }
