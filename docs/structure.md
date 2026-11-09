@@ -318,6 +318,14 @@ Measured by `scripts/pixel-diff-www.js`: [`www-port/look.md`](www-port/look.md) 
 
 The baseline rules of the first three are written **only for a program that uses one** (`cancho_ui_ir::page::uses_look_roles`), so every other page, and every committed gallery demo, is the bytes it was; the rule of the end group is in the sticky header's own `<style>`.
 
+### 12.0 A link to the backend (2026-11-09)
+
+A program that signs a person in through a provider has to send the browser to its own server (`/api/auth/google/start`), which answers with a redirect: a navigation, not a file, and not an address of another host. `Link { to: "/api/..." }` is that. `/api/` is the prefix the console's own requests already use (`docs/mobile-backend.md`), so the compiler writes the path as it is, with no file to carry and no host to list.
+
+* The path is letters, digits, `-`, `_` and `/`: no dot, no query, no fragment, no empty segment, at most 128 bytes (`link-route-invalid`). A query is the server's business, not the page's.
+* Everything else about a link is as before: it needs text, and `rel` and the target are what a same-origin link gets.
+* Guarantee tier: `static` for the shape of the path; that the server answers there is not known here.
+
 ### 12.1 Round two (2026-10-29, [`www-port/look2.md`](www-port/look2.md))
 
 * **`card: true`** is also taken by a `Column`, a `Row` and a `Link` (a block card).

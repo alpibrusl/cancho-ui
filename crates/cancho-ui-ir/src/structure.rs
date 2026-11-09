@@ -443,6 +443,15 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
             )),
             Some(s) => {
                 check_to(s).map_err(|why| refuse("link-scheme-refused", why, b.span))?;
+                if crate::media::is_app_route(s) {
+                    crate::media::check_app_route(s).map_err(|why| {
+                        refuse(
+                            "link-route-invalid",
+                            format!("`to: \"{s}\"` is a route of the backend, and {why}"),
+                            b.span,
+                        )
+                    })?;
+                }
                 if crate::media::is_file_link(s) {
                     crate::media::link_file_type(s).map_err(|why| {
                         refuse(

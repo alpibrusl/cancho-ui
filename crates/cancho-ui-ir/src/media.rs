@@ -194,9 +194,28 @@ pub fn asset_type(path: &str, types: &[(&str, &'static str)]) -> Result<&'static
         })
 }
 
-/// Whether a link's `to:` names a file of the site: not an address, not a `#id`, not a scheme.
+/// Whether a link's `to:` is a route of the page's own backend: a path under `/api/` (docs/structure.md section 12.2). It is a navigation to the server, not a file the build carries.
+pub fn is_app_route(to: &str) -> bool {
+    to.starts_with("/api/")
+}
+
+/// Why a route of the backend is not one a link may name: letters, digits, `-`, `_` and `/` only (no `.`, no query, no fragment), no empty segment, at most 128 bytes.
+pub fn check_app_route(to: &str) -> Result<(), String> {
+    if to.len() > 128 {
+        return Err("it is longer than 128 bytes".to_string());
+    }
+    if !to.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'/')) {
+        return Err("it has a character other than letters, digits, `-`, `_` and `/` (a link to the backend carries no query, no fragment and no dot)".to_string());
+    }
+    if to[1..].split('/').any(|seg| seg.is_empty()) {
+        return Err("it has an empty segment (`//`, or a `/` at the end)".to_string());
+    }
+    Ok(())
+}
+
+/// Whether a link's `to:` names a file of the site: not an address, not a `#id`, not a scheme, not a route of the backend.
 pub fn is_file_link(to: &str) -> bool {
-    if to.is_empty() || to.starts_with('#') || to.starts_with("//") {
+    if to.is_empty() || to.starts_with('#') || to.starts_with("//") || is_app_route(to) {
         return false;
     }
     match to.find(':') {
