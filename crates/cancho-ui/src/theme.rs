@@ -253,7 +253,7 @@ pub fn css(theme: &IrTheme) -> String {
     );
     s.push_str("@media (prefers-color-scheme: dark) { .cui-sticky { border-bottom-color: var(--cui-line); box-shadow: none; } }\n");
     s.push_str(".cui-card, .cui-cards > li { background: var(--cui-surface); border-color: transparent; box-shadow: var(--cui-shadow); }\n");
-    s.push_str(".cui-overlay:not(.cui-overlay-banner) > :nth-child(n+2) { background: var(--cui-surface); color: var(--cui-fg); box-shadow: var(--cui-shadow); }\n");
+    s.push_str(".cui-overlay:not(.cui-overlay-banner):not(.cui-overlay-cover) > :nth-child(n+2) { background: var(--cui-surface); color: var(--cui-fg); box-shadow: var(--cui-shadow); }\n.cui-overlay-cover { background: var(--cui-surface); box-shadow: var(--cui-shadow); }\n");
     s.push_str("a.cui-link-pill { color: var(--cui-warn); background-color: var(--cui-warn-bg); box-shadow: inset 0 0 0 1px var(--cui-warn-line); }\n");
     if find("mono").is_some() {
         s.push_str("[data-style=\"eyebrow\"], [data-style=\"label\"], .cui-sticky > a:first-of-type { font-family: var(--cui-mono); }\n");

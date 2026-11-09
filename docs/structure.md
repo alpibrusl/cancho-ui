@@ -340,6 +340,10 @@ The console's navbar (Home, Trips, Groups, Me) is a `Nav` of `Button`s whose ope
 
 `Text { style: "avatar" "EA" }` is the initials of a person (two letters, upper-cased by the page) on a 2.25 rem round disc with a 2 px ring of the page's own background. Side by side in a `Row` the discs overlap by 0.6 rem, and their colours go coral, plum, green, amber-brown, by position (`#b41d26`, `#6b5585`, `#1e7e34`, `#884e00`: each is at least 4.5:1 against the white text, computed, not looked up). The colours are fixed, not tokens: an avatar is a person's colour, not the page's. There is no picture avatar: a face is a user upload and is for the app's media, not the toolkit. Guarantee tier: `tested` for the CSS text (`tests/look.rs`).
 
+### 12.0d A cover card (2026-11-09)
+
+`Column { card: true overlay: "cover" Image { .. } Column { .. } Text { .. } Row { .. } }`: a card with the **picture on top** (16:10, cropped to fill), the **second child over the foot of the picture** on a dark scrim (white text: a title, dates, a chip), and **every later child as the panel under the picture** (padded 1.1 rem, with room above the first and under the last). The card is 24 px round and, in a page with a theme, takes the surface colour and shadow. It is the photo-over-panel card of travel and social apps; `overlay: "banner"` (everything over the picture) is still there. `overlay:` is `true`, `false`, `"banner"` or `"cover"` (`overlay-invalid`). The white text over the picture is only as readable as the picture: the scrim is black at 70 % at the foot and 0 % at the top of the second child, and the check of the picture's contrast is the author's. Guarantee tier: `tested` for the CSS text (`tests/look.rs`).
+
 ### 12.1 Round two (2026-10-29, [`www-port/look2.md`](www-port/look2.md))
 
 * **`card: true`** is also taken by a `Column`, a `Row` and a `Link` (a block card).

@@ -346,6 +346,15 @@ const ROLES_CSS: &str = r#":root button { border-radius: 999px; border-color: tr
 .cui-overlay-banner > :nth-child(n+2) { position: relative; grid-area: auto; grid-column: 1; background: none; color: inherit; margin: 0; padding: 0 1.5rem; align-self: auto; justify-self: auto; max-width: 40rem; }
 .cui-overlay-banner > :nth-child(2) { padding-top: 1.5rem; }
 .cui-overlay-banner > :last-child { padding-bottom: 1.5rem; }
+/* a cover card (docs/structure.md 12.0d): the picture on top with the second child over its foot on a dark scrim, and the rest as the panel under it */
+.cui-overlay-cover { position: relative; border-radius: 24px; overflow: hidden; background: Canvas; }
+.cui-overlay-cover > :first-child { grid-area: 1 / 1; background: #0b1016; }
+.cui-overlay-cover > :first-child img { display: block; width: 100%; max-width: none; aspect-ratio: 16 / 10; object-fit: cover; }
+.cui-overlay-cover > picture:first-child { max-width: none !important; }
+.cui-overlay-cover > :nth-child(2) { grid-area: 1 / 1; align-self: end; justify-self: stretch; box-sizing: border-box; margin: 0; padding: 3rem 1.1rem 0.9rem; border-radius: 0; background: linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0)); color: #fff; font-size: inherit; box-shadow: none; z-index: 1; }
+.cui-overlay-cover > :nth-child(n+3) { grid-area: auto; grid-column: 1; align-self: auto; justify-self: stretch; box-sizing: border-box; margin: 0; padding: 0.4rem 1.1rem; border-radius: 0; background: none; color: inherit; font-size: inherit; box-shadow: none; }
+.cui-overlay-cover > :nth-child(3) { padding-top: 0.9rem; }
+.cui-overlay-cover > :last-child:nth-child(n+3) { padding-bottom: 1.1rem; }
 @media (max-width: 39.99rem) { .cui-from-40.cui-grid-w > * { flex-basis: 100%; } .cui-from-40:not(.cui-grid-w) { grid-template-columns: 1fr; } }
 @media (max-width: 47.99rem) { .cui-from-48.cui-grid-w > * { flex-basis: 100%; } .cui-from-48:not(.cui-grid-w) { grid-template-columns: 1fr; } }
 @media (max-width: 59.99rem) { .cui-from-60.cui-grid-w > * { flex-basis: 100%; } .cui-from-60:not(.cui-grid-w) { grid-template-columns: 1fr; } }

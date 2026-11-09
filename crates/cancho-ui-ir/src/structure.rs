@@ -522,10 +522,10 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
             IrBindingValue::Const { expr, .. } if matches!(**expr, IrExpr::BoolLit { .. }) => {
                 Ok(true)
             }
-            _ if string_of(b) == Some("banner") => Ok(true),
+            _ if matches!(string_of(b), Some("banner" | "cover")) => Ok(true),
             _ => Err(refuse(
                 "overlay-invalid",
-                "`overlay:` is `true`, `false` or `\"banner\"`: `Column { overlay: true Hero { } Rich { \"..\" } }` (docs/www-port/look2.md)".to_string(),
+                "`overlay:` is `true`, `false`, `\"banner\"` or `\"cover\"`: `Column { overlay: true Hero { } Rich { \"..\" } }` (docs/www-port/look2.md)".to_string(),
                 b.span,
             )),
         },
@@ -894,6 +894,12 @@ pub fn class(kind: &IrElementKind, bindings: &[IrBinding]) -> Option<String> {
             .any(|b| b.key == "overlay" && string_of(b) == Some("banner"))
         {
             return Some("cui-overlay cui-overlay-banner".to_string());
+        }
+        if bindings
+            .iter()
+            .any(|b| b.key == "overlay" && string_of(b) == Some("cover"))
+        {
+            return Some("cui-overlay cui-overlay-cover".to_string());
         }
     }
     if is_card(bindings) && matches!(kind, IrElementKind::List) {

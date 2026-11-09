@@ -548,3 +548,34 @@ fn an_avatar_is_a_round_disc_of_initials_that_overlaps_the_next_and_each_colour_
         assert!(ratio >= 4.5, "{bg}: {ratio:.2}");
     }
 }
+
+#[test]
+fn a_cover_card_has_the_picture_on_top_the_title_over_its_foot_and_the_rest_as_a_panel() {
+    // docs/structure.md 12.0d
+    let (html, _) = page_of(&program(
+        PAGE,
+        "Column { overlay: \"cover\" Text { \"pic\" } Text { \"over\" } Text { \"panel\" } }",
+    ));
+    assert!(html.contains("class=\"cui-col cui-overlay cui-overlay-cover\"") || html.contains("cui-overlay cui-overlay-cover"), "{html}");
+    for want in [
+        ".cui-overlay-cover { position: relative; border-radius: 24px; overflow: hidden;",
+        ".cui-overlay-cover > :nth-child(2) { grid-area: 1 / 1; align-self: end;",
+        "linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0))",
+        ".cui-overlay-cover > :nth-child(n+3) { grid-area: auto; grid-column: 1;",
+        ".cui-overlay-cover > :first-child img { display: block; width: 100%;",
+    ] {
+        assert!(html.contains(want), "{want}");
+    }
+    let got = codes(&program(PAGE, "Column { overlay: \"hero\" Text { \"a\" } }"));
+    assert!(got.iter().any(|t| t == "overlay-invalid"), "{got:?}");
+    assert!(codes(&program(PAGE, "Column { overlay: \"banner\" Text { \"a\" } }")).is_empty());
+}
+
+#[test]
+fn a_cover_card_in_a_themed_page_takes_the_surface_and_its_panel_is_not_a_floating_label() {
+    let th = "theme {\n    light { bg: \"#faf7f2\"; fg: \"#1e1b18\"; muted: \"#6b6560\"; line: \"#e9e1dc\"; surface: \"#ffffff\"; soft: \"#f4ece7\"; ink: \"#2e1a47\"; accent: \"#b41d26\"; accent_fg: \"#ffffff\"; accent_soft: \"#ffdad7\"; good: \"#1e7e34\"; warn: \"#884e00\"; warn_bg: \"#ffdcbe\"; warn_line: \"#aa6402\"; bad: \"#ba1a1a\"; bad_bg: \"#ffdad6\"; code_bg: \"#12151a\"; code_fg: \"#d6dde8\"; }\n    dark { bg: \"#141118\"; fg: \"#f5f2eb\"; muted: \"#a8a199\"; line: \"#352d3d\"; surface: \"#1f1a24\"; soft: \"#2a2330\"; ink: \"#141118\"; accent: \"#ff6b6b\"; accent_fg: \"#2b0509\"; accent_soft: \"#3b1d26\"; good: \"#6fdba5\"; warn: \"#ffb366\"; warn_bg: \"#2a200d\"; warn_line: \"#7e6126\"; bad: \"#ff9187\"; bad_bg: \"#331816\"; code_bg: \"#12151a\"; code_fg: \"#d6dde8\"; }\n}\n";
+    let src = format!("{th}{}", program(PAGE, "Column { overlay: \"cover\" Text { \"pic\" } Text { \"over\" } Text { \"panel\" } }"));
+    let (html, _) = page_of(&src);
+    assert!(html.contains(".cui-overlay:not(.cui-overlay-banner):not(.cui-overlay-cover) > :nth-child(n+2) {"), "the label rule must leave the cover card alone");
+    assert!(html.contains(".cui-overlay-cover { background: var(--cui-surface); box-shadow: var(--cui-shadow); }"));
+}
