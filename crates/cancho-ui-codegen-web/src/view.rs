@@ -922,6 +922,23 @@ pub(crate) fn emit_view_node(
                         indent, var
                     ));
                 }
+                // A Button or NavLink whose visible content is its children (an icon) keeps its `label` as its accessible name; the same
+                // text is also its tooltip (`title`), so a person who hovers or long-presses an icon is told what it does.
+                if matches!(kind, IrElementKind::Button | IrElementKind::NavLink) && !children.is_empty() {
+                    if accessibility.label_expr.is_some() {
+                        out.push_str(&format!(
+                            "{0}{1}.setAttribute('title', {2});\n",
+                            indent, var, label_var
+                        ));
+                    } else if let Some(l) = button_label.clone().or_else(|| accessibility.label.clone()) {
+                        out.push_str(&format!(
+                            "{0}{1}.setAttribute('title', {2});\n",
+                            indent,
+                            var,
+                            js_string(&l)
+                        ));
+                    }
+                }
                 for c in children {
                     out.push_str(&emit_view_node(
                         next_id,

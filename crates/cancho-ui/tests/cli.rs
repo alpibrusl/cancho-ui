@@ -252,3 +252,30 @@ fn skill_and_introspect_refuse_bad_flags_with_exit_2() {
         );
     }
 }
+
+
+#[test]
+fn a_button_whose_content_is_an_icon_keeps_its_label_as_name_and_tooltip() {
+    // `Button { label: "Home" Text { "H" } }` shows its child; the label is its accessible name and also its `title`, a tooltip. A button with no
+    // children shows its label as its text and needs no tooltip; an expression label is the tooltip too.
+    let dir = common::scratch_root().join("cancho-ui-button-tooltip");
+    std::fs::create_dir_all(&dir).expect("scratch directory");
+    let source = dir.join("icon.cui");
+    std::fs::write(
+        &source,
+        "component Icon {\n    state n: Int = 0;\n    on Tap { n = n + 1; }\n    view {\n        Column {\n            Button { label: \"Home\" on: Tap Text { \"H\" } }\n            Button { label: \"Plain\" on: Tap }\n            Button { label: \"Row \" + n on: Tap Text { \"R\" } }\n        }\n    }\n}\n",
+    )
+    .expect("a source file");
+    let out = dir.join("icon.js");
+    let (code, stdout) = run(&[
+        "build",
+        source.to_str().expect("temp path is UTF-8"),
+        "-o",
+        out.to_str().expect("temp path is UTF-8"),
+    ]);
+    assert_eq!(code, 0, "stdout: {stdout}");
+    let js = std::fs::read_to_string(&out).expect("build wrote the file");
+    assert!(js.contains("setAttribute('title', \"Home\")"), "an icon button has a tooltip:\n{js}");
+    assert!(!js.contains("setAttribute('title', \"Plain\")"), "a button that shows its label needs none:\n{js}");
+    assert_eq!(js.matches("setAttribute('title'").count(), 2, "the expression label gives one more:\n{js}");
+}
