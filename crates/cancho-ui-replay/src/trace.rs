@@ -129,6 +129,7 @@ const EXPECT_KEYS: &[&str] = &[
     "document",
     "sortlists",
     "maps",
+    "routemaps",
 ];
 
 pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {

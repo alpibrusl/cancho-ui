@@ -42,6 +42,8 @@ pub const ELEMENT_KEYS: &[&str] = &[
     "zoom",
     "tiles",
     "attribution",
+    "points",
+    "route",
 ];
 
 /// What a `Chart` takes (docs/charts.md section 3); every other key is `binding-unknown` on it.
@@ -118,6 +120,7 @@ fn check_node(c: &IrComponent, node: &IrViewNode, in_for: bool) -> Result<(), Lo
                 check_select_complete(kind, bindings, *span)?;
                 crate::sortlist::check_complete(kind, accessibility, bindings, *span, in_for)?;
                 crate::map::check_complete(c, kind, accessibility, bindings, *span)?;
+                crate::routemap::check_complete(kind, accessibility, bindings, *span, in_for)?;
             }
             for ch in children {
                 check_node(c, ch, in_for)?;
@@ -153,6 +156,7 @@ fn element_name(kind: &IrElementKind) -> &'static str {
         IrElementKind::Select => "Select",
         IrElementKind::FileField => "FileField",
         IrElementKind::Chart => "Chart",
+        IrElementKind::RouteMap => "RouteMap",
         IrElementKind::NavLink => "NavLink",
         IrElementKind::SortList => "SortList",
         IrElementKind::Map => "Map",
@@ -921,6 +925,7 @@ fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result
     }
     crate::sortlist::check_binding(c, kind, b)?;
     crate::map::check_binding(c, kind, b)?;
+    crate::routemap::check_binding(c, kind, b)?;
     if matches!(kind, IrElementKind::FileField)
         && !FILEFIELD_KEYS.contains(&b.key.as_str())
         && ELEMENT_KEYS.contains(&b.key.as_str())

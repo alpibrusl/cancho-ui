@@ -373,6 +373,16 @@ pub(crate) fn emit_view_node(
             if matches!(kind, IrElementKind::Map) {
                 return crate::map::emit(indent, &var, parent_var, accessibility, bindings, params);
             }
+            if matches!(kind, IrElementKind::RouteMap) {
+                return crate::routemap::emit(
+                    indent,
+                    &var,
+                    parent_var,
+                    accessibility,
+                    bindings,
+                    params,
+                );
+            }
             if let IrElementKind::Island(island) = kind {
                 return crate::island::emit(indent, &var, parent_var, island, bindings);
             }
@@ -924,13 +934,17 @@ pub(crate) fn emit_view_node(
                 }
                 // A Button or NavLink whose visible content is its children (an icon) keeps its `label` as its accessible name; the same
                 // text is also its tooltip (`title`), so a person who hovers or long-presses an icon is told what it does.
-                if matches!(kind, IrElementKind::Button | IrElementKind::NavLink) && !children.is_empty() {
+                if matches!(kind, IrElementKind::Button | IrElementKind::NavLink)
+                    && !children.is_empty()
+                {
                     if accessibility.label_expr.is_some() {
                         out.push_str(&format!(
                             "{0}{1}.setAttribute('title', {2});\n",
                             indent, var, label_var
                         ));
-                    } else if let Some(l) = button_label.clone().or_else(|| accessibility.label.clone()) {
+                    } else if let Some(l) =
+                        button_label.clone().or_else(|| accessibility.label.clone())
+                    {
                         out.push_str(&format!(
                             "{0}{1}.setAttribute('title', {2});\n",
                             indent,

@@ -395,6 +395,8 @@ pub enum ElementKind {
     Select,
     /// A line or bar chart drawn from a list of numbers (docs/charts.md).
     Chart,
+    /// A diagram of positions joined in list order, drawn as an inline SVG with no tiles and no network (docs/routes.md).
+    RouteMap,
     /// A file picker whose chosen file reaches the program as one JSON `String` (docs/file-upload.md).
     FileField,
     /// A list the user can reorder, by dragging a handle or with buttons (docs/drag-and-drop.md).

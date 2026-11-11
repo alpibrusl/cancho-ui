@@ -41,13 +41,19 @@ body {
 .cui-chart { margin: 0; }
 .cui-chart figcaption { font-weight: 600; }
 .cui-chart summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
+/* RouteMap (docs/routes.md): a pin is a fill with the page's own colour as its number and outline; fills are 7.59, 5.08 and 6.39:1 against white and 9.63, 7.37 and 6.43:1 against the dark page, and the number is the page colour on the fill (the same pairs), so a pin is read by its number and the list, never by its colour alone */
+:root { --cui-route-lodging: #0550ae; --cui-route-activity: #1a7f37; --cui-route-transport: #57606a; --cui-route-other: CanvasText; --cui-route-ink: Canvas; }
+.cui-routemap-svg { display: block; width: 100%; max-width: 40rem; height: auto; }
+.cui-rm-lodging { fill: var(--cui-route-lodging); } .cui-rm-activity { fill: var(--cui-route-activity); }
+.cui-rm-transport { fill: var(--cui-route-transport); } .cui-rm-other { fill: var(--cui-route-other); }
+.cui-rm-list { list-style: none; margin: 0; padding: 0; }
 /* tone: a status text says what kind it is by a prefix as well as by colour, so colour is never the only signal */
 [data-tone] { font-weight: 600; }
 [data-tone="ok"] { color: #1a7f37; } [data-tone="ok"]::before { content: "\2713  "; }
 [data-tone="warn"] { color: #9a6700; } [data-tone="warn"]::before { content: "\26A0  "; }
 [data-tone="error"] { color: #cf222e; } [data-tone="error"]::before { content: "\2717  "; }
 @media (prefers-color-scheme: dark) {
-    :root { --cui-chart: #79c0ff; --cui-chart-open: #9198a1; }
+    :root { --cui-chart: #79c0ff; --cui-chart-open: #9198a1; --cui-route-lodging: #79c0ff; --cui-route-activity: #3fb950; --cui-route-transport: #9198a1; }
     [data-tone="ok"] { color: #3fb950; } [data-tone="warn"] { color: #d29922; } [data-tone="error"] { color: #ff7b72; }
 }
 button, input, textarea { min-height: 44px; min-width: 44px; font: inherit; }

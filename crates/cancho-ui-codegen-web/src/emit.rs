@@ -235,6 +235,14 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
     if ir
         .components
         .iter()
+        .any(|c| crate::routemap::view_has_routemap(&c.view.body))
+    {
+        out.push_str(crate::routemap::ADAPTER_JS);
+        out.push('\n');
+    }
+    if ir
+        .components
+        .iter()
         .any(|c| crate::number::view_has_number(&c.view.body))
     {
         out.push_str(crate::number::ADAPTER_JS);

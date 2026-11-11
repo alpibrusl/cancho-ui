@@ -710,6 +710,8 @@ pub enum IrElementKind {
     FileField,
     /// `Chart { label: .. kind: "line" values: xs }` (docs/charts.md): an SVG line or bar chart of a list of numbers in a `<figure>`.
     Chart,
+    /// `RouteMap { label: .. points: rows route: true }` (docs/routes.md): an inline SVG of numbered positions joined in list order, in a `<figure>`.
+    RouteMap,
     /// `SortList { label: .. items: list on: Moved }` (docs/drag-and-drop.md): a list the user can reorder, a `<ul>` of rows each with a drag
     /// handle and buttons to move it up and down; the event gets the two indexes.
     SortList,
@@ -801,6 +803,7 @@ impl IrElementKind {
             IrElementKind::Select => "select",
             IrElementKind::FileField => "input",
             IrElementKind::Chart => "figure",
+            IrElementKind::RouteMap => "figure",
             IrElementKind::NavLink => "a",
             IrElementKind::Heading => "h2",
             IrElementKind::Section => "section",

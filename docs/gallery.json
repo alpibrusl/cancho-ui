@@ -83,6 +83,12 @@
         "tiles": "examples/map/tiles"
       },
       "says": "`Map`: the tiles of an address the program writes (here a folder of stand-in tiles beside this page; the compiler has no default tile host and this page asks nobody else for anything), the places pinned over them, the same places as a list nearest first (the list is what a screen reader reads), and the credit under the map. The map is centred on the middle of the tile, so a tile server learns the tile and no more."
+    },
+    {
+      "id": "route",
+      "title": "A trip as a route",
+      "source": "examples/route/route.cui",
+      "says": "`RouteMap`: numbered pins joined in list order by a line, drawn as an inline SVG from the program's own rows. It fetches nothing (no tiles, no host, no capability) and draws no coastlines: it is a diagram of positions, not a map of the land. The same stops are a collapsed list with the distance from the previous one, which is what a screen reader reads; a stop with no readable position is listed and not drawn."
     }
   ],
   "soon": [

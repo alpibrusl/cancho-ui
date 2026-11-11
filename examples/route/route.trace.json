@@ -1,0 +1,56 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "note": "The text alternative of one route map: four located stops and one without a position, the route hidden, a fifth located stop added, and no stops at all.",
+  "steps": [
+    {
+      "advance": 0,
+      "expect": {
+        "routemaps": [
+          {
+            "label": "Trip",
+            "count": 5,
+            "located": 4,
+            "on_route": 4,
+            "summary": "route map of 5 places, 4 on the route, 1 without a position, about 83 km across"
+          }
+        ]
+      }
+    },
+    {
+      "event": "Toggle",
+      "expect": {
+        "routemaps": [
+          {
+            "on_route": 0,
+            "km": 0,
+            "summary": "route map of 5 places, route not drawn, 1 without a position, about 83 km across"
+          }
+        ]
+      }
+    },
+    {
+      "event": "AddStop",
+      "expect": {
+        "routemaps": [
+          {
+            "count": 6,
+            "located": 5
+          }
+        ]
+      }
+    },
+    {
+      "event": "Reset",
+      "expect": {
+        "routemaps": [
+          {
+            "count": 0,
+            "located": 0,
+            "summary": "route map with no places"
+          }
+        ]
+      }
+    }
+  ]
+}

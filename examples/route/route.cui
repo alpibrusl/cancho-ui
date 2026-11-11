@@ -1,0 +1,40 @@
+// examples/route/route.cui: a trip drawn as numbered pins joined in list order (docs/routes.md).
+//
+// A RouteMap is an inline SVG drawn by the page from the rows the program holds: no tiles, no host, no capability and nothing fetched. It is a
+// diagram of positions, not a map of the land: there are no coastlines and no roads. The rows are {"name", "pos": "lat,lon", "kind"}; a row
+// with no readable position is not drawn but is listed ("no position"). The list under the picture is the accessible form.
+
+component Trip {
+    state stops: List[String] = [
+        "\{\"name\":\"Geneva airport\",\"pos\":\"46.2381,6.1089\",\"kind\":\"transport\"\}",
+        "\{\"name\":\"Chamonix\",\"pos\":\"45.9237,6.8694\",\"kind\":\"lodging\"\}",
+        "\{\"name\":\"Aiguille du Midi\",\"pos\":\"45.8786,6.8873\",\"kind\":\"activity\"\}",
+        "\{\"name\":\"Courmayeur\",\"pos\":\"45.7969,6.9689\",\"kind\":\"lodging\"\}",
+        "\{\"name\":\"Somewhere to be decided\",\"pos\":\"unknown\",\"kind\":\"activity\"\}"
+    ];
+    state joined: Bool = true;
+    state count: Int = 5;
+
+    on Toggle { joined = !joined; }
+    on AddStop {
+        stops = concat(stops, ["\{\"name\":\"Turin\",\"pos\":\"45.0703,7.6869\",\"kind\":\"transport\"\}"]);
+        count = count + 1;
+    }
+    on Reset {
+        stops = [];
+        count = 0;
+    }
+
+    view {
+        Column {
+            Text { role: heading "Trip" }
+            RouteMap { label: "Trip" points: stops route: joined }
+            Text { role: status "{count} places" }
+            Row {
+                Button { label: "Show or hide the route" on: Toggle }
+                Button { label: "Add Turin" on: AddStop }
+                Button { label: "Clear" on: Reset }
+            }
+        }
+    }
+}

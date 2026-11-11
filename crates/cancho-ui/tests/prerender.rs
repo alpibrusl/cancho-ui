@@ -275,8 +275,15 @@ fn text_the_html_parser_would_change_never_reaches_a_panic() {
 fn the_gallery_demos_are_interactive_and_each_keeps_a_line_for_a_visitor_without_script() {
     // checked on 2026-10-24 with `inspect prerender` on each of the 13 examples, and the text of five of them read against it: every demo has a
     // control or a state-bound text, so every demo has a hole and keeps a line; five have some static text of their own (a label, a heading),
-    // the other eight are controls and state only, so the page they get is the old one
-    let some = ["notes", "ops-console", "upload", "charts", "reorder"];
+    // the other eight are controls and state only, so the page they get is the old one. `route` (added with RouteMap, 2026-11-11) has a heading of its own: six
+    let some = [
+        "notes",
+        "ops-console",
+        "upload",
+        "charts",
+        "reorder",
+        "route",
+    ];
     let demos = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/demo");
     let mut n = 0;
     for entry in std::fs::read_dir(&demos).expect("docs/demo").flatten() {
@@ -297,7 +304,7 @@ fn the_gallery_demos_are_interactive_and_each_keeps_a_line_for_a_visitor_without
             "{id}"
         );
     }
-    assert_eq!(n, 13, "the gallery has 13 demos");
+    assert_eq!(n, 14, "the gallery has 14 demos");
 }
 
 // ---- hydration (P1b): the script builds the holes and nothing else ----------------------------------------------------------------------

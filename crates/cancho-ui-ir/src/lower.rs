@@ -1189,6 +1189,7 @@ fn lower_kind(k: &ElementKind) -> IrElementKind {
         ElementKind::Select => IrElementKind::Select,
         ElementKind::FileField => IrElementKind::FileField,
         ElementKind::Chart => IrElementKind::Chart,
+        ElementKind::RouteMap => IrElementKind::RouteMap,
         ElementKind::NavLink => IrElementKind::NavLink,
         ElementKind::SortList => IrElementKind::SortList,
         ElementKind::Map => IrElementKind::Map,

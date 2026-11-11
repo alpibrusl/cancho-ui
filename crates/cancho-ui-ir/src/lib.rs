@@ -30,6 +30,7 @@ pub mod messages;
 pub mod motion;
 pub mod page;
 pub mod recipe;
+pub mod routemap;
 pub mod routing;
 pub mod serialize;
 pub mod sortlist;

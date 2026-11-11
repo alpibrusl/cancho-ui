@@ -270,6 +270,7 @@ impl Parser {
             "Select" => ElementKind::Select,
             "FileField" => ElementKind::FileField,
             "Chart" => ElementKind::Chart,
+            "RouteMap" => ElementKind::RouteMap,
             "NavLink" => ElementKind::NavLink,
             "SortList" => ElementKind::SortList,
             "Map" => ElementKind::Map,
@@ -633,6 +634,38 @@ impl Parser {
                     Token::Ident(s) => Ok(BindingValue::StateRef(s)),
                     other => Err(ParseError::Unexpected {
                         expected: "a text literal, the tile address",
+                        found: other,
+                        line: tok.span.start.line,
+                        column: tok.span.start.column,
+                    }),
+                }
+            }
+            "points" if matches!(kind, ElementKind::RouteMap) => {
+                // The name of the `List` state field of rows a `RouteMap` draws (docs/routes.md section 3).
+                let tok = self.bump();
+                match tok.token {
+                    Token::Ident(s) => Ok(BindingValue::StateRef(s)),
+                    other => Err(ParseError::Unexpected {
+                        expected: "the name of a List state field",
+                        found: other,
+                        line: tok.span.start.line,
+                        column: tok.span.start.column,
+                    }),
+                }
+            }
+            "route" if matches!(kind, ElementKind::RouteMap) => {
+                // `true`, `false` or the name of a `Bool` state field (docs/routes.md section 3)
+                let tok = self.bump();
+                match tok.token {
+                    Token::Ident(k) if k == "true" || k == "false" => {
+                        Ok(BindingValue::Prop(Expr::BoolLit {
+                            value: k == "true",
+                            span: tok.span,
+                        }))
+                    }
+                    Token::Ident(s) => Ok(BindingValue::StateRef(s)),
+                    other => Err(ParseError::Unexpected {
+                        expected: "`true`, `false` or the name of a Bool state field",
                         found: other,
                         line: tok.span.start.line,
                         column: tok.span.start.column,

@@ -71,6 +71,7 @@ const BUILT_IN: &[&str] = &[
     "Select",
     "FileField",
     "Chart",
+    "RouteMap",
     "NavLink",
     "SortList",
     "Map",

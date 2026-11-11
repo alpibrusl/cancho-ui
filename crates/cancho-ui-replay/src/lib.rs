@@ -14,6 +14,7 @@ mod machine;
 mod map;
 mod number;
 mod report;
+mod routemap;
 mod router;
 mod sortlist;
 mod stream;
@@ -740,6 +741,7 @@ fn run_step(
         stream: m.stream_report(),
         sortlists: m.sortlists_report(),
         maps: m.maps_report(),
+        routemaps: m.routemaps_report(),
         document: locale_used(comp)
             .then(|| serde_json::json!({"lang": m.locale.lang, "dir": m.locale.dir()})),
         history: routes_used(comp).then(|| {
@@ -800,6 +802,7 @@ fn check_expectations(
             || key == "charts"
             || key == "sortlists"
             || key == "maps"
+            || key == "routemaps"
         {
             Json::Array(Vec::new())
         } else {

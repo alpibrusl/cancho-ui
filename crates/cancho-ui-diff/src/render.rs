@@ -150,6 +150,7 @@ fn kind(k: &IrElementKind) -> String {
         IrElementKind::Select => "Select".into(),
         IrElementKind::FileField => "FileField".into(),
         IrElementKind::Chart => "Chart".into(),
+        IrElementKind::RouteMap => "RouteMap".into(),
         IrElementKind::NavLink => "NavLink".into(),
         IrElementKind::SortList => "SortList".into(),
         IrElementKind::Map => "Map".into(),
