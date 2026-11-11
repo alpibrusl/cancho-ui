@@ -1,0 +1,115 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "note": "The tiles one tiled route map asks its own folder for: four located stops (zoom 10, 3 x 3 tiles), the route hidden (the same tiles), a fifth located stop added (a zoom at which five stops fit in 4 x 4 tiles), and no stops at all (no tile).",
+  "steps": [
+    {
+      "advance": 0,
+      "expect": {
+        "routemaps": [
+          {
+            "zoom": 10,
+            "grid": [
+              3,
+              3
+            ],
+            "tiles": [
+              "./tiles/10/529/363.png",
+              "./tiles/10/530/363.png",
+              "./tiles/10/531/363.png",
+              "./tiles/10/529/364.png",
+              "./tiles/10/530/364.png",
+              "./tiles/10/531/364.png",
+              "./tiles/10/529/365.png",
+              "./tiles/10/530/365.png",
+              "./tiles/10/531/365.png"
+            ],
+            "label": "Trip",
+            "located": 4,
+            "attribution": "Stand-in tiles for this example; put your tile provider's credit here.",
+            "summary": "route map of 5 places, 4 on the route, 1 without a position, about 83 km across"
+          }
+        ]
+      }
+    },
+    {
+      "event": "Toggle",
+      "expect": {
+        "routemaps": [
+          {
+            "zoom": 10,
+            "grid": [
+              3,
+              3
+            ],
+            "tiles": [
+              "./tiles/10/529/363.png",
+              "./tiles/10/530/363.png",
+              "./tiles/10/531/363.png",
+              "./tiles/10/529/364.png",
+              "./tiles/10/530/364.png",
+              "./tiles/10/531/364.png",
+              "./tiles/10/529/365.png",
+              "./tiles/10/530/365.png",
+              "./tiles/10/531/365.png"
+            ],
+            "on_route": 0,
+            "km": 0
+          }
+        ]
+      }
+    },
+    {
+      "event": "AddStop",
+      "expect": {
+        "routemaps": [
+          {
+            "zoom": 9,
+            "grid": [
+              4,
+              4
+            ],
+            "tiles": [
+              "./tiles/9/264/181.png",
+              "./tiles/9/265/181.png",
+              "./tiles/9/266/181.png",
+              "./tiles/9/267/181.png",
+              "./tiles/9/264/182.png",
+              "./tiles/9/265/182.png",
+              "./tiles/9/266/182.png",
+              "./tiles/9/267/182.png",
+              "./tiles/9/264/183.png",
+              "./tiles/9/265/183.png",
+              "./tiles/9/266/183.png",
+              "./tiles/9/267/183.png",
+              "./tiles/9/264/184.png",
+              "./tiles/9/265/184.png",
+              "./tiles/9/266/184.png",
+              "./tiles/9/267/184.png"
+            ],
+            "count": 6,
+            "located": 5
+          }
+        ]
+      }
+    },
+    {
+      "event": "Reset",
+      "expect": {
+        "routemaps": [
+          {
+            "count": 0,
+            "located": 0,
+            "zoom": null,
+            "grid": [
+              0,
+              0
+            ],
+            "tiles": [],
+            "summary": "route map with no places"
+          }
+        ]
+      }
+    }
+  ]
+}

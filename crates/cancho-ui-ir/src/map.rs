@@ -131,7 +131,7 @@ pub fn view_has_map(node: &IrViewNode) -> bool {
     }
 }
 
-/// Every `Map` of the view: its `tiles:` text.
+/// Every `Map` and every tiled `RouteMap` of the view: its `tiles:` text.
 pub fn tile_templates(node: &IrViewNode, out: &mut Vec<String>) {
     match node {
         IrViewNode::Element {
@@ -140,7 +140,7 @@ pub fn tile_templates(node: &IrViewNode, out: &mut Vec<String>) {
             children,
             ..
         } => {
-            if matches!(kind, IrElementKind::Map) {
+            if matches!(kind, IrElementKind::Map | IrElementKind::RouteMap) {
                 for b in bindings {
                     if let ("tiles", IrBindingValue::String(s)) = (&*b.key, &b.value) {
                         out.push(s.clone());
@@ -180,13 +180,13 @@ pub fn image_origins(ir: &IrFile) -> Vec<String> {
     out
 }
 
-/// The `img-src` of the Content-Security-Policy of a generated HTML page, when the program draws a `Map` (`None`: no map, no policy): the page's
+/// The `img-src` of the Content-Security-Policy of a generated HTML page, when the program draws a `Map` or a `RouteMap` with `tiles:` (`None`: no map, no policy): the page's
 /// own origin, `data:` and the origins of the tile hosts the maps name. An image from any other host is not requested at all (measured,
 /// docs/maps.md section 2).
 pub fn csp_img_sources(ir: &IrFile) -> Option<String> {
     let mut any = false;
     for c in &ir.components {
-        any |= view_has_map(&c.view.body);
+        any |= view_has_map(&c.view.body) || crate::routemap::view_has_tiles(&c.view.body);
     }
     any.then(|| {
         let mut s = String::from("'self' data:");
@@ -214,7 +214,10 @@ pub fn check_binding(
 ) -> Result<(), LowerError> {
     let is_map = matches!(kind, IrElementKind::Map);
     if !is_map {
-        if OWN_KEYS.contains(&b.key.as_str()) {
+        // a RouteMap shares `tiles` and `attribution` and checks them itself (routemap.rs)
+        let shared = matches!(kind, IrElementKind::RouteMap)
+            && matches!(b.key.as_str(), "tiles" | "attribution");
+        if OWN_KEYS.contains(&b.key.as_str()) && !shared {
             return Err(refused(
                 "binding-unknown",
                 format!("`{}:` is a binding of Map, not of this element", b.key),

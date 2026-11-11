@@ -11,6 +11,115 @@ use crate::value::{Value, js_number};
 
 pub use cancho_ui_ir::routemap::{MAX_KIND, MAX_POINTS};
 
+/// The edge of a tile in pixels.
+const TILE: f64 = 256.0;
+/// The latitude Web Mercator tiles reach; a latitude beyond it is drawn (and asked for) at the edge of the world.
+const MAX_LAT: f64 = 85.051_128_779_8;
+/// The zoom of a tiled `RouteMap` with one located place (or all at one position), and the grid around its tile.
+pub const SINGLE_ZOOM: i64 = 13;
+/// The highest and lowest zoom chosen for several places, and the most tiles across and down.
+pub const MAX_ZOOM: i64 = 18;
+pub const MIN_ZOOM: i64 = 1;
+pub const MAX_GRID: i64 = 4;
+/// Pixels of margin kept around the places inside the grid (more than a pin's radius at any size of the drawing).
+pub const MARGIN: f64 = 32.0;
+
+/// A position in pixels of the whole world at a zoom (Web Mercator, 256 px tiles); the latitude is clamped to the tiles' range.
+fn world_px(lat: f64, lon: f64, zoom: i64) -> (f64, f64) {
+    let s = 2f64.powi(zoom as i32) * TILE;
+    let phi = lat.clamp(-MAX_LAT, MAX_LAT).to_radians();
+    (
+        (lon + 180.0) / 360.0 * s,
+        (1.0 - (phi.tan() + 1.0 / phi.cos()).ln() / std::f64::consts::PI) / 2.0 * s,
+    )
+}
+
+/// What a tiled `RouteMap` asks for: the zoom, the grid of tiles (`cols` x `rows` from tile `tx0`, `ty0`), the addresses in row-major order, and the
+/// position of each located point in the drawing's pixels (the grid's own space, `cols * 256` wide and `rows * 256` high).
+#[derive(Debug, Clone, PartialEq)]
+pub struct TilePlan {
+    pub zoom: i64,
+    pub tx0: i64,
+    pub ty0: i64,
+    pub cols: i64,
+    pub rows: i64,
+    pub tiles: Vec<String>,
+    pub px: Vec<(f64, f64)>,
+}
+
+/// The tile plan for the located points (`lat`, `lon`) and the address `template`; `None` with no located point (nothing is asked for).
+/// One point, or all at one position: zoom 13 and the 3 x 3 tiles around its tile. Otherwise the highest zoom from 18 down to 1 at which the
+/// tiles covering the points plus `MARGIN` pixels, clipped to the tile range, are at most 4 across and 4 down (zoom 1 always fits).
+/// Longitude is not wrapped: the antimeridian is a limit of the drawing; a latitude beyond 85.05 is clamped.
+pub fn tile_plan(points: &[(f64, f64)], template: &str) -> Option<TilePlan> {
+    let first = *points.first()?;
+    let single = points.iter().all(|p| *p == first);
+    let cover = |z: i64| -> (i64, i64, i64, i64) {
+        let n = 1i64 << z;
+        let w: Vec<(f64, f64)> = points.iter().map(|p| world_px(p.0, p.1, z)).collect();
+        let lo = |f: fn(&(f64, f64)) -> f64| w.iter().map(f).fold(f64::INFINITY, f64::min);
+        let hi = |f: fn(&(f64, f64)) -> f64| w.iter().map(f).fold(f64::NEG_INFINITY, f64::max);
+        let (x0, x1, y0, y1) = if single {
+            let (x, y) = w[0];
+            (x - TILE, x + TILE, y - TILE, y + TILE)
+        } else {
+            (
+                lo(|p| p.0) - MARGIN,
+                hi(|p| p.0) + MARGIN,
+                lo(|p| p.1) - MARGIN,
+                hi(|p| p.1) + MARGIN,
+            )
+        };
+        let t = |v: f64| (v / TILE).floor() as i64;
+        (
+            t(x0).clamp(0, n - 1),
+            t(x1).clamp(0, n - 1),
+            t(y0).clamp(0, n - 1),
+            t(y1).clamp(0, n - 1),
+        )
+    };
+    let (zoom, (tx0, tx1, ty0, ty1)) = if single {
+        (SINGLE_ZOOM, cover(SINGLE_ZOOM))
+    } else {
+        let mut chosen = None;
+        for z in (MIN_ZOOM..=MAX_ZOOM).rev() {
+            let c = cover(z);
+            if c.1 - c.0 + 1 <= MAX_GRID && c.3 - c.2 + 1 <= MAX_GRID {
+                chosen = Some((z, c));
+                break;
+            }
+        }
+        chosen.unwrap_or((MIN_ZOOM, cover(MIN_ZOOM)))
+    };
+    let mut tiles = Vec::new();
+    for y in ty0..=ty1 {
+        for x in tx0..=tx1 {
+            tiles.push(
+                template
+                    .replace("{z}", &zoom.to_string())
+                    .replace("{x}", &x.to_string())
+                    .replace("{y}", &y.to_string()),
+            );
+        }
+    }
+    let px = points
+        .iter()
+        .map(|p| {
+            let (x, y) = world_px(p.0, p.1, zoom);
+            (x - tx0 as f64 * TILE, y - ty0 as f64 * TILE)
+        })
+        .collect();
+    Some(TilePlan {
+        zoom,
+        tx0,
+        ty0,
+        cols: tx1 - tx0 + 1,
+        rows: ty1 - ty0 + 1,
+        tiles,
+        px,
+    })
+}
+
 /// The mean Earth radius in kilometres (the one `distance` uses).
 const EARTH_KM: f64 = 6371.0088;
 
@@ -64,6 +173,8 @@ pub struct Described {
     pub across_km: Option<f64>,
     pub list: Vec<Entry>,
     pub summary: String,
+    /// The located points, `(lat, lon)`, in route order.
+    pub points: Vec<(f64, f64)>,
 }
 
 fn haversine(a: (f64, f64), b: (f64, f64)) -> f64 {
@@ -181,6 +292,7 @@ pub fn describe(rows: &[String], route: bool) -> Described {
         across_km,
         list,
         summary,
+        points: located,
     }
 }
 
@@ -231,7 +343,11 @@ impl Machine<'_> {
                             _ => String::new(),
                         };
                         let d = describe(&rows, route);
-                        out.push(serde_json::json!({
+                        let tiles = match get("tiles").map(|b| &b.value) {
+                            Some(IrBindingValue::String(t)) => Some(t.clone()),
+                            _ => None,
+                        };
+                        let mut entry = serde_json::json!({
                             "label": label,
                             "count": d.count,
                             "total": d.total,
@@ -241,7 +357,26 @@ impl Machine<'_> {
                             "across_km": d.across_km.map(|x| crate::value::num_json(across_rounded(x))),
                             "summary": d.summary,
                             "list": d.list.iter().map(|e| e.text.clone()).collect::<Vec<_>>(),
-                        }));
+                        });
+                        // with `tiles:` (and only then) the report says what the page asks the tile host for: replay cannot fetch a tile
+                        if let Some(t) = tiles {
+                            let plan = tile_plan(&d.points, &t);
+                            entry["zoom"] = plan
+                                .as_ref()
+                                .map_or(serde_json::Value::Null, |p| serde_json::json!(p.zoom));
+                            entry["grid"] = plan.as_ref().map_or(serde_json::json!([0, 0]), |p| {
+                                serde_json::json!([p.cols, p.rows])
+                            });
+                            entry["tiles"] = serde_json::json!(
+                                plan.as_ref().map(|p| p.tiles.clone()).unwrap_or_default()
+                            );
+                            if let Some(IrBindingValue::String(a)) =
+                                get("attribution").map(|b| &b.value)
+                            {
+                                entry["attribution"] = serde_json::json!(a);
+                            }
+                        }
+                        out.push(entry);
                     }
                     for c in children {
                         walk(m, c, out);
@@ -345,5 +480,66 @@ mod tests {
         assert_eq!(across_rounded(14.5), 15.0);
         assert_eq!(across_rounded(3.16), 3.2);
         assert_eq!(across_rounded(0.04), 0.0);
+    }
+
+    const TILES_CORPUS: &str = include_str!("../../../tests/routemap_tiles_corpus.json");
+
+    fn corpus_points(k: &serde_json::Value) -> Vec<(f64, f64)> {
+        k["points"]
+            .as_array()
+            .expect("points")
+            .iter()
+            .map(|p| parse_position(p.as_str().expect("a text")).expect("a position"))
+            .collect()
+    }
+
+    #[test]
+    fn the_tile_plan_is_that_of_the_independent_corpus() {
+        let c: serde_json::Value = serde_json::from_str(TILES_CORPUS).expect("JSON");
+        let template = c["template"].as_str().expect("template");
+        let cases = c["cases"].as_array().expect("cases");
+        assert!(cases.len() >= 50, "the corpus shrank");
+        for k in cases {
+            let why = k["why"].as_str().expect("why");
+            let plan = tile_plan(&corpus_points(k), template).expect("a plan");
+            let w = &k["want"];
+            assert_eq!(plan.zoom, w["zoom"].as_i64().expect("zoom"), "{why}: zoom");
+            assert_eq!(
+                [plan.cols, plan.rows],
+                [
+                    w["grid"][0].as_i64().unwrap(),
+                    w["grid"][1].as_i64().unwrap()
+                ],
+                "{why}: grid"
+            );
+            let tiles: Vec<&str> = w["tiles"]
+                .as_array()
+                .expect("tiles")
+                .iter()
+                .map(|t| t.as_str().unwrap())
+                .collect();
+            assert_eq!(plan.tiles, tiles, "{why}: tiles");
+            for (q, e) in plan.px.iter().zip(w["px"].as_array().expect("px")) {
+                assert!((q.0 - e[0].as_f64().unwrap()).abs() < 1e-6, "{why}: x");
+                assert!((q.1 - e[1].as_f64().unwrap()).abs() < 1e-6, "{why}: y");
+            }
+        }
+    }
+
+    #[test]
+    fn no_located_point_asks_for_no_tile() {
+        assert!(tile_plan(&[], "https://t.example/{z}/{x}/{y}.png").is_none());
+    }
+
+    #[test]
+    fn a_grid_is_at_most_four_tiles_each_way_and_one_place_is_three_by_three() {
+        let c: serde_json::Value = serde_json::from_str(TILES_CORPUS).expect("JSON");
+        for k in c["cases"].as_array().expect("cases") {
+            let plan = tile_plan(&corpus_points(k), "/{z}/{x}/{y}").expect("a plan");
+            assert!(plan.cols <= 4 && plan.rows <= 4 && plan.tiles.len() <= 16);
+            assert!((1..=18).contains(&plan.zoom));
+        }
+        let one = tile_plan(&[(45.9, 6.9)], "/{z}/{x}/{y}").expect("a plan");
+        assert_eq!((one.zoom, one.cols, one.rows), (13, 3, 3));
     }
 }

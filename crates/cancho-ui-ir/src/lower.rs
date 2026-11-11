@@ -1583,7 +1583,9 @@ fn check_capabilities(ir: &IrFile) -> Result<(), LowerError> {
             } else {
                 // a `Map` asks its tile host for images: that is the use of `Network` it declares (docs/maps.md)
                 c.reachable_effects.iter().any(|e| e.capability == req.name)
-                    || (req.name == "Network" && crate::map::view_has_map(&c.view.body))
+                    || (req.name == "Network"
+                        && (crate::map::view_has_map(&c.view.body)
+                            || crate::routemap::view_has_tiles(&c.view.body)))
                     || (req.name == "Clipboard" && crate::structure::view_has_copy(&c.view.body))
                     || (req.name == "Dom" && crate::island::view_has_open(&c.view.body))
             };

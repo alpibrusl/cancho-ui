@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="img-src 'self' data:">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A trip over map tiles</title>
+<style>
+/* A default so a program is usable on a phone; the page owns presentation, replace it freely. */
+:root { color-scheme: light dark; }
+body {
+    margin: 0;
+    padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+        max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.cui-col { display: flex; flex-direction: column; gap: 0.5rem; }
+.cui-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+/* Grid (docs/structure.md section 10): as many columns as fit at `min`, equal; with weights, one flex line whose cells grow in proportion and wrap, one under another, when the line cannot hold them */
+.cui-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--cui-min)), 1fr)); gap: 0.5rem; }
+.cui-grid.cui-grid-w { display: flex; flex-wrap: wrap; }
+.cui-grid-w > * { min-width: 0; }
+.cui-grid-w > :nth-child(1) { flex: var(--cui-w1) 1 min(100%, calc(var(--cui-min) * var(--cui-w1))); }
+.cui-grid-w > :nth-child(2) { flex: var(--cui-w2) 1 min(100%, calc(var(--cui-min) * var(--cui-w2))); }
+.cui-grid-w > :nth-child(3) { flex: var(--cui-w3) 1 min(100%, calc(var(--cui-min) * var(--cui-w3))); }
+.cui-grid-w > :nth-child(4) { flex: var(--cui-w4) 1 min(100%, calc(var(--cui-min) * var(--cui-w4))); }
+/* gap: 0..4 on a Row or Column (docs/presentation.md section 2) */
+.cui-gap-0 { gap: 0; } .cui-gap-1 { gap: 0.25rem; } .cui-gap-2 { gap: 0.5rem; } .cui-gap-3 { gap: 1rem; } .cui-gap-4 { gap: 2rem; }
+/* a TextField with a label: the label is shown above the field */
+.cui-field { display: flex; flex-direction: column; gap: 0.25rem; }
+/* a Checkbox: the box and its text in one label that is the touch target (docs/controls.md section 9) */
+.cui-check { display: flex; align-items: center; gap: 0.5rem; min-height: 44px; min-width: 44px; }
+.cui-check input { min-height: 0; min-width: 0; width: 1.25rem; height: 1.25rem; margin: 0; }
+/* Table */
+.cui-table { border-collapse: collapse; width: 100%; }
+/* a table wider than the page scrolls inside this box, not the page (#144) */
+.cui-table-scroll { overflow-x: auto; max-width: 100%; }
+.cui-table th, .cui-table td { text-align: start; padding: 0.25rem 0.5rem; border-bottom: 1px solid color-mix(in srgb, currentColor 25%, transparent); }
+.cui-table th { font-weight: 600; }
+/* Chart (docs/charts.md): the series colour is 7.59:1 on white and 9.63:1 on the dark page (WCAG 1.4.11 asks 3:1) */
+:root { --cui-chart: #0550ae; --cui-chart-open: #57606a; }
+.cui-chart { margin: 0; }
+.cui-chart figcaption { font-weight: 600; }
+.cui-chart summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
+/* RouteMap (docs/routes.md): a pin is a fill with the page's own colour as its number and outline; fills are 7.59, 5.08 and 6.39:1 against white and 9.63, 7.37 and 6.43:1 against the dark page, and the number is the page colour on the fill (the same pairs), so a pin is read by its number and the list, never by its colour alone */
+:root { --cui-route-lodging: #0550ae; --cui-route-activity: #1a7f37; --cui-route-transport: #57606a; --cui-route-other: CanvasText; --cui-route-ink: Canvas; }
+.cui-routemap-svg { display: block; width: 100%; max-width: 40rem; height: auto; }
+.cui-rm-lodging { fill: var(--cui-route-lodging); } .cui-rm-activity { fill: var(--cui-route-activity); }
+.cui-rm-transport { fill: var(--cui-route-transport); } .cui-rm-other { fill: var(--cui-route-other); }
+.cui-rm-list { list-style: none; margin: 0; padding: 0; }
+/* tone: a status text says what kind it is by a prefix as well as by colour, so colour is never the only signal */
+[data-tone] { font-weight: 600; }
+[data-tone="ok"] { color: #1a7f37; } [data-tone="ok"]::before { content: "\2713  "; }
+[data-tone="warn"] { color: #9a6700; } [data-tone="warn"]::before { content: "\26A0  "; }
+[data-tone="error"] { color: #cf222e; } [data-tone="error"]::before { content: "\2717  "; }
+@media (prefers-color-scheme: dark) {
+    :root { --cui-chart: #79c0ff; --cui-chart-open: #9198a1; --cui-route-lodging: #79c0ff; --cui-route-activity: #3fb950; --cui-route-transport: #9198a1; }
+    [data-tone="ok"] { color: #3fb950; } [data-tone="warn"] { color: #d29922; } [data-tone="error"] { color: #ff7b72; }
+}
+button, input, textarea { min-height: 44px; min-width: 44px; font: inherit; }
+/* structure (docs/structure.md): a link in a header, a nav or a footer is a target of its own; the appearances of a Link; the roles of a Text */
+header a, nav a, footer a { display: inline-flex; align-items: center; min-height: 44px; }
+a.cui-link-primary, a.cui-link-secondary, a.cui-link-quiet { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-height: 44px; min-width: 44px; padding: 0 1rem; border-radius: 8px; font-weight: 600; text-decoration: none; }
+a.cui-link-primary { background: LinkText; color: Canvas; }
+a.cui-link-secondary { border: 1px solid LinkText; }
+details > summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; }
+figure { margin: 0; } figcaption { font-size: 0.88rem; }
+[data-style] { margin: 0; }
+[data-style="eyebrow"], [data-style="label"] { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+[data-style="eyebrow"] { color: LinkText; }
+/* an avatar (docs/structure.md 12.0c): the initials of a person on a coloured disc; the colours are fixed, each is 4.5:1 or better with the white text */
+[data-style="avatar"] { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; flex: none; width: 2.25rem; height: 2.25rem; margin: 0; border: 2px solid Canvas; border-radius: 50%; font-size: 0.78rem; font-weight: 700; line-height: 1; text-transform: uppercase; background: #b41d26; color: #fff; }
+[data-style="avatar"]:nth-of-type(4n+2) { background: #6b5585; }
+[data-style="avatar"]:nth-of-type(4n+3) { background: #1e7e34; }
+[data-style="avatar"]:nth-of-type(4n) { background: #884e00; }
+[data-style="avatar"] + [data-style="avatar"] { margin-left: -0.6rem; }
+[data-style="lead"] { font-size: 1.1rem; max-width: 40rem; }
+[data-style="note"] { font-size: 0.88rem; }
+/* inline content and code (docs/structure.md sections 7 and 8): a code box is dark in both schemes, as the cancho-www page draws it */
+code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9em; }
+.cui-code { position: relative; border-radius: 12px; background: #12151a; color: #d6dde8; }
+.cui-code pre { margin: 0; padding: 0.9rem 1rem; overflow: auto; white-space: pre; font: 0.78rem/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.cui-code code { font: inherit; }
+.cui-code[data-copy] pre { padding-right: 5.5rem; }
+.cui-copy { position: absolute; top: 0.45rem; right: 0.45rem; }
+/* Image and Media (docs/structure.md section 10): never wider than the file or the column; a `ratio` crops to the shape */
+.cui-img { display: block; overflow: hidden; border-radius: 12px; }
+.cui-img img { display: block; width: 100%; height: auto; }
+.cui-img[data-ratio] img { height: 100%; object-fit: cover; }
+.cui-media { display: block; width: 100%; max-width: 100%; height: auto; border-radius: 12px; background: #000; }
+[data-ratio="1:1"] { aspect-ratio: 1 / 1; } [data-ratio="4:3"] { aspect-ratio: 4 / 3; } [data-ratio="3:2"] { aspect-ratio: 3 / 2; }
+[data-ratio="16:9"] { aspect-ratio: 16 / 9; } [data-ratio="21:9"] { aspect-ratio: 21 / 9; } [data-ratio="3:4"] { aspect-ratio: 3 / 4; } [data-ratio="2:3"] { aspect-ratio: 2 / 3; }
+/* Waffle and Chip (docs/waffle.md): squares are drawn in the series colour (7.59:1 on white, 9.63:1 on the dark page) and a text colour of the page (6.4:1 and 6.5:1), outlined and not filled when they are not counted, so colour is never the only difference; a chip says its message in words and its tone in a colour and a border */
+.cui-waffle svg { display: block; width: 100%; max-width: 60rem; height: auto; }
+.cui-wf-on { fill: var(--cui-chart); }
+.cui-wf-known { fill: none; stroke: var(--cui-chart); stroke-width: 2; }
+.cui-wf-open { fill: none; stroke: var(--cui-chart-open); stroke-width: 1; }
+.cui-waffle table { border-collapse: collapse; } .cui-waffle th, .cui-waffle td { text-align: start; padding: 0.25rem 0.75rem 0.25rem 0; }
+.cui-chip { display: inline-block; font: 600 0.72rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0.04em; text-transform: uppercase; padding: 0.1rem 0.5rem; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.cui-chip-good { color: var(--cui-good, #1a7f37); }
+.cui-chip-warn { color: var(--cui-warn, #9a6700); background: var(--cui-warn-bg, transparent); }
+.cui-chip-accent { color: var(--cui-accent, #0550ae); }
+.cui-chip-quiet { color: var(--cui-chart-open); border-style: dashed; }
+@media (prefers-color-scheme: dark) { .cui-chip-good { color: var(--cui-good, #3fb950); } .cui-chip-warn { color: var(--cui-warn, #d29922); } .cui-chip-accent { color: var(--cui-accent, #79c0ff); } }
+/* page (docs/page.md): a sticky Header stays at the top of the window, a skip link shows only while it has the focus, and a Main a link can start from is not outlined */
+.cui-sticky { position: sticky; top: 0; z-index: 10; box-sizing: border-box; min-height: 4rem; display: flex; flex-wrap: wrap; align-items: center; column-gap: 1rem; background: Canvas; border-bottom: 1px solid color-mix(in srgb, currentColor 25%, transparent); }
+.cui-skip { position: fixed; top: -4rem; left: 0.5rem; z-index: 20; display: inline-flex; align-items: center; min-height: 44px; padding: 0 1rem; border-radius: 8px; font-weight: 600; background: LinkText; color: Canvas; }
+.cui-skip:focus { top: 0.5rem; }
+main[tabindex="-1"]:focus { outline: none; }
+.cui-sticky nav { display: flex; flex-wrap: wrap; column-gap: 1rem; }
+/* a docked Nav (docs/structure.md 12.0b) is the tab bar at the foot of the window: fixed, centred, and the page keeps room under it */
+.cui-dock { position: fixed; left: 50%; bottom: max(0.75rem, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 10; box-sizing: border-box; width: min(calc(100% - 2rem), 28rem); display: flex; justify-content: space-around; gap: 0.25rem; padding: 0.4rem; border-radius: 999px; background: color-mix(in srgb, Canvas 86%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); box-shadow: 0 8px 28px -6px rgba(0,0,0,0.28); border: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+.cui-dock > * { flex: 1 1 0; min-width: 0; }
+body:has(.cui-dock) { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
+/* a floating button and a sheet (docs/structure.md 12.0g): fixed over the page, above the tab bar, shown only while an `Aside { marks: .. }` of their kind is on the page */
+.cui-fab, .cui-sheet { position: fixed; z-index: 11; box-sizing: border-box; margin: 0; }
+.cui-fab { right: 1rem; bottom: calc(5.25rem + env(safe-area-inset-bottom)); }
+.cui-fab > button { min-height: 52px; padding: 0 1.4rem; box-shadow: 0 8px 24px -4px rgba(0,0,0,0.35); }
+.cui-sheet { left: 50%; bottom: calc(5.25rem + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(calc(100% - 1.5rem), 28rem); max-height: calc(100dvh - 9.5rem); overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem; border-radius: 24px; background: var(--cui-surface, Canvas); color: var(--cui-fg, CanvasText); border: 1px solid color-mix(in srgb, currentColor 18%, transparent); box-shadow: 0 16px 48px -8px rgba(0,0,0,0.45); }
+[data-mark] { display: none; }
+/* a chat (docs/structure.md 12.0h): a log that scrolls inside itself, bubbles that lean to one side, and a composer with a round send button */
+.cui-chatlog { display: flex; flex-direction: column; gap: 0.3rem; flex: 1 1 auto; min-height: 9rem; overflow-y: auto; padding: 0.6rem; border-radius: 18px; background: var(--cui-soft, color-mix(in srgb, currentColor 6%, transparent)); }
+.cui-bubble { box-sizing: border-box; max-width: 82%; gap: 0.1rem; padding: 0.4rem 0.7rem 0.3rem; border-radius: 16px; background: var(--cui-surface, Canvas); color: var(--cui-fg, CanvasText); box-shadow: 0 1px 1px rgba(0,0,0,0.2); overflow-wrap: anywhere; }
+.cui-bubble-theirs { align-self: flex-start; border-bottom-left-radius: 4px; }
+.cui-bubble-mine { align-self: flex-end; border-bottom-right-radius: 4px; background: var(--cui-accent-soft, #dcf8c6); }
+.cui-bubble-system { align-self: center; max-width: 92%; background: transparent; box-shadow: none; color: var(--cui-muted, inherit); font-size: 0.8rem; text-align: center; }
+.cui-bubble [data-style="eyebrow"] { text-transform: none; letter-spacing: 0; font-size: 0.78rem; font-weight: 700; }
+.cui-bubble [data-style="note"] { align-self: flex-end; font-size: 0.68rem; color: var(--cui-muted, inherit); }
+.cui-sheet:has(> .cui-chatlog) { overflow: hidden; height: min(34rem, calc(100dvh - 9.5rem)); }
+.cui-sheet > .cui-chatlog { min-height: 0; }
+:root .cui-bubble button { min-height: 28px; min-width: 0; padding: 0 0.7rem; font-size: 0.78rem; background: transparent; color: var(--cui-accent, LinkText); border: 1px solid color-mix(in srgb, currentColor 35%, transparent); box-shadow: none; }
+.cui-sheet > .cui-row:first-child { justify-content: space-between; align-items: center; }
+.cui-sheet > .cui-row:first-child button { background: transparent; color: var(--cui-fg, CanvasText); border: 1px solid color-mix(in srgb, currentColor 35%, transparent); }
+.cui-composer { display: flex; align-items: center; gap: 0.5rem; }
+.cui-composer > .cui-field { flex: 1 1 auto; min-width: 0; font-size: 0; }
+.cui-composer > .cui-field input { width: 100%; box-sizing: border-box; font-size: 1rem; }
+.cui-composer > button:last-child { flex: none; width: 46px; min-width: 46px; height: 46px; padding: 0; border-radius: 50%; font-size: 0; display: inline-flex; align-items: center; justify-content: center; }
+.cui-composer > button:last-child::before { content: "\27A4"; font-size: 1.25rem; line-height: 1; }
+:root:not(:has([data-mark="fab"])) .cui-fab { display: none; }
+:root:not(:has([data-mark="sheet"])) .cui-sheet { display: none; }
+/* motion (docs/motion.md): an element is hidden only while the page's script has it armed and has not yet seen it, and never when the visitor asks for less motion */
+.cui-reveal.cui-armed { transition: opacity 0.7s ease, transform 0.7s ease; }
+.cui-reveal.cui-armed:not(.cui-in) { opacity: 0; transform: translateY(18px); }
+.cui-countup { font-variant-numeric: tabular-nums; }
+.cui-countup[data-frame] { position: relative; color: transparent; }
+.cui-countup[data-frame]::after { content: attr(data-frame) / ""; position: absolute; left: 0; top: 0; color: var(--cui-cu); }
+@media (prefers-reduced-motion: reduce), print {
+    .cui-reveal.cui-armed { transition: none; }
+    .cui-reveal.cui-armed:not(.cui-in) { opacity: 1; transform: none; }
+    .cui-countup[data-frame] { color: inherit; }
+    .cui-countup[data-frame]::after { content: none; }
+}
+</style>
+</head>
+<body>
+<div id="root" data-cui-skeleton="9534d7f1682220c9"><div class="cui-col"><span role="heading">Trip on a map</span><!--cui:0--><!--/cui:0--><!--cui:1--><!--/cui:1--><div class="cui-row"><!--cui:2--><!--/cui:2--><!--cui:3--><!--/cui:3--><!--cui:4--><!--/cui:4--></div></div></div>
+<noscript>Some parts of this page need JavaScript.</noscript>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>

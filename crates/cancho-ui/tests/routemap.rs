@@ -220,7 +220,10 @@ fn the_keys_of_a_route_map_belong_to_it() {
         "Map { label: \"T\" route: true }",
         "RouteMap { label: \"Trip\" points: rows on: Go }",
         "RouteMap { label: \"Trip\" points: rows zoom: 3 }",
-        "RouteMap { label: \"Trip\" points: rows tiles: \"https://tiles.example/{z}/{x}/{y}.png\" }",
+        "RouteMap { label: \"Trip\" points: rows center: name }",
+        "RouteMap { label: \"Trip\" points: rows places: rows }",
+        "Text { tiles: \"/t/{z}/{x}/{y}.png\" \"x\" }",
+        "Button { label: \"b\" attribution: \"c\" on: Go }",
         "RouteMap { label: \"Trip\" points: rows tone: \"ok\" }",
     ] {
         let c = codes(&comp(view));

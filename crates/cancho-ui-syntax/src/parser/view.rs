@@ -624,13 +624,13 @@ impl Parser {
                 // an expression, so that `zoom: -1` and `zoom: "13"` reach the check that says what a zoom is
                 Ok(BindingValue::Prop(self.parse_expr()?))
             }
-            "tiles" if matches!(kind, ElementKind::Map) => {
+            "tiles" if matches!(kind, ElementKind::Map | ElementKind::RouteMap) => {
                 // A tile address holds `{z}`, `{x}` and `{y}`, which a label may not hold (a brace in static text is refused): the address is the one
                 // place where they are the point (docs/maps.md). `\{` and `\}` still stand for a brace that is not a placeholder.
                 let tok = self.bump();
                 match tok.token {
                     Token::StringLit(s) => Ok(BindingValue::String(super::unescape_braces(&s))),
-                    // the checks refuse a name with `map-tiles-invalid` and say why: the address is a literal
+                    // the checks refuse a name with `map-tiles-invalid` (`routemap-tiles-invalid`) and say why: the address is a literal
                     Token::Ident(s) => Ok(BindingValue::StateRef(s)),
                     other => Err(ParseError::Unexpected {
                         expected: "a text literal, the tile address",

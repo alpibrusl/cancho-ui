@@ -1,0 +1,2209 @@
+{
+ "note": "Written by scripts/gen-routemap-tiles-corpus.py (independent of the compiler). `template` is the tile address; `px` is where each located point falls in the drawing's pixels, cols * 256 wide and rows * 256 high.",
+ "template": "https://tiles.example/{z}/{x}/{y}.png",
+ "cases": [
+  {
+   "why": "one place: zoom 13 and the 3 x 3 tiles around its tile",
+   "points": [
+    "45.9237,6.8694"
+   ],
+   "want": {
+    "zoom": 13,
+    "grid": [
+     3,
+     3
+    ],
+    "tiles": [
+     "https://tiles.example/13/4251/2915.png",
+     "https://tiles.example/13/4252/2915.png",
+     "https://tiles.example/13/4253/2915.png",
+     "https://tiles.example/13/4251/2916.png",
+     "https://tiles.example/13/4252/2916.png",
+     "https://tiles.example/13/4253/2916.png",
+     "https://tiles.example/13/4251/2917.png",
+     "https://tiles.example/13/4252/2917.png",
+     "https://tiles.example/13/4253/2917.png"
+    ],
+    "px": [
+     [
+      337.1554133333266,
+      485.93385055451654
+     ]
+    ]
+   }
+  },
+  {
+   "why": "the same place twice is one place",
+   "points": [
+    "45.9237,6.8694",
+    "45.9237,6.8694"
+   ],
+   "want": {
+    "zoom": 13,
+    "grid": [
+     3,
+     3
+    ],
+    "tiles": [
+     "https://tiles.example/13/4251/2915.png",
+     "https://tiles.example/13/4252/2915.png",
+     "https://tiles.example/13/4253/2915.png",
+     "https://tiles.example/13/4251/2916.png",
+     "https://tiles.example/13/4252/2916.png",
+     "https://tiles.example/13/4253/2916.png",
+     "https://tiles.example/13/4251/2917.png",
+     "https://tiles.example/13/4252/2917.png",
+     "https://tiles.example/13/4253/2917.png"
+    ],
+    "px": [
+     [
+      337.1554133333266,
+      485.93385055451654
+     ],
+     [
+      337.1554133333266,
+      485.93385055451654
+     ]
+    ]
+   }
+  },
+  {
+   "why": "two places 2 km apart",
+   "points": [
+    "45.9237,6.8694",
+    "45.9111,6.887"
+   ],
+   "want": {
+    "zoom": 16,
+    "grid": [
+     4,
+     4
+    ],
+    "tiles": [
+     "https://tiles.example/16/34018/23335.png",
+     "https://tiles.example/16/34019/23335.png",
+     "https://tiles.example/16/34020/23335.png",
+     "https://tiles.example/16/34021/23335.png",
+     "https://tiles.example/16/34018/23336.png",
+     "https://tiles.example/16/34019/23336.png",
+     "https://tiles.example/16/34020/23336.png",
+     "https://tiles.example/16/34021/23336.png",
+     "https://tiles.example/16/34018/23337.png",
+     "https://tiles.example/16/34019/23337.png",
+     "https://tiles.example/16/34020/23337.png",
+     "https://tiles.example/16/34021/23337.png",
+     "https://tiles.example/16/34018/23338.png",
+     "https://tiles.example/16/34019/23338.png",
+     "https://tiles.example/16/34020/23338.png",
+     "https://tiles.example/16/34021/23338.png"
+    ],
+    "px": [
+     [
+      137.24330666661263,
+      47.47080443613231
+     ],
+     [
+      957.462755555287,
+      891.522917676717
+     ]
+    ]
+   }
+  },
+  {
+   "why": "a trip in the Alps (the example): Geneva, Chamonix, Aiguille du Midi, Courmayeur",
+   "points": [
+    "46.2381,6.1089",
+    "45.9237,6.8694",
+    "45.8786,6.8873",
+    "45.7969,6.9689"
+   ],
+   "want": {
+    "zoom": 10,
+    "grid": [
+     3,
+     3
+    ],
+    "tiles": [
+     "https://tiles.example/10/529/363.png",
+     "https://tiles.example/10/530/363.png",
+     "https://tiles.example/10/531/363.png",
+     "https://tiles.example/10/529/364.png",
+     "https://tiles.example/10/530/364.png",
+     "https://tiles.example/10/531/364.png",
+     "https://tiles.example/10/529/365.png",
+     "https://tiles.example/10/530/365.png",
+     "https://tiles.example/10/531/365.png"
+    ],
+    "px": [
+     [
+      96.36522666667588,
+      82.68674187242868
+     ],
+     [
+      650.1444266666658,
+      412.74173131931457
+     ],
+     [
+      663.1788088888861,
+      459.9337082605489
+     ],
+     [
+      722.5981155555346,
+      545.3259452556958
+     ]
+    ]
+   }
+  },
+  {
+   "why": "Madrid and Barcelona",
+   "points": [
+    "40.4168,-3.7038",
+    "41.3874,2.1686"
+   ],
+   "want": {
+    "zoom": 7,
+    "grid": [
+     3,
+     2
+    ],
+    "tiles": [
+     "https://tiles.example/7/62/47.png",
+     "https://tiles.example/7/63/47.png",
+     "https://tiles.example/7/64/47.png",
+     "https://tiles.example/7/62/48.png",
+     "https://tiles.example/7/63/48.png",
+     "https://tiles.example/7/64/48.png"
+    ],
+    "px": [
+     [
+      174.871893333333,
+      323.60500924475673
+     ],
+     [
+      709.3907911111091,
+      206.71513622104612
+     ]
+    ]
+   }
+  },
+  {
+   "why": "two places a few metres apart go to the highest zoom",
+   "points": [
+    "40.4169,-3.7035",
+    "40.41692,-3.70352"
+   ],
+   "want": {
+    "zoom": 18,
+    "grid": [
+     1,
+     1
+    ],
+    "tiles": [
+     "https://tiles.example/18/128375/98844.png"
+    ],
+    "px": [
+     [
+      49.561600003391504,
+      190.57425715774298
+     ],
+     [
+      45.833329778164625,
+      185.67731757089496
+     ]
+    ]
+   }
+  },
+  {
+   "why": "a continent: Lisbon to Moscow",
+   "points": [
+    "38.7223,-9.1393",
+    "55.7558,37.6173"
+   ],
+   "want": {
+    "zoom": 4,
+    "grid": [
+     3,
+     3
+    ],
+    "tiles": [
+     "https://tiles.example/4/7/4.png",
+     "https://tiles.example/4/8/4.png",
+     "https://tiles.example/4/9/4.png",
+     "https://tiles.example/4/7/5.png",
+     "https://tiles.example/4/8/5.png",
+     "https://tiles.example/4/9/5.png",
+     "https://tiles.example/4/7/6.png",
+     "https://tiles.example/4/8/6.png",
+     "https://tiles.example/4/9/6.png"
+    ],
+    "px": [
+     [
+      152.01507555555554,
+      545.4636113032984
+     ],
+     [
+      684.00128,
+      256.4201258764165
+     ]
+    ]
+   }
+  },
+  {
+   "why": "two continents: Madrid and Tokyo",
+   "points": [
+    "40.4168,-3.7038",
+    "35.6762,139.6503"
+   ],
+   "want": {
+    "zoom": 2,
+    "grid": [
+     3,
+     1
+    ],
+    "tiles": [
+     "https://tiles.example/2/1/1.png",
+     "https://tiles.example/2/2/1.png",
+     "https://tiles.example/2/3/1.png"
+    ],
+    "px": [
+     [
+      245.46474666666666,
+      130.11265653889865
+     ],
+     [
+      653.22752,
+      147.24631436100844
+     ]
+    ]
+   }
+  },
+  {
+   "why": "the world: Sydney, London, Santiago",
+   "points": [
+    "-33.8688,151.2093",
+    "51.5074,-0.1278",
+    "-33.4489,-70.6693"
+   ],
+   "want": {
+    "zoom": 2,
+    "grid": [
+     3,
+     2
+    ],
+    "tiles": [
+     "https://tiles.example/2/1/1.png",
+     "https://tiles.example/2/2/1.png",
+     "https://tiles.example/2/3/1.png",
+     "https://tiles.example/2/1/2.png",
+     "https://tiles.example/2/2/2.png",
+     "https://tiles.example/2/3/2.png"
+    ],
+    "px": [
+     [
+      686.1064533333333,
+      358.49446549378683
+     ],
+     [
+      255.63648,
+      84.50613515839314
+     ],
+     [
+      54.985102222222224,
+      357.0595116597626
+     ]
+    ]
+   }
+  },
+  {
+   "why": "across the antimeridian is the world's width (a documented limit)",
+   "points": [
+    "-17.7134,178.065",
+    "-16.69,-179.8"
+   ],
+   "want": {
+    "zoom": 2,
+    "grid": [
+     4,
+     1
+    ],
+    "tiles": [
+     "https://tiles.example/2/0/2.png",
+     "https://tiles.example/2/1/2.png",
+     "https://tiles.example/2/2/2.png",
+     "https://tiles.example/2/3/2.png"
+    ],
+    "px": [
+     [
+      1018.496,
+      51.20712332891458
+     ],
+     [
+      0.5688888888888566,
+      48.15976308919687
+     ]
+    ]
+   }
+  },
+  {
+   "why": "the equator and the prime meridian",
+   "points": [
+    "0.0,0.0"
+   ],
+   "want": {
+    "zoom": 13,
+    "grid": [
+     3,
+     3
+    ],
+    "tiles": [
+     "https://tiles.example/13/4095/4095.png",
+     "https://tiles.example/13/4096/4095.png",
+     "https://tiles.example/13/4097/4095.png",
+     "https://tiles.example/13/4095/4096.png",
+     "https://tiles.example/13/4096/4096.png",
+     "https://tiles.example/13/4097/4096.png",
+     "https://tiles.example/13/4095/4097.png",
+     "https://tiles.example/13/4096/4097.png",
+     "https://tiles.example/13/4097/4097.png"
+    ],
+    "px": [
+     [
+      256.0,
+      256.0
+     ]
+    ]
+   }
+  },
+  {
+   "why": "a point at the northern limit of the tiles",
+   "points": [
+    "85.0511287798,10.0"
+   ],
+   "want": {
+    "zoom": 13,
+    "grid": [
+     3,
+     2
+    ],
+    "tiles": [
+     "https://tiles.example/13/4322/0.png",
+     "https://tiles.example/13/4323/0.png",
+     "https://tiles.example/13/4324/0.png",
+     "https://tiles.example/13/4322/1.png",
+     "https://tiles.example/13/4323/1.png",
+     "https://tiles.example/13/4324/1.png"
+    ],
+    "px": [
+     [
+      398.2222222222481,
+      4.4552143663167953e-07
+     ]
+    ]
+   }
+  },
+  {
+   "why": "a polar latitude is clamped to the edge of the world",
+   "points": [
+    "89.9,10.0"
+   ],
+   "want": {
+    "zoom": 13,
+    "grid": [
+     3,
+     2
+    ],
+    "tiles": [
+     "https://tiles.example/13/4322/0.png",
+     "https://tiles.example/13/4323/0.png",
+     "https://tiles.example/13/4324/0.png",
+     "https://tiles.example/13/4322/1.png",
+     "https://tiles.example/13/4323/1.png",
+     "https://tiles.example/13/4324/1.png"
+    ],
+    "px": [
+     [
+      398.2222222222481,
+      4.4552143663167953e-07
+     ]
+    ]
+   }
+  },
+  {
+   "why": "the poles themselves",
+   "points": [
+    "90.0,0.0",
+    "-90.0,0.0"
+   ],
+   "want": {
+    "zoom": 2,
+    "grid": [
+     2,
+     4
+    ],
+    "tiles": [
+     "https://tiles.example/2/1/0.png",
+     "https://tiles.example/2/2/0.png",
+     "https://tiles.example/2/1/1.png",
+     "https://tiles.example/2/2/1.png",
+     "https://tiles.example/2/1/2.png",
+     "https://tiles.example/2/2/2.png",
+     "https://tiles.example/2/1/3.png",
+     "https://tiles.example/2/2/3.png"
+    ],
+    "px": [
+     [
+      256.0,
+      2.1753976398031227e-10
+     ],
+     [
+      256.0,
+      1023.9999999997824
+     ]
+    ]
+   }
+  },
+  {
+   "why": "a polar latitude with a place near the tile range",
+   "points": [
+    "89.0,20.0",
+    "84.0,22.0"
+   ],
+   "want": {
+    "zoom": 6,
+    "grid": [
+     2,
+     3
+    ],
+    "tiles": [
+     "https://tiles.example/6/35/0.png",
+     "https://tiles.example/6/36/0.png",
+     "https://tiles.example/6/35/1.png",
+     "https://tiles.example/6/36/1.png",
+     "https://tiles.example/6/35/2.png",
+     "https://tiles.example/6/36/2.png"
+    ],
+    "px": [
+     [
+      142.22222222222263,
+      3.4806362236849964e-09
+     ],
+     [
+      233.24444444444453,
+      502.9852160834753
+     ]
+    ]
+   }
+  },
+  {
+   "why": "the south edge of the world, one place",
+   "points": [
+    "-85.06,0.0"
+   ],
+   "want": {
+    "zoom": 13,
+    "grid": [
+     3,
+     2
+    ],
+    "tiles": [
+     "https://tiles.example/13/4095/8190.png",
+     "https://tiles.example/13/4096/8190.png",
+     "https://tiles.example/13/4097/8190.png",
+     "https://tiles.example/13/4095/8191.png",
+     "https://tiles.example/13/4096/8191.png",
+     "https://tiles.example/13/4097/8191.png"
+    ],
+    "px": [
+     [
+      256.0,
+      511.99999955436215
+     ]
+    ]
+   }
+  },
+  {
+   "why": "the far east edge of the world, one place (the tile column is clipped)",
+   "points": [
+    "10.0,180.0"
+   ],
+   "want": {
+    "zoom": 13,
+    "grid": [
+     1,
+     3
+    ],
+    "tiles": [
+     "https://tiles.example/13/8191/3866.png",
+     "https://tiles.example/13/8191/3867.png",
+     "https://tiles.example/13/8191/3868.png"
+    ],
+    "px": [
+     [
+      256.0,
+      327.7511771634454
+     ]
+    ]
+   }
+  },
+  {
+   "why": "the far west edge, one place",
+   "points": [
+    "10.0,-180.0"
+   ],
+   "want": {
+    "zoom": 13,
+    "grid": [
+     2,
+     3
+    ],
+    "tiles": [
+     "https://tiles.example/13/0/3866.png",
+     "https://tiles.example/13/1/3866.png",
+     "https://tiles.example/13/0/3867.png",
+     "https://tiles.example/13/1/3867.png",
+     "https://tiles.example/13/0/3868.png",
+     "https://tiles.example/13/1/3868.png"
+    ],
+    "px": [
+     [
+      0.0,
+      327.7511771634454
+     ]
+    ]
+   }
+  },
+  {
+   "why": "a north-south line of places is tall and narrow",
+   "points": [
+    "40.0,3.0",
+    "41.5,3.01"
+   ],
+   "want": {
+    "zoom": 9,
+    "grid": [
+     1,
+     4
+    ],
+    "tiles": [
+     "https://tiles.example/9/260/190.png",
+     "https://tiles.example/9/260/191.png",
+     "https://tiles.example/9/260/192.png",
+     "https://tiles.example/9/260/193.png"
+    ],
+    "px": [
+     [
+      68.26666666666279,
+      981.1273634389581
+     ],
+     [
+      71.90755555554642,
+      260.16994682607765
+     ]
+    ]
+   }
+  },
+  {
+   "why": "an east-west line of places is wide and short",
+   "points": [
+    "40.0,3.0",
+    "40.01,4.5"
+   ],
+   "want": {
+    "zoom": 9,
+    "grid": [
+     3,
+     1
+    ],
+    "tiles": [
+     "https://tiles.example/9/260/193.png",
+     "https://tiles.example/9/261/193.png",
+     "https://tiles.example/9/262/193.png"
+    ],
+    "px": [
+     [
+      68.26666666666279,
+      213.12736343895813
+     ],
+     [
+      614.3999999999942,
+      208.37417245749384
+     ]
+    ]
+   }
+  },
+  {
+   "why": "a place on each side of a tile edge at zoom 13",
+   "points": [
+    "45.0,6.0",
+    "45.0,6.0439"
+   ],
+   "want": {
+    "zoom": 14,
+    "grid": [
+     4,
+     1
+    ],
+    "tiles": [
+     "https://tiles.example/14/8464/5893.png",
+     "https://tiles.example/14/8465/5893.png",
+     "https://tiles.example/14/8466/5893.png",
+     "https://tiles.example/14/8467/5893.png"
+    ],
+    "px": [
+     [
+      273.066666666884,
+      188.16123359184712
+     ],
+     [
+      784.5387377780862,
+      188.16123359184712
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 1: 5 places spread over about 0.369 degrees",
+   "points": [
+    "0.87552,-16.41705",
+    "0.63213,-15.69203",
+    "1.1437,-16.43465",
+    "0.75623,-15.63926",
+    "0.68577,-15.68128"
+   ],
+   "want": {
+    "zoom": 10,
+    "grid": [
+     3,
+     3
+    ],
+    "tiles": [
+     "https://tiles.example/10/465/508.png",
+     "https://tiles.example/10/466/508.png",
+     "https://tiles.example/10/467/508.png",
+     "https://tiles.example/10/465/509.png",
+     "https://tiles.example/10/466/509.png",
+     "https://tiles.example/10/467/509.png",
+     "https://tiles.example/10/465/510.png",
+     "https://tiles.example/10/466/510.png",
+     "https://tiles.example/10/467/510.png"
+    ],
+    "px": [
+     [
+      77.46901333333517,
+      386.44097984572
+     ],
+     [
+      605.4124657777866,
+      563.6876429149561
+     ],
+     [
+      64.65308444443508,
+      191.1277634063299
+     ],
+     [
+      643.8384071111068,
+      473.3141301028518
+     ],
+     [
+      613.2403768889053,
+      524.6256021586305
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 2: 6 places spread over about 2.829 degrees",
+   "points": [
+    "15.82422,-100.73694",
+    "17.51793,-96.16687",
+    "13.70727,-94.71279",
+    "17.02759,-96.74324",
+    "15.19854,-96.34829",
+    "12.76237,-94.50559"
+   ],
+   "want": {
+    "zoom": 7,
+    "grid": [
+     3,
+     3
+    ],
+    "tiles": [
+     "https://tiles.example/7/28/57.png",
+     "https://tiles.example/7/29/57.png",
+     "https://tiles.example/7/30/57.png",
+     "https://tiles.example/7/28/58.png",
+     "https://tiles.example/7/29/58.png",
+     "https://tiles.example/7/30/58.png",
+     "https://tiles.example/7/28/59.png",
+     "https://tiles.example/7/29/59.png",
+     "https://tiles.example/7/30/59.png"
+    ],
+    "px": [
+     [
+      46.69986133333259,
+      332.97597225963364
+     ],
+     [
+      462.67778844444456,
+      172.0395338090293
+     ],
+     [
+      595.0313813333332,
+      532.2590881736032
+     ],
+     [
+      410.2153102222219,
+      218.77940410664814
+     ],
+     [
+      446.1645368888885,
+      392.07980054415566
+     ],
+     [
+      613.8911857777775,
+      620.6137734032
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 3: 4 places spread over about 0.098 degrees",
+   "points": [
+    "32.3475,146.88655",
+    "32.39382,146.84224",
+    "32.29819,146.64854",
+    "32.36285,146.72074"
+   ],
+   "want": {
+    "zoom": 12,
+    "grid": [
+     4,
+     3
+    ],
+    "tiles": [
+     "https://tiles.example/12/3716/1657.png",
+     "https://tiles.example/12/3717/1657.png",
+     "https://tiles.example/12/3718/1657.png",
+     "https://tiles.example/12/3719/1657.png",
+     "https://tiles.example/12/3716/1658.png",
+     "https://tiles.example/12/3717/1658.png",
+     "https://tiles.example/12/3718/1658.png",
+     "https://tiles.example/12/3719/1658.png",
+     "https://tiles.example/12/3716/1659.png",
+     "https://tiles.example/12/3717/1659.png",
+     "https://tiles.example/12/3718/1659.png",
+     "https://tiles.example/12/3719/1659.png"
+    ],
+    "px": [
+     [
+      830.0862577777589,
+      431.93864140677033
+     ],
+     [
+      701.0240284444299,
+      272.19860619015526
+     ],
+     [
+      136.8318862223532,
+      601.9001967246877
+     ],
+     [
+      347.1296284443233,
+      379.01140663656406
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 4: 3 places spread over about 17.041 degrees",
+   "points": [
+    "-36.36211,93.40398",
+    "-48.22724,113.7219",
+    "-41.9542,125.32129"
+   ],
+   "want": {
+    "zoom": 5,
+    "grid": [
+     4,
+     3
+    ],
+    "tiles": [
+     "https://tiles.example/5/24/19.png",
+     "https://tiles.example/5/25/19.png",
+     "https://tiles.example/5/26/19.png",
+     "https://tiles.example/5/27/19.png",
+     "https://tiles.example/5/24/20.png",
+     "https://tiles.example/5/25/20.png",
+     "https://tiles.example/5/26/20.png",
+     "https://tiles.example/5/27/20.png",
+     "https://tiles.example/5/24/21.png",
+     "https://tiles.example/5/25/21.png",
+     "https://tiles.example/5/26/21.png",
+     "https://tiles.example/5/27/21.png"
+    ],
+    "px": [
+     [
+      77.45945599999959,
+      121.32728477542787
+     ],
+     [
+      539.8050133333336,
+      488.0876943135145
+     ],
+     [
+      803.7555768888888,
+      285.58812362464505
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 5: 2 places spread over about 0.006 degrees",
+   "points": [
+    "-69.5577,-37.00509",
+    "-69.56529,-37.00131"
+   ],
+   "want": {
+    "zoom": 15,
+    "grid": [
+     2,
+     4
+    ],
+    "tiles": [
+     "https://tiles.example/15/13015/25317.png",
+     "https://tiles.example/15/13016/25317.png",
+     "https://tiles.example/15/13015/25318.png",
+     "https://tiles.example/15/13016/25318.png",
+     "https://tiles.example/15/13015/25319.png",
+     "https://tiles.example/15/13016/25319.png",
+     "https://tiles.example/15/13015/25320.png",
+     "https://tiles.example/15/13016/25320.png"
+    ],
+    "px": [
+     [
+      182.90551466681063,
+      265.8092197077349
+     ],
+     [
+      270.98589866701514,
+      772.2779462719336
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 6: 5 places spread over about 0.011 degrees",
+   "points": [
+    "55.89962,-164.81163",
+    "55.91135,-164.78234",
+    "55.89977,-164.8082",
+    "55.89058,-164.78937",
+    "55.90768,-164.78955"
+   ],
+   "want": {
+    "zoom": 15,
+    "grid": [
+     4,
+     4
+    ],
+    "tiles": [
+     "https://tiles.example/15/1382/10218.png",
+     "https://tiles.example/15/1383/10218.png",
+     "https://tiles.example/15/1384/10218.png",
+     "https://tiles.example/15/1385/10218.png",
+     "https://tiles.example/15/1382/10219.png",
+     "https://tiles.example/15/1383/10219.png",
+     "https://tiles.example/15/1384/10219.png",
+     "https://tiles.example/15/1385/10219.png",
+     "https://tiles.example/15/1382/10220.png",
+     "https://tiles.example/15/1383/10220.png",
+     "https://tiles.example/15/1384/10220.png",
+     "https://tiles.example/15/1385/10220.png",
+     "https://tiles.example/15/1382/10221.png",
+     "https://tiles.example/15/1383/10221.png",
+     "https://tiles.example/15/1384/10221.png",
+     "https://tiles.example/15/1385/10221.png"
+    ],
+    "px": [
+     [
+      122.67246933316346,
+      525.970989856869
+     ],
+     [
+      805.1789368887548,
+      38.37117999326438
+     ],
+     [
+      202.59726222226163,
+      519.7366289105266
+     ],
+     [
+      641.368064000213,
+      901.6506467508152
+     ],
+     [
+      637.1737600002089,
+      190.94383591786027
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 7: 6 places spread over about 0.021 degrees",
+   "points": [
+    "28.69067,-49.88835",
+    "28.70238,-49.83239",
+    "28.68814,-49.86847",
+    "28.67471,-49.83527",
+    "28.70438,-49.83168",
+    "28.70597,-49.86247"
+   ],
+   "want": {
+    "zoom": 14,
+    "grid": [
+     4,
+     2
+    ],
+    "tiles": [
+     "https://tiles.example/14/5921/6827.png",
+     "https://tiles.example/14/5922/6827.png",
+     "https://tiles.example/14/5923/6827.png",
+     "https://tiles.example/14/5924/6827.png",
+     "https://tiles.example/14/5921/6828.png",
+     "https://tiles.example/14/5922/6828.png",
+     "https://tiles.example/14/5923/6828.png",
+     "https://tiles.example/14/5924/6828.png"
+    ],
+    "px": [
+     [
+      134.5945599998813,
+      254.90632637240924
+     ],
+     [
+      786.5758151111659,
+      99.37140566599555
+     ],
+     [
+      366.21334755560383,
+      288.50808429531753
+     ],
+     [
+      753.0213831108995,
+      466.86271757632494
+     ],
+     [
+      794.8479146666359,
+      72.80520438705571
+     ],
+     [
+      436.1184142222628,
+      51.684712052345276
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 8: 6 places spread over about 0.005 degrees",
+   "points": [
+    "40.42582,87.7172",
+    "40.42096,87.71118",
+    "40.42688,87.71363",
+    "40.42562,87.71429",
+    "40.42139,87.71944",
+    "40.421,87.71111"
+   ],
+   "want": {
+    "zoom": 17,
+    "grid": [
+     4,
+     4
+    ],
+    "tiles": [
+     "https://tiles.example/17/97470/49417.png",
+     "https://tiles.example/17/97471/49417.png",
+     "https://tiles.example/17/97472/49417.png",
+     "https://tiles.example/17/97473/49417.png",
+     "https://tiles.example/17/97470/49418.png",
+     "https://tiles.example/17/97471/49418.png",
+     "https://tiles.example/17/97472/49418.png",
+     "https://tiles.example/17/97473/49418.png",
+     "https://tiles.example/17/97470/49419.png",
+     "https://tiles.example/17/97471/49419.png",
+     "https://tiles.example/17/97472/49419.png",
+     "https://tiles.example/17/97473/49419.png",
+     "https://tiles.example/17/97470/49420.png",
+     "https://tiles.example/17/97471/49420.png",
+     "https://tiles.example/17/97472/49420.png",
+     "https://tiles.example/17/97473/49420.png"
+    ],
+    "px": [
+     [
+      731.6184177771211,
+      283.19736426509917
+     ],
+     [
+      170.51374933496118,
+      878.2328368593007
+     ],
+     [
+      398.87030044198036,
+      153.41025366261601
+     ],
+     [
+      460.3867591097951,
+      307.685268972069
+     ],
+     [
+      940.4015502259135,
+      825.5873989593238
+     ],
+     [
+      163.98927644640207,
+      873.3356010187417
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 9: 8 places spread over about 0.046 degrees",
+   "points": [
+    "74.37363,-34.27191",
+    "74.3132,-34.36258",
+    "74.32387,-34.3381",
+    "74.32047,-34.30501",
+    "74.32038,-34.39613",
+    "74.30345,-34.31942",
+    "74.3262,-34.37907",
+    "74.31567,-34.33012"
+   ],
+   "want": {
+    "zoom": 12,
+    "grid": [
+     3,
+     4
+    ],
+    "tiles": [
+     "https://tiles.example/12/1656/753.png",
+     "https://tiles.example/12/1657/753.png",
+     "https://tiles.example/12/1658/753.png",
+     "https://tiles.example/12/1656/754.png",
+     "https://tiles.example/12/1657/754.png",
+     "https://tiles.example/12/1658/754.png",
+     "https://tiles.example/12/1656/755.png",
+     "https://tiles.example/12/1657/755.png",
+     "https://tiles.example/12/1658/755.png",
+     "https://tiles.example/12/1656/756.png",
+     "https://tiles.example/12/1657/756.png",
+     "https://tiles.example/12/1658/756.png"
+    ],
+    "px": [
+     [
+      527.8269440000295,
+      52.807319263054524
+     ],
+     [
+      263.73142755555455,
+      705.0278665258083
+     ],
+     [
+      335.03459555556765,
+      590.044910269673
+     ],
+     [
+      431.41620622220216,
+      626.6925584215787
+     ],
+     [
+      166.00996977777686,
+      627.6625379680772
+     ],
+     [
+      389.44403911108384,
+      810.029992083495
+     ],
+     [
+      215.70082133327378,
+      564.92601744493
+     ],
+     [
+      358.2780302222236,
+      678.4172274458688
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 10: 2 places spread over about 0.008 degrees",
+   "points": [
+    "-6.56865,36.45292",
+    "-6.57643,36.4491"
+   ],
+   "want": {
+    "zoom": 17,
+    "grid": [
+     3,
+     4
+    ],
+    "tiles": [
+     "https://tiles.example/17/78806/67932.png",
+     "https://tiles.example/17/78807/67932.png",
+     "https://tiles.example/17/78808/67932.png",
+     "https://tiles.example/17/78806/67933.png",
+     "https://tiles.example/17/78807/67933.png",
+     "https://tiles.example/17/78808/67933.png",
+     "https://tiles.example/17/78806/67934.png",
+     "https://tiles.example/17/78807/67934.png",
+     "https://tiles.example/17/78808/67934.png",
+     "https://tiles.example/17/78806/67935.png",
+     "https://tiles.example/17/78807/67935.png",
+     "https://tiles.example/17/78808/67935.png"
+    ],
+    "px": [
+     [
+      538.4037262238562,
+      212.13443145528436
+     ],
+     [
+      182.35391999781132,
+      942.0803869403899
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 11: 7 places spread over about 0.006 degrees",
+   "points": [
+    "-4.40165,-66.89887",
+    "-4.39123,-66.89503",
+    "-4.39092,-66.88836",
+    "-4.40031,-66.88658",
+    "-4.39278,-66.89472",
+    "-4.39273,-66.89852",
+    "-4.3983,-66.89292"
+   ],
+   "want": {
+    "zoom": 16,
+    "grid": [
+     3,
+     3
+    ],
+    "tiles": [
+     "https://tiles.example/16/20589/33568.png",
+     "https://tiles.example/16/20590/33568.png",
+     "https://tiles.example/16/20591/33568.png",
+     "https://tiles.example/16/20589/33569.png",
+     "https://tiles.example/16/20590/33569.png",
+     "https://tiles.example/16/20591/33569.png",
+     "https://tiles.example/16/20589/33570.png",
+     "https://tiles.example/16/20590/33570.png",
+     "https://tiles.example/16/20591/33570.png"
+    ],
+    "px": [
+     [
+      110.68848355580121,
+      533.8310367465019
+     ],
+     [
+      289.6454542223364,
+      46.79073187708855
+     ],
+     [
+      600.4899840001017,
+      32.30115337111056
+     ],
+     [
+      683.4439964443445,
+      471.1978327538818
+     ],
+     [
+      304.0925013329834,
+      119.2387147154659
+     ],
+     [
+      126.99966577719897,
+      116.90168066136539
+     ],
+     [
+      387.97858133353293,
+      377.2482381053269
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 12: 4 places spread over about 1.194 degrees",
+   "points": [
+    "-22.20576,-46.05896",
+    "-21.74694,-48.95992",
+    "-20.33108,-46.78597",
+    "-21.509,-47.51253"
+   ],
+   "want": {
+    "zoom": 8,
+    "grid": [
+     3,
+     3
+    ],
+    "tiles": [
+     "https://tiles.example/8/93/142.png",
+     "https://tiles.example/8/94/142.png",
+     "https://tiles.example/8/95/142.png",
+     "https://tiles.example/8/93/143.png",
+     "https://tiles.example/8/94/143.png",
+     "https://tiles.example/8/95/143.png",
+     "https://tiles.example/8/93/144.png",
+     "https://tiles.example/8/94/144.png",
+     "https://tiles.example/8/95/144.png"
+    ],
+    "px": [
+     [
+      575.2222151111091,
+      563.6088694148566
+     ],
+     [
+      47.1185635555521,
+      473.53826770222804
+     ],
+     [
+      442.8740835555582,
+      197.36989193185582
+     ],
+     [
+      310.6078720000005,
+      426.94204215369246
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 13: 7 places spread over about 0.002 degrees",
+   "points": [
+    "0.92969,1.95324",
+    "0.92835,1.94956",
+    "0.92963,1.95105",
+    "0.92992,1.9507",
+    "0.93273,1.9519",
+    "0.92864,1.95256",
+    "0.93215,1.94756"
+   ],
+   "want": {
+    "zoom": 17,
+    "grid": [
+     4,
+     3
+    ],
+    "tiles": [
+     "https://tiles.example/17/66244/65196.png",
+     "https://tiles.example/17/66245/65196.png",
+     "https://tiles.example/17/66246/65196.png",
+     "https://tiles.example/17/66247/65196.png",
+     "https://tiles.example/17/66244/65197.png",
+     "https://tiles.example/17/66245/65197.png",
+     "https://tiles.example/17/66246/65197.png",
+     "https://tiles.example/17/66247/65197.png",
+     "https://tiles.example/17/66244/65198.png",
+     "https://tiles.example/17/66245/65198.png",
+     "https://tiles.example/17/66246/65198.png",
+     "https://tiles.example/17/66247/65198.png"
+    ],
+    "px": [
+     [
+      807.1632213331759,
+      382.80871111899614
+     ],
+     [
+      464.1623608879745,
+      507.72218362241983
+     ],
+     [
+      603.0404266677797,
+      388.4018526934087
+     ],
+     [
+      570.4180622249842,
+      361.3683342076838
+     ],
+     [
+      682.2661688886583,
+      99.42274687252939
+     ],
+     [
+      743.782627556473,
+      480.68867493234575
+     ],
+     [
+      277.74884977936745,
+      153.4898247141391
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 14: 2 places spread over about 0.038 degrees",
+   "points": [
+    "-62.10715,6.79847",
+    "-62.14494,6.78803"
+   ],
+   "want": {
+    "zoom": 13,
+    "grid": [
+     1,
+     3
+    ],
+    "tiles": [
+     "https://tiles.example/13/4250/5912.png",
+     "https://tiles.example/13/4250/5913.png",
+     "https://tiles.example/13/4250/5914.png"
+    ],
+    "px": [
+     [
+      179.9582151111681,
+      40.68536565755494
+     ],
+     [
+      119.14080711104907,
+      511.550690026721
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 15: 4 places spread over about 0.001 degrees",
+   "points": [
+    "-34.13391,-88.23033",
+    "-34.13254,-88.22629",
+    "-34.13484,-88.22825",
+    "-34.13375,-88.22807"
+   ],
+   "want": {
+    "zoom": 18,
+    "grid": [
+     4,
+     3
+    ],
+    "tiles": [
+     "https://tiles.example/18/66824/157542.png",
+     "https://tiles.example/18/66825/157542.png",
+     "https://tiles.example/18/66826/157542.png",
+     "https://tiles.example/18/66827/157542.png",
+     "https://tiles.example/18/66824/157543.png",
+     "https://tiles.example/18/66825/157543.png",
+     "https://tiles.example/18/66826/157543.png",
+     "https://tiles.example/18/66827/157543.png",
+     "https://tiles.example/18/66824/157544.png",
+     "https://tiles.example/18/66825/157544.png",
+     "https://tiles.example/18/66826/157544.png",
+     "https://tiles.example/18/66827/157544.png"
+    ],
+    "px": [
+     [
+      162.39820799976587,
+      369.7377667725086
+     ],
+     [
+      915.5087928883731,
+      61.20123901963234
+     ],
+     [
+      550.1383111104369,
+      579.1851208508015
+     ],
+     [
+      583.6927431114018,
+      333.70404574275017
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 16: 4 places spread over about 0.001 degrees",
+   "points": [
+    "69.15703,74.34106",
+    "69.15553,74.34387",
+    "69.15618,74.3421",
+    "69.15635,74.34162"
+   ],
+   "want": {
+    "zoom": 18,
+    "grid": [
+     3,
+     4
+    ],
+    "tiles": [
+     "https://tiles.example/18/185205/60427.png",
+     "https://tiles.example/18/185206/60427.png",
+     "https://tiles.example/18/185207/60427.png",
+     "https://tiles.example/18/185205/60428.png",
+     "https://tiles.example/18/185206/60428.png",
+     "https://tiles.example/18/185207/60428.png",
+     "https://tiles.example/18/185205/60429.png",
+     "https://tiles.example/18/185206/60429.png",
+     "https://tiles.example/18/185207/60429.png",
+     "https://tiles.example/18/185205/60430.png",
+     "https://tiles.example/18/185206/60430.png",
+     "https://tiles.example/18/185207/60430.png"
+    ],
+    "px": [
+     [
+      130.0143217742443,
+      80.52703269198537
+     ],
+     [
+      653.836287997663,
+      866.3741500861943
+     ],
+     [
+      323.8843733370304,
+      525.8470335714519
+     ],
+     [
+      234.40588799864054,
+      436.78442154824734
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 17: 8 places spread over about 0.003 degrees",
+   "points": [
+    "53.22178,-141.26385",
+    "53.22156,-141.26426",
+    "53.22047,-141.26311",
+    "53.21829,-141.26264",
+    "53.221,-141.27136",
+    "53.21799,-141.26857",
+    "53.21864,-141.26855",
+    "53.21706,-141.27061"
+   ],
+   "want": {
+    "zoom": 17,
+    "grid": [
+     4,
+     4
+    ],
+    "tiles": [
+     "https://tiles.example/17/14100/42562.png",
+     "https://tiles.example/17/14101/42562.png",
+     "https://tiles.example/17/14102/42562.png",
+     "https://tiles.example/17/14103/42562.png",
+     "https://tiles.example/17/14100/42563.png",
+     "https://tiles.example/17/14101/42563.png",
+     "https://tiles.example/17/14102/42563.png",
+     "https://tiles.example/17/14103/42563.png",
+     "https://tiles.example/17/14100/42564.png",
+     "https://tiles.example/17/14101/42564.png",
+     "https://tiles.example/17/14102/42564.png",
+     "https://tiles.example/17/14103/42564.png",
+     "https://tiles.example/17/14100/42565.png",
+     "https://tiles.example/17/14101/42565.png",
+     "https://tiles.example/17/14102/42565.png",
+     "https://tiles.example/17/14103/42565.png"
+    ],
+    "px": [
+     [
+      870.8642133343965,
+      108.93630652874708
+     ],
+     [
+      832.649443554692,
+      143.18514062277973
+     ],
+     [
+      939.8372124433517,
+      312.86995085701346
+     ],
+     [
+      983.6443875553086,
+      652.226616859436
+     ],
+     [
+      170.8814791124314,
+      230.363197196275
+     ],
+     [
+      430.92832711013034,
+      698.9257235452533
+     ],
+     [
+      432.79246222181246,
+      597.7439123466611
+     ],
+     [
+      240.78654577722773,
+      843.6908758021891
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 18: 3 places spread over about 0.126 degrees",
+   "points": [
+    "-52.65774,57.04237",
+    "-52.70148,56.68074",
+    "-52.74624,57.00252"
+   ],
+   "want": {
+    "zoom": 11,
+    "grid": [
+     3,
+     2
+    ],
+    "tiles": [
+     "https://tiles.example/11/1346/1377.png",
+     "https://tiles.example/11/1347/1377.png",
+     "https://tiles.example/11/1348/1377.png",
+     "https://tiles.example/11/1346/1378.png",
+     "https://tiles.example/11/1347/1378.png",
+     "https://tiles.example/11/1348/1378.png"
+    ],
+    "px": [
+     [
+      641.9724515555426,
+      163.23176692106063
+     ],
+     [
+      115.31059200002346,
+      268.30186210910324
+     ],
+     [
+      583.9366826666519,
+      375.9312182876747
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 19: 4 places spread over about 0.001 degrees",
+   "points": [
+    "6.26227,112.69325",
+    "6.26183,112.69249",
+    "6.26242,112.69354",
+    "6.2625,112.69276"
+   ],
+   "want": {
+    "zoom": 18,
+    "grid": [
+     2,
+     2
+    ],
+    "tiles": [
+     "https://tiles.example/18/213132/126502.png",
+     "https://tiles.example/18/213133/126502.png",
+     "https://tiles.example/18/213132/126503.png",
+     "https://tiles.example/18/213133/126503.png"
+    ],
+    "px": [
+     [
+      184.41102223098278,
+      217.08173476532102
+     ],
+     [
+      42.73675378412008,
+      299.59600764513016
+     ],
+     [
+      238.47094044089317,
+      188.9518531151116
+     ],
+     [
+      93.06840178370476,
+      173.94924626499414
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 20: 8 places spread over about 0.022 degrees",
+   "points": [
+    "-55.74224,39.51039",
+    "-55.73344,39.48876",
+    "-55.71662,39.48992",
+    "-55.70969,39.54945",
+    "-55.7099,39.53861",
+    "-55.71465,39.5415",
+    "-55.7209,39.52737",
+    "-55.74386,39.51905"
+   ],
+   "want": {
+    "zoom": 14,
+    "grid": [
+     4,
+     4
+    ],
+    "tiles": [
+     "https://tiles.example/14/9989/11258.png",
+     "https://tiles.example/14/9990/11258.png",
+     "https://tiles.example/14/9991/11258.png",
+     "https://tiles.example/14/9992/11258.png",
+     "https://tiles.example/14/9989/11259.png",
+     "https://tiles.example/14/9990/11259.png",
+     "https://tiles.example/14/9991/11259.png",
+     "https://tiles.example/14/9992/11259.png",
+     "https://tiles.example/14/9989/11260.png",
+     "https://tiles.example/14/9990/11260.png",
+     "https://tiles.example/14/9991/11260.png",
+     "https://tiles.example/14/9992/11260.png",
+     "https://tiles.example/14/9989/11261.png",
+     "https://tiles.example/14/9990/11261.png",
+     "https://tiles.example/14/9991/11261.png",
+     "https://tiles.example/14/9992/11261.png"
+    ],
+    "px": [
+     [
+      297.4078293335624,
+      825.0872987369075
+     ],
+     [
+      45.400063999928534,
+      642.9718256704509
+     ],
+     [
+      58.9150435552001,
+      294.99713038187474
+     ],
+     [
+      752.4898133333772,
+      151.67183223040774
+     ],
+     [
+      626.1946595557965,
+      156.0146495513618
+     ],
+     [
+      659.8655999996699,
+      254.251277200412
+     ],
+     [
+      495.23916799994186,
+      383.5281988363713
+     ],
+     [
+      398.3041422222741,
+      858.6175776631571
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 21: 2 places spread over about 0.062 degrees",
+   "points": [
+    "71.68827,-152.5425",
+    "71.69312,-152.64357"
+   ],
+   "want": {
+    "zoom": 13,
+    "grid": [
+     3,
+     2
+    ],
+    "tiles": [
+     "https://tiles.example/13/622/1715.png",
+     "https://tiles.example/13/623/1715.png",
+     "https://tiles.example/13/624/1715.png",
+     "https://tiles.example/13/622/1716.png",
+     "https://tiles.example/13/623/1716.png",
+     "https://tiles.example/13/624/1716.png"
+    ],
+    "px": [
+     [
+      719.5306666667166,
+      312.0495053755585
+     ],
+     [
+      130.75524266660796,
+      222.1128508677939
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 22: 7 places spread over about 8.635 degrees",
+   "points": [
+    "61.65266,-35.17079",
+    "62.03872,-46.1023",
+    "61.2436,-40.02822",
+    "70.16399,-32.53418",
+    "68.43376,-39.67564",
+    "63.32904,-40.72602",
+    "66.46633,-33.69577"
+   ],
+   "want": {
+    "zoom": 5,
+    "grid": [
+     3,
+     4
+    ],
+    "tiles": [
+     "https://tiles.example/5/11/6.png",
+     "https://tiles.example/5/12/6.png",
+     "https://tiles.example/5/13/6.png",
+     "https://tiles.example/5/11/7.png",
+     "https://tiles.example/5/12/7.png",
+     "https://tiles.example/5/13/7.png",
+     "https://tiles.example/5/11/8.png",
+     "https://tiles.example/5/12/8.png",
+     "https://tiles.example/5/13/8.png",
+     "https://tiles.example/5/11/9.png",
+     "https://tiles.example/5/12/9.png",
+     "https://tiles.example/5/13/9.png"
+    ],
+    "px": [
+     [
+      479.66913422222206,
+      765.7844708027478
+     ],
+     [
+      230.91655111111095,
+      747.1658782344848
+     ],
+     [
+      369.135616,
+      785.2602734125776
+     ],
+     [
+      539.6666595555557,
+      286.4165537217682
+     ],
+     [
+      377.15876977777816,
+      397.86089237171336
+     ],
+     [
+      353.256789333333,
+      683.1709958599549
+     ],
+     [
+      513.2340337777778,
+      514.6771006812105
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 23: 8 places spread over about 30.231 degrees",
+   "points": [
+    "-55.76443,-180",
+    "-84.70278,-180",
+    "-71.96147,-153.5742",
+    "-37.11262,-160.08299",
+    "-65.08026,-164.17171",
+    "-84.98167,-149.99617",
+    "-51.50295,-150.9352",
+    "-70.19921,-139.70362"
+   ],
+   "want": {
+    "zoom": 3,
+    "grid": [
+     2,
+     4
+    ],
+    "tiles": [
+     "https://tiles.example/3/0/4.png",
+     "https://tiles.example/3/1/4.png",
+     "https://tiles.example/3/0/5.png",
+     "https://tiles.example/3/1/5.png",
+     "https://tiles.example/3/0/6.png",
+     "https://tiles.example/3/1/6.png",
+     "https://tiles.example/3/0/7.png",
+     "https://tiles.example/3/1/7.png"
+    ],
+    "px": [
+     [
+      0.0,
+      383.87719259665823
+     ],
+     [
+      0.0,
+      1001.798506564839
+     ],
+     [
+      150.33344000000005,
+      599.9280179937598
+     ],
+     [
+      113.30565688888892,
+      227.6596331795547
+     ],
+     [
+      90.04538311111116,
+      492.10975034123726
+     ],
+     [
+      170.68845511111107,
+      1019.4512844786666
+     ],
+     [
+      165.34641777777773,
+      342.94705846189254
+     ],
+     [
+      229.24162844444444,
+      568.9868322050518
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 24: 5 places spread over about 0.128 degrees",
+   "points": [
+    "-64.71615,-136.20801",
+    "-64.49436,-136.31652",
+    "-64.50885,-136.10476",
+    "-64.66589,-136.26872",
+    "-64.67116,-136.38077"
+   ],
+   "want": {
+    "zoom": 11,
+    "grid": [
+     2,
+     4
+    ],
+    "tiles": [
+     "https://tiles.example/11/248/1508.png",
+     "https://tiles.example/11/249/1508.png",
+     "https://tiles.example/11/248/1509.png",
+     "https://tiles.example/11/249/1509.png",
+     "https://tiles.example/11/248/1510.png",
+     "https://tiles.example/11/249/1510.png",
+     "https://tiles.example/11/248/1511.png",
+     "https://tiles.example/11/249/1511.png"
+    ],
+    "px": [
+     [
+      288.7079253333286,
+      826.1010271090199
+     ],
+     [
+      130.67878400000336,
+      72.91139775025658
+     ],
+     [
+      439.07663644444256,
+      121.93181123770773
+     ],
+     [
+      200.2925795555493,
+      654.8810746791423
+     ],
+     [
+      37.10793955553527,
+      672.8194034947082
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 25: 4 places spread over about 0.021 degrees",
+   "points": [
+    "-39.73105,-56.9767",
+    "-39.72383,-56.95487",
+    "-39.72376,-56.97802",
+    "-39.73691,-56.95472"
+   ],
+   "want": {
+    "zoom": 15,
+    "grid": [
+     3,
+     3
+    ],
+    "tiles": [
+     "https://tiles.example/15/11197/20329.png",
+     "https://tiles.example/15/11198/20329.png",
+     "https://tiles.example/15/11199/20329.png",
+     "https://tiles.example/15/11197/20330.png",
+     "https://tiles.example/15/11198/20330.png",
+     "https://tiles.example/15/11199/20330.png",
+     "https://tiles.example/15/11197/20331.png",
+     "https://tiles.example/15/11198/20331.png",
+     "https://tiles.example/15/11199/20331.png"
+    ],
+    "px": [
+     [
+      218.66268444480374,
+      466.91479675937444
+     ],
+     [
+      727.3385528889485,
+      248.16612279228866
+     ],
+     [
+      187.90445511089638,
+      246.04540289007127
+     ],
+     [
+      730.833806221839,
+      644.4755782997236
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 26: 4 places spread over about 0.016 degrees",
+   "points": [
+    "12.06059,25.46248",
+    "12.0846,25.47207",
+    "12.06146,25.45378",
+    "12.06949,25.43287"
+   ],
+   "want": {
+    "zoom": 14,
+    "grid": [
+     3,
+     3
+    ],
+    "tiles": [
+     "https://tiles.example/14/9349/7637.png",
+     "https://tiles.example/14/9350/7637.png",
+     "https://tiles.example/14/9351/7637.png",
+     "https://tiles.example/14/9349/7638.png",
+     "https://tiles.example/14/9350/7638.png",
+     "https://tiles.example/14/9351/7638.png",
+     "https://tiles.example/14/9349/7639.png",
+     "https://tiles.example/14/9350/7639.png",
+     "https://tiles.example/14/9351/7639.png"
+    ],
+    "px": [
+     [
+      467.3936497778632,
+      514.6098221163265
+     ],
+     [
+      579.1252480000257,
+      228.54628831031732
+     ],
+     [
+      366.0313031109981,
+      504.2447855048813
+     ],
+     [
+      122.41214577807114,
+      408.5751009406522
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 27: 5 places spread over about 0.216 degrees",
+   "points": [
+    "6.3415,144.75588",
+    "6.47545,144.42161",
+    "6.33483,144.86834",
+    "6.65744,144.55528",
+    "6.50134,144.80023"
+   ],
+   "want": {
+    "zoom": 11,
+    "grid": [
+     4,
+     4
+    ],
+    "tiles": [
+     "https://tiles.example/11/1845/985.png",
+     "https://tiles.example/11/1846/985.png",
+     "https://tiles.example/11/1847/985.png",
+     "https://tiles.example/11/1848/985.png",
+     "https://tiles.example/11/1845/986.png",
+     "https://tiles.example/11/1846/986.png",
+     "https://tiles.example/11/1847/986.png",
+     "https://tiles.example/11/1848/986.png",
+     "https://tiles.example/11/1845/987.png",
+     "https://tiles.example/11/1846/987.png",
+     "https://tiles.example/11/1847/987.png",
+     "https://tiles.example/11/1848/987.png",
+     "https://tiles.example/11/1845/988.png",
+     "https://tiles.example/11/1846/988.png",
+     "https://tiles.example/11/1847/988.png",
+     "https://tiles.example/11/1848/988.png"
+    ],
+    "px": [
+     [
+      640.0300373333157,
+      729.6074079201207
+     ],
+     [
+      153.21406577777816,
+      533.3019051024457
+     ],
+     [
+      803.8117831110721,
+      739.3810394318134
+     ],
+     [
+      347.8851128889364,
+      266.5094600956072
+     ],
+     [
+      704.6194062222494,
+      495.35379282868234
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 28: 4 places spread over about 0.002 degrees",
+   "points": [
+    "74.19113,155.63597",
+    "74.19015,155.63768",
+    "74.19348,155.63784",
+    "74.19343,155.63512"
+   ],
+   "want": {
+    "zoom": 16,
+    "grid": [
+     2,
+     3
+    ],
+    "tiles": [
+     "https://tiles.example/16/61100/12172.png",
+     "https://tiles.example/16/61101/12172.png",
+     "https://tiles.example/16/61100/12173.png",
+     "https://tiles.example/16/61101/12173.png",
+     "https://tiles.example/16/61100/12174.png",
+     "https://tiles.example/16/61101/12174.png"
+    ],
+    "px": [
+     [
+      169.90572088770568,
+      497.4513948764652
+     ],
+     [
+      249.59749688766897,
+      665.09102338925
+     ],
+     [
+      257.0540373325348,
+      95.4171462226659
+     ],
+     [
+      130.29284977912903,
+      103.97167285718024
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 29: 8 places spread over about 0.002 degrees",
+   "points": [
+    "58.47459,-94.0133",
+    "58.47212,-94.01119",
+    "58.47383,-94.00974",
+    "58.47294,-94.00962",
+    "58.47374,-94.01022",
+    "58.47234,-94.01245",
+    "58.4731,-94.01127",
+    "58.47294,-94.0104"
+   ],
+   "want": {
+    "zoom": 17,
+    "grid": [
+     3,
+     3
+    ],
+    "tiles": [
+     "https://tiles.example/17/31306/39149.png",
+     "https://tiles.example/17/31307/39149.png",
+     "https://tiles.example/17/31308/39149.png",
+     "https://tiles.example/17/31306/39150.png",
+     "https://tiles.example/17/31307/39150.png",
+     "https://tiles.example/17/31308/39150.png",
+     "https://tiles.example/17/31306/39151.png",
+     "https://tiles.example/17/31307/39151.png",
+     "https://tiles.example/17/31308/39151.png"
+    ],
+    "px": [
+     [
+      205.3279288886115,
+      78.32781460136175
+     ],
+     [
+      401.99418311100453,
+      518.6087054442614
+     ],
+     [
+      537.1439786674455,
+      213.802153442055
+     ],
+     [
+      548.3287893338129,
+      372.4460105858743
+     ],
+     [
+      492.40473599918187,
+      229.84497325867414
+     ],
+     [
+      284.55367111135274,
+      479.39465859532356
+     ],
+     [
+      394.53764266707003,
+      343.9260627795011
+     ],
+     [
+      475.62751999963075,
+      372.4460105858743
+     ]
+    ]
+   }
+  },
+  {
+   "why": "random cluster 30: 7 places spread over about 0.033 degrees",
+   "points": [
+    "46.51373,-81.04031",
+    "46.51834,-81.07189",
+    "46.48611,-81.05464",
+    "46.47977,-81.0655",
+    "46.51075,-81.07614",
+    "46.5246,-81.12924",
+    "46.5226,-81.11076"
+   ],
+   "want": {
+    "zoom": 13,
+    "grid": [
+     4,
+     2
+    ],
+    "tiles": [
+     "https://tiles.example/13/2249/2897.png",
+     "https://tiles.example/13/2250/2897.png",
+     "https://tiles.example/13/2251/2897.png",
+     "https://tiles.example/13/2252/2897.png",
+     "https://tiles.example/13/2249/2898.png",
+     "https://tiles.example/13/2250/2898.png",
+     "https://tiles.example/13/2251/2898.png",
+     "https://tiles.example/13/2252/2898.png"
+    ],
+    "px": [
+     [
+      737.9772302221972,
+      126.18495195917785
+     ],
+     [
+      554.0103964444716,
+      87.15983206382953
+     ],
+     [
+      654.4989297777647,
+      359.9277579772752
+     ],
+     [
+      591.234844444436,
+      413.56522206240334
+     ],
+     [
+      529.2523519999813,
+      151.4098405544646
+     ],
+     [
+      219.92243200005032,
+      34.1616351113189
+     ],
+     [
+      327.5762346666306,
+      51.094630238367245
+     ]
+    ]
+   }
+  }
+ ]
+}

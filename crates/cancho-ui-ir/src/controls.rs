@@ -120,7 +120,7 @@ fn check_node(c: &IrComponent, node: &IrViewNode, in_for: bool) -> Result<(), Lo
                 check_select_complete(kind, bindings, *span)?;
                 crate::sortlist::check_complete(kind, accessibility, bindings, *span, in_for)?;
                 crate::map::check_complete(c, kind, accessibility, bindings, *span)?;
-                crate::routemap::check_complete(kind, accessibility, bindings, *span, in_for)?;
+                crate::routemap::check_complete(c, kind, accessibility, bindings, *span, in_for)?;
             }
             for ch in children {
                 check_node(c, ch, in_for)?;

@@ -1,6 +1,7 @@
 //! `RouteMap` on the page (docs/routes.md): a `<figure>` holding an inline SVG of the located points as numbered pins, joined in list order by a
-//! polyline, and a collapsed `<details>` with the same points as an ordered list. Nothing is fetched: there are no tiles, no host and no
-//! capability. The text the page writes (`__cui_routemap_describe`) is that of `cancho_ui_replay::routemap::describe` in JavaScript;
+//! polyline, and a collapsed `<details>` with the same points as an ordered list. Without `tiles:` nothing is fetched: no host, no capability, and
+//! the module is the one it always was. With `tiles:` the page also carries `TILES_JS` (section 9 of the docs), which lays the tiles of the
+//! program's own host under the pins. The text the page writes (`__cui_routemap_describe`) is that of `cancho_ui_replay::routemap::describe` in JavaScript;
 //! `tests/routemap_corpus.json` and `scripts/check-routemap.js` hold both to the same cases. Every string from the program is set with
 //! `textContent` or `setAttribute`, never parsed as markup.
 
@@ -12,6 +13,11 @@ use crate::expr::emit_expr_runtime;
 /// Does a view hold a `RouteMap`?
 pub(crate) fn view_has_routemap(node: &IrViewNode) -> bool {
     cancho_ui_ir::routemap::view_has_routemap(node)
+}
+
+/// Does a view hold a `RouteMap` with `tiles:`?
+pub(crate) fn view_has_tiles(node: &IrViewNode) -> bool {
+    cancho_ui_ir::routemap::view_has_tiles(node)
 }
 
 /// The statements that draw one `RouteMap` into `parent_var`.
@@ -42,6 +48,20 @@ pub(crate) fn emit(
         },
         _ => "true".to_string(),
     };
+    let tiles = match get("tiles") {
+        Some(IrBindingValue::String(s)) => Some(js_string(s)),
+        _ => None,
+    };
+    let attribution = match get("attribution") {
+        Some(IrBindingValue::String(s)) => js_string(s),
+        _ => "\"\"".to_string(),
+    };
+    if let Some(tiles) = tiles {
+        return format!(
+            "{indent}const {var} = __cui_routemap_tiled(root, {key}, {label}, {points}, {route}, function (r, k) {{ return __cui_json_get(r, k, \"\"); }}, function (a, b) {{ return __cui_distance(a, b, -1); }}, {tiles}, {attribution});\n{indent}{parent_var}.appendChild({var});\n",
+            key = js_string(var)
+        );
+    }
     format!(
         "{indent}const {var} = __cui_routemap({label}, {points}, {route}, function (r, k) {{ return __cui_json_get(r, k, \"\"); }}, function (a, b) {{ return __cui_distance(a, b, -1); }});\n{indent}{parent_var}.appendChild({var});\n"
     )
@@ -222,6 +242,169 @@ function __cui_routemap(label, rows, route, getj, dist) {
         det.appendChild(more);
     }
     fig.appendChild(det);
+    return fig;
+}
+"#;
+
+/// Appended after `ADAPTER_JS` only for a program with a `RouteMap` that has `tiles:` (a program without one gets the module it always had).
+/// `__cui_routemap_tile_plan` is `cancho_ui_replay::routemap::tile_plan` in JavaScript; `tests/routemap_tiles_corpus.json` and
+/// `scripts/check-routemap-tiles.js` hold both to the same cases, computed by `scripts/gen-routemap-tiles-corpus.py`.
+pub(crate) const TILES_JS: &str = r#"// Platform adapter: RouteMap tiles (docs/routes.md section 9). The tiles are the program's own host's images (declared in `requires Network`), asked for
+// with no referrer and not kept by the page; the drawing is in Web Mercator so that the pins sit on the tiles. Tile addresses come from `tiles:` and nowhere else.
+const __CUI_RMT_TILE = 256;
+const __CUI_RMT_MAX_LAT = 85.0511287798;
+const __CUI_RMT_SINGLE_ZOOM = 13;
+const __CUI_RMT_MAX_ZOOM = 18;
+const __CUI_RMT_MIN_ZOOM = 1;
+const __CUI_RMT_MAX_GRID = 4;
+const __CUI_RMT_MARGIN = 32;
+function __cui_rmt_world(lat, lon, z) {
+    const s = Math.pow(2, z) * __CUI_RMT_TILE;
+    const phi = Math.min(Math.max(lat, -__CUI_RMT_MAX_LAT), __CUI_RMT_MAX_LAT) * Math.PI / 180;
+    return [(lon + 180) / 360 * s, (1 - Math.log(Math.tan(phi) + 1 / Math.cos(phi)) / Math.PI) / 2 * s];
+}
+// What a tiled route map asks for: { zoom, tx0, ty0, cols, rows, tiles (row-major addresses), px (each point in the grid's own pixels) }; null with no located point.
+function __cui_routemap_tile_plan(pts, tpl) {
+    if (pts.length === 0) { return null; }
+    let single = true;
+    for (let i = 1; i < pts.length; i++) { if (pts[i].lat !== pts[0].lat || pts[i].lon !== pts[0].lon) { single = false; } }
+    const cover = function (z) {
+        const n = Math.pow(2, z);
+        let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+        for (let i = 0; i < pts.length; i++) {
+            const w = __cui_rmt_world(pts[i].lat, pts[i].lon, z);
+            x0 = Math.min(x0, w[0]); x1 = Math.max(x1, w[0]); y0 = Math.min(y0, w[1]); y1 = Math.max(y1, w[1]);
+        }
+        const m = single ? __CUI_RMT_TILE : __CUI_RMT_MARGIN;
+        const t = function (v) { return Math.min(Math.max(Math.floor(v / __CUI_RMT_TILE), 0), n - 1); };
+        return [t(x0 - m), t(x1 + m), t(y0 - m), t(y1 + m)];
+    };
+    let zoom = __CUI_RMT_SINGLE_ZOOM;
+    let c = cover(zoom);
+    if (!single) {
+        zoom = __CUI_RMT_MIN_ZOOM;
+        c = cover(zoom);
+        for (let z = __CUI_RMT_MAX_ZOOM; z >= __CUI_RMT_MIN_ZOOM; z--) {
+            const k = cover(z);
+            if (k[1] - k[0] + 1 <= __CUI_RMT_MAX_GRID && k[3] - k[2] + 1 <= __CUI_RMT_MAX_GRID) { zoom = z; c = k; break; }
+        }
+    }
+    const tiles = [];
+    for (let y = c[2]; y <= c[3]; y++) {
+        for (let x = c[0]; x <= c[1]; x++) {
+            tiles.push(tpl.split('{z}').join(String(zoom)).split('{x}').join(String(x)).split('{y}').join(String(y)));
+        }
+    }
+    const px = [];
+    for (let i = 0; i < pts.length; i++) {
+        const w = __cui_rmt_world(pts[i].lat, pts[i].lon, zoom);
+        px.push([w[0] - c[0] * __CUI_RMT_TILE, w[1] - c[2] * __CUI_RMT_TILE]);
+    }
+    return { zoom: zoom, tx0: c[0], ty0: c[2], cols: c[1] - c[0] + 1, rows: c[3] - c[2] + 1, tiles: tiles, px: px };
+}
+const __cui_routemap_tile_cache = new WeakMap();
+// The figure of a tiled route map. A page is rebuilt at every render; the figure is kept while its inputs are the same, so a render that has nothing
+// to do with the map asks the tile host for nothing.
+function __cui_routemap_tiled(root, key, label, rows, route, getj, dist, tpl, attribution) {
+    const sig = JSON.stringify([label, rows, route, tpl, attribution]);
+    let kept = __cui_routemap_tile_cache.get(root);
+    if (!kept) { kept = {}; __cui_routemap_tile_cache.set(root, kept); }
+    if (kept[key] && kept[key].sig === sig) { return kept[key].el; }
+    const fig = __cui_routemap(label, rows, route, getj, dist);
+    const d = __cui_routemap_describe(rows, route, getj, dist);
+    const plan = __cui_routemap_tile_plan(d.pts, tpl);
+    // with no located point nothing is asked for and the plain diagram stands
+    if (plan !== null) {
+        const ns = 'http://www.w3.org/2000/svg';
+        const el = function (tag, attrs) {
+            const e = document.createElementNS(ns, tag);
+            for (const k in attrs) { e.setAttribute(k, String(attrs[k])); }
+            return e;
+        };
+        const W = plan.cols * __CUI_RMT_TILE;
+        const H = plan.rows * __CUI_RMT_TILE;
+        // pins keep the size they have in the plain diagram: 14 of 600 across the longer side
+        const u = Math.max(W, H) / 600;
+        const r2 = function (v) { return Math.round(v * 100) / 100; };
+        fig.classList.add('cui-routemap-tiled');
+        const svg = fig.querySelector('svg');
+        svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+        svg.style.position = 'absolute';
+        svg.style.left = '0';
+        svg.style.top = '0';
+        svg.style.width = '100%';
+        svg.style.height = '100%';
+        svg.style.maxWidth = 'none';
+        svg.removeChild(svg.querySelector('g'));
+        const art = el('g', { 'aria-hidden': 'true' });
+        if (route && plan.px.length >= 2) {
+            const line = plan.px.map(function (q) { return r2(q[0]) + ',' + r2(q[1]); }).join(' ');
+            const layer = function (stroke, width, cls) {
+                return el('polyline', { points: line, fill: 'none', stroke: stroke, 'stroke-width': r2(width * u), 'stroke-linejoin': 'round', 'stroke-linecap': 'round', class: cls });
+            };
+            // a light casing and an ink line under the series colour: the route reads on a light map and on a dark page
+            art.appendChild(layer('#ffffff', 9, 'cui-rm-casing'));
+            art.appendChild(layer('var(--cui-route-ink, Canvas)', 6, 'cui-rm-ink'));
+            art.appendChild(layer('var(--cui-chart, #0550ae)', 3, 'cui-rm-line'));
+        }
+        const fills = { lodging: 'var(--cui-route-lodging, #0550ae)', activity: 'var(--cui-route-activity, #1a7f37)', transport: 'var(--cui-route-transport, #57606a)', other: 'var(--cui-route-other, CanvasText)' };
+        for (let i = 0; i < plan.px.length; i++) {
+            const p = d.pts[i];
+            const x = r2(plan.px[i][0]);
+            const y = r2(plan.px[i][1]);
+            art.appendChild(el('circle', { cx: x, cy: y, r: r2(17.5 * u), fill: '#ffffff', 'fill-opacity': 0.92, class: 'cui-rm-halo' }));
+            art.appendChild(el('circle', { cx: x, cy: y, r: r2(14 * u), fill: fills[p.cls], stroke: 'var(--cui-route-ink, Canvas)', 'stroke-width': r2(2 * u), class: 'cui-rm-pin cui-rm-' + p.cls }));
+            const t = el('text', { x: x, y: r2(y + 4 * u), 'text-anchor': 'middle', 'font-size': r2((p.n >= 100 ? 10 : 13) * u), 'font-weight': 700, fill: 'var(--cui-route-ink, Canvas)', class: 'cui-rm-num' });
+            t.textContent = String(p.n);
+            art.appendChild(t);
+        }
+        svg.appendChild(art);
+        // the tiles are a picture under the SVG: decorative, no referrer, not lazy, no CORS; the SVG's name and the list are the accessible form
+        const wrap = document.createElement('div');
+        wrap.className = 'cui-rm-pic';
+        wrap.style.position = 'relative';
+        wrap.style.overflow = 'hidden';
+        wrap.style.width = '100%';
+        wrap.style.maxWidth = (Math.min(1, W / H) * 40) + 'rem';
+        wrap.style.aspectRatio = W + ' / ' + H;
+        wrap.style.background = 'rgba(128, 128, 128, 0.14)';
+        for (let i = 0; i < plan.tiles.length; i++) {
+            const col = i % plan.cols;
+            const row = Math.floor(i / plan.cols);
+            const img = document.createElement('img');
+            img.alt = '';
+            img.setAttribute('referrerpolicy', 'no-referrer');
+            img.setAttribute('decoding', 'async');
+            img.setAttribute('loading', 'eager');
+            img.draggable = false;
+            img.style.position = 'absolute';
+            img.style.display = 'block';
+            img.style.left = (col * __CUI_RMT_TILE / W * 100) + '%';
+            img.style.top = (row * __CUI_RMT_TILE / H * 100) + '%';
+            img.style.width = (__CUI_RMT_TILE / W * 100) + '%';
+            img.style.height = (__CUI_RMT_TILE / H * 100) + '%';
+            img.addEventListener('error', function (ev) { ev.target.style.visibility = 'hidden'; });
+            img.src = plan.tiles[i];
+            wrap.appendChild(img);
+        }
+        fig.insertBefore(wrap, svg);
+        wrap.appendChild(svg);
+        // visible text under the drawing: the width, and the credit the tile provider asks for (set as text, never parsed)
+        const about = __cui_rm_across(d.acrossKm);
+        const note = document.createElement('p');
+        note.className = 'cui-rm-note';
+        note.style.margin = '0.25rem 0 0';
+        note.style.fontSize = '0.88rem';
+        note.textContent = about === 0 ? 'all at one position' : 'about ' + about + ' km across';
+        const credit = document.createElement('p');
+        credit.className = 'cui-rm-attr';
+        credit.style.margin = '0';
+        credit.style.fontSize = '0.88rem';
+        credit.textContent = attribution;
+        fig.insertBefore(note, wrap.nextSibling);
+        fig.insertBefore(credit, note.nextSibling);
+    }
+    kept[key] = { sig: sig, el: fig };
     return fig;
 }
 "#;

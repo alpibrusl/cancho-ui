@@ -240,6 +240,15 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
         out.push_str(crate::routemap::ADAPTER_JS);
         out.push('\n');
     }
+    // the tiles of a route map are separate code: a program with no `tiles:` gets the module it always had
+    if ir
+        .components
+        .iter()
+        .any(|c| crate::routemap::view_has_tiles(&c.view.body))
+    {
+        out.push_str(crate::routemap::TILES_JS);
+        out.push('\n');
+    }
     if ir
         .components
         .iter()

@@ -1,0 +1,51 @@
+// examples/route-tiles/route-tiles.cui: a trip drawn over map tiles (docs/routes.md section 9).
+//
+// `tiles:` is optional. With it a RouteMap draws the tiles of the program's own tile address under its pins and route, in the Web Mercator projection the
+// tiles are cut in, so the pins sit on the map. The compiler has no default host and names no provider: this address is a path on the page's own origin (a
+// folder of stand-in tiles beside the page, scripts/gen-route-tiles.js), which needs only a bare `requires Network;`. For a tile provider write its address,
+// declare its host (`requires Network("tiles.example");`) and credit it in `attribution:` as its terms ask: the page then carries a Content-Security-Policy that
+// lets images in from that host and no other, and the host learns the reader's IP address and User-Agent (no referrer is sent). The page picks the highest zoom
+// at which the stops fit in at most 4 x 4 tiles (one stop: zoom 13, 3 x 3 tiles). The list under the picture is still the accessible form.
+
+component Trip {
+    requires Network;
+
+    state stops: List[String] = [
+        "\{\"name\":\"Geneva airport\",\"pos\":\"46.2381,6.1089\",\"kind\":\"transport\"\}",
+        "\{\"name\":\"Chamonix\",\"pos\":\"45.9237,6.8694\",\"kind\":\"lodging\"\}",
+        "\{\"name\":\"Aiguille du Midi\",\"pos\":\"45.8786,6.8873\",\"kind\":\"activity\"\}",
+        "\{\"name\":\"Courmayeur\",\"pos\":\"45.7969,6.9689\",\"kind\":\"lodging\"\}",
+        "\{\"name\":\"Somewhere to be decided\",\"pos\":\"unknown\",\"kind\":\"activity\"\}"
+    ];
+    state joined: Bool = true;
+    state count: Int = 5;
+
+    on Toggle { joined = !joined; }
+    on AddStop {
+        stops = concat(stops, ["\{\"name\":\"Turin\",\"pos\":\"45.0703,7.6869\",\"kind\":\"transport\"\}"]);
+        count = count + 1;
+    }
+    on Reset {
+        stops = [];
+        count = 0;
+    }
+
+    view {
+        Column {
+            Text { role: heading "Trip on a map" }
+            RouteMap {
+                label: "Trip"
+                points: stops
+                route: joined
+                tiles: "./tiles/{z}/{x}/{y}.png"
+                attribution: "Stand-in tiles for this example; put your tile provider's credit here."
+            }
+            Text { role: status "{count} places" }
+            Row {
+                Button { label: "Show or hide the route" on: Toggle }
+                Button { label: "Add Turin" on: AddStop }
+                Button { label: "Clear" on: Reset }
+            }
+        }
+    }
+}

@@ -243,6 +243,10 @@ footer { border-top: 1px solid var(--line); padding: 1.5rem 0 2rem; color: var(-
       <p><code>RouteMap</code>: numbered pins joined in list order by a line, drawn as an inline SVG from the program's own rows. It fetches nothing (no tiles, no host, no capability) and draws no coastlines: it is a diagram of positions, not a map of the land. The same stops are a collapsed list with the distance from the previous one, which is what a screen reader reads; a stop with no readable position is listed and not drawn.</p>
       <iframe class="" title="A trip as a route, built by cancho-ui" src="demo/route/" loading="lazy"></iframe>
       <p class="glinks"><a href="demo/route/">Open on its own</a> <a href="https://github.com/alpibrusl/cancho-ui/blob/main/examples/route/route.cui">Source: route.cui</a></p></li>
+    <li class="gtile"><h4>A trip over map tiles</h4>
+      <p><code>RouteMap</code> with <code>tiles:</code>: the same trip drawn over the tiles of an address the program writes (here a folder of stand-in tiles beside this page; the compiler has no default tile host and this page asks nobody else for anything). The pins and the line sit on the tiles because the drawing is in the projection the tiles are cut in; the page picks the highest zoom at which the stops fit in at most 4 x 4 tiles, shows the tile provider's credit as text under the drawing, and the collapsed list of stops is still what a screen reader reads.</p>
+      <iframe class="" title="A trip over map tiles, built by cancho-ui" src="demo/route-tiles/" loading="lazy"></iframe>
+      <p class="glinks"><a href="demo/route-tiles/">Open on its own</a> <a href="https://github.com/alpibrusl/cancho-ui/blob/main/examples/route-tiles/route-tiles.cui">Source: route-tiles.cui</a></p></li>
   </ul>
   <h3 class="gh">Coming soon</h3>
   <p class="lead">Not built, and not promised for any date. Each tile says what is missing and links the issue that tracks it.</p>

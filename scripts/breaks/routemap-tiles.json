@@ -1,0 +1,192 @@
+{
+  "checks": [
+    {
+      "name": "cargo test routemap_tiles",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "routemap_tiles"
+      ]
+    },
+    {
+      "name": "cargo test replay routemap",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui-replay",
+        "routemap"
+      ]
+    },
+    {
+      "name": "check-routemap-tiles.js",
+      "argv": [
+        "node",
+        "scripts/check-routemap-tiles.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "a host that is not declared is accepted",
+      "file": "crates/cancho-ui-ir/src/routemap.rs",
+      "from": "        if !declared {",
+      "to": "        if false && !declared {"
+    },
+    {
+      "name": "tiles need no attribution",
+      "file": "crates/cancho-ui-ir/src/routemap.rs",
+      "from": "    if has_tiles(bindings) && !bindings.iter().any(|b| b.key == \"attribution\") {",
+      "to": "    if false && has_tiles(bindings) && !bindings.iter().any(|b| b.key == \"attribution\") {"
+    },
+    {
+      "name": "an attribution with no tiles is accepted",
+      "file": "crates/cancho-ui-ir/src/routemap.rs",
+      "from": "    if !has_tiles(bindings) && bindings.iter().any(|b| b.key == \"attribution\") {",
+      "to": "    if false && !has_tiles(bindings) && bindings.iter().any(|b| b.key == \"attribution\") {"
+    },
+    {
+      "name": "an address is not checked",
+      "file": "crates/cancho-ui-ir/src/routemap.rs",
+      "from": "crate::map::tile_source(s).map(|_| ()).map_err(|why| {",
+      "to": "Ok::<(), String>(()).map_err(|why: String| {"
+    },
+    {
+      "name": "a tiled route map is not a use of Network",
+      "file": "crates/cancho-ui-ir/src/lower.rs",
+      "from": "                            || crate::routemap::view_has_tiles(&c.view.body)))\n",
+      "to": "))\n"
+    },
+    {
+      "name": "the page's policy ignores a tiled route map",
+      "file": "crates/cancho-ui-ir/src/map.rs",
+      "from": "        any |= view_has_map(&c.view.body) || crate::routemap::view_has_tiles(&c.view.body);",
+      "to": "        any |= view_has_map(&c.view.body);"
+    },
+    {
+      "name": "the tiles of a route map are not in the policy's origins",
+      "file": "crates/cancho-ui-ir/src/map.rs",
+      "from": "            if matches!(kind, IrElementKind::Map | IrElementKind::RouteMap) {",
+      "to": "            if matches!(kind, IrElementKind::Map) {"
+    },
+    {
+      "name": "replay: a grid may be five tiles across",
+      "file": "crates/cancho-ui-replay/src/routemap.rs",
+      "from": "pub const MAX_GRID: i64 = 4;",
+      "to": "pub const MAX_GRID: i64 = 5;"
+    },
+    {
+      "name": "replay: one place is zoom 12",
+      "file": "crates/cancho-ui-replay/src/routemap.rs",
+      "from": "pub const SINGLE_ZOOM: i64 = 13;",
+      "to": "pub const SINGLE_ZOOM: i64 = 12;"
+    },
+    {
+      "name": "replay: the highest zoom is 17",
+      "file": "crates/cancho-ui-replay/src/routemap.rs",
+      "from": "pub const MAX_ZOOM: i64 = 18;",
+      "to": "pub const MAX_ZOOM: i64 = 17;"
+    },
+    {
+      "name": "replay: no margin round the points",
+      "file": "crates/cancho-ui-replay/src/routemap.rs",
+      "from": "pub const MARGIN: f64 = 32.0;",
+      "to": "pub const MARGIN: f64 = 0.0;"
+    },
+    {
+      "name": "replay: a polar latitude is not clamped",
+      "file": "crates/cancho-ui-replay/src/routemap.rs",
+      "from": "    let phi = lat.clamp(-MAX_LAT, MAX_LAT).to_radians();",
+      "to": "    let phi = lat.to_radians();"
+    },
+    {
+      "name": "replay: a tile row beyond the range is not clamped",
+      "file": "crates/cancho-ui-replay/src/routemap.rs",
+      "from": "            t(y1).clamp(0, n - 1),\n        )",
+      "to": "            t(y1),\n        )"
+    },
+    {
+      "name": "replay: the tiles are listed column-major",
+      "file": "crates/cancho-ui-replay/src/routemap.rs",
+      "from": "    for y in ty0..=ty1 {\n        for x in tx0..=tx1 {",
+      "to": "    for x in tx0..=tx1 {\n        for y in ty0..=ty1 {"
+    },
+    {
+      "name": "page: a grid may be five tiles across",
+      "file": "crates/cancho-ui-codegen-web/src/routemap.rs",
+      "from": "const __CUI_RMT_MAX_GRID = 4;",
+      "to": "const __CUI_RMT_MAX_GRID = 5;"
+    },
+    {
+      "name": "page: one place is zoom 12",
+      "file": "crates/cancho-ui-codegen-web/src/routemap.rs",
+      "from": "const __CUI_RMT_SINGLE_ZOOM = 13;",
+      "to": "const __CUI_RMT_SINGLE_ZOOM = 12;"
+    },
+    {
+      "name": "page: the highest zoom is 17",
+      "file": "crates/cancho-ui-codegen-web/src/routemap.rs",
+      "from": "const __CUI_RMT_MAX_ZOOM = 18;",
+      "to": "const __CUI_RMT_MAX_ZOOM = 17;"
+    },
+    {
+      "name": "page: no margin round the points",
+      "file": "crates/cancho-ui-codegen-web/src/routemap.rs",
+      "from": "const __CUI_RMT_MARGIN = 32;",
+      "to": "const __CUI_RMT_MARGIN = 0;"
+    },
+    {
+      "name": "page: a polar latitude is not clamped",
+      "file": "crates/cancho-ui-codegen-web/src/routemap.rs",
+      "from": "    const phi = Math.min(Math.max(lat, -__CUI_RMT_MAX_LAT), __CUI_RMT_MAX_LAT) * Math.PI / 180;",
+      "to": "    const phi = lat * Math.PI / 180;"
+    },
+    {
+      "name": "page: a tile index beyond the range is not clamped",
+      "file": "crates/cancho-ui-codegen-web/src/routemap.rs",
+      "from": "        const t = function (v) { return Math.min(Math.max(Math.floor(v / __CUI_RMT_TILE), 0), n - 1); };",
+      "to": "        const t = function (v) { return Math.floor(v / __CUI_RMT_TILE); };"
+    },
+    {
+      "name": "page: the pins are not offset by the grid's origin",
+      "file": "crates/cancho-ui-codegen-web/src/routemap.rs",
+      "from": "        px.push([w[0] - c[0] * __CUI_RMT_TILE, w[1] - c[2] * __CUI_RMT_TILE]);",
+      "to": "        px.push([w[0], w[1]]);"
+    },
+    {
+      "name": "page: the tiles are asked for with a referrer",
+      "file": "crates/cancho-ui-codegen-web/src/routemap.rs",
+      "from": "img.setAttribute('referrerpolicy', 'no-referrer');",
+      "to": "img.setAttribute('referrerpolicy', 'origin');"
+    },
+    {
+      "name": "page: the tiles are loaded lazily",
+      "file": "crates/cancho-ui-codegen-web/src/routemap.rs",
+      "from": "img.setAttribute('loading', 'eager');",
+      "to": "img.setAttribute('loading', 'lazy');"
+    },
+    {
+      "name": "page: a tile has a CORS mode",
+      "file": "crates/cancho-ui-codegen-web/src/routemap.rs",
+      "from": "            img.alt = '';\n            img.setAttribute('referrerpolicy', 'no-referrer');",
+      "to": "            img.alt = '';\n            img.crossOrigin = 'anonymous';\n            img.setAttribute('referrerpolicy', 'no-referrer');"
+    },
+    {
+      "name": "page: the attribution is parsed as markup",
+      "file": "crates/cancho-ui-codegen-web/src/routemap.rs",
+      "from": "        credit.textContent = attribution;",
+      "to": "        credit.innerHTML = attribution;"
+    },
+    {
+      "name": "page: the tile code is emitted for every route map",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "        .any(|c| crate::routemap::view_has_tiles(&c.view.body))\n",
+      "to": "        .any(|c| crate::routemap::view_has_routemap(&c.view.body))\n"
+    }
+  ]
+}
