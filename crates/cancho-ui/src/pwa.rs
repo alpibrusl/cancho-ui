@@ -356,8 +356,8 @@ const ROLES_CSS: &str = r#":root button { border-radius: 999px; border-color: tr
 :root nav button { background: transparent; color: var(--cui-fg, currentColor); }
 :root nav button[aria-pressed="true"] { background: var(--cui-accent, #185fa5); color: var(--cui-accent-fg, #ffffff); box-shadow: none; }
 /* fields (docs/structure.md 12.0e): a pill, a soft fill, one thin border, and a ring in the accent when it has the focus */
-:root input:not([type="checkbox"]):not([type="file"]):not([type="range"]), :root select { border-radius: 999px; padding-inline: 1.1rem; }
-:root textarea { border-radius: 20px; padding: 0.7rem 1.1rem; }
+:root input:not([type="checkbox"]):not([type="file"]):not([type="range"]), :root select { border-radius: 999px; border-style: solid; border-width: 1px; padding-inline: 1.1rem; min-height: 2.75rem; }
+:root textarea { border-radius: 20px; border-style: solid; border-width: 1px; padding: 0.7rem 1.1rem; }
 /* a disclosure (docs/structure.md 12.0f): its summary is a pill with a plus that turns into a minus when it is open; the inside waits under it */
 :root details:not(.cui-chart) > summary { display: inline-flex; box-sizing: border-box; padding: 0 1.1rem; border: 1px solid var(--cui-muted, currentColor); border-radius: 999px; font-weight: 600; list-style: none; }
 :root details:not(.cui-chart) > summary::-webkit-details-marker { display: none; }
