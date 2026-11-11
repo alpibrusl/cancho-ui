@@ -352,6 +352,11 @@ const COPY_CSS: &str = r#".cui-code[data-copy] pre { padding-top: 2.5rem; }
 
 const ROLES_CSS: &str = r#":root button { border-radius: 999px; border-color: transparent; background: var(--cui-accent, #185fa5); color: var(--cui-accent-fg, #ffffff); font-weight: 600; }
 :root button:disabled { background: var(--cui-soft, #efece1); color: var(--cui-muted, #4f545b); }
+/* an icon-only button (its content is an element, not text) keeps its own size in a column instead of stretching to a bar */
+:root .cui-col > button:has(> *) { align-self: flex-start; }
+/* an icon link or button: the icon is larger, and a link that holds one is a round target, not an underlined word */
+:root button:has(> *) { font-size: 1.25rem; line-height: 1; }
+:root a[title]:has(> *) { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; padding: 0 0.5rem; border-radius: 999px; background: var(--cui-soft, #efece1); font-size: 1.25rem; line-height: 1; }
 :root button[aria-pressed="true"] { box-shadow: 0 0 0 3px color-mix(in srgb, var(--cui-accent, #185fa5) 35%, transparent); }
 :root nav button { background: transparent; color: var(--cui-fg, currentColor); }
 :root nav button[aria-pressed="true"] { background: var(--cui-accent, #185fa5); color: var(--cui-accent-fg, #ffffff); box-shadow: none; }

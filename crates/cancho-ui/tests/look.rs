@@ -738,3 +738,14 @@ fn a_bubble_a_chat_log_and_a_composer_are_refused_when_badly_written() {
     let on_column = CHAT.replace("Row { composer: true", "Column { composer: true");
     assert!(!codes(&on_column).is_empty());
 }
+
+
+#[test]
+fn an_icon_only_button_keeps_its_own_size_in_a_column() {
+    let th = "theme {\n    light { bg: \"#faf7f2\"; fg: \"#1e1b18\"; muted: \"#6b6560\"; line: \"#e9e1dc\"; surface: \"#ffffff\"; soft: \"#f4ece7\"; ink: \"#2e1a47\"; accent: \"#b41d26\"; accent_fg: \"#ffffff\"; accent_soft: \"#ffdad7\"; good: \"#1e7e34\"; warn: \"#884e00\"; warn_bg: \"#ffdcbe\"; warn_line: \"#aa6402\"; bad: \"#ba1a1a\"; bad_bg: \"#ffdad6\"; code_bg: \"#12151a\"; code_fg: \"#d6dde8\"; }\n    dark { bg: \"#141118\"; fg: \"#f5f2eb\"; muted: \"#a8a1b2\"; line: \"#352d3d\"; surface: \"#1f1a24\"; soft: \"#2a2330\"; ink: \"#141118\"; accent: \"#ff6b6b\"; accent_fg: \"#2b0509\"; accent_soft: \"#3b1d26\"; good: \"#6fdba5\"; warn: \"#ffb366\"; warn_bg: \"#2a200d\"; warn_line: \"#7e6126\"; bad: \"#ff9187\"; bad_bg: \"#331816\"; code_bg: \"#12151a\"; code_fg: \"#d6dde8\"; }\n}\n";
+    let app = "page { title: \"T\"; lang: \"en\"; }\ncomponent App {\n    state v: Int = 0;\n    on Tap { v = v + 1; }\n    view { Column { Article { card: true Text { \"x\" } } Button { label: \"Save\" on: Tap Text { \"S\" } } } }\n}\n";
+    let (html, _) = page_of(&format!("{th}{app}"));
+    assert!(html.contains(":root .cui-col > button:has(> *) { align-self: flex-start; }"), "an icon button does not stretch");
+    assert!(html.contains(":root a[title]:has(> *) { text-decoration: none;"), "an icon link is a round target");
+    assert!(html.contains(":root button:has(> *) { font-size: 1.25rem; line-height: 1; }"), "the icon is larger");
+}
