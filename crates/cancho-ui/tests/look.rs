@@ -609,8 +609,8 @@ fn a_field_is_a_pill_with_a_soft_fill_and_a_ring_in_the_accent_on_the_focus() {
     let app = "page { title: \"T\"; lang: \"en\"; }\ncomponent App {\n    state v: String = \"\";\n    on Set(x) { v = x; }\n    view { Column { Article { card: true Text { \"x\" } } TextField { label: \"Name\" value: v on: Set } } }\n}\n";
     let (html, _) = page_of(&format!("{th}{app}"));
     for want in [
-        ":root input:not([type=\"checkbox\"]):not([type=\"file\"]):not([type=\"range\"]), :root select { border-radius: 999px; padding-inline: 1.1rem; }",
-        ":root textarea { border-radius: 20px; padding: 0.7rem 1.1rem; }",
+        ":root input:not([type=\"checkbox\"]):not([type=\"file\"]):not([type=\"range\"]), :root select { border-radius: 999px; border-style: solid; border-width: 1px; padding-inline: 1.1rem; min-height: 2.75rem; }",
+        ":root textarea { border-radius: 20px; border-style: solid; border-width: 1px; padding: 0.7rem 1.1rem; }",
         ":root input:focus-visible, :root textarea:focus-visible, :root select:focus-visible { outline: 3px solid color-mix(in srgb, var(--cui-accent, #185fa5) 55%, transparent);",
         "outline-offset: 1px; border-color: var(--cui-accent, #185fa5); }",
         "input:not([type=\"checkbox\"]):not([type=\"file\"]), textarea, select { background: var(--cui-soft); }",
