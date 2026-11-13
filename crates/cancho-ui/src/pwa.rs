@@ -292,6 +292,26 @@ body:has(.cui-dock) { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom))
 [data-style="disc6"] { background: #a1236f; }
 .cui-bubble [data-style="hue7"] { color: #556b00; }
 [data-style="disc7"] { background: #556b00; }
+/* a quote of an earlier message, a mention, the time and the ticks (docs/structure.md 12.0j) */
+.cui-quote { display: flex; flex-direction: column; gap: 0.05rem; min-width: 0; margin: 0.1rem 0 0.3rem; padding: 0.2rem 0.5rem; border-inline-start: 4px solid var(--q, #1e7e34); border-radius: 6px; background: color-mix(in srgb, currentColor 8%, transparent); }
+.cui-bubble .cui-quote [data-style^="hue"] { font-size: 0.78rem; }
+.cui-bubble .cui-quote [data-style="note"] { align-self: flex-start; max-width: 100%; box-sizing: border-box; font-size: 0.82rem; color: inherit; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cui-quote:has([data-style="hue0"]) { --q: #b41d26; }
+.cui-quote:has([data-style="hue1"]) { --q: #0b6a73; }
+.cui-quote:has([data-style="hue2"]) { --q: #6b4a9e; }
+.cui-quote:has([data-style="hue3"]) { --q: #1e7e34; }
+.cui-quote:has([data-style="hue4"]) { --q: #8a4b00; }
+.cui-quote:has([data-style="hue5"]) { --q: #1d5fa8; }
+.cui-quote:has([data-style="hue6"]) { --q: #a1236f; }
+.cui-quote:has([data-style="hue7"]) { --q: #556b00; }
+.cui-sheet > .cui-row.cui-strip:not(:first-child):not(.cui-composer) { flex: none; flex-wrap: nowrap; align-items: center; gap: 0.4rem; overflow-x: auto; }
+.cui-strip > [data-style] { flex: 1 1 auto; min-width: 0; margin: 0; font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+:root .cui-sheet > .cui-row.cui-strip:not(:first-child):not(.cui-composer) button { flex: none; min-width: 1.9rem; min-height: 1.9rem; padding: 0 0.7rem; border-radius: 999px; font-size: 0.85rem; line-height: 1; white-space: nowrap; background: var(--cui-soft, transparent); color: var(--cui-fg, inherit); border: 1px solid color-mix(in srgb, currentColor 22%, transparent); }
+.cui-mention { padding: 0 0.25em; border-radius: 6px; font-weight: 600; background: color-mix(in srgb, var(--cui-accent, #1e7e34) 22%, transparent); }
+.cui-meta { align-self: flex-end; display: flex; flex-wrap: nowrap; align-items: baseline; gap: 0.25rem; }
+.cui-bubble .cui-meta > [data-style] { align-self: auto; }
+.cui-bubble [data-style="tick"], .cui-bubble [data-style="tickblue"] { font-size: 0.72rem; line-height: 1; letter-spacing: -0.14em; color: var(--cui-muted, inherit); }
+.cui-bubble [data-style="tickblue"] { color: #1d5fa8; }
 .cui-sheet:has(> .cui-chatlog) { overflow: hidden; height: min(34rem, calc(100dvh - 9.5rem)); }
 .cui-sheet > .cui-chatlog { min-height: 0; }
 :root .cui-bubble button { min-height: 28px; min-width: 0; padding: 0 0.7rem; font-size: 0.78rem; background: transparent; color: var(--cui-accent, LinkText); border: 1px solid color-mix(in srgb, currentColor 35%, transparent); box-shadow: none; }
@@ -333,6 +353,15 @@ body:has(.cui-dock) { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom))
 .cui-bubble [data-style="hue5"] { color: #7db5ff; }
 .cui-bubble [data-style="hue6"] { color: #ff8ccf; }
 .cui-bubble [data-style="hue7"] { color: #c9d65a; }
+.cui-quote:has([data-style="hue0"]) { --q: #ff8a8a; }
+.cui-quote:has([data-style="hue1"]) { --q: #4fd1d9; }
+.cui-quote:has([data-style="hue2"]) { --q: #b79cff; }
+.cui-quote:has([data-style="hue3"]) { --q: #6fdba5; }
+.cui-quote:has([data-style="hue4"]) { --q: #ffb366; }
+.cui-quote:has([data-style="hue5"]) { --q: #7db5ff; }
+.cui-quote:has([data-style="hue6"]) { --q: #ff8ccf; }
+.cui-quote:has([data-style="hue7"]) { --q: #c9d65a; }
+.cui-bubble [data-style="tickblue"] { color: #7db5ff; }
 }
 :root:not(:has([data-mark="fab"])) .cui-fab { display: none; }
 :root:not(:has([data-mark="sheet"])) .cui-sheet { display: none; }

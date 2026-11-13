@@ -871,6 +871,18 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                 span,
             )),
         },
+        ("mark_text", 2) => {
+            let t = eval(ctx, &args[0])?;
+            let m = eval(ctx, &args[1])?;
+            match (t, m) {
+                (Value::Str(t), Value::Str(m)) => Ok(Value::Str(mark_text(&t, &m))),
+                (a, b) => Err(fault(
+                    "replay-type-error",
+                    format!("`mark_text` needs two Strings, got {} and {}", describe(&a), describe(&b)),
+                    span,
+                )),
+            }
+        }
         ("emoji_only", 1) => match eval(ctx, &args[0])? {
             Value::Str(t) => Ok(Value::Bool(emoji_only(&t))),
             other => Err(fault(
@@ -989,7 +1001,7 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
             | "router.go" | "router.replace" | "credential.set" | "credential.clear" | "json.get"
             | "json.items" | "json.quote" | "reverse" | "contains" | "lower" | "fold" | "num"
             | "take" | "skip" | "concat" | "move" | "distance" | "min" | "max" | "abs" | "floor"
-            | "ceil" | "round" | "lines" | "split" | "join" | "trim" | "upper" | "emoji_only" | "initials" | "starts_with"
+            | "ceil" | "round" | "lines" | "split" | "join" | "trim" | "upper" | "emoji_only" | "initials" | "mark_text" | "starts_with"
             | "ends_with" | "t" | "fmt.number" | "fmt.percent" | "fmt.date" | "fmt.time"
             | "locale.current" | "locale.set",
             n,
@@ -1521,6 +1533,48 @@ fn operands(op: &str, l: &Value, r: &Value, span: Span) -> Stop {
     )
 }
 
+/// `mark_text(text, marks)` (docs/structure.md 12.0j): `marks` is a JSON array of `{"start":n,"end":m}` byte offsets into `text` (UTF-8); each marked part is wrapped in U+E000 .. U+E001,
+/// which a `Text { style: "marked" }` draws as a span. A mark that starts before the end of the one before it, is empty, runs past the text or does not begin and end on a character
+/// boundary is skipped; so is a `marks` that is not such an array (the text then comes back as it is). The two private-use characters are taken out of the text itself, so a message
+/// that contains them draws no mark of its own. The same as `__cui_mark_text`.
+pub fn mark_text(text: &str, marks: &str) -> String {
+    let clean = |t: &str| t.chars().filter(|c| *c != '\u{E000}' && *c != '\u{E001}').collect::<String>();
+    let b = text.as_bytes();
+    let list: Vec<(usize, usize)> = match parse_marks(marks) {
+        Some(l) => l,
+        None => return clean(text),
+    };
+    let mut out = String::new();
+    let mut at = 0usize;
+    for (start, end) in list {
+        if start < at || end <= start || end > b.len() || !text.is_char_boundary(start) || !text.is_char_boundary(end) {
+            continue;
+        }
+        out.push_str(&clean(&text[at..start]));
+        out.push('\u{E000}');
+        out.push_str(&clean(&text[start..end]));
+        out.push('\u{E001}');
+        at = end;
+    }
+    out.push_str(&clean(&text[at..]));
+    out
+}
+
+fn parse_marks(marks: &str) -> Option<Vec<(usize, usize)>> {
+    let v: serde_json::Value = serde_json::from_str(marks).ok()?;
+    let arr = v.as_array()?;
+    let mut out = Vec::new();
+    for m in arr {
+        let s = m.get("start").and_then(|x| x.as_u64());
+        let e = m.get("end").and_then(|x| x.as_u64());
+        match (s, e) {
+            (Some(s), Some(e)) => out.push((s as usize, e as usize)),
+            _ => out.push((1, 0)),
+        }
+    }
+    Some(out)
+}
+
 /// `emoji_only(text)` (docs/lists.md section 7.2b): one to three emoji and nothing else (a space may stand between them). The model of the emitted
 /// `__cui_emoji_only`: the same code point ranges, a joined (ZWJ) sequence, a skin tone, a variation selector, a tag or a flag counting as one emoji.
 pub fn emoji_only(text: &str) -> bool {
@@ -1600,7 +1654,36 @@ pub fn describe(v: &Value) -> String {
 
 #[cfg(test)]
 mod chat_builtins {
-    use super::{emoji_only, initials};
+    use super::{emoji_only, initials, mark_text};
+
+    const S: char = '\u{E000}';
+    const E: char = '\u{E001}';
+
+    #[test]
+    fn mark_text_wraps_the_marked_bytes_and_nothing_else() {
+        let m = |t: &str, marks: &str| mark_text(t, marks);
+        assert_eq!(m("hi @ana!", r#"[{"start":3,"end":7}]"#), format!("hi {S}@ana{E}!"));
+        assert_eq!(m("@ana", r#"[{"start":0,"end":4}]"#), format!("{S}@ana{E}"));
+        assert_eq!(m("@a @b", r#"[{"start":0,"end":2},{"start":3,"end":5}]"#), format!("{S}@a{E} {S}@b{E}"));
+        // offsets are BYTES: after an e-acute (2 bytes) and an emoji (4 bytes)
+        assert_eq!(m("é 😂 @ben", r#"[{"start":8,"end":12}]"#), format!("é 😂 {S}@ben{E}"));
+        // no marks, no array, a damaged answer: the text as it is
+        assert_eq!(m("plain", "[]"), "plain");
+        assert_eq!(m("plain", ""), "plain");
+        assert_eq!(m("plain", "{}"), "plain");
+        assert_eq!(m("plain", "not json"), "plain");
+        // a mark that is empty, backwards, past the end, inside a character, or before the end of the last one is skipped
+        assert_eq!(m("abc", r#"[{"start":1,"end":1}]"#), "abc");
+        assert_eq!(m("abc", r#"[{"start":2,"end":1}]"#), "abc");
+        assert_eq!(m("abc", r#"[{"start":1,"end":9}]"#), "abc");
+        assert_eq!(m("é", r#"[{"start":1,"end":2}]"#), "é");
+        assert_eq!(m("é", r#"[{"start":0,"end":1}]"#), "é");
+        assert_eq!(m("abcd", r#"[{"start":0,"end":3},{"start":2,"end":4}]"#), format!("{S}abc{E}d"));
+        assert_eq!(m("abc", r#"[{"start":"1","end":2}]"#), "abc");
+        // the delimiters in the text itself are taken out, so a message cannot draw a mark of its own
+        assert_eq!(m(&format!("a{S}b{E}c"), "[]"), "abc");
+        assert_eq!(m(&format!("a{S}bc"), r#"[{"start":4,"end":6}]"#), format!("a{S}bc{E}"));
+    }
 
     #[test]
     fn emoji_only_is_one_to_three_emoji_and_nothing_else() {

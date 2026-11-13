@@ -13,7 +13,7 @@ use crate::lower::LowerError;
 pub const APPEARANCES: &[&str] = &["primary", "secondary", "quiet", "pill"];
 /// The `style:` of a `Text`: a typographic role, a closed set.
 pub const TEXT_STYLES: &[&str] = &[
-    "eyebrow", "lead", "note", "label", "avatar", "hue0", "hue1", "hue2", "hue3", "hue4", "hue5", "hue6", "hue7", "disc0",
+    "eyebrow", "lead", "note", "label", "avatar", "hue0", "hue1", "hue2", "hue3", "hue4", "hue5", "hue6", "hue7", "marked", "tick", "tickblue", "disc0",
     "disc1", "disc2", "disc3", "disc4", "disc5", "disc6", "disc7", "mark", "big", "star",
 ];
 /// The range of a code block's `max_height:`, in rem.
@@ -176,8 +176,8 @@ fn keys(kind: &IrElementKind) -> &'static [&'static str] {
     match kind {
         IrElementKind::Heading => &["level", "id"],
         IrElementKind::Link => &["to", "appearance", "card"],
-        IrElementKind::Column => &["card", "overlay", "bubble", "chatlog"],
-        IrElementKind::Row => &["card", "composer", "chips", "head"],
+        IrElementKind::Column => &["card", "overlay", "bubble", "chatlog", "quote"],
+        IrElementKind::Row => &["card", "composer", "chips", "head", "meta", "strip"],
         IrElementKind::Details => &["summary", "id"],
         IrElementKind::Caption => &["id"],
         IrElementKind::Rich => &["style"],
@@ -353,6 +353,9 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
         "composer",
         "chips",
         "head",
+        "quote",
+        "meta",
+        "strip",
         "visible",
         "hidden",
         "ordered",
@@ -362,8 +365,8 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
     let structure = is_structure(kind)
         || (b.key == "card" && matches!(kind, IrElementKind::Column | IrElementKind::Row))
         || (b.key == "overlay" && matches!(kind, IrElementKind::Column))
-        || (matches!(b.key.as_str(), "bubble" | "chatlog") && matches!(kind, IrElementKind::Column))
-        || (matches!(b.key.as_str(), "composer" | "chips" | "head") && matches!(kind, IrElementKind::Row));
+        || (matches!(b.key.as_str(), "bubble" | "chatlog" | "quote") && matches!(kind, IrElementKind::Column))
+        || (matches!(b.key.as_str(), "composer" | "chips" | "head" | "meta" | "strip") && matches!(kind, IrElementKind::Row));
     if !structure && !(NEW.contains(&b.key.as_str())) {
         return Ok(false);
     }
@@ -399,8 +402,8 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                     "sticky" => "Header",
                     "dock" => "Nav",
                     "fab" | "sheet" | "fab2" | "sheet2" | "band" | "marks" => "Aside",
-                    "bubble" | "chatlog" => "Column",
-                    "composer" | "chips" | "head" => "Row",
+                    "bubble" | "chatlog" | "quote" => "Column",
+                    "composer" | "chips" | "head" | "meta" | "strip" => "Row",
                     "ordered" => "List",
                     "overlay" => "Column",
                     "card" => "Section, Article, Aside, Figure, List, Column, Row and Link",
@@ -527,7 +530,7 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                 b.span,
             )),
         },
-        "chatlog" | "composer" | "chips" | "head" => match &b.value {
+        "chatlog" | "composer" | "chips" | "head" | "quote" | "meta" | "strip" => match &b.value {
             IrBindingValue::Const { expr, .. } if matches!(**expr, IrExpr::BoolLit { .. }) => {
                 Ok(true)
             }
@@ -962,6 +965,15 @@ pub fn class(kind: &IrElementKind, bindings: &[IrBinding]) -> Option<String> {
     }
     if matches!(kind, IrElementKind::Row) && is_flag(bindings, "composer") {
         return Some("cui-composer".to_string());
+    }
+    if matches!(kind, IrElementKind::Row) && is_flag(bindings, "strip") {
+        return Some("cui-strip".to_string());
+    }
+    if matches!(kind, IrElementKind::Row) && is_flag(bindings, "meta") {
+        return Some("cui-meta".to_string());
+    }
+    if matches!(kind, IrElementKind::Column) && is_flag(bindings, "quote") {
+        return Some("cui-quote".to_string());
     }
     if matches!(kind, IrElementKind::Row) && is_flag(bindings, "chips") {
         return Some("cui-chips".to_string());

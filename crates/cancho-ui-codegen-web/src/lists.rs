@@ -133,6 +133,35 @@ function __cui_initials(text) {
     }
     return out;
 }
+function __cui_mark_text(text, marks) {
+    var s = String(text), list, enc, dec, b, out = \"\", at = 0, i, m, clean = function (t) { return t.replace(/[\\uE000\\uE001]/g, \"\"); };
+    try { list = JSON.parse(String(marks)); } catch (e) { return clean(s); }
+    if (!Array.isArray(list)) { return clean(s); }
+    enc = new TextEncoder(); dec = new TextDecoder(); b = enc.encode(s);
+    for (i = 0; i < list.length; i++) {
+        m = list[i];
+        if (!m || typeof m.start !== \"number\" || typeof m.end !== \"number\" || m.start < at || m.end <= m.start || m.end > b.length || (m.start < b.length && (b[m.start] & 0xC0) === 0x80) || (m.end < b.length && (b[m.end] & 0xC0) === 0x80)) { continue; }
+        out += clean(dec.decode(b.subarray(at, m.start))) + \"\\uE000\" + clean(dec.decode(b.subarray(m.start, m.end))) + \"\\uE001\";
+        at = m.end;
+    }
+    return out + clean(dec.decode(b.subarray(at)));
+}
+function __cui_marked(el) {
+    var t = el.textContent, i, j, k = 0, parts;
+    if (t.indexOf(\"\\uE000\") < 0) { return; }
+    while (el.firstChild) { el.removeChild(el.firstChild); }
+    parts = t.split(\"\\uE000\");
+    el.appendChild(document.createTextNode(parts[0]));
+    for (i = 1; i < parts.length; i++) {
+        j = parts[i].indexOf(\"\\uE001\");
+        if (j < 0) { el.appendChild(document.createTextNode(parts[i])); continue; }
+        var sp = document.createElement(\"span\");
+        sp.className = \"cui-mention\";
+        sp.textContent = parts[i].slice(0, j);
+        el.appendChild(sp);
+        el.appendChild(document.createTextNode(parts[i].slice(j + 1)));
+    }
+}
 function __cui_emoji_only(text) {
     var n = 0, seen = false, join = false, ri = 0, i, c, cs = Array.from(String(text));
     for (i = 0; i < cs.length; i++) {
@@ -230,7 +259,7 @@ pub fn helpers_used(emitted: &str) -> String {
         (&["__cui_lower("][..], LOWER_JS),
         (&["__cui_num("][..], NUM_JS),
         (&["__cui_json_quote("][..], JSON_QUOTE_JS),
-        (&["__cui_emoji_only(", "__cui_initials("][..], EMOJI_JS),
+        (&["__cui_emoji_only(", "__cui_initials(", "__cui_mark_text(", "__cui_marked("][..], EMOJI_JS),
         (&["__cui_take(", "__cui_skip("][..], PAGING_JS),
         (&["__cui_concat("][..], CONCAT_JS),
         (&["__cui_move("][..], MOVE_JS),

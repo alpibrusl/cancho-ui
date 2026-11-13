@@ -845,3 +845,80 @@ fn the_new_chat_keys_are_refused_when_badly_written() {
     // a builtin takes one argument
     assert!(codes(&WA.replace("emoji_only(v)", "emoji_only(v, v)")).iter().any(|t| t == "builtin-shape-mismatch"), "{:?}", codes(&WA.replace("emoji_only(v)", "emoji_only(v, v)")));
 }
+
+#[test]
+fn a_quote_a_mention_and_the_ticks_have_their_tags_classes_and_rules() {
+    let (html, js) = page_of(&program(
+        PAGE,
+        "Column { bubble: \"mine\" Column { quote: true Text { style: \"hue3\" \"Ana\" } Text { style: \"note\" \"quoted\" } } Text { style: \"marked\" mark_text(\"hi @ana\", \"[]\") } Row { meta: true Text { style: \"note\" \"20:42\" } Text { style: \"tickblue\" \"x\" } Text { style: \"tick\" \"y\" } } }",
+    ));
+    assert!(html.contains("cui-quote"), "{html}");
+    for want in [".cui-quote { display: flex;", ".cui-quote:has([data-style=\"hue3\"]) { --q: #1e7e34; }", ".cui-mention {", ".cui-meta {", "[data-style=\"tickblue\"] { color: #1d5fa8; }"] {
+        assert!(html.contains(want), "{want}");
+    }
+    // the spans are made with text nodes and textContent, never as markup
+    assert!(js.contains("function __cui_marked(el)") && js.contains("sp.textContent = parts[i].slice(0, j);"), "{js}");
+    assert!(!js.contains("innerHTML"), "innerHTML in the page script");
+    assert!(js.contains("__cui_mark_text("), "{js}");
+}
+
+#[test]
+fn the_chat_flags_and_styles_are_refused_where_they_do_not_belong() {
+    let c = codes(&program(PAGE, "Row { quote: true Text { \"a\" } }"));
+    assert!(c.iter().any(|x| x == "binding-unknown"), "{c:?}");
+    let c = codes(&program(PAGE, "Column { meta: true Text { \"a\" } }"));
+    assert!(c.iter().any(|x| x == "binding-unknown"), "{c:?}");
+    let c = codes(&program(PAGE, "Column { quote: \"yes\" Text { \"a\" } }"));
+    assert!(c.iter().any(|x| x == "chat-flag-invalid"), "{c:?}");
+    let c = codes(&program(PAGE, "Text { style: \"marker\" \"a\" }"));
+    assert!(c.iter().any(|x| x == "text-style-invalid"), "{c:?}");
+    assert!(codes(&program(PAGE, "Text { style: \"marked\" \"a\" }")).is_empty());
+    // mark_text takes two arguments
+    assert!(!codes(&program(PAGE, "Text { mark_text(\"a\") }")).is_empty());
+}
+
+/// The emitted `__cui_mark_text` and `__cui_marked` against the same cases as replay's `mark_text` (docs/structure.md 12.0j), run by node when there is one.
+#[test]
+fn the_emitted_mark_text_agrees_with_replays() {
+    let Ok(v) = Command::new("node").arg("--version").output() else {
+        eprintln!("node is not installed: not run");
+        return;
+    };
+    assert!(v.status.success());
+    let (_, js) = page_of(&program(
+        PAGE,
+        "Text { style: \"marked\" mark_text(\"hi\", \"[]\") }",
+    ));
+    let start = js.find("function __cui_mark_text").expect("the helper is in the page");
+    let end = js.find("function __cui_marked").expect("marked");
+    let helper = &js[start..end];
+    let case = |t: &str, m: &str| format!("console.log(JSON.stringify(__cui_mark_text({t}, {m})));");
+    let cases = [
+        case("\"hi @ana!\"", "'[{\"start\":3,\"end\":7}]'"),
+        case("\"\\u00e9 \\ud83d\\ude02 @ben\"", "'[{\"start\":8,\"end\":12}]'"),
+        case("\"abc\"", "'[{\"start\":1,\"end\":9}]'"),
+        case("\"\\u00e9\"", "'[{\"start\":1,\"end\":2}]'"),
+        case("\"abcd\"", "'[{\"start\":0,\"end\":3},{\"start\":2,\"end\":4}]'"),
+        case("\"plain\"", "'not json'"),
+        case("\"a\\ue000b\\ue001c\"", "'[]'"),
+        case("\"abc\"", "'[{\"start\":\"1\",\"end\":2}]'"),
+    ];
+    let want = [
+        "\"hi \u{e000}@ana\u{e001}!\"",
+        "\"\u{e9} \u{1f602} \u{e000}@ben\u{e001}\"",
+        "\"abc\"",
+        "\"\u{e9}\"",
+        "\"\u{e000}abc\u{e001}d\"",
+        "\"plain\"",
+        "\"abc\"",
+        "\"abc\"",
+    ];
+    let script = format!("{helper}\n{}", cases.join("\n"));
+    let out = Command::new("node").arg("-e").arg(&script).output().expect("node runs");
+    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+    let got: Vec<String> = String::from_utf8_lossy(&out.stdout).lines().map(str::to_string).collect();
+    assert_eq!(got.len(), want.len(), "{got:?}");
+    for (g, w) in got.iter().zip(want.iter()) {
+        assert_eq!(g, w);
+    }
+}

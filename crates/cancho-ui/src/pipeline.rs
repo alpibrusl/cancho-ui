@@ -1758,7 +1758,7 @@ fn schedule_remediation(code: &str) -> Remediation {
 }
 
 fn unknown_call_remediation() -> String {
-    "The language has a fixed set of functions: `filter`, `map`, `sort`, `len`, `reverse`, `contains`, `lower`, `num`, `take`, `skip`, `min`, `max`, `abs`, `floor`, `ceil`, `round`, `lines`, `split`, `join`, `trim`, `upper`, `emoji_only`, `initials`, `starts_with`, `ends_with`, `json.get`, `json.items`, `storage.get`, `storage.set`, `clock.now`, `sleep`, `net.get`, `net.fetch`, `net.post`, `net.put`, `net.delete`, `net.search`, `location.current`. There is no function of your own; write the arithmetic with `+`, `-`, `*`, `/` and the list builtins (`docs/ops-console.md`).".to_string()
+    "The language has a fixed set of functions: `filter`, `map`, `sort`, `len`, `reverse`, `contains`, `lower`, `num`, `take`, `skip`, `min`, `max`, `abs`, `floor`, `ceil`, `round`, `lines`, `split`, `join`, `trim`, `upper`, `emoji_only`, `initials`, `mark_text`, `starts_with`, `ends_with`, `json.get`, `json.items`, `storage.get`, `storage.set`, `clock.now`, `sleep`, `net.get`, `net.fetch`, `net.post`, `net.put`, `net.delete`, `net.search`, `location.current`. There is no function of your own; write the arithmetic with `+`, `-`, `*`, `/` and the list builtins (`docs/ops-console.md`).".to_string()
 }
 
 fn credential_remediation(rule: &str) -> Remediation {

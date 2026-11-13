@@ -209,6 +209,7 @@ const PURE: &[&str] = &[
     "upper",
     "emoji_only",
     "initials",
+    "mark_text",
     "trim",
     "fold",
     "concat",
