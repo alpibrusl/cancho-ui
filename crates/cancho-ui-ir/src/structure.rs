@@ -14,7 +14,7 @@ pub const APPEARANCES: &[&str] = &["primary", "secondary", "quiet", "pill"];
 /// The `style:` of a `Text`: a typographic role, a closed set.
 pub const TEXT_STYLES: &[&str] = &[
     "eyebrow", "lead", "note", "label", "avatar", "hue0", "hue1", "hue2", "hue3", "hue4", "hue5", "hue6", "hue7", "disc0",
-    "disc1", "disc2", "disc3", "disc4", "disc5", "disc6", "disc7", "mark", "big",
+    "disc1", "disc2", "disc3", "disc4", "disc5", "disc6", "disc7", "mark", "big", "star",
 ];
 /// The range of a code block's `max_height:`, in rem.
 pub const CODE_HEIGHT: (i64, i64) = (4, 100);
@@ -187,7 +187,7 @@ fn keys(kind: &IrElementKind) -> &'static [&'static str] {
         IrElementKind::CountUp => &["to"],
         IrElementKind::Chip => &["tone"],
         IrElementKind::List => &["ordered", "card"],
-        IrElementKind::Aside => &["id", "visible", "hidden", "card", "fab", "sheet", "marks"],
+        IrElementKind::Aside => &["id", "visible", "hidden", "card", "fab", "sheet", "fab2", "sheet2", "band", "marks"],
         IrElementKind::Section | IrElementKind::Article | IrElementKind::Figure => {
             &["id", "visible", "hidden", "card"]
         }
@@ -344,6 +344,9 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
         "dock",
         "fab",
         "sheet",
+        "fab2",
+        "sheet2",
+        "band",
         "marks",
         "bubble",
         "chatlog",
@@ -395,7 +398,7 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                     "copy" | "max_height" => "Code",
                     "sticky" => "Header",
                     "dock" => "Nav",
-                    "fab" | "sheet" | "marks" => "Aside",
+                    "fab" | "sheet" | "fab2" | "sheet2" | "band" | "marks" => "Aside",
                     "bubble" | "chatlog" => "Column",
                     "composer" | "chips" | "head" => "Row",
                     "ordered" => "List",
@@ -514,7 +517,7 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                 b.span,
             )),
         },
-        "fab" | "sheet" => match &b.value {
+        "fab" | "sheet" | "fab2" | "sheet2" | "band" => match &b.value {
             IrBindingValue::Const { expr, .. } if matches!(**expr, IrExpr::BoolLit { .. }) => {
                 Ok(true)
             }
@@ -543,10 +546,10 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
             )),
         },
         "marks" => match string_of(b) {
-            Some("fab" | "sheet") => Ok(true),
+            Some("fab" | "sheet" | "fab2" | "sheet2" | "band") => Ok(true),
             _ => Err(refuse(
                 "aside-mark-invalid",
-                "`marks:` is `\"fab\"` or `\"sheet\"`: an empty `Aside { marks: \"sheet\" }` inside an `If` is what shows the sheet while the `If` is true".to_string(),
+                "`marks:` is `\"fab\"`, `\"sheet\"`, `\"fab2\"`, `\"sheet2\"` or `\"band\"`: an empty `Aside { marks: \"sheet\" }` inside an `If` is what shows the sheet while the `If` is true".to_string(),
                 b.span,
             )),
         },
@@ -946,6 +949,15 @@ pub fn class(kind: &IrElementKind, bindings: &[IrBinding]) -> Option<String> {
         }
         if is_flag(bindings, "sheet") {
             return Some("cui-sheet".to_string());
+        }
+        if is_flag(bindings, "fab2") {
+            return Some("cui-fab2".to_string());
+        }
+        if is_flag(bindings, "sheet2") {
+            return Some("cui-sheet2".to_string());
+        }
+        if is_flag(bindings, "band") {
+            return Some("cui-band".to_string());
         }
     }
     if matches!(kind, IrElementKind::Row) && is_flag(bindings, "composer") {

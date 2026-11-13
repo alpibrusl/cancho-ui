@@ -360,6 +360,14 @@ What shows or hides them is a **marker**: an empty `Aside { marks: "fab" }` or `
 * **What this is not:** a modal. Nothing behind it is made inert, focus is not trapped and Escape does not close it: a sheet is a panel you can leave open while you read the page. The program gives it a close button.
 * Guarantee tier: `tested` for the rules and the CSS text (`tests/look.rs`); the look and the marker working at run time are for the browser pane.
 
+### 12.0j A second floating button, a second sheet and a band (2026-11-13)
+
+A group page needs two floating buttons (the chat, and "new trip") and two panels (the chat, and a small form or a settings sheet), and 12.0g allows one of each. `Aside { fab2: true Button { .. } }` is a **second floating button**: fixed at the start side of the first one, same height, round; while it is on the page the first button is given a minimum width of 4.5 rem so that the two never overlap whatever the first one holds. `Aside { sheet2: true .. }` is a **second sheet**, the same panel as 12.0g's (28 rem, 24 px corners, scrolls inside, the first row is a title and a quiet close button) without the chat's log rules. While the second sheet is shown, **both floating buttons are hidden** (they would sit over it). They are shown by the markers `Aside { marks: "fab2" }` and `Aside { marks: "sheet2" }` drawn inside an `If`, as in 12.0g.
+`Aside { band: true .. }` is a **band**: a block in the page's flow (not fixed) that a marker `Aside { marks: "band" }` shows and hides. It exists because a sealed island may not sit under an `If` (`island-rebuilt`) and so cannot appear and go with a screen: put in a band it is in the page's own HTML and the marker decides whether it takes any room. One to a page (`aside-band-duplicate`).
+* One of each to a page (`aside-fab-duplicate`, `aside-sheet-duplicate`); each needs a marker of its own kind (`aside-unmarked`); `Text { style: "star" "★" }` placed right after an avatar is a small white disc on its lower corner (the organiser's mark on a member's circle: 0.95 rem, the glyph at least 4.5:1 on white); the next avatar overlaps as it does without it. `fab2:`, `sheet2:` and `band:` are `true` or `false` (`aside-flag-invalid`); `marks:` is one of the five (`aside-mark-invalid`).
+* **Not a modal, and not exclusive:** nothing stops a program from showing both sheets at once, and they would overlap. The program shows one at a time.
+* Guarantee tier: `tested` for the rules and the CSS text (`tests/look.rs`); the look is for the browser pane.
+
 ### 12.0h A chat: a log, bubbles, a composer (2026-11-09)
 
 Three flags of two elements make a messenger's layout, with nothing it needs from a script but one rule:

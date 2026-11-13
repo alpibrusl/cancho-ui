@@ -685,6 +685,9 @@ pub fn check_program(ir: &IrFile) -> Result<(), LowerError> {
     let mut docks: Vec<Span> = Vec::new();
     let mut fabs: Vec<Span> = Vec::new();
     let mut sheets: Vec<Span> = Vec::new();
+    let mut fabs2: Vec<Span> = Vec::new();
+    let mut sheets2: Vec<Span> = Vec::new();
+    let mut bands: Vec<Span> = Vec::new();
     let mut marks: Vec<String> = Vec::new();
     let mut mains: Vec<(Option<String>, bool, Span, usize)> = Vec::new();
     for (n, c) in ir.components.iter().enumerate() {
@@ -702,6 +705,15 @@ pub fn check_program(ir: &IrFile) -> Result<(), LowerError> {
                     }
                     if crate::structure::is_flag(bindings, "sheet") {
                         sheets.push(span);
+                    }
+                    if crate::structure::is_flag(bindings, "fab2") {
+                        fabs2.push(span);
+                    }
+                    if crate::structure::is_flag(bindings, "sheet2") {
+                        sheets2.push(span);
+                    }
+                    if crate::structure::is_flag(bindings, "band") {
+                        bands.push(span);
                     }
                     for b in bindings.iter().filter(|b| b.key == "marks") {
                         if let Some(m) = crate::structure::string_of(b) {
@@ -737,6 +749,38 @@ pub fn check_program(ir: &IrFile) -> Result<(), LowerError> {
             "a page has one `Aside { sheet: true }`: two sheets fixed over the same place would overlap".to_string(),
             *second,
         ));
+    }
+    if let Some(second) = fabs2.get(1) {
+        return Err(refuse(
+            "aside-fab-duplicate",
+            "a page has one `Aside { fab2: true }`: two buttons fixed to the same place would overlap".to_string(),
+            *second,
+        ));
+    }
+    if let Some(second) = sheets2.get(1) {
+        return Err(refuse(
+            "aside-sheet-duplicate",
+            "a page has one `Aside { sheet2: true }`: two sheets fixed over the same place would overlap".to_string(),
+            *second,
+        ));
+    }
+    if let Some(second) = bands.get(1) {
+        return Err(refuse(
+            "aside-band-duplicate",
+            "a page has one `Aside { band: true }`: it is the band at the top of the page that a marker shows".to_string(),
+            *second,
+        ));
+    }
+    for (spans, key) in [(&fabs2, "fab2"), (&sheets2, "sheet2"), (&bands, "band")] {
+        if let Some(f) = spans.first() {
+            if !marks.iter().any(|m| m == key) {
+                return Err(refuse(
+                    "aside-unmarked",
+                    format!("an `Aside {{ {key}: true }}` is shown only while an `Aside {{ marks: \"{key}\" }}` is on the page (inside an `If`): there is none, so it would never be seen"),
+                    *f,
+                ));
+            }
+        }
     }
     if let Some(f) = fabs.first() {
         if !marks.iter().any(|m| m == "fab") {
