@@ -177,6 +177,10 @@ Two more pure, total text builtins, added for a messenger's chat (docs/structure
 * **`emoji_only(text)`** is `true` when the text is **one to three emoji and nothing else**, with spaces allowed between them. An emoji is a code point in U+1F000-1FAFF, U+2600-27BF, U+231A-23FF, U+2194-21AA, U+25AA-25FE, U+2B05-2B55, or one of U+00A9, U+00AE, U+203C, U+2049, U+2122, U+2139, U+2934, U+2935, U+3030, U+303D, U+3297, U+3299; a joined sequence (U+200D), a skin tone (U+1F3FB-1F3FF), a variation selector (U+FE0F) and a tag (U+E0020-E007F) after a base belong to it, and two regional indicators are one flag. Not emoji: digits and `#` and `*` (so a keycap is not one), a letter, punctuation, a newline. The ranges are a pragmatic list, not the Unicode `Emoji` property (the page has no data table for it): a few symbols outside it count and a new emoji outside the ranges does not, and then it is shown as ordinary text.
 * **`initials(text)`** is the first character of each of the first two words (a word ends at a space, tab, newline, `_`, `.` or `-`), a-z made capitals (ASCII only, as `upper`); `""` for no word. `initials("lisbon-weekend")` is `LW`, `initials("Ana Ruiz Gomez")` is `AR`.
 
+### 7.2c `mark_text` (2026-11-13)
+
+* **`mark_text(text, marks)`** (pure, total, two Strings): `marks` is a JSON array of `{"start":n,"end":m}` **byte offsets into the UTF-8 of `text`**; the result is `text` with each marked part between U+E000 and U+E001, for a `Text { style: "marked" }` to draw as a pill (docs/structure.md 12.0j). A mark that is empty, backwards, past the end, before the end of the one before it, or not on a character boundary is skipped; a `marks` that is not an array leaves the text as it is; U+E000 and U+E001 in `text` itself are dropped. Written twice (`__cui_mark_text`, replay's `mark_text`) and pinned by `chat_builtins` in replay and by `the_emitted_mark_text_agrees_with_replays` in `tests/look.rs`.
+
 ### 7.3 Checked
 
 * `cargo test` (`tests/lists.rs`, 3 new tests): the model against `tests/text_corpus.json` (58 cases: the issue's fixtures
