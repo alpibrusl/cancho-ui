@@ -56,7 +56,7 @@ fn kind_of_call(path: &[String]) -> Kind {
     match name.as_str() {
         "contains" | "starts_with" | "ends_with" | "emoji_only" => Kind::Bool,
         "min" | "max" | "abs" | "floor" | "ceil" | "round" | "num" | "distance" => Kind::Num,
-        "lower" | "fold" | "upper" | "initials" | "trim" | "join" | "json.quote" | "json.get"
+        "lower" | "fold" | "upper" | "initials" | "mark_text" | "trim" | "join" | "json.quote" | "json.get"
         | "storage.get" | "t" | "fmt.number" | "fmt.percent" | "fmt.date" | "fmt.time"
         | "locale.current" => Kind::Str,
         "locale.set" => Kind::Bool,

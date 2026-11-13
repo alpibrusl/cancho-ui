@@ -974,6 +974,16 @@ pub(crate) fn emit_view_node(
                 }
             }
 
+            // `Text { style: "marked" mark_text(text, marks) }` (docs/structure.md 12.0j): the text is cut at the marks `mark_text` put in it and each marked part
+            // becomes a span (a mention); built with text nodes and `textContent`, never as markup, so nothing in the text can be read as HTML
+            if matches!(kind, IrElementKind::Text)
+                && bindings
+                    .iter()
+                    .any(|b| b.key == "style" && matches!(&b.value, IrBindingValue::String(s) if s == "marked"))
+            {
+                out.push_str(&format!("{0}__cui_marked({1});\n", indent, var));
+            }
+
             // A status text with nothing to say has no tone: the stylesheet would draw its mark (a cross, a check) beside
             // nothing (docs/presentation.md section 3). The element stays, with its role, so a message put there at the next
             // render is still in a live region.
