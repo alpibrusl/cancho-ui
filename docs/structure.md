@@ -371,6 +371,35 @@ Three flags of two elements make a messenger's layout, with nothing it needs fro
 * `bubble:` is one of the three (`bubble-invalid`); `chatlog:` and `composer:` are `true` or `false` (`chat-flag-invalid`); the keys belong to `Column` (`bubble`, `chatlog`) and `Row` (`composer`) only.
 * **Not here:** a picture or a voice note in a bubble (a picture's address is a literal), reactions on a long press, read ticks, a day heading, "typing". Guarantee tier: `tested` for the CSS text and the script (`tests/look.rs`); the look is for the browser pane.
 
+### 12.0i A chat that reads like a messenger's (2026-11-13)
+
+What 12.0h left out, in the shape of a group chat on a phone. Every key is a literal checked at build; nothing here needs free CSS.
+* **A run of one sender.** A bubble that starts a run has, as its first child, `Text { style: "mark" "." }` (never shown: the CSS reads it with `:has`): the bubble then gets a **tail** (a small triangle at its top corner on the side it leans to, the corner itself square), more room above (0.5 rem; a bubble inside a run has 0.12 rem). The first bubble of a run of someone else's messages also holds, before its text, **`Text { style: "disc0" .. "disc7" "AR" }`** (the sender's initials on a round 2 rem disc, placed in the 2.4 rem the "theirs" side keeps free at the start) and **`Text { style: "hue0" .. "hue7" "Ana" }`** (the name, bold, in the person's colour). The program picks the number (a person's account number modulo 8, in the app); the toolkit only draws it. Your own bubbles have no disc and no name.
+* **The palette** (fixed, not tokens: a person's colour is not the page's). Text on the "theirs" bubble, which is `surface` (`#ffffff` light, `#1f1a24` dark); computed, not looked up (`node` with the WCAG formula). A disc is the light colour with white text (the same ratio as the light column) in both schemes.
+
+| n | name | light | on `#fff` | dark | on `#1f1a24` | on `#2a2330` (the log) |
+|---|---|---|---|---|---|---|
+| 0 | coral | `#b41d26` | 6.68 | `#ff8a8a` | 7.51 | 6.70 |
+| 1 | teal | `#0b6a73` | 6.32 | `#4fd1d9` | 9.30 | 8.29 |
+| 2 | purple | `#6b4a9e` | 6.78 | `#b79cff` | 7.48 | 6.67 |
+| 3 | green | `#1e7e34` | 5.14 | `#6fdba5` | 10.03 | 8.94 |
+| 4 | brown | `#8a4b00` | 6.80 | `#ffb366` | 9.66 | 8.61 |
+| 5 | blue | `#1d5fa8` | 6.45 | `#7db5ff` | 8.06 | 7.18 |
+| 6 | magenta | `#a1236f` | 7.03 | `#ff8ccf` | 8.04 | 7.17 |
+| 7 | olive | `#556b00` | 6.02 | `#c9d65a` | 10.76 | 9.59 |
+
+  All are 4.5:1 or better (WCAG 1.4.3) against the bubble in their scheme. (Against the light log's own `soft`, `#f4ece7`, green is 4.40: a name is never drawn on the log, only on a bubble.) A palette of eight means two people can share a colour (accounts 3 and 11); that is the price of a name colour that is the same on every phone with no server state.
+* **`Text { style: "big" "😂" }`** is the text of a message that is only emoji: 2.6 rem, and a bubble that holds one has no fill, no shadow and no tail (the time and the name stay). Whether a text is only emoji is **`emoji_only(text)`** (docs/lists.md 7.2b).
+* **`Column { bubble: "day" Text { "26 July 2026" } }`** is the pill of a new day: centred, small, muted, on the bubble's own surface.
+* **`Row { chips: true Button { .. } .. }`** inside a bubble is the **reactions on its bottom edge**: the row is out of the flow, 0.85 rem under the bubble at its start, and the bubble keeps 0.95 rem of room under it. A `Button` in it is a pill 24 px high (WCAG 2.5.8) on the page's surface with a shadow: an emoji and, when it is more than one, the count. **A `Button` that is a direct child of a bubble** is the small round "react" button: out of the flow, beside the bubble on the side away from its lean (2.2 rem free there, so a bubble is at most `100% - 4.8rem` wide); a `Button` in a `Row` inside a bubble is the quiet pill of 12.0h.
+* **`Row { head: true .. }`** as the first row of a sheet is a header: a `Text { style: "avatar" }` that is 2.5 rem, a `Column` of a `Heading` and a `Text { style: "note" }` that **are cut with an ellipsis, on one line each**, and the button at the end.
+* **A composer in a pill.** The first row's `Button`s before the field (the emoji button) and after it (attach, camera) are flat 2.4 rem round glyphs; a faint **pill** (a pseudo-element behind them, so the field's own border is gone) holds them and the field, and takes the accent ring when the field has the focus (`:focus-within`); the last `Button` is still the round send button, outside the pill. The tray of an emoji picker is any `Row` under the log in a sheet: its buttons are quiet 2.2 rem squares.
+* **The log's background** is a faint pattern of outlines (circles, plus signs, stars, waves) as one tiny inline SVG `data:` URI of a 120 px tile, at 11 % (light, a warm brown stroke) or 7 % (dark, white) opacity over the log's `soft` fill. It is CSS, not an asset; a page that has a Content-Security-Policy (one with a map, docs/maps.md) has `data:` in its `img-src`, so the pattern still draws (seen in the console).
+* **`Button { scroll: "media" .. }`**: after the button's own event the page scrolls the element with that `id:` into view (`Section { id: "media" .. }`). The value is a literal of letters, digits, `-` and `_` (`scroll-invalid`); it belongs to `Button` only. It exists because a sheet cannot hold an island and a hydrated page cannot move one: the sheet's "attach" and "camera" close it (its own event) and bring the island at the foot of the page into view.
+* **`bubble: "day"`** joins `"mine"`, `"theirs"` and `"system"`; `chips:` and `head:` are `true` or `false` (`chat-flag-invalid`) and belong to `Row`; the styles `hue0`-`hue7`, `disc0`-`disc7`, `mark` and `big` join `eyebrow`, `lead`, `note`, `label` and `avatar` (`text-style-invalid`).
+* **What a page cannot do and so does itself:** a run (the first of a sender's consecutive messages) and a day change are the program's to decide from its own list (`filter` over the previous message); the toolkit has no previous item in a `For`.
+* Guarantee tier: `tested` for the rules and the CSS text (`tests/look.rs`) and the two builtins; the look was seen in headless Chrome at 390 px in both schemes (cancho-ota docs/design.md 30.100).
+
 ### 12.1 Round two (2026-10-29, [`www-port/look2.md`](www-port/look2.md))
 
 * **`card: true`** is also taken by a `Column`, a `Row` and a `Link` (a block card).

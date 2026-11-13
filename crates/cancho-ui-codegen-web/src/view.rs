@@ -543,6 +543,8 @@ pub(crate) fn emit_view_node(
 
             // Apply bindings.
             let mut click_handler: Option<String> = None;
+            // `scroll:` of a `Button` (docs/structure.md 12.0i): the `id` of the element the page scrolls to after the click
+            let mut scroll_to: Option<String> = None;
             // `on: Pick(m)`: the event and the names of the constants holding its arguments, evaluated at render time.
             let mut click_call: Option<(String, Vec<String>)> = None;
             let mut input_handler: Option<String> = None;
@@ -626,6 +628,9 @@ pub(crate) fn emit_view_node(
                                 indent, var, value
                             ));
                         }
+                    }
+                    IrBindingValue::String(s) if b.key == "scroll" => {
+                        scroll_to = Some(s.clone());
                     }
                     IrBindingValue::String(s) if b.key == "tone" => {
                         out.push_str(&format!(
@@ -1204,6 +1209,14 @@ pub(crate) fn emit_view_node(
                     var,
                     event_name,
                     arg_names.join(", ")
+                ));
+            }
+            if let Some(id) = scroll_to {
+                out.push_str(&format!(
+                    "{0}{1}.addEventListener('click', function () {{ var t = document.getElementById({2}); if (t) {{ t.scrollIntoView({{ block: 'start' }}); }} }});\n",
+                    indent,
+                    var,
+                    js_string(&id)
                 ));
             }
             if let Some(event_name) = submit_handler {

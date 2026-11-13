@@ -863,6 +863,22 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
             }
             text_builtin(&name, &vals).map_err(|why| fault("replay-type-error", why, span))
         }
+        ("initials", 1) => match eval(ctx, &args[0])? {
+            Value::Str(t) => Ok(Value::Str(initials(&t))),
+            other => Err(fault(
+                "replay-type-error",
+                format!("`initials` needs a String, got {}", describe(&other)),
+                span,
+            )),
+        },
+        ("emoji_only", 1) => match eval(ctx, &args[0])? {
+            Value::Str(t) => Ok(Value::Bool(emoji_only(&t))),
+            other => Err(fault(
+                "replay-type-error",
+                format!("`emoji_only` needs a String, got {}", describe(&other)),
+                span,
+            )),
+        },
         ("lower", 1) => match eval(ctx, &args[0])? {
             Value::Str(t) => Ok(Value::Str(t.to_ascii_lowercase())),
             other => Err(fault(
@@ -973,7 +989,7 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
             | "router.go" | "router.replace" | "credential.set" | "credential.clear" | "json.get"
             | "json.items" | "json.quote" | "reverse" | "contains" | "lower" | "fold" | "num"
             | "take" | "skip" | "concat" | "move" | "distance" | "min" | "max" | "abs" | "floor"
-            | "ceil" | "round" | "lines" | "split" | "join" | "trim" | "upper" | "starts_with"
+            | "ceil" | "round" | "lines" | "split" | "join" | "trim" | "upper" | "emoji_only" | "initials" | "starts_with"
             | "ends_with" | "t" | "fmt.number" | "fmt.percent" | "fmt.date" | "fmt.time"
             | "locale.current" | "locale.set",
             n,
@@ -1505,6 +1521,67 @@ fn operands(op: &str, l: &Value, r: &Value, span: Span) -> Stop {
     )
 }
 
+/// `emoji_only(text)` (docs/lists.md section 7.2b): one to three emoji and nothing else (a space may stand between them). The model of the emitted
+/// `__cui_emoji_only`: the same code point ranges, a joined (ZWJ) sequence, a skin tone, a variation selector, a tag or a flag counting as one emoji.
+pub fn emoji_only(text: &str) -> bool {
+    let (mut n, mut seen, mut join, mut ri) = (0u32, false, false, 0u32);
+    for ch in text.chars() {
+        let c = ch as u32;
+        if c == 0x20 {
+            continue;
+        }
+        if c == 0xFE0F || (0x1F3FB..=0x1F3FF).contains(&c) || (0xE0020..=0xE007F).contains(&c) {
+            if !seen {
+                return false;
+            }
+            continue;
+        }
+        if c == 0x200D {
+            if !seen {
+                return false;
+            }
+            join = true;
+            continue;
+        }
+        if (0x1F1E6..=0x1F1FF).contains(&c) {
+            ri += 1;
+            if ri % 2 == 1 && !join {
+                n += 1;
+            }
+            seen = true;
+            join = false;
+            continue;
+        }
+        let pict = (0x1F000..=0x1FAFF).contains(&c)
+            || (0x2600..=0x27BF).contains(&c)
+            || matches!(c, 0xA9 | 0xAE | 0x203C | 0x2049 | 0x2122 | 0x2139 | 0x2934 | 0x2935 | 0x3030 | 0x303D | 0x3297 | 0x3299)
+            || (0x2194..=0x21AA).contains(&c)
+            || (0x231A..=0x23FF).contains(&c)
+            || (0x25AA..=0x25FE).contains(&c)
+            || (0x2B05..=0x2B55).contains(&c);
+        if !pict {
+            return false;
+        }
+        if !join {
+            n += 1;
+        }
+        seen = true;
+        join = false;
+        ri = 0;
+    }
+    (1..=3).contains(&n)
+}
+
+/// `initials(text)` (docs/lists.md section 7.2b): the first character of each of the first two words (a word ends at a space, tab, newline, `_`, `.` or `-`), a-z made
+/// capitals; "" for no word. The model of the emitted `__cui_initials`.
+pub fn initials(text: &str) -> String {
+    text.split(|c: char| matches!(c, ' ' | '\t' | '\n' | '\r' | '_' | '.' | '-'))
+        .filter_map(|w| w.chars().next())
+        .take(2)
+        .map(|c| c.to_ascii_uppercase())
+        .collect()
+}
+
 pub fn describe(v: &Value) -> String {
     match v {
         Value::Num(_) => "a number".into(),
@@ -1518,5 +1595,31 @@ pub fn describe(v: &Value) -> String {
         Value::Cancelled => "`Cancelled`".into(),
         Value::Unit => "the unit value".into(),
         Value::Request(_) => "a request".into(),
+    }
+}
+
+#[cfg(test)]
+mod chat_builtins {
+    use super::{emoji_only, initials};
+
+    #[test]
+    fn emoji_only_is_one_to_three_emoji_and_nothing_else() {
+        for yes in ["😂", "😂😂", "😂 😂 😂", "🤣🤣🤣", "👍🏽", "👨‍👩‍👧", "❤️", "🇪🇸", "🇪🇸🇵🇹", " 😍 ", "👨‍👩‍👧😂🎉"] {
+            assert!(emoji_only(yes), "{yes}");
+        }
+        for no in ["", " ", "a", "hi 😂", "😂 ok", "😂😂😂😂", "1", "!!!", "...", "\u{200d}", "\u{fe0f}", "😂\n", "ñ", "🙂x"] {
+            assert!(!emoji_only(no), "{no:?}");
+        }
+    }
+
+    #[test]
+    fn initials_are_the_first_letters_of_the_first_two_words() {
+        assert_eq!(initials("lisbon trip"), "LT");
+        assert_eq!(initials("Ana Ruiz Gomez"), "AR");
+        assert_eq!(initials("lisbon"), "L");
+        assert_eq!(initials("lisbon-weekend_2027"), "LW");
+        assert_eq!(initials("  "), "");
+        assert_eq!(initials("😂 fun"), "😂F");
+        assert_eq!(initials("él"), "é");
     }
 }

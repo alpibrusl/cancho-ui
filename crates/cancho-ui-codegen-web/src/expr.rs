@@ -494,6 +494,8 @@ fn emit_call_runtime(path: &[String], args: &[IrExpr], params: &[&str]) -> Strin
                 | "join"
                 | "trim"
                 | "upper"
+                | "emoji_only"
+                | "initials"
                 | "starts_with"
                 | "ends_with"
         )
