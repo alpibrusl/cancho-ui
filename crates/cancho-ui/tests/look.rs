@@ -685,7 +685,7 @@ fn a_floating_button_and_a_sheet_are_refused_when_badly_written_twice_or_never_m
 
 #[test]
 fn a_second_floating_button_and_sheet_are_drawn_by_their_own_markers_and_refused_when_wrong() {
-    // docs/structure.md 12.0j
+    // docs/structure.md 12.0k
     let base = |body: &str| format!("{PAGE}\ncomponent App {{\n    on Go {{ }}\n    view {{\n        Column {{\n            Main {{ id: \"main\" Text {{ \"x\" }} }}\n            {body}\n        }}\n    }}\n}}\n");
     let marks = "If { when: true Aside { marks: \"fab\" } } If { when: true Aside { marks: \"fab2\" } } If { when: true Aside { marks: \"sheet2\" } } If { when: true Aside { marks: \"band\" } }";
     let ok = base(&format!("{marks} Aside {{ label: \"A\" fab: true Button {{ label: \"B\" on: Go }} }} Aside {{ label: \"P\" fab2: true Button {{ label: \"Add\" on: Go }} }} Aside {{ label: \"S\" sheet2: true Text {{ \"hi\" }} }} Aside {{ label: \"Band\" band: true Text {{ \"top\" }} }}"));

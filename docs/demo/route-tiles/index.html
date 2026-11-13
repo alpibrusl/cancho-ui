@@ -74,7 +74,7 @@ figure { margin: 0; } figcaption { font-size: 0.88rem; }
 [data-style="avatar"]:nth-of-type(4n+3) { background: #1e7e34; }
 [data-style="avatar"]:nth-of-type(4n) { background: #884e00; }
 [data-style="avatar"] + [data-style="avatar"] { margin-left: -0.6rem; }
-/* a star on the corner of the avatar before it (docs/structure.md 12.0j): an organiser's mark; the avatar after it overlaps as it would without the star */
+/* a star on the corner of the avatar before it (docs/structure.md 12.0k): an organiser's mark; the avatar after it overlaps as it would without the star */
 [data-style="star"] { display: inline-flex; align-items: center; justify-content: center; position: relative; z-index: 1; flex: none; box-sizing: border-box; align-self: flex-end; width: 0.95rem; height: 0.95rem; margin: 0 0 0 -0.8rem; border: 1px solid Canvas; border-radius: 50%; font-size: 0.55rem; line-height: 1; background: #fff; color: #7a4a00; }
 [data-style="star"] + [data-style="avatar"] { margin-left: -0.15rem; }
 [data-style="lead"] { font-size: 1.1rem; max-width: 40rem; }
@@ -233,7 +233,7 @@ body:has(.cui-dock) { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom))
 }
 :root:not(:has([data-mark="fab"])) .cui-fab { display: none; }
 :root:not(:has([data-mark="sheet"])) .cui-sheet { display: none; }
-/* a second floating button and a second sheet (docs/structure.md 12.0j): the button sits at the start side of the first, the sheet is the first one's twin and is drawn by its own marker */
+/* a second floating button and a second sheet (docs/structure.md 12.0k): the button sits at the start side of the first, the sheet is the first one's twin and is drawn by its own marker */
 .cui-fab2, .cui-sheet2 { position: fixed; z-index: 11; box-sizing: border-box; margin: 0; }
 .cui-fab2 { right: 6.1rem; bottom: calc(5.25rem + env(safe-area-inset-bottom)); }
 .cui-fab2 > button { min-height: 52px; min-width: 52px; padding: 0 1rem; border-radius: 999px; box-shadow: 0 8px 24px -4px rgba(0,0,0,0.35); }
@@ -244,7 +244,7 @@ body:has(.cui-dock) { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom))
 :root:not(:has([data-mark="fab2"])) .cui-fab2 { display: none; }
 :root:not(:has([data-mark="sheet2"])) .cui-sheet2 { display: none; }
 :root:has([data-mark="sheet2"]) .cui-fab, :root:has([data-mark="sheet2"]) .cui-fab2 { display: none; }
-/* a band (docs/structure.md 12.0j): a block in the flow, shown only while an `Aside { marks: "band" }` is on the page: a sealed island can sit in it, which an `If` cannot hold */
+/* a band (docs/structure.md 12.0k): a block in the flow, shown only while an `Aside { marks: "band" }` is on the page: a sealed island can sit in it, which an `If` cannot hold */
 .cui-band { display: block; margin: 0 0 0.75rem; }
 :root:not(:has([data-mark="band"])) .cui-band { display: none; }
 /* motion (docs/motion.md): an element is hidden only while the page's script has it armed and has not yet seen it, and never when the visitor asks for less motion */
