@@ -122,6 +122,35 @@ function __cui_ends_with(text, suffix) {
 }
 ";
 
+/// `emoji_only(text)` (docs/lists.md section 7.2b): whether a text is one to three emoji and nothing else (spaces allowed between them). The same
+/// code point ranges as replay's `emoji_only`; a joined sequence (ZWJ), a skin tone, a variation selector, a tag and a flag (two regional indicators) are one emoji.
+const EMOJI_JS: &str = "\
+function __cui_initials(text) {
+    var out = \"\", n = 0, words = String(text).split(/[ \\t\\n\\r_.-]+/), i, w;
+    for (i = 0; i < words.length && n < 2; i++) {
+        w = Array.from(words[i])[0];
+        if (w !== undefined) { out += w.replace(/[a-z]/, function (c) { return String.fromCharCode(c.charCodeAt(0) - 32); }); n++; }
+    }
+    return out;
+}
+function __cui_emoji_only(text) {
+    var n = 0, seen = false, join = false, ri = 0, i, c, cs = Array.from(String(text));
+    for (i = 0; i < cs.length; i++) {
+        c = cs[i].codePointAt(0);
+        if (c === 0x20) { continue; }
+        if (c === 0xFE0F || (c >= 0x1F3FB && c <= 0x1F3FF) || (c >= 0xE0020 && c <= 0xE007F)) { if (!seen) { return false; } continue; }
+        if (c === 0x200D) { if (!seen) { return false; } join = true; continue; }
+        if (c >= 0x1F1E6 && c <= 0x1F1FF) { ri++; if (ri % 2 === 1 && !join) { n++; } seen = true; join = false; continue; }
+        if ((c >= 0x1F000 && c <= 0x1FAFF) || (c >= 0x2600 && c <= 0x27BF) || c === 0xA9 || c === 0xAE || c === 0x203C || c === 0x2049 || c === 0x2122 || c === 0x2139 || (c >= 0x2194 && c <= 0x21AA) || (c >= 0x231A && c <= 0x23FF) || (c >= 0x25AA && c <= 0x25FE) || (c >= 0x2B05 && c <= 0x2B55) || c === 0x2934 || c === 0x2935 || c === 0x3030 || c === 0x303D || c === 0x3297 || c === 0x3299) {
+            if (!join) { n++; }
+            seen = true; join = false; ri = 0; continue;
+        }
+        return false;
+    }
+    return n >= 1 && n <= 3;
+}
+";
+
 /// The helpers that `emitted` (the components, after the adapters) calls, as one block of JavaScript.
 const JSON_QUOTE_JS: &str = "\
 // Builtin: json.quote(text) (docs/language-design.md decision 15). The JSON string literal of a text, quotes included: the
@@ -201,6 +230,7 @@ pub fn helpers_used(emitted: &str) -> String {
         (&["__cui_lower("][..], LOWER_JS),
         (&["__cui_num("][..], NUM_JS),
         (&["__cui_json_quote("][..], JSON_QUOTE_JS),
+        (&["__cui_emoji_only(", "__cui_initials("][..], EMOJI_JS),
         (&["__cui_take(", "__cui_skip("][..], PAGING_JS),
         (&["__cui_concat("][..], CONCAT_JS),
         (&["__cui_move("][..], MOVE_JS),

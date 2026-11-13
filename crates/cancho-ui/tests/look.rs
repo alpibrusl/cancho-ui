@@ -695,14 +695,14 @@ fn a_chat_is_a_log_with_bubbles_that_lean_and_a_composer_with_a_round_send_butto
         "class=\"cui-col cui-bubble cui-bubble-theirs\"",
         "class=\"cui-col cui-bubble cui-bubble-system\"",
         "class=\"cui-row cui-composer\"",
-        ".cui-chatlog { display: flex; flex-direction: column; gap: 0.3rem; flex: 1 1 auto; min-height: 9rem; overflow-y: auto;",
-        ".cui-bubble-theirs { align-self: flex-start; border-bottom-left-radius: 4px; }",
-        ".cui-bubble-mine { align-self: flex-end; border-bottom-right-radius: 4px; background: var(--cui-accent-soft, #dcf8c6); }",
+        ".cui-chatlog { display: flex; flex-direction: column; gap: 0; flex: 1 1 auto; min-height: 9rem; overflow-y: auto;",
+        ".cui-bubble-theirs { align-self: flex-start; margin-left: 2.4rem; }",
+        ".cui-bubble-mine { --b: var(--cui-accent-soft, #dcf8c6); align-self: flex-end; margin-right: 0.1rem; }",
         ".cui-bubble-system { align-self: center; max-width: 92%; background: transparent;",
         ".cui-bubble [data-style=\"eyebrow\"] { text-transform: none;",
         ".cui-bubble [data-style=\"note\"] { align-self: flex-end;",
-        ".cui-composer > .cui-field { flex: 1 1 auto; min-width: 0; font-size: 0; }",
-        ".cui-composer > button:last-child { flex: none; width: 46px; min-width: 46px; height: 46px; padding: 0; border-radius: 50%; font-size: 0;",
+        ".cui-composer > .cui-field { flex: 1 1 0; min-width: 0; font-size: 0; }",
+        ".cui-composer > button:last-child { flex: none; width: 46px; min-width: 46px; height: 46px; margin-left: 0.3rem; padding: 0; border-radius: 50%; font-size: 0;",
         ".cui-composer > button:last-child::before { content: \"\\27A4\";",
         ".cui-sheet:has(> .cui-chatlog) { overflow: hidden;",
         ":root .cui-bubble button { min-height: 28px; min-width: 0; padding: 0 0.7rem; font-size: 0.78rem; background: transparent;",
@@ -748,4 +748,56 @@ fn an_icon_only_button_keeps_its_own_size_in_a_column() {
     assert!(html.contains(":root .cui-col > button:has(> *) { align-self: flex-start; }"), "an icon button does not stretch");
     assert!(html.contains(":root a[title]:has(> *) { text-decoration: none;"), "an icon link is a round target");
     assert!(html.contains(":root button:has(> *) { font-size: 1.25rem; line-height: 1; }"), "the icon is larger");
+}
+
+
+const WA: &str = "page { title: \"T\"; lang: \"en\"; }\ncomponent App {\n    state v: String = \"\";\n    state shown: String = \"1\";\n    state open: Bool = true;\n    on Set(x) { v = x; }\n    on Go { }\n    on Pick(n) { v = n; }\n    view {\n        Column {\n            If { when: open Aside { marks: \"sheet\" } }\n            Section { id: \"media\" Text { \"the media\" } }\n            Aside { label: \"Chat\" sheet: true\n                Row { head: true Text { style: \"avatar\" initials(\"lisbon trip\") } Column { Heading { level: 2 \"lisbon\" } Text { style: \"note\" \"Ana, Ben\" } } Button { label: \"Close\" on: Go Text { \"x\" } } }\n                Column { chatlog: true\n                    Column { bubble: \"day\" Text { \"26 July 2026\" } }\n                    Column { bubble: \"theirs\" Text { style: \"mark\" \".\" } Text { style: \"disc3\" \"AR\" } Text { style: \"hue3\" \"Ana\" } If { when: emoji_only(v) Text { style: \"big\" \"x\" } } Row { chips: true Button { label: \"Laugh\" on: Pick(\"1\") Text { \"x\" } } } Button { label: \"React\" on: Pick(\"2\") Text { \"x\" } } }\n                }\n                Row { composer: true Button { label: \"Emoji\" on: Go Text { \"x\" } } TextField { label: \"Write\" value: v on: Set placeholder: \"Message\" } Button { label: \"Attach\" on: Go scroll: \"media\" Text { \"x\" } } Button { label: \"Send\" on: Go } }\n            }\n        }\n    }\n}\n";
+
+#[test]
+fn a_whatsapp_style_chat_has_runs_day_pills_chips_a_header_and_a_composer_pill() {
+    // docs/structure.md 12.0i
+    let (html, js) = page_of(WA);
+    for want in [
+        "class=\"cui-col cui-bubble cui-bubble-day\"",
+        "class=\"cui-row cui-chips\"",
+        "class=\"cui-row cui-chathead\"",
+        "data-style=\"mark\"",
+        "data-style=\"disc3\"",
+        "data-style=\"hue3\"",
+        ".cui-bubble:has(> [data-style=\"mark\"])::before { content: \"\"; position: absolute; top: 0;",
+        ".cui-bubble:has(> [data-style=\"big\"]) { --b: transparent; background: transparent; box-shadow: none;",
+        ".cui-bubble [data-style=\"hue0\"] { color: #b41d26; }",
+        ".cui-bubble [data-style=\"hue7\"] { color: #c9d65a; }",
+        ".cui-bubble:has(> .cui-chips) { margin-bottom: 0.95rem; }",
+        ".cui-chathead > .cui-col > * { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }",
+        ".cui-composer::before { content: \"\"; position: absolute;",
+        "background-image: url(\"data:image/svg+xml,",
+    ] {
+        assert!(html.contains(want), "{want}");
+    }
+    // a Button's `scroll:` scrolls to the element with that id after the click
+    assert!(js.contains("document.getElementById(\"media\")"), "{js}");
+    assert!(js.contains("scrollIntoView({ block: 'start' })"), "{js}");
+    assert!(html.contains("id=\"media\""), "{html}");
+    // the two builtins are in the page, and only because it calls them
+    assert!(js.contains("function __cui_emoji_only(text)") && js.contains("function __cui_initials(text)"));
+    let (_, plain) = page_of(&program(PAGE, "Text { \"x\" }"));
+    assert!(!plain.contains("__cui_emoji_only") && !plain.contains("scrollIntoView"));
+    assert!(codes(WA).is_empty(), "{:?}", codes(WA));
+}
+
+#[test]
+fn the_new_chat_keys_are_refused_when_badly_written() {
+    assert!(codes(&WA.replace("bubble: \"day\"", "bubble: \"week\"")).iter().any(|t| t == "bubble-invalid"));
+    assert!(codes(&WA.replace("style: \"hue3\"", "style: \"hue9\"")).iter().any(|t| t == "text-style-invalid"));
+    assert!(codes(&WA.replace("chips: true", "chips: 1")).iter().any(|t| t == "chat-flag-invalid"));
+    assert!(codes(&WA.replace("head: true", "head: \"yes\"")).iter().any(|t| t == "chat-flag-invalid"));
+    // `chips` and `head` belong to Row
+    assert!(!codes(&WA.replace("Row { chips: true", "Column { chips: true")).is_empty());
+    // `scroll:` is a Button's, a literal name of an anchor
+    assert!(!codes(&WA.replace("scroll: \"media\"", "scroll: v")).is_empty());
+    assert!(codes(&WA.replace("scroll: \"media\"", "scroll: \"a b\"")).iter().any(|t| t == "scroll-invalid"));
+    assert!(codes(&WA.replace("TextField { label: \"Write\" value: v on: Set", "TextField { label: \"Write\" scroll: \"media\" value: v on: Set")).iter().any(|t| t == "scroll-invalid"));
+    // a builtin takes one argument
+    assert!(codes(&WA.replace("emoji_only(v)", "emoji_only(v, v)")).iter().any(|t| t == "builtin-shape-mismatch"), "{:?}", codes(&WA.replace("emoji_only(v)", "emoji_only(v, v)")));
 }

@@ -11,6 +11,7 @@ use crate::lower::LowerError;
 pub const ELEMENT_KEYS: &[&str] = &[
     "label",
     "role",
+    "scroll",
     "on",
     "value",
     "disabled",
@@ -1022,6 +1023,18 @@ fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result
     }
     if b.key == "on" {
         check_on(c, kind, b)?;
+    }
+    if b.key == "scroll" {
+        // `scroll: "id"` (docs/structure.md 12.0i): after the button's own event, the page scrolls to the element with that `id:`; a literal, a name of an anchor
+        let ok = matches!(kind, IrElementKind::Button)
+            && matches!(&b.value, IrBindingValue::String(s) if !s.is_empty() && s.len() <= 64 && s.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'-' || c == b'_'));
+        if !ok {
+            return Err(LowerError::ControlRefused {
+                code: "scroll-invalid",
+                message: "`scroll:` is a binding of Button: the `id:` (letters, digits, - and _) of an element to scroll to after the click, as a string literal: `Button { scroll: \"media\" .. }`".to_string(),
+                span: b.span,
+            });
+        }
     }
     if b.key == "tone" {
         check_tone(c, kind, b)?;

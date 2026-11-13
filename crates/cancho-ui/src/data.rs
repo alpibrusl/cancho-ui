@@ -207,6 +207,8 @@ const PURE: &[&str] = &[
     "len",
     "lower",
     "upper",
+    "emoji_only",
+    "initials",
     "trim",
     "fold",
     "concat",

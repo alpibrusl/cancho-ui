@@ -171,6 +171,12 @@ A wrong argument count is `builtin-shape-mismatch`, naming the form. A non-Strin
 `crates/cancho-ui-codegen-web/src/lists.rs` (emitted only when called; `lines` and `split` share a bound constant), the
 model in `cancho_ui_replay::eval` with `text_builtin_json` exported for the corpus check. No IR change; no authority change.
 
+### 7.2b `emoji_only` and `initials` (2026-11-13)
+
+Two more pure, total text builtins, added for a messenger's chat (docs/structure.md 12.0i). Like the rest of section 7 they are ASCII-or-code-point rules written twice, in the emitted helper and in replay (`emoji_only`, `initials` in `cancho-ui-replay/src/eval.rs`), and a unit test pins the replay side.
+* **`emoji_only(text)`** is `true` when the text is **one to three emoji and nothing else**, with spaces allowed between them. An emoji is a code point in U+1F000-1FAFF, U+2600-27BF, U+231A-23FF, U+2194-21AA, U+25AA-25FE, U+2B05-2B55, or one of U+00A9, U+00AE, U+203C, U+2049, U+2122, U+2139, U+2934, U+2935, U+3030, U+303D, U+3297, U+3299; a joined sequence (U+200D), a skin tone (U+1F3FB-1F3FF), a variation selector (U+FE0F) and a tag (U+E0020-E007F) after a base belong to it, and two regional indicators are one flag. Not emoji: digits and `#` and `*` (so a keycap is not one), a letter, punctuation, a newline. The ranges are a pragmatic list, not the Unicode `Emoji` property (the page has no data table for it): a few symbols outside it count and a new emoji outside the ranges does not, and then it is shown as ordinary text.
+* **`initials(text)`** is the first character of each of the first two words (a word ends at a space, tab, newline, `_`, `.` or `-`), a-z made capitals (ASCII only, as `upper`); `""` for no word. `initials("lisbon-weekend")` is `LW`, `initials("Ana Ruiz Gomez")` is `AR`.
+
 ### 7.3 Checked
 
 * `cargo test` (`tests/lists.rs`, 3 new tests): the model against `tests/text_corpus.json` (58 cases: the issue's fixtures

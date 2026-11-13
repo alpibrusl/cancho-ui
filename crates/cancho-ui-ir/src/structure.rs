@@ -12,7 +12,10 @@ use crate::lower::LowerError;
 /// The `appearance:` of a `Link`: a closed set, drawn by the baseline stylesheet (and, with a theme, in the theme's colours).
 pub const APPEARANCES: &[&str] = &["primary", "secondary", "quiet", "pill"];
 /// The `style:` of a `Text`: a typographic role, a closed set.
-pub const TEXT_STYLES: &[&str] = &["eyebrow", "lead", "note", "label", "avatar"];
+pub const TEXT_STYLES: &[&str] = &[
+    "eyebrow", "lead", "note", "label", "avatar", "hue0", "hue1", "hue2", "hue3", "hue4", "hue5", "hue6", "hue7", "disc0",
+    "disc1", "disc2", "disc3", "disc4", "disc5", "disc6", "disc7", "mark", "big",
+];
 /// The range of a code block's `max_height:`, in rem.
 pub const CODE_HEIGHT: (i64, i64) = (4, 100);
 /// The range of a heading's `level:`.
@@ -174,7 +177,7 @@ fn keys(kind: &IrElementKind) -> &'static [&'static str] {
         IrElementKind::Heading => &["level", "id"],
         IrElementKind::Link => &["to", "appearance", "card"],
         IrElementKind::Column => &["card", "overlay", "bubble", "chatlog"],
-        IrElementKind::Row => &["card", "composer"],
+        IrElementKind::Row => &["card", "composer", "chips", "head"],
         IrElementKind::Details => &["summary", "id"],
         IrElementKind::Caption => &["id"],
         IrElementKind::Rich => &["style"],
@@ -345,6 +348,8 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
         "bubble",
         "chatlog",
         "composer",
+        "chips",
+        "head",
         "visible",
         "hidden",
         "ordered",
@@ -355,7 +360,7 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
         || (b.key == "card" && matches!(kind, IrElementKind::Column | IrElementKind::Row))
         || (b.key == "overlay" && matches!(kind, IrElementKind::Column))
         || (matches!(b.key.as_str(), "bubble" | "chatlog") && matches!(kind, IrElementKind::Column))
-        || (b.key == "composer" && matches!(kind, IrElementKind::Row));
+        || (matches!(b.key.as_str(), "composer" | "chips" | "head") && matches!(kind, IrElementKind::Row));
     if !structure && !(NEW.contains(&b.key.as_str())) {
         return Ok(false);
     }
@@ -392,7 +397,7 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                     "dock" => "Nav",
                     "fab" | "sheet" | "marks" => "Aside",
                     "bubble" | "chatlog" => "Column",
-                    "composer" => "Row",
+                    "composer" | "chips" | "head" => "Row",
                     "ordered" => "List",
                     "overlay" => "Column",
                     "card" => "Section, Article, Aside, Figure, List, Column, Row and Link",
@@ -519,7 +524,7 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                 b.span,
             )),
         },
-        "chatlog" | "composer" => match &b.value {
+        "chatlog" | "composer" | "chips" | "head" => match &b.value {
             IrBindingValue::Const { expr, .. } if matches!(**expr, IrExpr::BoolLit { .. }) => {
                 Ok(true)
             }
@@ -530,10 +535,10 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
             )),
         },
         "bubble" => match string_of(b) {
-            Some("mine" | "theirs" | "system") => Ok(true),
+            Some("mine" | "theirs" | "system" | "day") => Ok(true),
             _ => Err(refuse(
                 "bubble-invalid",
-                "`bubble:` is `\"mine\"`, `\"theirs\"` or `\"system\"`: `Column { bubble: \"mine\" Text { .. } }`".to_string(),
+                "`bubble:` is `\"mine\"`, `\"theirs\"`, `\"system\"` or `\"day\"`: `Column { bubble: \"mine\" Text { .. } }`".to_string(),
                 b.span,
             )),
         },
@@ -945,6 +950,12 @@ pub fn class(kind: &IrElementKind, bindings: &[IrBinding]) -> Option<String> {
     }
     if matches!(kind, IrElementKind::Row) && is_flag(bindings, "composer") {
         return Some("cui-composer".to_string());
+    }
+    if matches!(kind, IrElementKind::Row) && is_flag(bindings, "chips") {
+        return Some("cui-chips".to_string());
+    }
+    if matches!(kind, IrElementKind::Row) && is_flag(bindings, "head") {
+        return Some("cui-chathead".to_string());
     }
     if matches!(kind, IrElementKind::Column) {
         if is_flag(bindings, "chatlog") {
