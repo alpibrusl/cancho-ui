@@ -181,6 +181,10 @@ Two more pure, total text builtins, added for a messenger's chat (docs/structure
 
 * **`mark_text(text, marks)`** (pure, total, two Strings): `marks` is a JSON array of `{"start":n,"end":m}` **byte offsets into the UTF-8 of `text`**; the result is `text` with each marked part between U+E000 and U+E001, for a `Text { style: "marked" }` to draw as a pill (docs/structure.md 12.0j). A mark that is empty, backwards, past the end, before the end of the one before it, or not on a character boundary is skipped; a `marks` that is not an array leaves the text as it is; U+E000 and U+E001 in `text` itself are dropped. Written twice (`__cui_mark_text`, replay's `mark_text`) and pinned by `chat_builtins` in replay and by `the_emitted_mark_text_agrees_with_replays` in `tests/look.rs`.
 
+### 7.2d `face` (2026-11-13)
+
+* **`face(initials, tone, emoji, photo)`** (pure, total, four Strings): the four parts of a person's disc joined by U+E002, for a `Text { style: "avatar" }` or `"disc0"` to `"disc7"` to draw (docs/structure.md 12.0l). U+E000 to U+E002 in a part are dropped, so no part can move another. Nothing is checked here (the page checks each part again when it draws). Written twice (`__cui_face`, replay's `face`); `face_joins_four_parts_and_no_part_can_shift_another` in replay and `the_emitted_face_checks_each_part_again` in `tests/look.rs` (run by node) pin it.
+
 ### 7.3 Checked
 
 * `cargo test` (`tests/lists.rs`, 3 new tests): the model against `tests/text_corpus.json` (58 cases: the issue's fixtures

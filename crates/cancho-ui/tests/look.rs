@@ -922,3 +922,99 @@ fn the_emitted_mark_text_agrees_with_replays() {
         assert_eq!(g, w);
     }
 }
+
+#[test]
+fn a_disc_that_says_face_has_its_tones_and_a_canvas_and_asks_for_no_address() {
+    let (html, js) = page_of(&program(
+        PAGE,
+        "Row { Text { style: \"avatar\" face(\"AR\", \"3\", \"\", \"\") } Text { style: \"disc2\" face(\"B\", \"\", \"x\", \"\") } Text { style: \"big\" \"plain\" } }",
+    ));
+    for want in ["[data-tone=\"0\"][data-style] { background: #b41d26; }", "[data-tone=\"11\"][data-style] { background: #0e6b8c; }", ".cui-face-pic { position: absolute;"] {
+        assert!(html.contains(want), "{want}");
+    }
+    assert!(js.contains("function __cui_face_draw(el)") && js.contains("function __cui_face(i, t, e, p)"), "{js}");
+    // a disc is drawn through `__cui_face_draw`, a big text is not
+    assert_eq!(js.matches("__cui_face_draw(").count(), 3, "two discs and the definition");
+    // the photo is decoded to a bitmap and drawn on a canvas: no image element, no address, no markup
+    assert!(js.contains("createImageBitmap(new Blob(") && !js.contains("innerHTML") && !js.contains("data:image"), "{js}");
+    // a page that never says `face` or a disc has none of it
+    let (_, plain) = page_of(&program(PAGE, "Text { \"plain\" }"));
+    assert!(!plain.contains("__cui_face"), "the helper is in a page that does not use it");
+    // the shapes
+    assert!(!codes(&program(PAGE, "Text { face(\"a\", \"b\", \"c\") }")).is_empty());
+}
+
+/// The page's `__cui_face` and `__cui_face_draw` run by node with a small stand-in for the document: the same text as replay's `face`, a tone only 0 to 11, a photo only when it is base64
+/// that starts like a JPEG and is 100 to 48,000 characters (the decoder is not even asked otherwise), the emoji only up to 16 units, the private-use characters taken out.
+#[test]
+fn the_emitted_face_checks_each_part_again() {
+    let Ok(v) = Command::new("node").arg("--version").output() else {
+        eprintln!("node is not installed: not run");
+        return;
+    };
+    assert!(v.status.success());
+    let (_, js) = page_of(&program(PAGE, "Text { style: \"avatar\" face(\"a\", \"b\", \"c\", \"d\") }"));
+    let start = js.find("var __cui_face_bmps").expect("the helper is in the page");
+    let end = js[start..].find("\nfunction __cui_face_draw").map(|i| start + i).unwrap();
+    let end2 = js[end + 1..].find("\n}\n").map(|i| end + 1 + i + 3).unwrap();
+    let helper = &js[start..end2];
+    let script = format!(
+        r#"
+var asked = 0, canvases = 0;
+global.createImageBitmap = function () {{ asked++; return Promise.resolve({{ width: 10, height: 10 }}); }};
+global.Blob = function (a, o) {{ this.type = o.type; }};
+global.document = {{ createElement: function () {{ return {{ getContext: function () {{ return {{ drawImage: function () {{ canvases++; }} }}; }}, setAttribute: function () {{}} }}; }} }};
+{helper}
+function el(t) {{ var e = {{ textContent: t, attrs: {{}}, kids: 0, removeAttribute: function (k) {{ delete this.attrs[k]; }}, setAttribute: function (k, v) {{ this.attrs[k] = v; }}, appendChild: function () {{ this.kids++; }} }}; return e; }}
+var jpeg = "/9j/" + "A".repeat(200);
+console.log(JSON.stringify(__cui_face("AR", "3", "x", "yz")));
+var cases = [
+  ["AR", "3", "", ""], ["AR", "11", "", ""], ["AR", "12", "", ""], ["AR", "03", "", ""], ["AR", "-1", "", ""], ["AR", "", "\u{{1F642}}", ""],
+  ["AR", "", "x".repeat(17), ""], ["AR", "", "", "/9j/short"], ["AR", "", "", "AAAA" + "A".repeat(200)], ["AR", "", "", "/9j/" + "A".repeat(200) + "<"],
+  ["AR", "", "", "/9j/" + "A".repeat(48000)], ["AR", "", "", jpeg]
+];
+cases.forEach(function (c) {{ var e = el(__cui_face(c[0], c[1], c[2], c[3])); __cui_face_draw(e); console.log(JSON.stringify([e.textContent, e.attrs["data-tone"] || null])); }});
+var plain = el("AR"); __cui_face_draw(plain); console.log(JSON.stringify([plain.textContent, plain.attrs]));
+setTimeout(function () {{ console.log(JSON.stringify([asked, canvases])); }}, 20);
+"#
+    );
+    let out = Command::new("node").arg("-e").arg(&script).output().expect("node runs");
+    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+    let got: Vec<String> = String::from_utf8_lossy(&out.stdout).lines().map(str::to_string).collect();
+    // the first line: the private-use characters of every part are gone, so the joined text has exactly three separators
+    assert_eq!(got[0].matches('\u{e002}').count(), 3, "{got:?}");
+    assert!(!got[0].contains('\u{e000}') && !got[0].contains('\u{e001}'), "{got:?}");
+    let expect = [
+        r#"["AR","3"]"#, r#"["AR","11"]"#, r#"["AR",null]"#, r#"["AR",null]"#, r#"["AR",null]"#, "[\"\u{1F642}\",null]", r#"["AR",null]"#, r#"["AR",null]"#, r#"["AR",null]"#, r#"["AR",null]"#, r#"["AR",null]"#, r#"["AR",null]"#,
+    ];
+    assert_eq!(&got[1..13], &expect, "{got:?}");
+    assert_eq!(got[13], r#"["AR",{}]"#, "{got:?}");
+    // only the one good photo reached the decoder, and it was drawn once
+    assert_eq!(got[14], "[1,1]", "{got:?}");
+}
+
+#[test]
+fn a_second_band_is_drawn_by_its_own_marker_and_refused_when_wrong() {
+    // docs/structure.md 12.0l
+    let base = |body: &str| format!("{PAGE}\ncomponent App {{\n    on Go {{ }}\n    view {{\n        Column {{\n            Main {{ id: \"main\" Text {{ \"x\" }} }}\n            {body}\n        }}\n    }}\n}}\n");
+    let marks = "If { when: true Aside { marks: \"band\" } } If { when: true Aside { marks: \"band2\" } }";
+    let ok = base(&format!("{marks} Aside {{ label: \"Band\" band: true Text {{ \"top\" }} }} Aside {{ label: \"Band two\" id: \"second\" band2: true Text {{ \"second\" }} }}"));
+    let got = codes(&ok);
+    assert!(got.is_empty(), "{got:?}");
+    let (html, _) = page_of(&ok);
+    assert!(html.contains("class=\"cui-band2\""), "{html}");
+    for want in [".cui-band2 { display: block; margin: 0 0 0.75rem; }", ":root:not(:has([data-mark=\"band2\"])) .cui-band2 { display: none; }", "[data-style][data-emoji] { font-size: 1.5em;"] {
+        assert!(html.contains(want), "{want}");
+    }
+    let two = base(&format!("{marks} Aside {{ label: \"P\" band2: true Text {{ \"x\" }} }} Aside {{ label: \"Q\" band2: true Text {{ \"y\" }} }}"));
+    assert!(codes(&two).iter().any(|t| t == "aside-band-duplicate"));
+    // a band2 needs a band2 marker, and a band marker is not one
+    let unmarked = base("If { when: true Aside { marks: \"band\" } } Aside { label: \"P\" band2: true Text { \"x\" } }");
+    assert!(codes(&unmarked).iter().any(|t| t == "aside-unmarked"));
+    let bad_flag = base(&format!("{marks} Aside {{ label: \"P\" band2: \"yes\" Text {{ \"x\" }} }}"));
+    assert!(codes(&bad_flag).iter().any(|t| t == "aside-flag-invalid"));
+    let bad_mark = base("If { when: true Aside { marks: \"band3\" } }");
+    assert!(codes(&bad_mark).iter().any(|t| t == "aside-mark-invalid"));
+    let on_section = base(&format!("{marks} Section {{ band2: true Text {{ \"x\" }} }}"));
+    assert!(!codes(&on_section).is_empty());
+}

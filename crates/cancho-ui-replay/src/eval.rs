@@ -883,6 +883,22 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                 )),
             }
         }
+        ("face", 4) => {
+            let mut parts = Vec::new();
+            for a in args {
+                match eval(ctx, a)? {
+                    Value::Str(t) => parts.push(t),
+                    other => {
+                        return Err(fault(
+                            "replay-type-error",
+                            format!("`face` needs four Strings, got {}", describe(&other)),
+                            span,
+                        ))
+                    }
+                }
+            }
+            Ok(Value::Str(face(&parts[0], &parts[1], &parts[2], &parts[3])))
+        }
         ("emoji_only", 1) => match eval(ctx, &args[0])? {
             Value::Str(t) => Ok(Value::Bool(emoji_only(&t))),
             other => Err(fault(
@@ -1001,7 +1017,7 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
             | "router.go" | "router.replace" | "credential.set" | "credential.clear" | "json.get"
             | "json.items" | "json.quote" | "reverse" | "contains" | "lower" | "fold" | "num"
             | "take" | "skip" | "concat" | "move" | "distance" | "min" | "max" | "abs" | "floor"
-            | "ceil" | "round" | "lines" | "split" | "join" | "trim" | "upper" | "emoji_only" | "initials" | "mark_text" | "starts_with"
+            | "ceil" | "round" | "lines" | "split" | "join" | "trim" | "upper" | "emoji_only" | "initials" | "mark_text" | "face" | "starts_with"
             | "ends_with" | "t" | "fmt.number" | "fmt.percent" | "fmt.date" | "fmt.time"
             | "locale.current" | "locale.set",
             n,
@@ -1533,6 +1549,14 @@ fn operands(op: &str, l: &Value, r: &Value, span: Span) -> Stop {
     )
 }
 
+/// `face(initials, tone, emoji, photo)` (docs/structure.md 12.0l): the four parts of a person's disc joined by U+E002, which a `Text { style: "avatar" }` or `"disc0".."disc7"` draws (the page
+/// checks each part again: a tone is 0 to 11, a photo is base64 that starts like a JPEG). The private-use characters U+E000 to U+E002 are taken out of each part, so no part can
+/// shift another. The same as `__cui_face`.
+pub fn face(initials: &str, tone: &str, emoji: &str, photo: &str) -> String {
+    let clean = |t: &str| t.chars().filter(|c| !('\u{E000}'..='\u{E002}').contains(c)).collect::<String>();
+    format!("{}\u{E002}{}\u{E002}{}\u{E002}{}", clean(initials), clean(tone), clean(emoji), clean(photo))
+}
+
 /// `mark_text(text, marks)` (docs/structure.md 12.0j): `marks` is a JSON array of `{"start":n,"end":m}` byte offsets into `text` (UTF-8); each marked part is wrapped in U+E000 .. U+E001,
 /// which a `Text { style: "marked" }` draws as a span. A mark that starts before the end of the one before it, is empty, runs past the text or does not begin and end on a character
 /// boundary is skipped; so is a `marks` that is not such an array (the text then comes back as it is). The two private-use characters are taken out of the text itself, so a message
@@ -1654,10 +1678,17 @@ pub fn describe(v: &Value) -> String {
 
 #[cfg(test)]
 mod chat_builtins {
-    use super::{emoji_only, initials, mark_text};
+    use super::{emoji_only, face, initials, mark_text};
 
     const S: char = '\u{E000}';
     const E: char = '\u{E001}';
+
+    #[test]
+    fn face_joins_four_parts_and_no_part_can_shift_another() {
+        assert_eq!(face("AR", "3", "", ""), "AR\u{E002}3\u{E002}\u{E002}");
+        assert_eq!(face("A\u{E002}R", "3\u{E000}", "\u{E001}x", "y\u{E002}z"), "AR\u{E002}3\u{E002}x\u{E002}yz");
+        assert_eq!(face("", "", "", "").matches('\u{E002}').count(), 3);
+    }
 
     #[test]
     fn mark_text_wraps_the_marked_bytes_and_nothing_else() {

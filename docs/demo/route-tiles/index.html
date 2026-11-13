@@ -160,6 +160,23 @@ body:has(.cui-dock) { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom))
 [data-style="disc6"] { background: #a1236f; }
 .cui-bubble [data-style="hue7"] { color: #556b00; }
 [data-style="disc7"] { background: #556b00; }
+/* a person's own look (docs/structure.md 12.0l): `face(..)` gives a disc a tone (twelve fixed colours, each 6.00:1 or better with white), an emoji in place of the initials, or a photo drawn on a canvas over it */
+[data-tone="0"][data-style] { background: #b41d26; }
+[data-tone="1"][data-style] { background: #0b6a73; }
+[data-tone="2"][data-style] { background: #6b4a9e; }
+[data-tone="3"][data-style] { background: #1e7e34; }
+[data-tone="4"][data-style] { background: #8a4b00; }
+[data-tone="5"][data-style] { background: #1d5fa8; }
+[data-tone="6"][data-style] { background: #a1236f; }
+[data-tone="7"][data-style] { background: #556b00; }
+[data-tone="8"][data-style] { background: #475569; }
+[data-tone="9"][data-style] { background: #4338a0; }
+[data-tone="10"][data-style] { background: #7b2d8e; }
+[data-tone="11"][data-style] { background: #0e6b8c; }
+[data-style][data-emoji] { font-size: 1.5em; font-weight: 400; text-transform: none; }
+[data-style][data-photo] { position: relative; overflow: hidden; }
+.cui-face-pic { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; }
+[data-style="avatar"][data-photo] { border-color: Canvas; }
 /* a quote of an earlier message, a mention, the time and the ticks (docs/structure.md 12.0j) */
 .cui-quote { display: flex; flex-direction: column; gap: 0.05rem; min-width: 0; margin: 0.1rem 0 0.3rem; padding: 0.2rem 0.5rem; border-inline-start: 4px solid var(--q, #1e7e34); border-radius: 6px; background: color-mix(in srgb, currentColor 8%, transparent); }
 .cui-bubble .cui-quote [data-style^="hue"] { font-size: 0.78rem; }
@@ -247,6 +264,9 @@ body:has(.cui-dock) { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom))
 /* a band (docs/structure.md 12.0k): a block in the flow, shown only while an `Aside { marks: "band" }` is on the page: a sealed island can sit in it, which an `If` cannot hold */
 .cui-band { display: block; margin: 0 0 0.75rem; }
 :root:not(:has([data-mark="band"])) .cui-band { display: none; }
+/* a second band (docs/structure.md 12.0l): the same, for a second sealed island that is not on the page all the time (a person's picture) */
+.cui-band2 { display: block; margin: 0 0 0.75rem; }
+:root:not(:has([data-mark="band2"])) .cui-band2 { display: none; }
 /* motion (docs/motion.md): an element is hidden only while the page's script has it armed and has not yet seen it, and never when the visitor asks for less motion */
 .cui-reveal.cui-armed { transition: opacity 0.7s ease, transform 0.7s ease; }
 .cui-reveal.cui-armed:not(.cui-in) { opacity: 0; transform: translateY(18px); }

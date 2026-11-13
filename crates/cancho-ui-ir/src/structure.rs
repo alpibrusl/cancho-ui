@@ -187,7 +187,7 @@ fn keys(kind: &IrElementKind) -> &'static [&'static str] {
         IrElementKind::CountUp => &["to"],
         IrElementKind::Chip => &["tone"],
         IrElementKind::List => &["ordered", "card"],
-        IrElementKind::Aside => &["id", "visible", "hidden", "card", "fab", "sheet", "fab2", "sheet2", "band", "marks"],
+        IrElementKind::Aside => &["id", "visible", "hidden", "card", "fab", "sheet", "fab2", "sheet2", "band", "band2", "marks"],
         IrElementKind::Section | IrElementKind::Article | IrElementKind::Figure => {
             &["id", "visible", "hidden", "card"]
         }
@@ -347,6 +347,7 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
         "fab2",
         "sheet2",
         "band",
+        "band2",
         "marks",
         "bubble",
         "chatlog",
@@ -401,7 +402,7 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                     "copy" | "max_height" => "Code",
                     "sticky" => "Header",
                     "dock" => "Nav",
-                    "fab" | "sheet" | "fab2" | "sheet2" | "band" | "marks" => "Aside",
+                    "fab" | "sheet" | "fab2" | "sheet2" | "band" | "band2" | "marks" => "Aside",
                     "bubble" | "chatlog" | "quote" => "Column",
                     "composer" | "chips" | "head" | "meta" | "strip" => "Row",
                     "ordered" => "List",
@@ -520,7 +521,7 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                 b.span,
             )),
         },
-        "fab" | "sheet" | "fab2" | "sheet2" | "band" => match &b.value {
+        "fab" | "sheet" | "fab2" | "sheet2" | "band" | "band2" => match &b.value {
             IrBindingValue::Const { expr, .. } if matches!(**expr, IrExpr::BoolLit { .. }) => {
                 Ok(true)
             }
@@ -549,10 +550,10 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
             )),
         },
         "marks" => match string_of(b) {
-            Some("fab" | "sheet" | "fab2" | "sheet2" | "band") => Ok(true),
+            Some("fab" | "sheet" | "fab2" | "sheet2" | "band" | "band2") => Ok(true),
             _ => Err(refuse(
                 "aside-mark-invalid",
-                "`marks:` is `\"fab\"`, `\"sheet\"`, `\"fab2\"`, `\"sheet2\"` or `\"band\"`: an empty `Aside { marks: \"sheet\" }` inside an `If` is what shows the sheet while the `If` is true".to_string(),
+                "`marks:` is `\"fab\"`, `\"sheet\"`, `\"fab2\"`, `\"sheet2\"`, `\"band\"` or `\"band2\"`: an empty `Aside { marks: \"sheet\" }` inside an `If` is what shows the sheet while the `If` is true".to_string(),
                 b.span,
             )),
         },
@@ -961,6 +962,9 @@ pub fn class(kind: &IrElementKind, bindings: &[IrBinding]) -> Option<String> {
         }
         if is_flag(bindings, "band") {
             return Some("cui-band".to_string());
+        }
+        if is_flag(bindings, "band2") {
+            return Some("cui-band2".to_string());
         }
     }
     if matches!(kind, IrElementKind::Row) && is_flag(bindings, "composer") {

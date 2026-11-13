@@ -688,6 +688,7 @@ pub fn check_program(ir: &IrFile) -> Result<(), LowerError> {
     let mut fabs2: Vec<Span> = Vec::new();
     let mut sheets2: Vec<Span> = Vec::new();
     let mut bands: Vec<Span> = Vec::new();
+    let mut bands2: Vec<Span> = Vec::new();
     let mut marks: Vec<String> = Vec::new();
     let mut mains: Vec<(Option<String>, bool, Span, usize)> = Vec::new();
     for (n, c) in ir.components.iter().enumerate() {
@@ -714,6 +715,9 @@ pub fn check_program(ir: &IrFile) -> Result<(), LowerError> {
                     }
                     if crate::structure::is_flag(bindings, "band") {
                         bands.push(span);
+                    }
+                    if crate::structure::is_flag(bindings, "band2") {
+                        bands2.push(span);
                     }
                     for b in bindings.iter().filter(|b| b.key == "marks") {
                         if let Some(m) = crate::structure::string_of(b) {
@@ -771,7 +775,14 @@ pub fn check_program(ir: &IrFile) -> Result<(), LowerError> {
             *second,
         ));
     }
-    for (spans, key) in [(&fabs2, "fab2"), (&sheets2, "sheet2"), (&bands, "band")] {
+    if let Some(second) = bands2.get(1) {
+        return Err(refuse(
+            "aside-band-duplicate",
+            "a page has one `Aside { band2: true }`: it is the second band that a marker shows".to_string(),
+            *second,
+        ));
+    }
+    for (spans, key) in [(&fabs2, "fab2"), (&sheets2, "sheet2"), (&bands, "band"), (&bands2, "band2")] {
         if let Some(f) = spans.first() {
             if !marks.iter().any(|m| m == key) {
                 return Err(refuse(

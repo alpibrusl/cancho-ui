@@ -984,6 +984,16 @@ pub(crate) fn emit_view_node(
                 out.push_str(&format!("{0}__cui_marked({1});\n", indent, var));
             }
 
+            // `Text { style: "avatar" face(..) }` (docs/structure.md 12.0l): a person's disc, drawn from the four parts `face` joined (a tone, an emoji, a photo, else the initials)
+            if matches!(kind, IrElementKind::Text)
+                && bindings.iter().any(|b| {
+                    b.key == "style"
+                        && matches!(&b.value, IrBindingValue::String(s) if s == "avatar" || (s.len() == 5 && s.starts_with("disc")))
+                })
+            {
+                out.push_str(&format!("{0}__cui_face_draw({1});\n", indent, var));
+            }
+
             // A status text with nothing to say has no tone: the stylesheet would draw its mark (a cross, a check) beside
             // nothing (docs/presentation.md section 3). The element stays, with its role, so a message put there at the next
             // render is still in a live region.

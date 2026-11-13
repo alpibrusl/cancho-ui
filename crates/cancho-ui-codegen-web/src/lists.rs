@@ -122,6 +122,54 @@ function __cui_ends_with(text, suffix) {
 }
 ";
 
+/// `face(initials, tone, emoji, photo)` and the drawing of a person's disc (docs/structure.md 12.0l). `__cui_face` is replay's `face`; `__cui_face_draw(el)` is called on a `Text` whose style is
+/// `avatar` or `disc0`..`disc7`: a text with no U+E002 in it is left alone, so a page that does not use `face` is unchanged. Each of the four parts is checked again here (the program
+/// is the author's, the data is a stranger's): a tone is 0 to 11 (a `data-tone` the stylesheet colours), an emoji and the initials are drawn as text nodes (never markup), a photo is
+/// base64 that starts like a JPEG (`/9j/`), only the base64 alphabet, 100 to 48,000 characters, decoded by `createImageBitmap` and drawn on a canvas over the disc: no `<img>`, no address, no
+/// request, so the page's policy needs nothing new. A photo that does not decode leaves the text.
+const FACE_JS: &str = r##"
+var __cui_face_bmps = {}, __cui_face_n = 0;
+function __cui_face(i, t, e, p) {
+    var c = function (s) { return String(s).replace(/[\uE000-\uE002]/g, ""); };
+    return c(i) + "\uE002" + c(t) + "\uE002" + c(e) + "\uE002" + c(p);
+}
+function __cui_face_bmp(photo) {
+    var p = __cui_face_bmps[photo], bin, bytes, i;
+    if (p) { return p; }
+    if (__cui_face_n >= 120) { __cui_face_bmps = {}; __cui_face_n = 0; }
+    try {
+        bin = atob(photo); bytes = new Uint8Array(bin.length);
+        for (i = 0; i < bin.length; i++) { bytes[i] = bin.charCodeAt(i); }
+        p = createImageBitmap(new Blob([bytes], { type: "image/jpeg" }));
+    } catch (e) { return null; }
+    __cui_face_bmps[photo] = p; __cui_face_n++;
+    return p;
+}
+function __cui_face_draw(el) {
+    var t = el.textContent, parts, shown, photo, p;
+    if (t.indexOf("\uE002") < 0) { return; }
+    parts = t.split("\uE002");
+    el.removeAttribute("data-tone"); el.removeAttribute("data-photo"); el.removeAttribute("data-emoji");
+    if (parts.length !== 4) { el.textContent = parts[0]; return; }
+    shown = parts[2].length > 0 && parts[2].length <= 16 ? parts[2] : parts[0];
+    el.textContent = shown;
+    if (shown === parts[2]) { el.setAttribute("data-emoji", "1"); }
+    if (/^(0|[1-9]|1[01])$/.test(parts[1])) { el.setAttribute("data-tone", parts[1]); }
+    photo = parts[3];
+    if (photo.length < 100 || photo.length > 48000 || photo.indexOf("/9j/") !== 0 || !/^[A-Za-z0-9+\/]+={0,2}$/.test(photo)) { return; }
+    p = __cui_face_bmp(photo);
+    if (!p || typeof p.then !== "function") { return; }
+    p.then(function (bmp) {
+        var cv = document.createElement("canvas"), g, s, side = 96;
+        cv.width = side; cv.height = side; cv.className = "cui-face-pic"; cv.setAttribute("aria-hidden", "true");
+        g = cv.getContext("2d");
+        s = Math.max(side / bmp.width, side / bmp.height);
+        g.drawImage(bmp, (side - bmp.width * s) / 2, (side - bmp.height * s) / 2, bmp.width * s, bmp.height * s);
+        el.setAttribute("data-photo", "1"); el.appendChild(cv);
+    }, function () {});
+}
+"##;
+
 /// `emoji_only(text)` (docs/lists.md section 7.2b): whether a text is one to three emoji and nothing else (spaces allowed between them). The same
 /// code point ranges as replay's `emoji_only`; a joined sequence (ZWJ), a skin tone, a variation selector, a tag and a flag (two regional indicators) are one emoji.
 const EMOJI_JS: &str = "\
@@ -260,6 +308,7 @@ pub fn helpers_used(emitted: &str) -> String {
         (&["__cui_num("][..], NUM_JS),
         (&["__cui_json_quote("][..], JSON_QUOTE_JS),
         (&["__cui_emoji_only(", "__cui_initials(", "__cui_mark_text(", "__cui_marked("][..], EMOJI_JS),
+        (&["__cui_face(", "__cui_face_draw("][..], FACE_JS),
         (&["__cui_take(", "__cui_skip("][..], PAGING_JS),
         (&["__cui_concat("][..], CONCAT_JS),
         (&["__cui_move("][..], MOVE_JS),
