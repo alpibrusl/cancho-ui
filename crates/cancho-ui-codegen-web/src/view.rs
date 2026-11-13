@@ -942,6 +942,8 @@ pub(crate) fn emit_view_node(
                 if matches!(kind, IrElementKind::Button | IrElementKind::NavLink)
                     && !children.is_empty()
                 {
+                    // the class says "icon-only" to the page's CSS: `:has()` cannot be nested, so `.cui-col:has(> button:has(> *))` is not a selector (docs/structure.md 12.0m)
+                    out.push_str(&format!("{0}{1}.classList.add('cui-ico');\n", indent, var));
                     if accessibility.label_expr.is_some() {
                         out.push_str(&format!(
                             "{0}{1}.setAttribute('title', {2});\n",

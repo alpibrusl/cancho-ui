@@ -212,6 +212,10 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
         out.push_str(ROUTER_ADAPTER_JS);
         out.push('\n');
     }
+    if ir.components.iter().any(|c| view_has_bar(&c.view.body)) {
+        out.push_str(crate::adapters::BAR_ADAPTER_JS);
+        out.push('\n');
+    }
     if ir.components.iter().any(|c| view_has_status(&c.view.body)) {
         out.push_str(crate::adapters::STATUS_ADAPTER_JS);
         out.push('\n');
@@ -481,6 +485,24 @@ fn view_has_details(node: &IrViewNode) -> bool {
         }
         IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
             children.iter().any(view_has_details)
+        }
+        IrViewNode::Text { .. } => false,
+    }
+}
+
+fn view_has_bar(node: &IrViewNode) -> bool {
+    match node {
+        IrViewNode::Element {
+            kind,
+            bindings,
+            children,
+            ..
+        } => {
+            (matches!(kind, IrElementKind::Row) && cancho_ui_ir::structure::is_flag(bindings, "bar"))
+                || children.iter().any(view_has_bar)
+        }
+        IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
+            children.iter().any(view_has_bar)
         }
         IrViewNode::Text { .. } => false,
     }
@@ -962,6 +984,9 @@ fn emit_component(
     if view_has_status(&c.view.body) {
         out.push_str("            __cui_status_begin(root);\n");
     }
+    if view_has_bar(&c.view.body) {
+        out.push_str("            const __bars = __cui_bars_save(root);\n");
+    }
     let mut node_id = 0u32;
     let view_body = match hydrate {
         // only the holes are built, each between its markers; no static node is created or touched
@@ -1030,6 +1055,9 @@ fn emit_component(
             &handlers,
             &dynamic,
         ));
+    }
+    if view_has_bar(&c.view.body) {
+        out.push_str("            __cui_bars_restore(root, __bars);\n");
     }
     if view_has_status(&c.view.body) {
         out.push_str("            __cui_status_end(root);\n");

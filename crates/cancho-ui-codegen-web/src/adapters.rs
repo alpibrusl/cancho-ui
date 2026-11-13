@@ -217,6 +217,25 @@ function __cui_screen(root, move, routed, seen) {
 }
 "#;
 
+/// A bar of places (`Row { bar: true }`, docs/structure.md 12.0m) scrolls sideways, and a page is drawn again from nothing at every render: left alone, the bar would
+/// jump back to its start at each poll. Before the render the scroll of each bar is saved (by its place among the bars); after it, a bar whose open place is the
+/// same as at the last render gets its scroll back, and one whose open place changed (or that is new) is scrolled so that the open place is in the middle.
+pub(crate) const BAR_ADAPTER_JS: &str = r#"// A bar of places keeps its scroll through a render: see docs/structure.md 12.0m.
+const __cui_bar_last = [];
+function __cui_bars_save(root) {
+    return Array.from(root.querySelectorAll('.cui-bar')).map(function (b) { return b.scrollLeft; });
+}
+function __cui_bars_restore(root, saved) {
+    Array.from(root.querySelectorAll('.cui-bar')).forEach(function (b, i) {
+        const on = b.querySelector('[aria-pressed="true"]');
+        const key = on ? (on.getAttribute('aria-label') || on.textContent) : '';
+        if (saved[i] !== undefined && __cui_bar_last[i] === key) { b.scrollLeft = saved[i]; }
+        else if (on) { b.scrollLeft = Math.max(0, on.getBoundingClientRect().left - b.getBoundingClientRect().left + b.scrollLeft - (b.clientWidth - on.offsetWidth) / 2); }
+        __cui_bar_last[i] = key;
+    });
+}
+"#;
+
 /// Status live regions keep their node (docs/presentation.md section 3a, issue #106). A page is drawn again from nothing at every render, so the
 /// span of a `role: status` text (or of a field's `error:` message) was a new node each time, and a screen reader announces a change in a live region
 /// that already exists. Each such span is built as before and then reconciled with the one the position had at the last render: when there is one, it

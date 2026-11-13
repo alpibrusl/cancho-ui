@@ -488,13 +488,44 @@ const COPY_CSS: &str = r#".cui-code[data-copy] pre { padding-top: 2.5rem; }
 const ROLES_CSS: &str = r#":root button { border-radius: 999px; border-color: transparent; background: var(--cui-accent, #185fa5); color: var(--cui-accent-fg, #ffffff); font-weight: 600; }
 :root button:disabled { background: var(--cui-soft, #efece1); color: var(--cui-muted, #4f545b); }
 /* an icon-only button (its content is an element, not text) keeps its own size in a column instead of stretching to a bar */
-:root .cui-col > button:has(> *) { align-self: flex-start; }
+:root .cui-col > .cui-ico { align-self: flex-start; }
 /* an icon link or button: the icon is larger, and a link that holds one is a round target, not an underlined word */
 :root button:has(> *) { font-size: 1.25rem; line-height: 1; }
 :root a[title]:has(> *) { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; padding: 0 0.5rem; border-radius: 999px; background: var(--cui-soft, #efece1); font-size: 1.25rem; line-height: 1; }
 :root button[aria-pressed="true"] { box-shadow: 0 0 0 3px color-mix(in srgb, var(--cui-accent, #185fa5) 35%, transparent); }
 :root nav button { background: transparent; color: var(--cui-fg, currentColor); }
 :root nav button[aria-pressed="true"] { background: var(--cui-accent, #185fa5); color: var(--cui-accent-fg, #ffffff); box-shadow: none; }
+/* the tab bar is flat (docs/structure.md 12.0m): a filled pill, with no border (the pressed rule above sets the border's colour, and a button's default border style is outset: that was the thick 3D edge) and no ring */
+:root .cui-dock button, :root .cui-dock button[aria-pressed="true"] { border: 0; box-shadow: none; }
+:root .cui-dock button:focus:not(:focus-visible) { outline: none; }
+/* keys (12.0m): icon-only buttons side by side in one row, small, wrapping only when the line is full. A `Row { keys: true }` is one; so is a Column that holds an icon-only button directly
+   (its other children take the whole line, in their order, so what was a stack of round buttons is a row of keys without a change to the program) */
+:root .cui-keys, :root .cui-col:has(> .cui-ico):not(.cui-bubble):not(.cui-chatlog):not(.cui-quote):not(.cui-overlay):not(.cui-chathead):not(.cui-composer):not(.cui-strip):not(.cui-chips):not(.cui-meta):not(.cui-bar):not(.cui-dock):not(.cui-sheet *):not(.cui-sheet2 *):not(.cui-band *):not(.cui-band2 *):not(.cui-bar *), :root .cui-row:has(> .cui-ico):not(.cui-bubble):not(.cui-chatlog):not(.cui-quote):not(.cui-overlay):not(.cui-chathead):not(.cui-composer):not(.cui-strip):not(.cui-chips):not(.cui-meta):not(.cui-bar):not(.cui-dock):not(.cui-sheet *):not(.cui-sheet2 *):not(.cui-band *):not(.cui-band2 *):not(.cui-bar *) { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.35rem; }
+:root .cui-col:has(> .cui-ico):not(.cui-bubble):not(.cui-chatlog):not(.cui-quote):not(.cui-overlay):not(.cui-chathead):not(.cui-composer):not(.cui-strip):not(.cui-chips):not(.cui-meta):not(.cui-bar):not(.cui-dock):not(.cui-sheet *):not(.cui-sheet2 *):not(.cui-band *):not(.cui-band2 *):not(.cui-bar *) > :not(.cui-ico) { flex: 1 1 100%; min-width: 0; }
+:root .cui-keys > button, :root .cui-col:has(> .cui-ico):not(.cui-bubble):not(.cui-chatlog):not(.cui-quote):not(.cui-overlay):not(.cui-chathead):not(.cui-composer):not(.cui-strip):not(.cui-chips):not(.cui-meta):not(.cui-bar):not(.cui-dock):not(.cui-sheet *):not(.cui-sheet2 *):not(.cui-band *):not(.cui-band2 *):not(.cui-bar *) > .cui-ico, :root .cui-row:has(> .cui-ico):not(.cui-bubble):not(.cui-chatlog):not(.cui-quote):not(.cui-overlay):not(.cui-chathead):not(.cui-composer):not(.cui-strip):not(.cui-chips):not(.cui-meta):not(.cui-bar):not(.cui-dock):not(.cui-sheet *):not(.cui-sheet2 *):not(.cui-band *):not(.cui-band2 *):not(.cui-bar *) > .cui-ico { flex: none; align-self: center; box-sizing: border-box; min-width: 2.5rem; min-height: 2.5rem; height: 2.5rem; padding: 0 0.6rem; border: 1px solid color-mix(in srgb, currentColor 16%, transparent); border-radius: 12px; background: var(--cui-soft, #efece1); color: var(--cui-fg, CanvasText); font-size: 1.1rem; line-height: 1; box-shadow: none; display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem; }
+:root .cui-keys > button[aria-pressed="true"], :root .cui-col:has(> .cui-ico):not(.cui-bubble):not(.cui-chatlog):not(.cui-quote):not(.cui-overlay):not(.cui-chathead):not(.cui-composer):not(.cui-strip):not(.cui-chips):not(.cui-meta):not(.cui-bar):not(.cui-dock):not(.cui-sheet *):not(.cui-sheet2 *):not(.cui-band *):not(.cui-band2 *):not(.cui-bar *) > .cui-ico[aria-pressed="true"], :root .cui-row:has(> .cui-ico):not(.cui-bubble):not(.cui-chatlog):not(.cui-quote):not(.cui-overlay):not(.cui-chathead):not(.cui-composer):not(.cui-strip):not(.cui-chips):not(.cui-meta):not(.cui-bar):not(.cui-dock):not(.cui-sheet *):not(.cui-sheet2 *):not(.cui-band *):not(.cui-band2 *):not(.cui-bar *) > .cui-ico[aria-pressed="true"] { background: color-mix(in srgb, var(--cui-accent, #185fa5) 16%, var(--cui-soft, #efece1)); color: var(--cui-accent, #185fa5); border-color: color-mix(in srgb, var(--cui-accent, #185fa5) 55%, transparent); box-shadow: none; }
+:root .cui-keys > button:disabled { opacity: 0.55; }
+/* a key with a caption: its second child, small, under the icon; the label is still its accessible name */
+:root .cui-keys > button:has(> :nth-child(2)), :root .cui-row:has(> .cui-ico):not(.cui-bubble):not(.cui-chatlog):not(.cui-quote):not(.cui-overlay):not(.cui-chathead):not(.cui-composer):not(.cui-strip):not(.cui-chips):not(.cui-meta):not(.cui-bar):not(.cui-dock):not(.cui-sheet *):not(.cui-sheet2 *):not(.cui-band *):not(.cui-band2 *):not(.cui-bar *) > .cui-ico:has(> :nth-child(2)) { flex-direction: column; height: auto; min-height: 2.9rem; padding: 0.3rem 0.7rem; gap: 0.15rem; }
+:root .cui-keys > button > * { margin: 0; line-height: 1.1; }
+:root .cui-keys > button > :nth-child(2) { font-size: 0.64rem; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap; }
+:root .cui-row > .cui-keys { margin-inline-start: auto; }
+:root .cui-keys > details { flex: none; }
+:root .cui-keys > details[open] { flex: 1 1 100%; order: 9; }
+/* a hint (12.0m): a Details that is a small round "i" or "more" button, not a "+" pill; what it holds opens under it, on a line of its own */
+:root details.cui-hint:not(.cui-chart) > summary { min-height: 2rem; min-width: 2rem; padding: 0 0.45rem; justify-content: center; border: 0; border-radius: 999px; background: var(--cui-soft, #efece1); color: var(--cui-fg, CanvasText); font-size: 0.95rem; font-weight: 400; line-height: 1; }
+:root details.cui-hint:not(.cui-chart) > summary::before, :root details.cui-hint[open]:not(.cui-chart) > summary::before { content: none; margin: 0; }
+:root details.cui-hint[open]:not(.cui-chart) > summary { margin-bottom: 0.5rem; }
+:root .cui-col:has(> .cui-ico) > details.cui-hint:not([open]) { flex: none; }
+/* the bar of places (12.0m): one row that scrolls sideways, an icon over a tiny caption on each, the open place filled, groups divided by a hairline (a nested Row is a group) */
+:root .cui-bar { display: flex; flex-wrap: nowrap; align-items: stretch; gap: 0.15rem; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scrollbar-width: none; padding: 0.15rem 0.1rem; }
+:root .cui-bar::-webkit-scrollbar { display: none; }
+:root .cui-bar > .cui-row { flex: none; flex-wrap: nowrap; align-items: stretch; gap: 0.15rem; padding-inline-end: 0.4rem; margin-inline-end: 0.25rem; border-inline-end: 1px solid color-mix(in srgb, currentColor 16%, transparent); }
+:root .cui-bar > .cui-row:last-child { border-inline-end: 0; margin-inline-end: 0; padding-inline-end: 0; }
+:root .cui-bar button { flex: none; scroll-snap-align: center; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.12rem; min-width: 3.5rem; min-height: 3.2rem; height: auto; padding: 0.3rem 0.45rem; border: 0; border-radius: 14px; background: transparent; box-shadow: none; color: var(--cui-muted, currentColor); font-size: 0.66rem; font-weight: 600; line-height: 1.1; white-space: nowrap; }
+:root .cui-bar button > * { margin: 0; font-size: inherit; line-height: 1.1; }
+:root .cui-bar button > :first-child { font-size: 1.3rem; line-height: 1; }
+:root .cui-bar button[aria-pressed="true"] { background: color-mix(in srgb, var(--cui-accent, #185fa5) 14%, transparent); color: var(--cui-accent, #185fa5); box-shadow: none; }
 /* fields (docs/structure.md 12.0e): a pill, a soft fill, one thin border, and a ring in the accent when it has the focus */
 :root input:not([type="checkbox"]):not([type="file"]):not([type="range"]), :root select { border-radius: 999px; border-style: solid; border-width: 1px; padding-inline: 1.1rem; min-height: 2.75rem; }
 :root textarea { border-radius: 20px; border-style: solid; border-width: 1px; padding: 0.7rem 1.1rem; }
