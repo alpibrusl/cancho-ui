@@ -284,6 +284,8 @@ fn the_gallery_demos_are_interactive_and_each_keeps_a_line_for_a_visitor_without
         "reorder",
         "route",
         "route-tiles",
+        // icons (2026-11-14): a heading, a paragraph and the list of every icon are static text of its own: eight
+        "icons",
     ];
     let demos = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/demo");
     let mut n = 0;
@@ -305,7 +307,7 @@ fn the_gallery_demos_are_interactive_and_each_keeps_a_line_for_a_visitor_without
             "{id}"
         );
     }
-    assert_eq!(n, 15, "the gallery has 15 demos");
+    assert_eq!(n, 16, "the gallery has 16 demos");
 }
 
 // ---- hydration (P1b): the script builds the holes and nothing else ----------------------------------------------------------------------
