@@ -803,6 +803,9 @@ fn the_tab_bar_is_flat_keys_and_a_bar_are_classes_and_an_icon_button_is_marked()
     let (html, js) = page_of(KEYS);
     assert!(html.contains(":root .cui-dock button, :root .cui-dock button[aria-pressed=\"true\"] { border: 0; box-shadow: none; }"), "the tab bar has no border and no ring");
     assert!(html.contains(":root .cui-keys > details[open] { flex: 1 1 100%; order: 9; }"), "an open hint goes to its own line");
+    // 12.0o: the open key's tint is 10% of the accent over the soft fill, not 16%: at 16% the accent text on it measured 4.42:1 with a coral accent on a sand fill (under WCAG AA's 4.5:1); at 10% it is 4.86:1
+    assert!(html.contains("background: color-mix(in srgb, var(--cui-accent, #185fa5) 10%, var(--cui-soft, #efece1)); color: var(--cui-accent, #185fa5); border-color"), "the open key is tinted by 10% of the accent");
+    assert!(!html.contains("var(--cui-accent, #185fa5) 16%, var(--cui-soft, #efece1)"), "and no longer by 16%");
     assert!(html.contains(":root .cui-bar > .cui-row { flex: none;"), "a nested row is a group of the bar");
     assert!(!html.contains(":has(> button:has("), ":has() is not nested: it would be an invalid selector and drop the rule");
     let all = format!("{html}{js}");
