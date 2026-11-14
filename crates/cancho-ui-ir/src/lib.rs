@@ -38,6 +38,8 @@ pub mod stream;
 pub mod structure;
 pub mod table;
 pub mod theme;
+pub mod icon;
+mod icon_set;
 pub mod waffle;
 
 pub use ir::*;

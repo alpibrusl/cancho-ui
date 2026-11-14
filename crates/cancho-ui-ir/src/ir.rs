@@ -778,6 +778,8 @@ pub enum IrElementKind {
     Media,
     /// Pictures, video and grids (docs/structure.md section 10): `Grid`, a `<div>` of responsive columns.
     Grid,
+    /// Icons (docs/structure.md 12.0q): `Icon`, an inline `<svg>` drawn from the vendored Lucide set.
+    Icon,
     /// `Table { .. }` (docs/presentation.md section 4) and what lowering makes of its descendants: a `Row` of a table is
     /// a `TableRow`, a `Text` of that row a `Cell` (a `HeaderCell` with `role: columnheader`), and any other element of
     /// it is wrapped in a `Cell`.
@@ -834,6 +836,7 @@ impl IrElementKind {
             IrElementKind::Image => "picture",
             IrElementKind::Media => "video",
             IrElementKind::Grid => "div",
+            IrElementKind::Icon => "svg",
             IrElementKind::SortList => "ul",
             IrElementKind::Map => "figure",
             IrElementKind::Table => "table",

@@ -114,6 +114,10 @@ fn check_node(c: &IrComponent, node: &IrViewNode, in_for: bool) -> Result<(), Lo
                 )?;
                 crate::media::check_complete(kind, accessibility, bindings, children, *span)?;
                 crate::waffle::check_complete(kind, accessibility, bindings, children, *span)?;
+                crate::icon::check_complete(kind, accessibility, bindings, children, *span)?;
+                crate::icon::check_children(kind, accessibility, children)?;
+                crate::icon::check_complete(kind, accessibility, bindings, children, *span)?;
+                crate::icon::check_children(kind, accessibility, children)?;
                 check_navlink_complete(kind, accessibility, bindings, *span)?;
                 check_file_field(kind, accessibility, bindings, *span, in_for)?;
                 check_chart(kind, accessibility, bindings, *span, in_for)?;
@@ -190,6 +194,7 @@ fn element_name(kind: &IrElementKind) -> &'static str {
         IrElementKind::Image => "Image",
         IrElementKind::Media => "Media",
         IrElementKind::Grid => "Grid",
+        IrElementKind::Icon => "Icon",
         IrElementKind::Island(_) => "an island",
         IrElementKind::Named(_) => "a component",
     }
@@ -915,6 +920,9 @@ fn check_to(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
 }
 
 fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
+    if crate::icon::check_binding(kind, b)? {
+        return Ok(());
+    }
     if crate::structure::check_binding(kind, b)? {
         return Ok(());
     }

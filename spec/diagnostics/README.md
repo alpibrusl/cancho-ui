@@ -345,6 +345,14 @@ in `examples/refusal/`, and by the evidence report.
 | `waffle-has-children` | `Component` | `Error` | `Static` | A `Waffle` with text or an element inside it: its squares, caption and table are made from its bindings. *(Built 2026-10-26, docs/waffle.md.)* |
 | `chip-tone-invalid` | `Component` | `Error` | `Static` | A `Chip` with no `tone:`, or one that is not `"good"`, `"warn"`, `"accent"` or `"quiet"`. *(Built 2026-10-26, docs/waffle.md.)* |
 | `chip-empty` | `Component` | `Error` | `Static` | A `Chip` with no text or only spaces: its tone alone would be the whole message. *(Built 2026-10-26, docs/waffle.md.)* |
+| `icon-incomplete` | `Component` | `Error` | `Static` | An `Icon` with no `name:`. *(Built 2026-11-14, docs/structure.md 12.0q.)* |
+| `icon-unknown` | `Component` | `Error` | `Static` | An `Icon { name: .. }` or `Button { icon: .. }` whose name is not a string literal of the vendored Lucide set (state, a built string, an emoji, a name the set lacks); the message names the nearest names. *(Built 2026-11-14, docs/structure.md 12.0q.)* |
+| `icon-size-invalid` | `Component` | `Error` | `Static` | An `Icon` whose `size:` is not `"small"`, `"medium"` or `"large"` as a string literal. *(Built 2026-11-14, docs/structure.md 12.0q.)* |
+| `icon-decorative-invalid` | `Component` | `Error` | `Static` | An `Icon` whose `decorative:` is not `true` or `false` written in the program. *(Built 2026-11-14, docs/structure.md 12.0q.)* |
+| `icon-has-children` | `Component` | `Error` | `Static` | An `Icon` with text or an element inside it: it is drawn from its name. *(Built 2026-11-14, docs/structure.md 12.0q.)* |
+| `icon-label-conflict` | `Component` | `Error` | `Static` | An `Icon` that is `decorative: true` and also has a `label:`. *(Built 2026-11-14, docs/structure.md 12.0q.)* |
+| `icon-label-missing` | `Component` | `Error` | `Static` | An `Icon` with a blank `label:`, or with no `label:` and not `decorative: true` outside a `Button` or `NavLink` that has a label (a picture nobody names). *(Built 2026-11-14, docs/structure.md 12.0q.)* |
+| `icon-button-invalid` | `Component` | `Error` | `Static` | A `Button` with `icon:` that has children or no `label:`: the icon is drawn before the label text. *(Built 2026-11-14, docs/structure.md 12.0q.)* |
 | `data-duplicate` | `Component` | `Error` | `Static` | A `data Name` declared twice in a program. *(Built 2026-10-26, docs/data.md.)* |
 | `data-path-invalid` | `Component` | `Error` | `Static` | A `data` file written as an address, an absolute path, with `..`, with characters outside letters, digits, `.`, `_`, `-`, `/`, or that does not end in `.json`. *(Built 2026-10-26, docs/data.md.)* |
 | `data-hash-invalid` | `Component` | `Error` | `Static` | A `sha256:` that is not 64 lower-case hex digits. *(Built 2026-10-26, docs/data.md.)* |

@@ -908,6 +908,21 @@ pub fn uses_look_roles(ir: &IrFile) -> bool {
     any
 }
 
+/// Whether any view draws an icon (docs/structure.md 12.0q): an `Icon`, or a `Button { icon: ".." }`. The rules of the icon are written for a program that does, so every other page is the bytes it was.
+pub fn uses_icons(ir: &IrFile) -> bool {
+    let mut any = false;
+    for c in &ir.components {
+        visit(&c.view.body, false, &mut |kind, bindings, _, _| {
+            if matches!(kind, IrElementKind::Icon)
+                || (matches!(kind, IrElementKind::Button) && bindings.iter().any(|b| b.key == "icon"))
+            {
+                any = true;
+            }
+        });
+    }
+    any
+}
+
 /// Whether any view has a `Code { copy: true }`: the button of its panel is drawn as a small pill and the text is kept clear of it.
 pub fn uses_code_copy(ir: &IrFile) -> bool {
     let mut any = false;

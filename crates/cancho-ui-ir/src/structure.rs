@@ -95,9 +95,9 @@ pub fn ast_is_inline_container(kind: &cancho_ui_syntax::ast::ElementKind) -> boo
 
 /// What may stand inside an inline container: `Link` not inside a `Link`.
 fn inline_child_ok(parent: &IrElementKind, child: &IrElementKind) -> bool {
-    // a chip is a short label: text and nothing else
+    // a chip is a short label: text, and an icon (docs/structure.md 12.0q), and nothing else
     if matches!(parent, IrElementKind::Chip) {
-        return false;
+        return matches!(child, IrElementKind::Icon);
     }
     match child {
         IrElementKind::Strong
@@ -106,6 +106,7 @@ fn inline_child_ok(parent: &IrElementKind, child: &IrElementKind) -> bool {
         | IrElementKind::CountUp
         | IrElementKind::Chip
         | IrElementKind::Break
+        | IrElementKind::Icon
         | IrElementKind::InlineCode => true,
         IrElementKind::Link => !matches!(parent, IrElementKind::Link),
         _ => false,

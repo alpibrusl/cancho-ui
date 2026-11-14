@@ -538,6 +538,11 @@ fn walk(w: &mut Writer, node: &IrViewNode) {
                     w.dom(&crate::waffle::dom(accessibility, bindings));
                     return;
                 }
+                IrElementKind::Icon => {
+                    w.out.content = true;
+                    w.dom(&crate::icon::dom(accessibility, bindings));
+                    return;
+                }
                 IrElementKind::Island(i) => {
                     if let Some((what, why)) = first_hole(node) {
                         w.hole(&what, &why);

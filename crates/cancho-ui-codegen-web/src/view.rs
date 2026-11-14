@@ -400,6 +400,17 @@ pub(crate) fn emit_view_node(
                 );
                 return out;
             }
+            if matches!(kind, IrElementKind::Icon) {
+                let mut out = String::new();
+                crate::media::emit_dom(
+                    indent,
+                    &var,
+                    &cancho_ui_ir::icon::dom(accessibility, bindings),
+                    parent_var,
+                    &mut out,
+                );
+                return out;
+            }
             if matches!(kind, IrElementKind::Media) {
                 return crate::media::emit_media(indent, &var, parent_var, accessibility, bindings);
             }
@@ -579,6 +590,7 @@ pub(crate) fn emit_view_node(
                 if shell.is_some()
                     || cancho_ui_ir::structure::handles(kind, &b.key)
                     || cancho_ui_ir::media::handles(kind, &b.key)
+                    || (b.key == "icon" && matches!(kind, IrElementKind::Button))
                 {
                     continue;
                 }
@@ -916,6 +928,12 @@ pub(crate) fn emit_view_node(
                         None
                     }
                 });
+                // `icon:` of a `Button` (docs/structure.md 12.0q): the icon is drawn before the label's text
+                if matches!(kind, IrElementKind::Button)
+                    && let Some(icon) = cancho_ui_ir::icon::button_dom(bindings)
+                {
+                    crate::media::emit_dom(indent, &format!("{var}_icon"), &icon, &var, &mut out);
+                }
                 if accessibility.label_expr.is_some()
                     && matches!(kind, IrElementKind::Button | IrElementKind::NavLink)
                     && children.is_empty()

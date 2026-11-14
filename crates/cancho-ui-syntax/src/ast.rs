@@ -461,6 +461,8 @@ pub enum ElementKind {
     Media,
     /// Pictures, video and grids (docs/structure.md section 10): `Grid`.
     Grid,
+    /// Icons (docs/structure.md 12.0q): `Icon { name: "bell" }`, an inline SVG drawn from the vendored Lucide set.
+    Icon,
     Named(String),
 }
 

@@ -43,6 +43,8 @@ pub struct PageParts {
     pub roles: bool,
     /// the program has a `Code { copy: true }`: its button is the small dark pill (docs/www-port/look3.md)
     pub copy: bool,
+    /// the program has an `Icon` or a `Button { icon: .. }` (docs/structure.md 12.0q): the rules of the icon are written, for no other page
+    pub icons: bool,
 }
 
 const BACKGROUND: [u8; 3] = [0x1f, 0x6f, 0xeb];
@@ -480,6 +482,26 @@ body:has(.cui-dock) { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom))
 
 /// The rules of the roles `card:`, `align: "center"` and `appearance: "pill"` (docs/www-port/look.md section 3), written only for a program that uses one. A pill is a 44 px
 /// target drawn 30 px tall: the transparent border is the target and the inset shadow the drawn edge.
+/// The licence of the icons travels with them (ISC asks that its notice appear in all copies, and so does the MIT licence of the Feather part): it is the text of
+/// the vendored LICENSE, written as a comment in the page that draws an icon, before the rules.
+fn icon_css() -> String {
+    let version = include_str!("../../cancho-ui-ir/vendor/lucide/VERSION");
+    let licence = include_str!("../../cancho-ui-ir/vendor/lucide/LICENSE");
+    let mut lines = version.lines();
+    format!(
+        "/* Icons: {} (https://github.com/lucide-icons/lucide), {}\n\n{}\n*/\n{ICON_CSS}",
+        lines.next().unwrap_or("lucide"),
+        lines.next().unwrap_or(""),
+        licence.trim().replace("*/", "* /"),
+    )
+}
+
+const ICON_CSS: &str = r#"/* Icon (docs/structure.md 12.0q): a Lucide line icon, an inline SVG. Its strokes are currentColor, so it takes the text colour of whatever holds it (a pressed or disabled key, dark mode and the 4.5:1 checks apply without a rule of their own); the size is in rem, so it follows the page's text size */
+.cui-icon { display: inline-block; flex: none; width: 1.25rem; height: 1.25rem; vertical-align: -0.28em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; overflow: visible; pointer-events: none; }
+.cui-icon-s { width: 1rem; height: 1rem; vertical-align: -0.2em; } .cui-icon-l { width: 1.75rem; height: 1.75rem; vertical-align: -0.4em; }
+.cui-icon-lead { margin-inline-end: 0.45rem; }
+"#;
+
 const COPY_CSS: &str = r#".cui-code[data-copy] pre { padding-top: 2.5rem; }
 .cui-copy { position: absolute; top: calc(0.45rem - 7px); right: calc(0.45rem - 7px); box-sizing: border-box; min-height: 44px; padding: 0 0.6rem; border: 7px solid transparent; border-radius: 15px; background: #1a212b; background-clip: padding-box; box-shadow: inset 0 0 0 1px #2d3644; color: #c3ccd8; font: 600 0.7rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; cursor: pointer; }
 .cui-copy:hover { box-shadow: inset 0 0 0 1px #6ea3ee; color: #fff; }
@@ -609,6 +631,9 @@ fn look_css(page: &PageParts) -> String {
     }
     if page.copy {
         css.push_str(COPY_CSS);
+    }
+    if page.icons {
+        css.push_str(&icon_css());
     }
     if let Some(m) = page.measure {
         css.push_str(&format!(

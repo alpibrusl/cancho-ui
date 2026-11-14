@@ -1,0 +1,130 @@
+{
+ "about": "docs/structure.md 12.0q. `valid`: a view that must check. `refusals`: a view (of component C, with `state n`, `state shown` and `on Go`) and the rule tag that refuses it. Checked by crates/cancho-ui/tests/icon.rs.",
+ "component": "component C {\n    state n: Int = 0;\n    state shown: Bool = true;\n    on Go { n = n + 1; }\n    view { Column { {view} } }\n}\n",
+ "valid": [
+  {
+   "name": "an icon with a label",
+   "view": "Icon { label: \"Alerts\" name: \"bell\" }"
+  },
+  {
+   "name": "a decorative icon beside words",
+   "view": "Row { Icon { name: \"map-pin\" decorative: true } Text { \"Madrid\" } }"
+  },
+  {
+   "name": "each size",
+   "view": "Icon { label: \"a\" name: \"plus\" size: \"small\" } Icon { label: \"b\" name: \"plus\" size: \"medium\" } Icon { label: \"c\" name: \"plus\" size: \"large\" }"
+  },
+  {
+   "name": "an icon inside a labelled button needs no label of its own",
+   "view": "Button { label: \"Mute\" on: Go Icon { name: \"bell-off\" } Text { \"Mute\" } }"
+  },
+  {
+   "name": "an icon in a branch of an If inside a labelled button",
+   "view": "Button { label: \"Toggle\" on: Go If { when: shown Icon { name: \"bell\" } } If { when: !shown Icon { name: \"bell-off\" } } }"
+  },
+  {
+   "name": "a button with an icon before its words",
+   "view": "Button { label: \"Save\" icon: \"save\" on: Go }"
+  },
+  {
+   "name": "an icon in a heading",
+   "view": "Heading { level: 2 Icon { label: \"Trips\" name: \"luggage\" } }"
+  },
+  {
+   "name": "an icon in a rich line and a chip",
+   "view": "Rich { \"a \" Icon { label: \"Info\" name: \"info\" } \" b\" } Rich { Chip { tone: \"good\" Icon { label: \"Done\" name: \"circle-check\" } } }"
+  }
+ ],
+ "refusals": [
+  {
+   "name": "no name",
+   "tag": "icon-incomplete",
+   "view": "Icon { label: \"a\" }"
+  },
+  {
+   "name": "a name outside the set",
+   "tag": "icon-unknown",
+   "view": "Icon { label: \"a\" name: \"not-an-icon\" }"
+  },
+  {
+   "name": "a name that is state",
+   "tag": "parse-unexpected-token",
+   "view": "Icon { label: \"a\" name: n }"
+  },
+  {
+   "name": "a name that is built",
+   "tag": "parse-unexpected-token",
+   "view": "Icon { label: \"a\" name: \"be\" + \"ll\" }"
+  },
+  {
+   "name": "an emoji for a name",
+   "tag": "icon-unknown",
+   "view": "Icon { label: \"a\" name: \"🔔\" }"
+  },
+  {
+   "name": "a size outside the three",
+   "tag": "icon-size-invalid",
+   "view": "Icon { label: \"a\" name: \"bell\" size: \"huge\" }"
+  },
+  {
+   "name": "a size that is state",
+   "tag": "parse-unexpected-token",
+   "view": "Icon { label: \"a\" name: \"bell\" size: n }"
+  },
+  {
+   "name": "decorative that is not a bool",
+   "tag": "icon-decorative-invalid",
+   "view": "Icon { label: \"a\" name: \"bell\" decorative: \"yes\" }"
+  },
+  {
+   "name": "children",
+   "tag": "icon-has-children",
+   "view": "Icon { label: \"a\" name: \"bell\" Text { \"x\" } }"
+  },
+  {
+   "name": "decorative and a label",
+   "tag": "icon-label-conflict",
+   "view": "Icon { label: \"a\" name: \"bell\" decorative: true }"
+  },
+  {
+   "name": "a blank label",
+   "tag": "icon-label-missing",
+   "view": "Icon { label: \" \" name: \"bell\" }"
+  },
+  {
+   "name": "no label outside a labelled button",
+   "tag": "icon-label-missing",
+   "view": "Row { Icon { name: \"bell\" } Text { \"x\" } }"
+  },
+  {
+   "name": "no label in a button that has none",
+   "tag": "icon-label-missing",
+   "view": "Button { on: Go Icon { name: \"bell\" } }"
+  },
+  {
+   "name": "a key the icon does not take",
+   "tag": "binding-unknown",
+   "view": "Icon { label: \"a\" name: \"bell\" color: \"red\" }"
+  },
+  {
+   "name": "icon: on a button with children",
+   "tag": "icon-button-invalid",
+   "view": "Button { label: \"a\" icon: \"bell\" on: Go Text { \"x\" } }"
+  },
+  {
+   "name": "icon: on a button with no label",
+   "tag": "icon-button-invalid",
+   "view": "Button { icon: \"bell\" on: Go }"
+  },
+  {
+   "name": "icon: with an unknown name",
+   "tag": "icon-unknown",
+   "view": "Button { label: \"a\" icon: \"nope\" on: Go }"
+  },
+  {
+   "name": "icon: on a Row",
+   "tag": "binding-unknown",
+   "view": "Row { icon: \"bell\" Text { \"x\" } }"
+  }
+ ]
+}

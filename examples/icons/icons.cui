@@ -1,0 +1,170 @@
+// examples/icons/icons.cui — the `Icon` element (docs/structure.md 12.0q): the 118 line icons the compiler carries (Lucide, ISC; see THIRD_PARTY.md), each an inline SVG
+// drawn from the vendored files: no <img>, no request, no data: address. Every stroke is currentColor, so an icon takes the text colour of what holds it: the pressed key
+// below turns the accent, a disabled one fades with its text, and the page in dark mode needs no second set. A name outside the set is refused when the page is built
+// (`icon-unknown`, with the nearest names); an icon outside a labelled key says what it is (`label:`) or that words beside it do (`decorative: true`).
+
+component Icons {
+    state muted: Bool = false;
+    state saved: Bool = false;
+
+    on Mute { muted = !muted; }
+    on Save { saved = true; }
+
+    view {
+        Column {
+            Main {
+                id: "main"
+                Section {
+                    id: "icons"
+                    Heading { level: 1 "Icons" }
+                    Rich { "A closed set, compiled into the page. The colour is the text colour; the stroke is 2, with round ends." }
+                    Heading { level: 2 "Sizes" }
+                    Row {
+                        gap: 3
+                        Icon { label: "A small bell" name: "bell" size: "small" }
+                        Icon { label: "A medium bell, the default" name: "bell" }
+                        Icon { label: "A large bell" name: "bell" size: "large" }
+                    }
+                    Heading { level: 2 "In keys" }
+                    Row {
+                        keys: true
+                        Button { label: "Mute: no notifications" on: Mute pressed: muted Icon { name: "bell-off" } Text { "Mute" } }
+                        Button { label: "Settings" on: Save Icon { name: "settings" } Text { "Settings" } }
+                        Button { label: "Search" on: Save disabled: true Icon { name: "search" } Text { "Search" } }
+                    }
+                    Row {
+                        Button { label: "Save" icon: "save" on: Save }
+                        Button { label: "Delete" icon: "trash" on: Save }
+                    }
+                    If {
+                        when: saved
+                        Row { gap: 1 Icon { name: "circle-check" decorative: true } Text { "Saved" } }
+                    }
+                    Heading { level: 2 "All 118" }
+                    Grid {
+                        min: 9
+                        gap: 2
+                        Row { gap: 1 Icon { name: "archive" decorative: true } Text { style: "note" "archive" } }
+                        Row { gap: 1 Icon { name: "arrow-down" decorative: true } Text { style: "note" "arrow-down" } }
+                        Row { gap: 1 Icon { name: "arrow-left" decorative: true } Text { style: "note" "arrow-left" } }
+                        Row { gap: 1 Icon { name: "arrow-right" decorative: true } Text { style: "note" "arrow-right" } }
+                        Row { gap: 1 Icon { name: "arrow-up" decorative: true } Text { style: "note" "arrow-up" } }
+                        Row { gap: 1 Icon { name: "baby" decorative: true } Text { style: "note" "baby" } }
+                        Row { gap: 1 Icon { name: "ban" decorative: true } Text { style: "note" "ban" } }
+                        Row { gap: 1 Icon { name: "bean" decorative: true } Text { style: "note" "bean" } }
+                        Row { gap: 1 Icon { name: "bed" decorative: true } Text { style: "note" "bed" } }
+                        Row { gap: 1 Icon { name: "bell" decorative: true } Text { style: "note" "bell" } }
+                        Row { gap: 1 Icon { name: "bell-off" decorative: true } Text { style: "note" "bell-off" } }
+                        Row { gap: 1 Icon { name: "calendar" decorative: true } Text { style: "note" "calendar" } }
+                        Row { gap: 1 Icon { name: "calendar-check" decorative: true } Text { style: "note" "calendar-check" } }
+                        Row { gap: 1 Icon { name: "calendar-days" decorative: true } Text { style: "note" "calendar-days" } }
+                        Row { gap: 1 Icon { name: "camera" decorative: true } Text { style: "note" "camera" } }
+                        Row { gap: 1 Icon { name: "car" decorative: true } Text { style: "note" "car" } }
+                        Row { gap: 1 Icon { name: "check" decorative: true } Text { style: "note" "check" } }
+                        Row { gap: 1 Icon { name: "check-check" decorative: true } Text { style: "note" "check-check" } }
+                        Row { gap: 1 Icon { name: "chevron-left" decorative: true } Text { style: "note" "chevron-left" } }
+                        Row { gap: 1 Icon { name: "chevron-right" decorative: true } Text { style: "note" "chevron-right" } }
+                        Row { gap: 1 Icon { name: "circle-check" decorative: true } Text { style: "note" "circle-check" } }
+                        Row { gap: 1 Icon { name: "circle-question-mark" decorative: true } Text { style: "note" "circle-question-mark" } }
+                        Row { gap: 1 Icon { name: "circle-x" decorative: true } Text { style: "note" "circle-x" } }
+                        Row { gap: 1 Icon { name: "clock" decorative: true } Text { style: "note" "clock" } }
+                        Row { gap: 1 Icon { name: "coins" decorative: true } Text { style: "note" "coins" } }
+                        Row { gap: 1 Icon { name: "compass" decorative: true } Text { style: "note" "compass" } }
+                        Row { gap: 1 Icon { name: "construction" decorative: true } Text { style: "note" "construction" } }
+                        Row { gap: 1 Icon { name: "credit-card" decorative: true } Text { style: "note" "credit-card" } }
+                        Row { gap: 1 Icon { name: "dumbbell" decorative: true } Text { style: "note" "dumbbell" } }
+                        Row { gap: 1 Icon { name: "egg" decorative: true } Text { style: "note" "egg" } }
+                        Row { gap: 1 Icon { name: "eye" decorative: true } Text { style: "note" "eye" } }
+                        Row { gap: 1 Icon { name: "eye-off" decorative: true } Text { style: "note" "eye-off" } }
+                        Row { gap: 1 Icon { name: "file-pen" decorative: true } Text { style: "note" "file-pen" } }
+                        Row { gap: 1 Icon { name: "file-text" decorative: true } Text { style: "note" "file-text" } }
+                        Row { gap: 1 Icon { name: "fish" decorative: true } Text { style: "note" "fish" } }
+                        Row { gap: 1 Icon { name: "flag" decorative: true } Text { style: "note" "flag" } }
+                        Row { gap: 1 Icon { name: "folder-input" decorative: true } Text { style: "note" "folder-input" } }
+                        Row { gap: 1 Icon { name: "folder-output" decorative: true } Text { style: "note" "folder-output" } }
+                        Row { gap: 1 Icon { name: "git-fork" decorative: true } Text { style: "note" "git-fork" } }
+                        Row { gap: 1 Icon { name: "glasses" decorative: true } Text { style: "note" "glasses" } }
+                        Row { gap: 1 Icon { name: "hand" decorative: true } Text { style: "note" "hand" } }
+                        Row { gap: 1 Icon { name: "handshake" decorative: true } Text { style: "note" "handshake" } }
+                        Row { gap: 1 Icon { name: "hash" decorative: true } Text { style: "note" "hash" } }
+                        Row { gap: 1 Icon { name: "heart" decorative: true } Text { style: "note" "heart" } }
+                        Row { gap: 1 Icon { name: "hotel" decorative: true } Text { style: "note" "hotel" } }
+                        Row { gap: 1 Icon { name: "hourglass" decorative: true } Text { style: "note" "hourglass" } }
+                        Row { gap: 1 Icon { name: "house" decorative: true } Text { style: "note" "house" } }
+                        Row { gap: 1 Icon { name: "id-card" decorative: true } Text { style: "note" "id-card" } }
+                        Row { gap: 1 Icon { name: "image" decorative: true } Text { style: "note" "image" } }
+                        Row { gap: 1 Icon { name: "info" decorative: true } Text { style: "note" "info" } }
+                        Row { gap: 1 Icon { name: "key-round" decorative: true } Text { style: "note" "key-round" } }
+                        Row { gap: 1 Icon { name: "landmark" decorative: true } Text { style: "note" "landmark" } }
+                        Row { gap: 1 Icon { name: "laptop" decorative: true } Text { style: "note" "laptop" } }
+                        Row { gap: 1 Icon { name: "lightbulb" decorative: true } Text { style: "note" "lightbulb" } }
+                        Row { gap: 1 Icon { name: "lock" decorative: true } Text { style: "note" "lock" } }
+                        Row { gap: 1 Icon { name: "lock-keyhole" decorative: true } Text { style: "note" "lock-keyhole" } }
+                        Row { gap: 1 Icon { name: "log-out" decorative: true } Text { style: "note" "log-out" } }
+                        Row { gap: 1 Icon { name: "luggage" decorative: true } Text { style: "note" "luggage" } }
+                        Row { gap: 1 Icon { name: "map" decorative: true } Text { style: "note" "map" } }
+                        Row { gap: 1 Icon { name: "map-pin" decorative: true } Text { style: "note" "map-pin" } }
+                        Row { gap: 1 Icon { name: "megaphone" decorative: true } Text { style: "note" "megaphone" } }
+                        Row { gap: 1 Icon { name: "message-circle" decorative: true } Text { style: "note" "message-circle" } }
+                        Row { gap: 1 Icon { name: "milk" decorative: true } Text { style: "note" "milk" } }
+                        Row { gap: 1 Icon { name: "minus" decorative: true } Text { style: "note" "minus" } }
+                        Row { gap: 1 Icon { name: "nut" decorative: true } Text { style: "note" "nut" } }
+                        Row { gap: 1 Icon { name: "octagon-x" decorative: true } Text { style: "note" "octagon-x" } }
+                        Row { gap: 1 Icon { name: "paperclip" decorative: true } Text { style: "note" "paperclip" } }
+                        Row { gap: 1 Icon { name: "party-popper" decorative: true } Text { style: "note" "party-popper" } }
+                        Row { gap: 1 Icon { name: "paw-print" decorative: true } Text { style: "note" "paw-print" } }
+                        Row { gap: 1 Icon { name: "pencil" decorative: true } Text { style: "note" "pencil" } }
+                        Row { gap: 1 Icon { name: "person-standing" decorative: true } Text { style: "note" "person-standing" } }
+                        Row { gap: 1 Icon { name: "pin" decorative: true } Text { style: "note" "pin" } }
+                        Row { gap: 1 Icon { name: "plane" decorative: true } Text { style: "note" "plane" } }
+                        Row { gap: 1 Icon { name: "play" decorative: true } Text { style: "note" "play" } }
+                        Row { gap: 1 Icon { name: "plus" decorative: true } Text { style: "note" "plus" } }
+                        Row { gap: 1 Icon { name: "receipt" decorative: true } Text { style: "note" "receipt" } }
+                        Row { gap: 1 Icon { name: "recycle" decorative: true } Text { style: "note" "recycle" } }
+                        Row { gap: 1 Icon { name: "refresh-ccw" decorative: true } Text { style: "note" "refresh-ccw" } }
+                        Row { gap: 1 Icon { name: "refresh-cw" decorative: true } Text { style: "note" "refresh-cw" } }
+                        Row { gap: 1 Icon { name: "repeat" decorative: true } Text { style: "note" "repeat" } }
+                        Row { gap: 1 Icon { name: "reply" decorative: true } Text { style: "note" "reply" } }
+                        Row { gap: 1 Icon { name: "rocket" decorative: true } Text { style: "note" "rocket" } }
+                        Row { gap: 1 Icon { name: "salad" decorative: true } Text { style: "note" "salad" } }
+                        Row { gap: 1 Icon { name: "save" decorative: true } Text { style: "note" "save" } }
+                        Row { gap: 1 Icon { name: "scale" decorative: true } Text { style: "note" "scale" } }
+                        Row { gap: 1 Icon { name: "search" decorative: true } Text { style: "note" "search" } }
+                        Row { gap: 1 Icon { name: "send-horizontal" decorative: true } Text { style: "note" "send-horizontal" } }
+                        Row { gap: 1 Icon { name: "settings" decorative: true } Text { style: "note" "settings" } }
+                        Row { gap: 1 Icon { name: "shield-alert" decorative: true } Text { style: "note" "shield-alert" } }
+                        Row { gap: 1 Icon { name: "shrimp" decorative: true } Text { style: "note" "shrimp" } }
+                        Row { gap: 1 Icon { name: "shuffle" decorative: true } Text { style: "note" "shuffle" } }
+                        Row { gap: 1 Icon { name: "sliders-horizontal" decorative: true } Text { style: "note" "sliders-horizontal" } }
+                        Row { gap: 1 Icon { name: "sparkles" decorative: true } Text { style: "note" "sparkles" } }
+                        Row { gap: 1 Icon { name: "star" decorative: true } Text { style: "note" "star" } }
+                        Row { gap: 1 Icon { name: "sticker" decorative: true } Text { style: "note" "sticker" } }
+                        Row { gap: 1 Icon { name: "target" decorative: true } Text { style: "note" "target" } }
+                        Row { gap: 1 Icon { name: "thumbs-down" decorative: true } Text { style: "note" "thumbs-down" } }
+                        Row { gap: 1 Icon { name: "thumbs-up" decorative: true } Text { style: "note" "thumbs-up" } }
+                        Row { gap: 1 Icon { name: "ticket" decorative: true } Text { style: "note" "ticket" } }
+                        Row { gap: 1 Icon { name: "timer" decorative: true } Text { style: "note" "timer" } }
+                        Row { gap: 1 Icon { name: "train-front" decorative: true } Text { style: "note" "train-front" } }
+                        Row { gap: 1 Icon { name: "trash" decorative: true } Text { style: "note" "trash" } }
+                        Row { gap: 1 Icon { name: "tree-palm" decorative: true } Text { style: "note" "tree-palm" } }
+                        Row { gap: 1 Icon { name: "trees" decorative: true } Text { style: "note" "trees" } }
+                        Row { gap: 1 Icon { name: "triangle-alert" decorative: true } Text { style: "note" "triangle-alert" } }
+                        Row { gap: 1 Icon { name: "undo-2" decorative: true } Text { style: "note" "undo-2" } }
+                        Row { gap: 1 Icon { name: "user" decorative: true } Text { style: "note" "user" } }
+                        Row { gap: 1 Icon { name: "user-round" decorative: true } Text { style: "note" "user-round" } }
+                        Row { gap: 1 Icon { name: "users" decorative: true } Text { style: "note" "users" } }
+                        Row { gap: 1 Icon { name: "users-round" decorative: true } Text { style: "note" "users-round" } }
+                        Row { gap: 1 Icon { name: "utensils" decorative: true } Text { style: "note" "utensils" } }
+                        Row { gap: 1 Icon { name: "volume-2" decorative: true } Text { style: "note" "volume-2" } }
+                        Row { gap: 1 Icon { name: "volume-x" decorative: true } Text { style: "note" "volume-x" } }
+                        Row { gap: 1 Icon { name: "vote" decorative: true } Text { style: "note" "vote" } }
+                        Row { gap: 1 Icon { name: "wand-sparkles" decorative: true } Text { style: "note" "wand-sparkles" } }
+                        Row { gap: 1 Icon { name: "wheat" decorative: true } Text { style: "note" "wheat" } }
+                        Row { gap: 1 Icon { name: "wrench" decorative: true } Text { style: "note" "wrench" } }
+                        Row { gap: 1 Icon { name: "x" decorative: true } Text { style: "note" "x" } }
+                    }
+                }
+            }
+        }
+    }
+}

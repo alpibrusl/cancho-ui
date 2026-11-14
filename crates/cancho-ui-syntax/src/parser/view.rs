@@ -302,6 +302,7 @@ impl Parser {
             "Image" => ElementKind::Image,
             "Media" => ElementKind::Media,
             "Grid" => ElementKind::Grid,
+            "Icon" => ElementKind::Icon,
             other => ElementKind::Named(other.to_string()),
         };
 

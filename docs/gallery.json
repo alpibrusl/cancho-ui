@@ -98,6 +98,12 @@
         "tiles": "examples/route-tiles/tiles"
       },
       "says": "`RouteMap` with `tiles:`: the same trip drawn over the tiles of an address the program writes (here a folder of stand-in tiles beside this page; the compiler has no default tile host and this page asks nobody else for anything). The pins and the line sit on the tiles because the drawing is in the projection the tiles are cut in; the page picks the highest zoom at which the stops fit in at most 4 x 4 tiles, shows the tile provider's credit as text under the drawing, and the collapsed list of stops is still what a screen reader reads."
+    },
+    {
+      "id": "icons",
+      "title": "Icons",
+      "source": "examples/icons/icons.cui",
+      "says": "`Icon`: the line icons the compiler carries (Lucide, ISC), as inline SVG that takes the text colour: sizes, keys, a pressed key, and every icon of the set."
     }
   ],
   "soon": [

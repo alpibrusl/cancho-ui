@@ -9,7 +9,7 @@ use crate::emit::js_string;
 
 pub(crate) fn emit_dom(indent: &str, var: &str, dom: &Dom, parent: &str, out: &mut String) {
     // the elements of a drawing (a Waffle) are in the SVG namespace
-    if matches!(dom.tag, "svg" | "path") {
+    if matches!(dom.tag, "svg" | "path" | "circle" | "rect" | "line" | "polyline") {
         out.push_str(&format!(
             "{indent}const {var} = document.createElementNS('http://www.w3.org/2000/svg', '{}');\n",
             dom.tag

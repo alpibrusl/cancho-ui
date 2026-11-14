@@ -1221,6 +1221,7 @@ fn lower_kind(k: &ElementKind) -> IrElementKind {
         ElementKind::Image => IrElementKind::Image,
         ElementKind::Media => IrElementKind::Media,
         ElementKind::Grid => IrElementKind::Grid,
+        ElementKind::Icon => IrElementKind::Icon,
         ElementKind::Named(s) => IrElementKind::Named(s.clone()),
     }
 }
