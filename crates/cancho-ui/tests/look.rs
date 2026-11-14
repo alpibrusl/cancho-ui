@@ -1055,3 +1055,39 @@ fn a_second_band_is_drawn_by_its_own_marker_and_refused_when_wrong() {
     let on_section = base(&format!("{marks} Section {{ band2: true Text {{ \"x\" }} }}"));
     assert!(!codes(&on_section).is_empty());
 }
+
+// 12.0p: steps, a month and tick rows
+const STEPS: &str = "page { title: \"T\"; lang: \"en\"; }\ncomponent App {\n    state v: Int = 0;\n    on Tap { v = v + 1; }\n    view { Column { Section { card: true Text { \"x\" } } Row { steps: true Text { style: \"segon\" \"Step 1, open\" } Text { style: \"seg\" \"Step 2, to do\" } } Row { month: true Text { style: \"label\" \"Mo\" } Text { \"\" } Button { label: \"14 May, day 1\" on: Tap pressed: v == 0 Text { \"14\" } Text { \"start\" } } Button { label: \"15 May, day 2 of 3\" on: Tap pressed: v == 0 Text { \"15\" } } } Row { foot: true Button { label: \"Go\" on: Tap Text { \"G\" } Text { \"Go\" } } } Row { ticks: true Button { label: \"Ana goes\" on: Tap pressed: v == 0 Text { style: \"avatar\" \"A\" } Text { \"Ana\" } } } } }\n}\n";
+
+#[test]
+fn steps_a_month_and_tick_rows_are_classes_with_their_own_css() {
+    let (html, js) = page_of(STEPS);
+    assert!(html.contains(":root .cui-steps > [data-style=\"segon\"] { background: var(--cui-accent, #185fa5); }"), "the open segment is the accent");
+    assert!(html.contains(":root .cui-month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));"), "a month is seven columns");
+    assert!(html.contains(":root .cui-month > button[aria-pressed=\"true\"]:has(> :nth-child(2))"), "the first day of a range has a caption and the accent fill");
+    assert!(html.contains(":root .cui-ticks > button[aria-pressed=\"true\"]::after { content: \"\\2713\";"), "a pressed row holds a tick");
+    assert!(html.contains("min-height: 3.25rem"), "a tick row is over 44 px");
+    assert!(html.contains(":root .cui-foot { position: sticky; bottom: -1rem;"), "a foot stays at the bottom of its sheet");
+    let all = format!("{html}{js}");
+    for c in ["cui-steps", "cui-month", "cui-ticks", "cui-foot"] {
+        assert!(all.contains(&format!("{c}\"")) || all.contains(&format!("'{c}'")), "{c} is a class");
+    }
+}
+
+#[test]
+fn steps_month_and_ticks_are_refused_where_they_do_not_belong() {
+    for (bad, tag) in [
+        ("Column { steps: true Text { \"x\" } }", "binding-unknown"),
+        ("Row { month: 1 Text { \"x\" } }", "chat-flag-invalid"),
+        ("Column { ticks: true Text { \"x\" } }", "binding-unknown"),
+        ("Column { foot: true Text { \"x\" } }", "binding-unknown"),
+        ("Row { Text { style: \"segment\" \"x\" } }", "text-style-invalid"),
+    ] {
+        let src = format!("page {{ title: \"T\"; lang: \"en\"; }}\ncomponent App {{\n    view {{ {bad} }}\n}}\n");
+        let dir = scratch("stepsbad");
+        std::fs::write(dir.join("a.cui"), &src).unwrap();
+        let (code, out, err) = run(&dir, &["check", "a.cui"]);
+        assert_ne!(code, 0, "{bad} is refused");
+        assert!(format!("{out}{err}").contains(tag), "{bad} says {tag}: {out}{err}");
+    }
+}
