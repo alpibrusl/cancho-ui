@@ -168,6 +168,14 @@ fn a_step_that_asserts_the_view_passes_and_one_that_is_wrong_fails_with_both_out
             "view_has in the wrong order",
         ),
         (
+            r#""view": ["status \"Count: 1\"", "button \"Increment\"", "button \"Nope\""]"#,
+            "only the last line wrong",
+        ),
+        (
+            r#""view": ["status \"Count: 1\"", "button \"Increment\"", "button \"Reset\"", "button \"Extra\""]"#,
+            "a line too many",
+        ),
+        (
             r#""view_has": ["button \"Nope\""]"#,
             "view_has with a line the page lacks",
         ),
@@ -266,4 +274,29 @@ fn an_if_that_is_false_is_not_in_the_page_and_a_for_is_drawn_for_each_element() 
         { "event": "Go", "state": { "show": true }, "view_has": ["text \"top\"", "text \"shown\"", "text \"c\""] } ] }"#;
     let (code, out) = test_trace(src, t, "if3");
     assert_eq!(code, 0, "{out}");
+}
+
+#[test]
+fn a_button_says_whether_it_is_pressed_or_disabled_and_a_box_whether_it_is_checked() {
+    let src = "component A {\n    state bold: Bool = false;\n    state locked: Bool = false;\n    state agree: Bool = false;\n    on Tog { bold = !bold; }\n    on Agree(v) { agree = v; }\n    view { Column { Button { label: \"Bold\" pressed: bold on: Tog } Button { label: \"Lock\" disabled: locked on: Tog } Checkbox { label: \"I agree\" checked: agree on: Agree } } }\n}\n";
+    assert_eq!(
+        outline(src, "p.cui", "{}"),
+        lines(&["button \"Bold\"", "button \"Lock\"", "checkbox \"I agree\""])
+    );
+    assert_eq!(
+        outline(src, "p2.cui", "{\"bold\": true}"),
+        lines(&[
+            "button \"Bold\" pressed",
+            "button \"Lock\"",
+            "checkbox \"I agree\""
+        ])
+    );
+    assert_eq!(
+        outline(src, "p3.cui", "{\"locked\": true, \"agree\": true}"),
+        lines(&[
+            "button \"Bold\"",
+            "button \"Lock\" disabled",
+            "checkbox \"I agree\" checked"
+        ])
+    );
 }
