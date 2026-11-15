@@ -259,6 +259,9 @@ in `examples/refusal/`, and by the evidence report.
 | `key-outside-container` | `Component` | `Error` | `Static` | A `Key` that is the top of the view, or a direct child of a `For` or an `If`: a key belongs to the element that holds it. *(Built 2026-11-15, docs/keys.md.)* |
 | `key-parent-unnamed` | `Component` | `Error` | `Static` | A container with `Key`s and no `label:`. *(Built 2026-11-15, docs/keys.md.)* |
 | `key-duplicate` | `Component` | `Error` | `Static` | Two `Key`s of one container with the same combination. *(Built 2026-11-15, docs/keys.md.)* |
+| `window-incomplete` | `Component` | `Error` | `Static` | A `Table` with some of `row_height:`, `total:`, `first:`, `on:` and `max_height:` but not all five. *(Built 2026-11-15, docs/window.md.)* |
+| `window-row-height-invalid` | `Component` | `Error` | `Static` | A `Table` `row_height:` that is not an integer literal from 1 to 20 (rem). *(Built 2026-11-15, docs/window.md.)* |
+| `window-count-not-number` | `Component` | `Error` | `Static` | A `Table` `total:` or `first:` that is not a number. *(Built 2026-11-15, docs/window.md.)* |
 | `image-src-invalid` | `Component` | `Error` | `Static` | An `Image` with no `src:`, or a `src:` or `fallback:` that is not a text literal naming a file of the site: an address of another host, an absolute path, a `..`, a character other than letters, digits and `. _ - /`, a format other than png, jpg, jpeg, webp, avif and gif (SVG can carry script); or a `fallback:` that is the `src:` or is in the same format. *(Built 2026-10-24, docs/structure.md section 10.)* |
 | `image-alt-missing` | `Component` | `Error` | `Static` | An `Image` with neither `alt:` nor `decorative: true`; an `alt:` with nothing but spaces; a `decorative:` that is not `true`. *(Built 2026-10-24.)* |
 | `image-alt-conflict` | `Component` | `Error` | `Static` | An `Image` with both `alt:` and `decorative: true`. *(Built 2026-10-24.)* |

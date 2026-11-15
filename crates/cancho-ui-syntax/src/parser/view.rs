@@ -783,6 +783,10 @@ impl Parser {
             // `pressed:` (docs/www-port/gaps.md): a pure `Bool` expression of the view, read at each render; what it is a binding of is
             // decided where the element is lowered (a Button), so a wrong place is `binding-unknown` and not a parse error
             "pressed" => Ok(BindingValue::Prop(self.parse_expr()?)),
+            // `total:` and `first:` of a window (docs/window.md): pure `Int` expressions of the view, read at each render
+            "total" | "first" | "row_height" if matches!(kind, ElementKind::Table) => {
+                Ok(BindingValue::Prop(self.parse_expr()?))
+            }
             // a prop of an island or a component instance that is a text read from a data file: `places: data.value(Ecosystem, "projects")`. It is
             // written out at build (docs/data.md), so it is a literal by the time anything but the parser sees it
             _ if matches!(kind, ElementKind::Named(_))

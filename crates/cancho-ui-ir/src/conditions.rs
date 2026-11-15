@@ -187,6 +187,23 @@ fn node(scope: &mut Scope, n: &IrViewNode) -> Result<(), LowerError> {
                     IrBindingValue::Const { expr, .. } if b.key == "pressed" => {
                         want_bool(scope, expr, "the `pressed:` of a Button")?;
                     }
+                    // docs/window.md: how many rows there are, and the index of the first one drawn
+                    IrBindingValue::Const { expr, .. }
+                        if matches!(b.key.as_str(), "total" | "first") =>
+                    {
+                        let k = kind(scope, expr)?;
+                        if matches!(k, Kind::Bool | Kind::Str | Kind::List | Kind::Other) {
+                            return Err(LowerError::ConditionRefused {
+                                code: "window-count-not-number",
+                                message: format!(
+                                    "`{}:` of a Table is a number (a state field, `len(rows)`, an arithmetic of them), and this is {}",
+                                    b.key,
+                                    k.name()
+                                ),
+                                span: expr.span(),
+                            });
+                        }
+                    }
                     IrBindingValue::Const { expr, .. } => {
                         kind(scope, expr)?;
                     }

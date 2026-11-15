@@ -1,0 +1,11 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "component": "Rows",
+  "note": "A window fires its event with the index of the first row in view; the program keeps it in `first` and draws from there (docs/window.md section 1).",
+  "steps": [
+    { "event": "Scrolled", "params": [10], "state": { "first": 10 } },
+    { "event": "Scrolled", "params": [44], "state": { "first": 44 } },
+    { "event": "Scrolled", "params": [0], "state": { "first": 0 } }
+  ]
+}
