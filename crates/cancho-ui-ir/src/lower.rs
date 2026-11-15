@@ -1786,8 +1786,16 @@ const PURE_BUILTINS: &[(&str, usize, &str)] = &[
     ("upper", 1, "exactly one argument: upper(text)"),
     ("emoji_only", 1, "exactly one argument: emoji_only(text)"),
     ("initials", 1, "exactly one argument: initials(text)"),
-    ("mark_text", 2, "exactly two arguments: mark_text(text, marks)"),
-    ("face", 4, "exactly four arguments: face(initials, tone, emoji, photo)"),
+    (
+        "mark_text",
+        2,
+        "exactly two arguments: mark_text(text, marks)",
+    ),
+    (
+        "face",
+        4,
+        "exactly four arguments: face(initials, tone, emoji, photo)",
+    ),
     (
         "starts_with",
         2,

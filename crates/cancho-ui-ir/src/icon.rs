@@ -193,7 +193,10 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
         },
         other => Err(refuse(
             "binding-unknown",
-            format!("`{other}:` is not a binding of Icon; it takes label, {}", KEYS.join(", ")),
+            format!(
+                "`{other}:` is not a binding of Icon; it takes label, {}",
+                KEYS.join(", ")
+            ),
             b.span,
         )),
     }
@@ -241,7 +244,8 @@ pub fn check_complete(
     if find(bindings, "name").is_none() {
         return Err(refuse(
             "icon-incomplete",
-            "an Icon needs `name:`, a string literal of the set: `Icon { name: \"bell\" }`".to_string(),
+            "an Icon needs `name:`, a string literal of the set: `Icon { name: \"bell\" }`"
+                .to_string(),
             span,
         ));
     }
@@ -280,7 +284,10 @@ pub fn check_children(
     children: &[IrViewNode],
 ) -> Result<(), LowerError> {
     let named_parent = matches!(parent, IrElementKind::Button | IrElementKind::NavLink)
-        && (parent_accessibility.label.as_deref().is_some_and(|l| !l.trim().is_empty())
+        && (parent_accessibility
+            .label
+            .as_deref()
+            .is_some_and(|l| !l.trim().is_empty())
             || parent_accessibility.label_expr.is_some());
     fn walk(named_parent: bool, nodes: &[IrViewNode]) -> Result<(), LowerError> {
         for n in nodes {
@@ -386,7 +393,17 @@ mod tests {
             ] {
                 assert!(text.contains(want), "{name} lacks {want}");
             }
-            for banned in ["<script", "<image", "href", "<use", "<style", "data:", "url(", "<foreignObject", "<!--"] {
+            for banned in [
+                "<script",
+                "<image",
+                "href",
+                "<use",
+                "<style",
+                "data:",
+                "url(",
+                "<foreignObject",
+                "<!--",
+            ] {
                 assert!(!text.contains(banned), "{name} has {banned}");
             }
             for s in &shapes {
@@ -406,7 +423,11 @@ mod tests {
         d.dedup();
         assert_eq!(n, d);
         for x in n {
-            assert!(x.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-'), "{x}");
+            assert!(
+                x.chars()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-'),
+                "{x}"
+            );
         }
     }
 

@@ -459,7 +459,9 @@ fn a_render_keeps_the_scroll_unless_a_new_screen_appeared() {
     assert!(js.contains("if (!__cui_newscreen && (__cui_sx > 0 || __cui_sy > 0)) { window.scrollTo(__cui_sx, __cui_sy); }"));
     // the restore comes after the page was built and after the focus was given back, so it is the last word on where the window is
     let build = js.find("__cui_ifs_prev = {};").expect("bookkeeping");
-    let restore = js.find("window.scrollTo(__cui_sx, __cui_sy)").expect("restore");
+    let restore = js
+        .find("window.scrollTo(__cui_sx, __cui_sy)")
+        .expect("restore");
     assert!(build < restore);
     // a page with no `If` has one screen: its scroll is always kept
     let (_, plain) = page_of(&program(PAGE, "Text { \"x\" }"));
@@ -471,10 +473,14 @@ fn a_render_keeps_the_scroll_unless_a_new_screen_appeared() {
 fn a_button_in_a_nav_is_a_tab_quiet_until_it_is_the_open_one() {
     // docs/structure.md section 12.0a: a Button inside a Nav is a tab; `pressed:` is the open one and is filled; only a page that uses a look role has the rule
     let tabs = "Nav { label: \"Main\" Row { Button { label: \"Home\" on: Go pressed: true } Button { label: \"Me\" on: Go pressed: false } } } Article { card: true Text { \"a\" } }";
-    let text = format!("{PAGE}\ncomponent App {{\n    on Go {{ }}\n    view {{\n        Column {{ {tabs} }}\n    }}\n}}\n");
+    let text = format!(
+        "{PAGE}\ncomponent App {{\n    on Go {{ }}\n    view {{\n        Column {{ {tabs} }}\n    }}\n}}\n"
+    );
     let (html, js) = page_of(&text);
     let css = format!("{html}{js}");
-    assert!(css.contains(":root nav button { background: transparent; color: var(--cui-fg, currentColor); }"));
+    assert!(css.contains(
+        ":root nav button { background: transparent; color: var(--cui-fg, currentColor); }"
+    ));
     assert!(css.contains(":root nav button[aria-pressed=\"true\"] { background: var(--cui-accent, #185fa5); color: var(--cui-accent-fg, #ffffff); box-shadow: none; }"));
     let (plain_html, plain_js) = page_of(&program(PAGE, "Text { \"x\" }"));
     assert!(!format!("{plain_html}{plain_js}").contains(":root nav button"));
@@ -487,7 +493,10 @@ fn a_docked_nav_is_a_tab_bar_fixed_at_the_foot_and_the_page_keeps_room_under_it(
         PAGE,
         "Main { id: \"main\" Text { \"x\" } } Nav { label: \"Main\" dock: true Link { to: \"#main\" \"Home\" } }",
     ));
-    assert!(html.contains("<nav class=\"cui-dock\" aria-label=\"Main\""), "{html}");
+    assert!(
+        html.contains("<nav class=\"cui-dock\" aria-label=\"Main\""),
+        "{html}"
+    );
     for want in [
         ".cui-dock { position: fixed; left: 50%; bottom: max(0.75rem, env(safe-area-inset-bottom));",
         "backdrop-filter: blur(16px);",
@@ -506,14 +515,26 @@ fn a_docked_nav_is_a_tab_bar_fixed_at_the_foot_and_the_page_keeps_room_under_it(
 #[test]
 fn a_docked_nav_is_refused_when_it_is_not_a_flag_or_not_alone_or_not_a_nav() {
     let one = "Nav { label: \"A\" dock: true Link { to: \"#a\" \"A\" } }";
-    let got = codes(&program(PAGE, &format!("Main {{ id: \"a\" Text {{ \"x\" }} }} {one}")));
+    let got = codes(&program(
+        PAGE,
+        &format!("Main {{ id: \"a\" Text {{ \"x\" }} }} {one}"),
+    ));
     assert!(got.is_empty(), "{got:?}");
-    let got = codes(&program(PAGE, "Main { id: \"a\" Text { \"x\" } } Nav { label: \"A\" dock: \"bottom\" Link { to: \"#a\" \"A\" } }"));
+    let got = codes(&program(
+        PAGE,
+        "Main { id: \"a\" Text { \"x\" } } Nav { label: \"A\" dock: \"bottom\" Link { to: \"#a\" \"A\" } }",
+    ));
     assert!(got.iter().any(|t| t == "nav-dock-invalid"), "{got:?}");
-    let got = codes(&program(PAGE, "Main { id: \"a\" Text { \"x\" } } Nav { label: \"A\" dock: 1 Link { to: \"#a\" \"A\" } }"));
+    let got = codes(&program(
+        PAGE,
+        "Main { id: \"a\" Text { \"x\" } } Nav { label: \"A\" dock: 1 Link { to: \"#a\" \"A\" } }",
+    ));
     assert!(got.iter().any(|t| t == "nav-dock-invalid"), "{got:?}");
     let two = "Nav { label: \"A\" dock: true Link { to: \"#a\" \"A\" } } Nav { label: \"B\" dock: true Link { to: \"#a\" \"B\" } }";
-    let got = codes(&program(PAGE, &format!("Main {{ id: \"a\" Text {{ \"x\" }} }} {two}")));
+    let got = codes(&program(
+        PAGE,
+        &format!("Main {{ id: \"a\" Text {{ \"x\" }} }} {two}"),
+    ));
     assert!(got.iter().any(|t| t == "nav-dock-duplicate"), "{got:?}");
     let got = codes(&program(PAGE, "Section { dock: true Text { \"x\" } }"));
     assert!(!got.is_empty(), "dock on a Section was accepted");
@@ -538,7 +559,11 @@ fn an_avatar_is_a_round_disc_of_initials_that_overlaps_the_next_and_each_colour_
     fn lum(hex: &str) -> f64 {
         let c = |i: usize| {
             let v = f64::from(u8::from_str_radix(&hex[i..i + 2], 16).expect("hex")) / 255.0;
-            if v <= 0.03928 { v / 12.92 } else { ((v + 0.055) / 1.055).powf(2.4) }
+            if v <= 0.03928 {
+                v / 12.92
+            } else {
+                ((v + 0.055) / 1.055).powf(2.4)
+            }
         };
         0.2126 * c(1) + 0.7152 * c(3) + 0.0722 * c(5)
     }
@@ -556,7 +581,11 @@ fn a_cover_card_has_the_picture_on_top_the_title_over_its_foot_and_the_rest_as_a
         PAGE,
         "Column { overlay: \"cover\" Text { \"pic\" } Text { \"over\" } Text { \"panel\" } }",
     ));
-    assert!(html.contains("class=\"cui-col cui-overlay cui-overlay-cover\"") || html.contains("cui-overlay cui-overlay-cover"), "{html}");
+    assert!(
+        html.contains("class=\"cui-col cui-overlay cui-overlay-cover\"")
+            || html.contains("cui-overlay cui-overlay-cover"),
+        "{html}"
+    );
     for want in [
         ".cui-overlay-cover { position: relative; border-radius: 24px; overflow: hidden;",
         ".cui-overlay-cover > :nth-child(2) { grid-area: 1 / 1; align-self: end;",
@@ -566,18 +595,40 @@ fn a_cover_card_has_the_picture_on_top_the_title_over_its_foot_and_the_rest_as_a
     ] {
         assert!(html.contains(want), "{want}");
     }
-    let got = codes(&program(PAGE, "Column { overlay: \"hero\" Text { \"a\" } }"));
+    let got = codes(&program(
+        PAGE,
+        "Column { overlay: \"hero\" Text { \"a\" } }",
+    ));
     assert!(got.iter().any(|t| t == "overlay-invalid"), "{got:?}");
-    assert!(codes(&program(PAGE, "Column { overlay: \"banner\" Text { \"a\" } }")).is_empty());
+    assert!(
+        codes(&program(
+            PAGE,
+            "Column { overlay: \"banner\" Text { \"a\" } }"
+        ))
+        .is_empty()
+    );
 }
 
 #[test]
 fn a_cover_card_in_a_themed_page_takes_the_surface_and_its_panel_is_not_a_floating_label() {
     let th = "theme {\n    light { bg: \"#faf7f2\"; fg: \"#1e1b18\"; muted: \"#6b6560\"; line: \"#e9e1dc\"; surface: \"#ffffff\"; soft: \"#f4ece7\"; ink: \"#2e1a47\"; accent: \"#b41d26\"; accent_fg: \"#ffffff\"; accent_soft: \"#ffdad7\"; good: \"#1e7e34\"; warn: \"#884e00\"; warn_bg: \"#ffdcbe\"; warn_line: \"#aa6402\"; bad: \"#ba1a1a\"; bad_bg: \"#ffdad6\"; code_bg: \"#12151a\"; code_fg: \"#d6dde8\"; }\n    dark { bg: \"#141118\"; fg: \"#f5f2eb\"; muted: \"#a8a199\"; line: \"#352d3d\"; surface: \"#1f1a24\"; soft: \"#2a2330\"; ink: \"#141118\"; accent: \"#ff6b6b\"; accent_fg: \"#2b0509\"; accent_soft: \"#3b1d26\"; good: \"#6fdba5\"; warn: \"#ffb366\"; warn_bg: \"#2a200d\"; warn_line: \"#7e6126\"; bad: \"#ff9187\"; bad_bg: \"#331816\"; code_bg: \"#12151a\"; code_fg: \"#d6dde8\"; }\n}\n";
-    let src = format!("{th}{}", program(PAGE, "Column { overlay: \"cover\" Text { \"pic\" } Text { \"over\" } Text { \"panel\" } }"));
+    let src = format!(
+        "{th}{}",
+        program(
+            PAGE,
+            "Column { overlay: \"cover\" Text { \"pic\" } Text { \"over\" } Text { \"panel\" } }"
+        )
+    );
     let (html, _) = page_of(&src);
-    assert!(html.contains(".cui-overlay:not(.cui-overlay-banner):not(.cui-overlay-cover) > :nth-child(n+2) {"), "the label rule must leave the cover card alone");
-    assert!(html.contains(".cui-overlay-cover { background: var(--cui-surface); box-shadow: var(--cui-shadow); }"));
+    assert!(
+        html.contains(
+            ".cui-overlay:not(.cui-overlay-banner):not(.cui-overlay-cover) > :nth-child(n+2) {"
+        ),
+        "the label rule must leave the cover card alone"
+    );
+    assert!(html.contains(
+        ".cui-overlay-cover { background: var(--cui-surface); box-shadow: var(--cui-shadow); }"
+    ));
 }
 
 #[test]
@@ -586,19 +637,32 @@ fn a_render_keeps_an_open_disclosure_open() {
     let src = "component App {\n    state v: String = \"\";\n    on Set(x) { v = x; }\n    view {\n        Column {\n            Details { summary: \"More\" TextField { label: \"Name\" value: v on: Set } }\n        }\n    }\n}\n";
     let (_, js) = page_of(src);
     let collect = "root.querySelectorAll('details').forEach((d) => { const s = d.querySelector(':scope > summary'); const t = s ? s.textContent : ''; __n[t] = (__n[t] || 0) + 1; __cui_open[t + '#' + __n[t]] = d.open; });";
-    let reopen = "if (__cui_open[t + '#' + __n[t]] === true && !__cui_newscreen) { d.open = true; }";
+    let reopen =
+        "if (__cui_open[t + '#' + __n[t]] === true && !__cui_newscreen) { d.open = true; }";
     assert!(js.contains(collect), "{js}");
     assert!(js.contains(reopen), "{js}");
-    assert!(js.contains("__n[t] = (__n[t] || 0) + 1; if (__cui_open["), "the second disclosure with the same text is told from the first: {js}");
+    assert!(
+        js.contains("__n[t] = (__n[t] || 0) + 1; if (__cui_open["),
+        "the second disclosure with the same text is told from the first: {js}"
+    );
     // the open flags are read before the page is rebuilt and put back after it
-    let read = js.find("__cui_open[t + '#' + __n[t]] = d.open;").expect("read");
+    let read = js
+        .find("__cui_open[t + '#' + __n[t]] = d.open;")
+        .expect("read");
     let put = js.find("d.open = true;").expect("put back");
     let focus = js.find("__cui_focus_restore").unwrap_or(put);
     assert!(read < put, "{read} {put}");
     // it is put back before the focus is given back (a field inside a closed disclosure cannot take it) and before the scroll is moved (so the page has its height)
-    let scroll = js.find("window.scrollTo(__cui_sx, __cui_sy)").expect("scroll");
-    let focus_at = js.find("__cui_focus_restore(root, __focus)").expect("focus");
-    assert!(put < focus_at && focus_at < scroll, "{put} {focus_at} {scroll}");
+    let scroll = js
+        .find("window.scrollTo(__cui_sx, __cui_sy)")
+        .expect("scroll");
+    let focus_at = js
+        .find("__cui_focus_restore(root, __focus)")
+        .expect("focus");
+    assert!(
+        put < focus_at && focus_at < scroll,
+        "{put} {focus_at} {scroll}"
+    );
     let _ = focus;
 }
 
@@ -656,27 +720,58 @@ fn a_floating_button_and_a_sheet_are_fixed_and_shown_only_while_their_marker_is_
     }
     // the marker is the empty element the `If` draws: its attribute is in the script that draws it
     let (_, js) = page_of(src);
-    assert!(js.contains("data-mark") && js.contains("\"sheet\"") && js.contains("\"fab\""), "{js}");
+    assert!(
+        js.contains("data-mark") && js.contains("\"sheet\"") && js.contains("\"fab\""),
+        "{js}"
+    );
 }
 
 #[test]
 fn a_floating_button_and_a_sheet_are_refused_when_badly_written_twice_or_never_marked() {
-    let base = |aside: &str, extra: &str| format!("{PAGE}\ncomponent App {{\n    view {{\n        Column {{\n            Main {{ id: \"main\" Text {{ \"x\" }} }}\n            {extra}\n            {aside}\n        }}\n    }}\n}}\n");
-    let marks = "If { when: true Aside { marks: \"fab\" } } If { when: true Aside { marks: \"sheet\" } }";
-    let ok = base("Aside { label: \"F\" fab: true Button { label: \"B\" on: Go } }", marks).replace("view {", "on Go { }\n    view {");
+    let base = |aside: &str, extra: &str| {
+        format!(
+            "{PAGE}\ncomponent App {{\n    view {{\n        Column {{\n            Main {{ id: \"main\" Text {{ \"x\" }} }}\n            {extra}\n            {aside}\n        }}\n    }}\n}}\n"
+        )
+    };
+    let marks =
+        "If { when: true Aside { marks: \"fab\" } } If { when: true Aside { marks: \"sheet\" } }";
+    let ok = base(
+        "Aside { label: \"F\" fab: true Button { label: \"B\" on: Go } }",
+        marks,
+    )
+    .replace("view {", "on Go { }\n    view {");
     let got = codes(&ok);
     assert!(got.is_empty(), "{got:?}");
     let bad_flag = base("Aside { label: \"F\" fab: \"yes\" Text { \"x\" } }", marks);
     assert!(codes(&bad_flag).iter().any(|t| t == "aside-flag-invalid"));
-    let bad_mark = base("Aside { label: \"F\" fab: true Text { \"x\" } }", "If { when: true Aside { marks: \"menu\" } }");
+    let bad_mark = base(
+        "Aside { label: \"F\" fab: true Text { \"x\" } }",
+        "If { when: true Aside { marks: \"menu\" } }",
+    );
     assert!(codes(&bad_mark).iter().any(|t| t == "aside-mark-invalid"));
-    let two = base("Aside { label: \"F\" fab: true Text { \"x\" } } Aside { label: \"G\" fab: true Text { \"y\" } }", marks);
+    let two = base(
+        "Aside { label: \"F\" fab: true Text { \"x\" } } Aside { label: \"G\" fab: true Text { \"y\" } }",
+        marks,
+    );
     assert!(codes(&two).iter().any(|t| t == "aside-fab-duplicate"));
-    let two_sheets = base("Aside { label: \"F\" sheet: true Text { \"x\" } } Aside { label: \"G\" sheet: true Text { \"y\" } }", marks);
-    assert!(codes(&two_sheets).iter().any(|t| t == "aside-sheet-duplicate"));
-    let unmarked_fab = base("Aside { label: \"F\" fab: true Text { \"x\" } }", "If { when: true Aside { marks: \"sheet\" } }");
+    let two_sheets = base(
+        "Aside { label: \"F\" sheet: true Text { \"x\" } } Aside { label: \"G\" sheet: true Text { \"y\" } }",
+        marks,
+    );
+    assert!(
+        codes(&two_sheets)
+            .iter()
+            .any(|t| t == "aside-sheet-duplicate")
+    );
+    let unmarked_fab = base(
+        "Aside { label: \"F\" fab: true Text { \"x\" } }",
+        "If { when: true Aside { marks: \"sheet\" } }",
+    );
     assert!(codes(&unmarked_fab).iter().any(|t| t == "aside-unmarked"));
-    let unmarked_sheet = base("Aside { label: \"F\" sheet: true Text { \"x\" } }", "If { when: true Aside { marks: \"fab\" } }");
+    let unmarked_sheet = base(
+        "Aside { label: \"F\" sheet: true Text { \"x\" } }",
+        "If { when: true Aside { marks: \"fab\" } }",
+    );
     assert!(codes(&unmarked_sheet).iter().any(|t| t == "aside-unmarked"));
     // the keys belong to Aside only
     let on_section = base("Section { fab: true Text { \"x\" } }", marks);
@@ -686,13 +781,24 @@ fn a_floating_button_and_a_sheet_are_refused_when_badly_written_twice_or_never_m
 #[test]
 fn a_second_floating_button_and_sheet_are_drawn_by_their_own_markers_and_refused_when_wrong() {
     // docs/structure.md 12.0k
-    let base = |body: &str| format!("{PAGE}\ncomponent App {{\n    on Go {{ }}\n    view {{\n        Column {{\n            Main {{ id: \"main\" Text {{ \"x\" }} }}\n            {body}\n        }}\n    }}\n}}\n");
+    let base = |body: &str| {
+        format!(
+            "{PAGE}\ncomponent App {{\n    on Go {{ }}\n    view {{\n        Column {{\n            Main {{ id: \"main\" Text {{ \"x\" }} }}\n            {body}\n        }}\n    }}\n}}\n"
+        )
+    };
     let marks = "If { when: true Aside { marks: \"fab\" } } If { when: true Aside { marks: \"fab2\" } } If { when: true Aside { marks: \"sheet2\" } } If { when: true Aside { marks: \"band\" } }";
-    let ok = base(&format!("{marks} Aside {{ label: \"A\" fab: true Button {{ label: \"B\" on: Go }} }} Aside {{ label: \"P\" fab2: true Button {{ label: \"Add\" on: Go }} }} Aside {{ label: \"S\" sheet2: true Text {{ \"hi\" }} }} Aside {{ label: \"Band\" band: true Text {{ \"top\" }} }}"));
+    let ok = base(&format!(
+        "{marks} Aside {{ label: \"A\" fab: true Button {{ label: \"B\" on: Go }} }} Aside {{ label: \"P\" fab2: true Button {{ label: \"Add\" on: Go }} }} Aside {{ label: \"S\" sheet2: true Text {{ \"hi\" }} }} Aside {{ label: \"Band\" band: true Text {{ \"top\" }} }}"
+    ));
     let got = codes(&ok);
     assert!(got.is_empty(), "{got:?}");
     let (html, _) = page_of(&ok);
-    assert!(html.contains("class=\"cui-fab2\"") && html.contains("class=\"cui-sheet2\"") && html.contains("class=\"cui-band\""), "{html}");
+    assert!(
+        html.contains("class=\"cui-fab2\"")
+            && html.contains("class=\"cui-sheet2\"")
+            && html.contains("class=\"cui-band\""),
+        "{html}"
+    );
     for want in [
         ".cui-fab2 { right: 6.1rem; bottom: calc(5.25rem + env(safe-area-inset-bottom)); }",
         ":root:has([data-mark=\"fab2\"]) .cui-fab > button { min-width: 4.5rem;",
@@ -707,23 +813,39 @@ fn a_second_floating_button_and_sheet_are_drawn_by_their_own_markers_and_refused
     ] {
         assert!(html.contains(want), "{want}");
     }
-    let bad_flag = base(&format!("{marks} Aside {{ label: \"P\" fab2: \"yes\" Text {{ \"x\" }} }}"));
+    let bad_flag = base(&format!(
+        "{marks} Aside {{ label: \"P\" fab2: \"yes\" Text {{ \"x\" }} }}"
+    ));
     assert!(codes(&bad_flag).iter().any(|t| t == "aside-flag-invalid"));
-    let two = base(&format!("{marks} Aside {{ label: \"P\" fab2: true Text {{ \"x\" }} }} Aside {{ label: \"Q\" fab2: true Text {{ \"y\" }} }}"));
+    let two = base(&format!(
+        "{marks} Aside {{ label: \"P\" fab2: true Text {{ \"x\" }} }} Aside {{ label: \"Q\" fab2: true Text {{ \"y\" }} }}"
+    ));
     assert!(codes(&two).iter().any(|t| t == "aside-fab-duplicate"));
-    let two_s = base(&format!("{marks} Aside {{ label: \"P\" sheet2: true Text {{ \"x\" }} }} Aside {{ label: \"Q\" sheet2: true Text {{ \"y\" }} }}"));
+    let two_s = base(&format!(
+        "{marks} Aside {{ label: \"P\" sheet2: true Text {{ \"x\" }} }} Aside {{ label: \"Q\" sheet2: true Text {{ \"y\" }} }}"
+    ));
     assert!(codes(&two_s).iter().any(|t| t == "aside-sheet-duplicate"));
-    let two_b = base(&format!("{marks} Aside {{ label: \"P\" band: true Text {{ \"x\" }} }} Aside {{ label: \"Q\" band: true Text {{ \"y\" }} }}"));
+    let two_b = base(&format!(
+        "{marks} Aside {{ label: \"P\" band: true Text {{ \"x\" }} }} Aside {{ label: \"Q\" band: true Text {{ \"y\" }} }}"
+    ));
     assert!(codes(&two_b).iter().any(|t| t == "aside-band-duplicate"));
-    let unmarked_b = base("If { when: true Aside { marks: \"fab\" } } Aside { label: \"P\" band: true Text { \"x\" } }");
+    let unmarked_b = base(
+        "If { when: true Aside { marks: \"fab\" } } Aside { label: \"P\" band: true Text { \"x\" } }",
+    );
     assert!(codes(&unmarked_b).iter().any(|t| t == "aside-unmarked"));
-    let unmarked = base("If { when: true Aside { marks: \"fab\" } } Aside { label: \"P\" fab2: true Text { \"x\" } }");
+    let unmarked = base(
+        "If { when: true Aside { marks: \"fab\" } } Aside { label: \"P\" fab2: true Text { \"x\" } }",
+    );
     assert!(codes(&unmarked).iter().any(|t| t == "aside-unmarked"));
-    let unmarked_s = base("If { when: true Aside { marks: \"fab2\" } } Aside { label: \"P\" sheet2: true Text { \"x\" } }");
+    let unmarked_s = base(
+        "If { when: true Aside { marks: \"fab2\" } } Aside { label: \"P\" sheet2: true Text { \"x\" } }",
+    );
     assert!(codes(&unmarked_s).iter().any(|t| t == "aside-unmarked"));
     let bad_mark = base("If { when: true Aside { marks: \"menu2\" } }");
     assert!(codes(&bad_mark).iter().any(|t| t == "aside-mark-invalid"));
-    let on_section = base(&format!("{marks} Section {{ fab2: true Text {{ \"x\" }} }}"));
+    let on_section = base(&format!(
+        "{marks} Section {{ fab2: true Text {{ \"x\" }} }}"
+    ));
     assert!(!codes(&on_section).is_empty());
 }
 
@@ -756,11 +878,21 @@ fn a_chat_is_a_log_with_bubbles_that_lean_and_a_composer_with_a_round_send_butto
     }
     // the log that was at its foot stays at its foot; one scrolled up keeps its place
     assert!(js.contains("const __cui_log = [];"), "{js}");
-    assert!(js.contains("foot: e.scrollHeight - e.scrollTop - e.clientHeight < 48, top: e.scrollTop"), "{js}");
-    assert!(js.contains("if (!k || k.foot) { e.scrollTop = e.scrollHeight; } else { e.scrollTop = k.top; }"), "{js}");
+    assert!(
+        js.contains("foot: e.scrollHeight - e.scrollTop - e.clientHeight < 48, top: e.scrollTop"),
+        "{js}"
+    );
+    assert!(
+        js.contains(
+            "if (!k || k.foot) { e.scrollTop = e.scrollHeight; } else { e.scrollTop = k.top; }"
+        ),
+        "{js}"
+    );
     let read = js.find("const __cui_log = [];").expect("read");
     let put = js.find("e.scrollTop = e.scrollHeight;").expect("put");
-    let focus = js.find("__cui_focus_restore(root, __focus)").expect("focus");
+    let focus = js
+        .find("__cui_focus_restore(root, __focus)")
+        .expect("focus");
     assert!(read < put && put < focus, "{read} {put} {focus}");
     // a page with no chat log has none of that script
     let (_, plain) = page_of(&program(PAGE, "Text { \"x\" }"));
@@ -774,7 +906,11 @@ fn a_bubble_a_chat_log_and_a_composer_are_refused_when_badly_written() {
     let bad_log = CHAT.replace("chatlog: true", "chatlog: \"yes\"");
     assert!(codes(&bad_log).iter().any(|t| t == "chat-flag-invalid"));
     let bad_composer = CHAT.replace("composer: true", "composer: 1");
-    assert!(codes(&bad_composer).iter().any(|t| t == "chat-flag-invalid"));
+    assert!(
+        codes(&bad_composer)
+            .iter()
+            .any(|t| t == "chat-flag-invalid")
+    );
     assert!(codes(CHAT).is_empty());
     // the keys belong to Column (bubble, chatlog) and Row (composer)
     let on_row = CHAT.replace("Row { composer: true", "Row { bubble: \"mine\"");
@@ -783,17 +919,24 @@ fn a_bubble_a_chat_log_and_a_composer_are_refused_when_badly_written() {
     assert!(!codes(&on_column).is_empty());
 }
 
-
 #[test]
 fn an_icon_only_button_keeps_its_own_size_in_a_column() {
     let th = "theme {\n    light { bg: \"#faf7f2\"; fg: \"#1e1b18\"; muted: \"#6b6560\"; line: \"#e9e1dc\"; surface: \"#ffffff\"; soft: \"#f4ece7\"; ink: \"#2e1a47\"; accent: \"#b41d26\"; accent_fg: \"#ffffff\"; accent_soft: \"#ffdad7\"; good: \"#1e7e34\"; warn: \"#884e00\"; warn_bg: \"#ffdcbe\"; warn_line: \"#aa6402\"; bad: \"#ba1a1a\"; bad_bg: \"#ffdad6\"; code_bg: \"#12151a\"; code_fg: \"#d6dde8\"; }\n    dark { bg: \"#141118\"; fg: \"#f5f2eb\"; muted: \"#a8a1b2\"; line: \"#352d3d\"; surface: \"#1f1a24\"; soft: \"#2a2330\"; ink: \"#141118\"; accent: \"#ff6b6b\"; accent_fg: \"#2b0509\"; accent_soft: \"#3b1d26\"; good: \"#6fdba5\"; warn: \"#ffb366\"; warn_bg: \"#2a200d\"; warn_line: \"#7e6126\"; bad: \"#ff9187\"; bad_bg: \"#331816\"; code_bg: \"#12151a\"; code_fg: \"#d6dde8\"; }\n}\n";
     let app = "page { title: \"T\"; lang: \"en\"; }\ncomponent App {\n    state v: Int = 0;\n    on Tap { v = v + 1; }\n    view { Column { Article { card: true Text { \"x\" } } Button { label: \"Save\" on: Tap Text { \"S\" } } } }\n}\n";
     let (html, _) = page_of(&format!("{th}{app}"));
-    assert!(html.contains(":root .cui-col > .cui-ico { align-self: flex-start; }"), "an icon button does not stretch");
-    assert!(html.contains(":root a[title]:has(> *) { text-decoration: none;"), "an icon link is a round target");
-    assert!(html.contains(":root button:has(> *) { font-size: 1.25rem; line-height: 1; }"), "the icon is larger");
+    assert!(
+        html.contains(":root .cui-col > .cui-ico { align-self: flex-start; }"),
+        "an icon button does not stretch"
+    );
+    assert!(
+        html.contains(":root a[title]:has(> *) { text-decoration: none;"),
+        "an icon link is a round target"
+    );
+    assert!(
+        html.contains(":root button:has(> *) { font-size: 1.25rem; line-height: 1; }"),
+        "the icon is larger"
+    );
 }
-
 
 // 12.0m: the flat tab bar, keys, hints and the bar of places
 const KEYS: &str = "page { title: \"T\"; lang: \"en\"; }\ncomponent App {\n    state v: Int = 0;\n    on Tap { v = v + 1; }\n    view { Column { Section { card: true Text { \"x\" } } Nav { label: \"Main\" dock: true Button { label: \"Home\" on: Tap pressed: v == 0 Text { \"H\" } } Button { label: \"Me\" on: Tap Text { \"M\" } } } Row { keys: true Button { label: \"Mute the thing\" on: Tap Text { \"B\" } Text { \"Mute\" } } Details { summary: \"i\" hint: true Text { \"more\" } } } Row { bar: true Row { Button { label: \"Plan\" on: Tap pressed: v == 0 Text { \"P\" } Text { \"Plan\" } } } Row { Button { label: \"Map\" on: Tap Text { \"M\" } Text { \"Map\" } } } } } }\n}\n";
@@ -802,18 +945,45 @@ const KEYS: &str = "page { title: \"T\"; lang: \"en\"; }\ncomponent App {\n    s
 fn the_tab_bar_is_flat_keys_and_a_bar_are_classes_and_an_icon_button_is_marked() {
     let (html, js) = page_of(KEYS);
     assert!(html.contains(":root .cui-dock button, :root .cui-dock button[aria-pressed=\"true\"] { border: 0; box-shadow: none; }"), "the tab bar has no border and no ring");
-    assert!(html.contains(":root .cui-keys > details[open] { flex: 1 1 100%; order: 9; }"), "an open hint goes to its own line");
+    assert!(
+        html.contains(":root .cui-keys > details[open] { flex: 1 1 100%; order: 9; }"),
+        "an open hint goes to its own line"
+    );
     // 12.0o: the open key's tint is 10% of the accent over the soft fill, not 16%: at 16% the accent text on it measured 4.42:1 with a coral accent on a sand fill (under WCAG AA's 4.5:1); at 10% it is 4.86:1
     assert!(html.contains("background: color-mix(in srgb, var(--cui-accent, #185fa5) 10%, var(--cui-soft, #efece1)); color: var(--cui-accent, #185fa5); border-color"), "the open key is tinted by 10% of the accent");
-    assert!(!html.contains("var(--cui-accent, #185fa5) 16%, var(--cui-soft, #efece1)"), "and no longer by 16%");
-    assert!(html.contains(":root .cui-bar > .cui-row { flex: none;"), "a nested row is a group of the bar");
-    assert!(!html.contains(":has(> button:has("), ":has() is not nested: it would be an invalid selector and drop the rule");
+    assert!(
+        !html.contains("var(--cui-accent, #185fa5) 16%, var(--cui-soft, #efece1)"),
+        "and no longer by 16%"
+    );
+    assert!(
+        html.contains(":root .cui-bar > .cui-row { flex: none;"),
+        "a nested row is a group of the bar"
+    );
+    assert!(
+        !html.contains(":has(> button:has("),
+        ":has() is not nested: it would be an invalid selector and drop the rule"
+    );
     let all = format!("{html}{js}");
-    assert!(all.contains("cui-keys\"") || all.contains("'cui-keys'"), "keys is a class");
-    assert!(all.contains("cui-bar\"") || all.contains("'cui-bar'"), "bar is a class");
-    assert!(all.contains("cui-hint\"") || all.contains("'cui-hint'"), "hint is a class");
-    assert!(js.contains("classList.add('cui-ico')"), "an icon-only button is marked for the page's CSS");
-    assert!(js.contains("__cui_bars_restore"), "a bar keeps its scroll through a render");
+    assert!(
+        all.contains("cui-keys\"") || all.contains("'cui-keys'"),
+        "keys is a class"
+    );
+    assert!(
+        all.contains("cui-bar\"") || all.contains("'cui-bar'"),
+        "bar is a class"
+    );
+    assert!(
+        all.contains("cui-hint\"") || all.contains("'cui-hint'"),
+        "hint is a class"
+    );
+    assert!(
+        js.contains("classList.add('cui-ico')"),
+        "an icon-only button is marked for the page's CSS"
+    );
+    assert!(
+        js.contains("__cui_bars_restore"),
+        "a bar keeps its scroll through a render"
+    );
 }
 
 #[test]
@@ -823,12 +993,17 @@ fn keys_bar_and_hint_are_refused_where_they_do_not_belong() {
         ("Row { bar: 1 Text { \"x\" } }", "chat-flag-invalid"),
         ("Row { hint: true Text { \"x\" } }", "binding-unknown"),
     ] {
-        let src = format!("page {{ title: \"T\"; lang: \"en\"; }}\ncomponent App {{\n    view {{ {bad} }}\n}}\n");
+        let src = format!(
+            "page {{ title: \"T\"; lang: \"en\"; }}\ncomponent App {{\n    view {{ {bad} }}\n}}\n"
+        );
         let dir = scratch("keysbad");
         std::fs::write(dir.join("a.cui"), &src).unwrap();
         let (code, out, err) = run(&dir, &["check", "a.cui"]);
         assert_ne!(code, 0, "{bad} is refused");
-        assert!(format!("{out}{err}").contains(tag), "{bad} says {tag}: {out}{err}");
+        assert!(
+            format!("{out}{err}").contains(tag),
+            "{bad} says {tag}: {out}{err}"
+        );
     }
 }
 
@@ -861,7 +1036,10 @@ fn a_whatsapp_style_chat_has_runs_day_pills_chips_a_header_and_a_composer_pill()
     assert!(js.contains("scrollIntoView({ block: 'start' })"), "{js}");
     assert!(html.contains("id=\"media\""), "{html}");
     // the two builtins are in the page, and only because it calls them
-    assert!(js.contains("function __cui_emoji_only(text)") && js.contains("function __cui_initials(text)"));
+    assert!(
+        js.contains("function __cui_emoji_only(text)")
+            && js.contains("function __cui_initials(text)")
+    );
     let (_, plain) = page_of(&program(PAGE, "Text { \"x\" }"));
     assert!(!plain.contains("__cui_emoji_only") && !plain.contains("scrollIntoView"));
     assert!(codes(WA).is_empty(), "{:?}", codes(WA));
@@ -869,18 +1047,51 @@ fn a_whatsapp_style_chat_has_runs_day_pills_chips_a_header_and_a_composer_pill()
 
 #[test]
 fn the_new_chat_keys_are_refused_when_badly_written() {
-    assert!(codes(&WA.replace("bubble: \"day\"", "bubble: \"week\"")).iter().any(|t| t == "bubble-invalid"));
-    assert!(codes(&WA.replace("style: \"hue3\"", "style: \"hue9\"")).iter().any(|t| t == "text-style-invalid"));
-    assert!(codes(&WA.replace("chips: true", "chips: 1")).iter().any(|t| t == "chat-flag-invalid"));
-    assert!(codes(&WA.replace("head: true", "head: \"yes\"")).iter().any(|t| t == "chat-flag-invalid"));
+    assert!(
+        codes(&WA.replace("bubble: \"day\"", "bubble: \"week\""))
+            .iter()
+            .any(|t| t == "bubble-invalid")
+    );
+    assert!(
+        codes(&WA.replace("style: \"hue3\"", "style: \"hue9\""))
+            .iter()
+            .any(|t| t == "text-style-invalid")
+    );
+    assert!(
+        codes(&WA.replace("chips: true", "chips: 1"))
+            .iter()
+            .any(|t| t == "chat-flag-invalid")
+    );
+    assert!(
+        codes(&WA.replace("head: true", "head: \"yes\""))
+            .iter()
+            .any(|t| t == "chat-flag-invalid")
+    );
     // `chips` and `head` belong to Row
     assert!(!codes(&WA.replace("Row { chips: true", "Column { chips: true")).is_empty());
     // `scroll:` is a Button's, a literal name of an anchor
     assert!(!codes(&WA.replace("scroll: \"media\"", "scroll: v")).is_empty());
-    assert!(codes(&WA.replace("scroll: \"media\"", "scroll: \"a b\"")).iter().any(|t| t == "scroll-invalid"));
-    assert!(codes(&WA.replace("TextField { label: \"Write\" value: v on: Set", "TextField { label: \"Write\" scroll: \"media\" value: v on: Set")).iter().any(|t| t == "scroll-invalid"));
+    assert!(
+        codes(&WA.replace("scroll: \"media\"", "scroll: \"a b\""))
+            .iter()
+            .any(|t| t == "scroll-invalid")
+    );
+    assert!(
+        codes(&WA.replace(
+            "TextField { label: \"Write\" value: v on: Set",
+            "TextField { label: \"Write\" scroll: \"media\" value: v on: Set"
+        ))
+        .iter()
+        .any(|t| t == "scroll-invalid")
+    );
     // a builtin takes one argument
-    assert!(codes(&WA.replace("emoji_only(v)", "emoji_only(v, v)")).iter().any(|t| t == "builtin-shape-mismatch"), "{:?}", codes(&WA.replace("emoji_only(v)", "emoji_only(v, v)")));
+    assert!(
+        codes(&WA.replace("emoji_only(v)", "emoji_only(v, v)"))
+            .iter()
+            .any(|t| t == "builtin-shape-mismatch"),
+        "{:?}",
+        codes(&WA.replace("emoji_only(v)", "emoji_only(v, v)"))
+    );
 }
 
 #[test]
@@ -890,11 +1101,21 @@ fn a_quote_a_mention_and_the_ticks_have_their_tags_classes_and_rules() {
         "Column { bubble: \"mine\" Column { quote: true Text { style: \"hue3\" \"Ana\" } Text { style: \"note\" \"quoted\" } } Text { style: \"marked\" mark_text(\"hi @ana\", \"[]\") } Row { meta: true Text { style: \"note\" \"20:42\" } Text { style: \"tickblue\" \"x\" } Text { style: \"tick\" \"y\" } } }",
     ));
     assert!(html.contains("cui-quote"), "{html}");
-    for want in [".cui-quote { display: flex;", ".cui-quote:has([data-style=\"hue3\"]) { --q: #1e7e34; }", ".cui-mention {", ".cui-meta {", "[data-style=\"tickblue\"] { color: #1d5fa8; }"] {
+    for want in [
+        ".cui-quote { display: flex;",
+        ".cui-quote:has([data-style=\"hue3\"]) { --q: #1e7e34; }",
+        ".cui-mention {",
+        ".cui-meta {",
+        "[data-style=\"tickblue\"] { color: #1d5fa8; }",
+    ] {
         assert!(html.contains(want), "{want}");
     }
     // the spans are made with text nodes and textContent, never as markup
-    assert!(js.contains("function __cui_marked(el)") && js.contains("sp.textContent = parts[i].slice(0, j);"), "{js}");
+    assert!(
+        js.contains("function __cui_marked(el)")
+            && js.contains("sp.textContent = parts[i].slice(0, j);"),
+        "{js}"
+    );
     assert!(!js.contains("innerHTML"), "innerHTML in the page script");
     assert!(js.contains("__cui_mark_text("), "{js}");
 }
@@ -926,16 +1147,25 @@ fn the_emitted_mark_text_agrees_with_replays() {
         PAGE,
         "Text { style: \"marked\" mark_text(\"hi\", \"[]\") }",
     ));
-    let start = js.find("function __cui_mark_text").expect("the helper is in the page");
+    let start = js
+        .find("function __cui_mark_text")
+        .expect("the helper is in the page");
     let end = js.find("function __cui_marked").expect("marked");
     let helper = &js[start..end];
-    let case = |t: &str, m: &str| format!("console.log(JSON.stringify(__cui_mark_text({t}, {m})));");
+    let case =
+        |t: &str, m: &str| format!("console.log(JSON.stringify(__cui_mark_text({t}, {m})));");
     let cases = [
         case("\"hi @ana!\"", "'[{\"start\":3,\"end\":7}]'"),
-        case("\"\\u00e9 \\ud83d\\ude02 @ben\"", "'[{\"start\":8,\"end\":12}]'"),
+        case(
+            "\"\\u00e9 \\ud83d\\ude02 @ben\"",
+            "'[{\"start\":8,\"end\":12}]'",
+        ),
         case("\"abc\"", "'[{\"start\":1,\"end\":9}]'"),
         case("\"\\u00e9\"", "'[{\"start\":1,\"end\":2}]'"),
-        case("\"abcd\"", "'[{\"start\":0,\"end\":3},{\"start\":2,\"end\":4}]'"),
+        case(
+            "\"abcd\"",
+            "'[{\"start\":0,\"end\":3},{\"start\":2,\"end\":4}]'",
+        ),
         case("\"plain\"", "'not json'"),
         case("\"a\\ue000b\\ue001c\"", "'[]'"),
         case("\"abc\"", "'[{\"start\":\"1\",\"end\":2}]'"),
@@ -951,9 +1181,20 @@ fn the_emitted_mark_text_agrees_with_replays() {
         "\"abc\"",
     ];
     let script = format!("{helper}\n{}", cases.join("\n"));
-    let out = Command::new("node").arg("-e").arg(&script).output().expect("node runs");
-    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
-    let got: Vec<String> = String::from_utf8_lossy(&out.stdout).lines().map(str::to_string).collect();
+    let out = Command::new("node")
+        .arg("-e")
+        .arg(&script)
+        .output()
+        .expect("node runs");
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let got: Vec<String> = String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .map(str::to_string)
+        .collect();
     assert_eq!(got.len(), want.len(), "{got:?}");
     for (g, w) in got.iter().zip(want.iter()) {
         assert_eq!(g, w);
@@ -966,17 +1207,37 @@ fn a_disc_that_says_face_has_its_tones_and_a_canvas_and_asks_for_no_address() {
         PAGE,
         "Row { Text { style: \"avatar\" face(\"AR\", \"3\", \"\", \"\") } Text { style: \"disc2\" face(\"B\", \"\", \"x\", \"\") } Text { style: \"big\" \"plain\" } }",
     ));
-    for want in ["[data-tone=\"0\"][data-style] { background: #b41d26; }", "[data-tone=\"11\"][data-style] { background: #0e6b8c; }", ".cui-face-pic { position: absolute;"] {
+    for want in [
+        "[data-tone=\"0\"][data-style] { background: #b41d26; }",
+        "[data-tone=\"11\"][data-style] { background: #0e6b8c; }",
+        ".cui-face-pic { position: absolute;",
+    ] {
         assert!(html.contains(want), "{want}");
     }
-    assert!(js.contains("function __cui_face_draw(el)") && js.contains("function __cui_face(i, t, e, p)"), "{js}");
+    assert!(
+        js.contains("function __cui_face_draw(el)")
+            && js.contains("function __cui_face(i, t, e, p)"),
+        "{js}"
+    );
     // a disc is drawn through `__cui_face_draw`, a big text is not
-    assert_eq!(js.matches("__cui_face_draw(").count(), 3, "two discs and the definition");
+    assert_eq!(
+        js.matches("__cui_face_draw(").count(),
+        3,
+        "two discs and the definition"
+    );
     // the photo is decoded to a bitmap and drawn on a canvas: no image element, no address, no markup
-    assert!(js.contains("createImageBitmap(new Blob(") && !js.contains("innerHTML") && !js.contains("data:image"), "{js}");
+    assert!(
+        js.contains("createImageBitmap(new Blob(")
+            && !js.contains("innerHTML")
+            && !js.contains("data:image"),
+        "{js}"
+    );
     // a page that never says `face` or a disc has none of it
     let (_, plain) = page_of(&program(PAGE, "Text { \"plain\" }"));
-    assert!(!plain.contains("__cui_face"), "the helper is in a page that does not use it");
+    assert!(
+        !plain.contains("__cui_face"),
+        "the helper is in a page that does not use it"
+    );
     // the shapes
     assert!(!codes(&program(PAGE, "Text { face(\"a\", \"b\", \"c\") }")).is_empty());
 }
@@ -990,10 +1251,21 @@ fn the_emitted_face_checks_each_part_again() {
         return;
     };
     assert!(v.status.success());
-    let (_, js) = page_of(&program(PAGE, "Text { style: \"avatar\" face(\"a\", \"b\", \"c\", \"d\") }"));
-    let start = js.find("var __cui_face_bmps").expect("the helper is in the page");
-    let end = js[start..].find("\nfunction __cui_face_draw").map(|i| start + i).unwrap();
-    let end2 = js[end + 1..].find("\n}\n").map(|i| end + 1 + i + 3).unwrap();
+    let (_, js) = page_of(&program(
+        PAGE,
+        "Text { style: \"avatar\" face(\"a\", \"b\", \"c\", \"d\") }",
+    ));
+    let start = js
+        .find("var __cui_face_bmps")
+        .expect("the helper is in the page");
+    let end = js[start..]
+        .find("\nfunction __cui_face_draw")
+        .map(|i| start + i)
+        .unwrap();
+    let end2 = js[end + 1..]
+        .find("\n}\n")
+        .map(|i| end + 1 + i + 3)
+        .unwrap();
     let helper = &js[start..end2];
     let script = format!(
         r#"
@@ -1015,14 +1287,39 @@ var plain = el("AR"); __cui_face_draw(plain); console.log(JSON.stringify([plain.
 setTimeout(function () {{ console.log(JSON.stringify([asked, canvases])); }}, 20);
 "#
     );
-    let out = Command::new("node").arg("-e").arg(&script).output().expect("node runs");
-    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
-    let got: Vec<String> = String::from_utf8_lossy(&out.stdout).lines().map(str::to_string).collect();
+    let out = Command::new("node")
+        .arg("-e")
+        .arg(&script)
+        .output()
+        .expect("node runs");
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let got: Vec<String> = String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .map(str::to_string)
+        .collect();
     // the first line: the private-use characters of every part are gone, so the joined text has exactly three separators
     assert_eq!(got[0].matches('\u{e002}').count(), 3, "{got:?}");
-    assert!(!got[0].contains('\u{e000}') && !got[0].contains('\u{e001}'), "{got:?}");
+    assert!(
+        !got[0].contains('\u{e000}') && !got[0].contains('\u{e001}'),
+        "{got:?}"
+    );
     let expect = [
-        r#"["AR","3"]"#, r#"["AR","11"]"#, r#"["AR",null]"#, r#"["AR",null]"#, r#"["AR",null]"#, "[\"\u{1F642}\",null]", r#"["AR",null]"#, r#"["AR",null]"#, r#"["AR",null]"#, r#"["AR",null]"#, r#"["AR",null]"#, r#"["AR",null]"#,
+        r#"["AR","3"]"#,
+        r#"["AR","11"]"#,
+        r#"["AR",null]"#,
+        r#"["AR",null]"#,
+        r#"["AR",null]"#,
+        "[\"\u{1F642}\",null]",
+        r#"["AR",null]"#,
+        r#"["AR",null]"#,
+        r#"["AR",null]"#,
+        r#"["AR",null]"#,
+        r#"["AR",null]"#,
+        r#"["AR",null]"#,
     ];
     assert_eq!(&got[1..13], &expect, "{got:?}");
     assert_eq!(got[13], r#"["AR",{}]"#, "{got:?}");
@@ -1033,26 +1330,45 @@ setTimeout(function () {{ console.log(JSON.stringify([asked, canvases])); }}, 20
 #[test]
 fn a_second_band_is_drawn_by_its_own_marker_and_refused_when_wrong() {
     // docs/structure.md 12.0l
-    let base = |body: &str| format!("{PAGE}\ncomponent App {{\n    on Go {{ }}\n    view {{\n        Column {{\n            Main {{ id: \"main\" Text {{ \"x\" }} }}\n            {body}\n        }}\n    }}\n}}\n");
-    let marks = "If { when: true Aside { marks: \"band\" } } If { when: true Aside { marks: \"band2\" } }";
-    let ok = base(&format!("{marks} Aside {{ label: \"Band\" band: true Text {{ \"top\" }} }} Aside {{ label: \"Band two\" id: \"second\" band2: true Text {{ \"second\" }} }}"));
+    let base = |body: &str| {
+        format!(
+            "{PAGE}\ncomponent App {{\n    on Go {{ }}\n    view {{\n        Column {{\n            Main {{ id: \"main\" Text {{ \"x\" }} }}\n            {body}\n        }}\n    }}\n}}\n"
+        )
+    };
+    let marks =
+        "If { when: true Aside { marks: \"band\" } } If { when: true Aside { marks: \"band2\" } }";
+    let ok = base(&format!(
+        "{marks} Aside {{ label: \"Band\" band: true Text {{ \"top\" }} }} Aside {{ label: \"Band two\" id: \"second\" band2: true Text {{ \"second\" }} }}"
+    ));
     let got = codes(&ok);
     assert!(got.is_empty(), "{got:?}");
     let (html, _) = page_of(&ok);
     assert!(html.contains("class=\"cui-band2\""), "{html}");
-    for want in [".cui-band2 { display: block; margin: 0 0 0.75rem; }", ":root:not(:has([data-mark=\"band2\"])) .cui-band2 { display: none; }", "[data-style][data-emoji] { font-size: 1.5em;"] {
+    for want in [
+        ".cui-band2 { display: block; margin: 0 0 0.75rem; }",
+        ":root:not(:has([data-mark=\"band2\"])) .cui-band2 { display: none; }",
+        "[data-style][data-emoji] { font-size: 1.5em;",
+    ] {
         assert!(html.contains(want), "{want}");
     }
-    let two = base(&format!("{marks} Aside {{ label: \"P\" band2: true Text {{ \"x\" }} }} Aside {{ label: \"Q\" band2: true Text {{ \"y\" }} }}"));
+    let two = base(&format!(
+        "{marks} Aside {{ label: \"P\" band2: true Text {{ \"x\" }} }} Aside {{ label: \"Q\" band2: true Text {{ \"y\" }} }}"
+    ));
     assert!(codes(&two).iter().any(|t| t == "aside-band-duplicate"));
     // a band2 needs a band2 marker, and a band marker is not one
-    let unmarked = base("If { when: true Aside { marks: \"band\" } } Aside { label: \"P\" band2: true Text { \"x\" } }");
+    let unmarked = base(
+        "If { when: true Aside { marks: \"band\" } } Aside { label: \"P\" band2: true Text { \"x\" } }",
+    );
     assert!(codes(&unmarked).iter().any(|t| t == "aside-unmarked"));
-    let bad_flag = base(&format!("{marks} Aside {{ label: \"P\" band2: \"yes\" Text {{ \"x\" }} }}"));
+    let bad_flag = base(&format!(
+        "{marks} Aside {{ label: \"P\" band2: \"yes\" Text {{ \"x\" }} }}"
+    ));
     assert!(codes(&bad_flag).iter().any(|t| t == "aside-flag-invalid"));
     let bad_mark = base("If { when: true Aside { marks: \"band3\" } }");
     assert!(codes(&bad_mark).iter().any(|t| t == "aside-mark-invalid"));
-    let on_section = base(&format!("{marks} Section {{ band2: true Text {{ \"x\" }} }}"));
+    let on_section = base(&format!(
+        "{marks} Section {{ band2: true Text {{ \"x\" }} }}"
+    ));
     assert!(!codes(&on_section).is_empty());
 }
 
@@ -1062,15 +1378,42 @@ const STEPS: &str = "page { title: \"T\"; lang: \"en\"; }\ncomponent App {\n    
 #[test]
 fn steps_a_month_and_tick_rows_are_classes_with_their_own_css() {
     let (html, js) = page_of(STEPS);
-    assert!(html.contains(":root .cui-steps > [data-style=\"segon\"] { background: var(--cui-accent, #185fa5); }"), "the open segment is the accent");
-    assert!(html.contains(":root .cui-month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));"), "a month is seven columns");
-    assert!(html.contains(":root .cui-month > button[aria-pressed=\"true\"]:has(> :nth-child(2))"), "the first day of a range has a caption and the accent fill");
-    assert!(html.contains(":root .cui-ticks > button[aria-pressed=\"true\"]::after { content: \"\\2713\";"), "a pressed row holds a tick");
-    assert!(html.contains("min-height: 3.25rem"), "a tick row is over 44 px");
-    assert!(html.contains(":root .cui-foot { position: sticky; bottom: -1rem;"), "a foot stays at the bottom of its sheet");
+    assert!(
+        html.contains(
+            ":root .cui-steps > [data-style=\"segon\"] { background: var(--cui-accent, #185fa5); }"
+        ),
+        "the open segment is the accent"
+    );
+    assert!(
+        html.contains(
+            ":root .cui-month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));"
+        ),
+        "a month is seven columns"
+    );
+    assert!(
+        html.contains(":root .cui-month > button[aria-pressed=\"true\"]:has(> :nth-child(2))"),
+        "the first day of a range has a caption and the accent fill"
+    );
+    assert!(
+        html.contains(
+            ":root .cui-ticks > button[aria-pressed=\"true\"]::after { content: \"\\2713\";"
+        ),
+        "a pressed row holds a tick"
+    );
+    assert!(
+        html.contains("min-height: 3.25rem"),
+        "a tick row is over 44 px"
+    );
+    assert!(
+        html.contains(":root .cui-foot { position: sticky; bottom: -1rem;"),
+        "a foot stays at the bottom of its sheet"
+    );
     let all = format!("{html}{js}");
     for c in ["cui-steps", "cui-month", "cui-ticks", "cui-foot"] {
-        assert!(all.contains(&format!("{c}\"")) || all.contains(&format!("'{c}'")), "{c} is a class");
+        assert!(
+            all.contains(&format!("{c}\"")) || all.contains(&format!("'{c}'")),
+            "{c} is a class"
+        );
     }
 }
 
@@ -1081,13 +1424,21 @@ fn steps_month_and_ticks_are_refused_where_they_do_not_belong() {
         ("Row { month: 1 Text { \"x\" } }", "chat-flag-invalid"),
         ("Column { ticks: true Text { \"x\" } }", "binding-unknown"),
         ("Column { foot: true Text { \"x\" } }", "binding-unknown"),
-        ("Row { Text { style: \"segment\" \"x\" } }", "text-style-invalid"),
+        (
+            "Row { Text { style: \"segment\" \"x\" } }",
+            "text-style-invalid",
+        ),
     ] {
-        let src = format!("page {{ title: \"T\"; lang: \"en\"; }}\ncomponent App {{\n    view {{ {bad} }}\n}}\n");
+        let src = format!(
+            "page {{ title: \"T\"; lang: \"en\"; }}\ncomponent App {{\n    view {{ {bad} }}\n}}\n"
+        );
         let dir = scratch("stepsbad");
         std::fs::write(dir.join("a.cui"), &src).unwrap();
         let (code, out, err) = run(&dir, &["check", "a.cui"]);
         assert_ne!(code, 0, "{bad} is refused");
-        assert!(format!("{out}{err}").contains(tag), "{bad} says {tag}: {out}{err}");
+        assert!(
+            format!("{out}{err}").contains(tag),
+            "{bad} says {tag}: {out}{err}"
+        );
     }
 }

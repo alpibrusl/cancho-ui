@@ -307,7 +307,15 @@ pub fn helpers_used(emitted: &str) -> String {
         (&["__cui_lower("][..], LOWER_JS),
         (&["__cui_num("][..], NUM_JS),
         (&["__cui_json_quote("][..], JSON_QUOTE_JS),
-        (&["__cui_emoji_only(", "__cui_initials(", "__cui_mark_text(", "__cui_marked("][..], EMOJI_JS),
+        (
+            &[
+                "__cui_emoji_only(",
+                "__cui_initials(",
+                "__cui_mark_text(",
+                "__cui_marked(",
+            ][..],
+            EMOJI_JS,
+        ),
         (&["__cui_face(", "__cui_face_draw("][..], FACE_JS),
         (&["__cui_take(", "__cui_skip("][..], PAGING_JS),
         (&["__cui_concat("][..], CONCAT_JS),

@@ -21,6 +21,8 @@ pub mod data;
 pub mod file_field;
 pub mod i18n;
 pub mod i18n_data;
+pub mod icon;
+mod icon_set;
 pub mod ir;
 pub mod island;
 pub mod lower;
@@ -38,8 +40,6 @@ pub mod stream;
 pub mod structure;
 pub mod table;
 pub mod theme;
-pub mod icon;
-mod icon_set;
 pub mod waffle;
 
 pub use ir::*;

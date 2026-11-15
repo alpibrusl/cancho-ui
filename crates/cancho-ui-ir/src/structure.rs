@@ -13,8 +13,9 @@ use crate::lower::LowerError;
 pub const APPEARANCES: &[&str] = &["primary", "secondary", "quiet", "pill"];
 /// The `style:` of a `Text`: a typographic role, a closed set.
 pub const TEXT_STYLES: &[&str] = &[
-    "eyebrow", "lead", "note", "label", "avatar", "hue0", "hue1", "hue2", "hue3", "hue4", "hue5", "hue6", "hue7", "marked", "tick", "tickblue", "disc0",
-    "disc1", "disc2", "disc3", "disc4", "disc5", "disc6", "disc7", "mark", "big", "star", "seg", "segon",
+    "eyebrow", "lead", "note", "label", "avatar", "hue0", "hue1", "hue2", "hue3", "hue4", "hue5",
+    "hue6", "hue7", "marked", "tick", "tickblue", "disc0", "disc1", "disc2", "disc3", "disc4",
+    "disc5", "disc6", "disc7", "mark", "big", "star", "seg", "segon",
 ];
 /// The range of a code block's `max_height:`, in rem.
 pub const CODE_HEIGHT: (i64, i64) = (4, 100);
@@ -178,7 +179,10 @@ fn keys(kind: &IrElementKind) -> &'static [&'static str] {
         IrElementKind::Heading => &["level", "id"],
         IrElementKind::Link => &["to", "appearance", "card"],
         IrElementKind::Column => &["card", "overlay", "bubble", "chatlog", "quote"],
-        IrElementKind::Row => &["card", "composer", "chips", "head", "meta", "strip", "keys", "bar", "steps", "month", "ticks", "foot"],
+        IrElementKind::Row => &[
+            "card", "composer", "chips", "head", "meta", "strip", "keys", "bar", "steps", "month",
+            "ticks", "foot",
+        ],
         IrElementKind::Details => &["summary", "id", "hint"],
         IrElementKind::Caption => &["id"],
         IrElementKind::Rich => &["style"],
@@ -188,7 +192,10 @@ fn keys(kind: &IrElementKind) -> &'static [&'static str] {
         IrElementKind::CountUp => &["to"],
         IrElementKind::Chip => &["tone"],
         IrElementKind::List => &["ordered", "card"],
-        IrElementKind::Aside => &["id", "visible", "hidden", "card", "fab", "sheet", "fab2", "sheet2", "band", "band2", "marks"],
+        IrElementKind::Aside => &[
+            "id", "visible", "hidden", "card", "fab", "sheet", "fab2", "sheet2", "band", "band2",
+            "marks",
+        ],
         IrElementKind::Section | IrElementKind::Article | IrElementKind::Figure => {
             &["id", "visible", "hidden", "card"]
         }
@@ -378,8 +385,22 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
     let structure = is_structure(kind)
         || (b.key == "card" && matches!(kind, IrElementKind::Column | IrElementKind::Row))
         || (b.key == "overlay" && matches!(kind, IrElementKind::Column))
-        || (matches!(b.key.as_str(), "bubble" | "chatlog" | "quote") && matches!(kind, IrElementKind::Column))
-        || (matches!(b.key.as_str(), "composer" | "chips" | "head" | "meta" | "strip" | "keys" | "bar" | "steps" | "month" | "ticks" | "foot") && matches!(kind, IrElementKind::Row))
+        || (matches!(b.key.as_str(), "bubble" | "chatlog" | "quote")
+            && matches!(kind, IrElementKind::Column))
+        || (matches!(
+            b.key.as_str(),
+            "composer"
+                | "chips"
+                | "head"
+                | "meta"
+                | "strip"
+                | "keys"
+                | "bar"
+                | "steps"
+                | "month"
+                | "ticks"
+                | "foot"
+        ) && matches!(kind, IrElementKind::Row))
         || (b.key == "hint" && matches!(kind, IrElementKind::Details));
     if !structure && !(NEW.contains(&b.key.as_str())) {
         return Ok(false);
@@ -418,7 +439,8 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                     "dock" => "Nav",
                     "fab" | "sheet" | "fab2" | "sheet2" | "band" | "band2" | "marks" => "Aside",
                     "bubble" | "chatlog" | "quote" => "Column",
-                    "composer" | "chips" | "head" | "meta" | "strip" | "keys" | "bar" | "steps" | "month" | "ticks" | "foot" => "Row",
+                    "composer" | "chips" | "head" | "meta" | "strip" | "keys" | "bar" | "steps"
+                    | "month" | "ticks" | "foot" => "Row",
                     "hint" => "Details",
                     "ordered" => "List",
                     "overlay" => "Column",

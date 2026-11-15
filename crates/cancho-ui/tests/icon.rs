@@ -66,7 +66,6 @@ fn codes(file: &Path) -> (i32, Vec<String>) {
     )
 }
 
-
 const NEW: &[&str] = &[
     "icon-incomplete",
     "icon-unknown",
@@ -111,7 +110,10 @@ fn every_tag_is_documented_and_reached() {
         .collect();
     for tag in NEW.iter().chain(OLD) {
         assert!(reached.contains(tag), "no case reaches `{tag}`");
-        assert!(README.contains(&format!("`{tag}`")), "`{tag}` is not documented");
+        assert!(
+            README.contains(&format!("`{tag}`")),
+            "`{tag}` is not documented"
+        );
     }
     for tag in NEW {
         assert!(
@@ -156,61 +158,140 @@ const ICONS: &str = "component C {\n    on Go { }\n    view { Column { Row { Ico
 #[test]
 fn the_page_has_the_icon_as_an_inline_svg_with_currentcolor_strokes() {
     let html = page(ICONS);
-    let root = html.split("<body>").nth(1).expect("a body").split("<script").next().expect("root");
+    let root = html
+        .split("<body>")
+        .nth(1)
+        .expect("a body")
+        .split("<script")
+        .next()
+        .expect("root");
     // decorative: hidden from a screen reader; labelled: an image with a name
     assert!(root.contains("<svg class=\"cui-icon cui-icon-m\" data-icon=\"map-pin\" viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\"></path><circle cx=\"12\" cy=\"10\" r=\"3\"></circle></svg>"), "{root}");
-    assert!(root.contains("class=\"cui-icon cui-icon-l\"") && root.contains("role=\"img\" aria-label=\"Alerts\""), "{root}");
+    assert!(
+        root.contains("class=\"cui-icon cui-icon-l\"")
+            && root.contains("role=\"img\" aria-label=\"Alerts\""),
+        "{root}"
+    );
     // no picture of any kind, and no address
     for banned in ["<img", "<use", "data:image", "href=", "xlink"] {
         assert!(!root.contains(banned), "{banned} in {root}");
     }
     // the stylesheet is written for a page that has an icon
-    assert!(html.contains(".cui-icon { display: inline-block;") && html.contains("stroke: currentColor"), "no icon rule");
+    assert!(
+        html.contains(".cui-icon { display: inline-block;")
+            && html.contains("stroke: currentColor"),
+        "no icon rule"
+    );
     // the licence travels with the icons: both notices are in the page
-    assert!(html.contains("ISC License") && html.contains("Lucide Icons and Contributors") && html.contains("The MIT License (MIT)") && html.contains("Cole Bemis"), "the licence notices");
+    assert!(
+        html.contains("ISC License")
+            && html.contains("Lucide Icons and Contributors")
+            && html.contains("The MIT License (MIT)")
+            && html.contains("Cole Bemis"),
+        "the licence notices"
+    );
     // the page's policy is not touched by an icon
-    assert!(!html.contains("Content-Security-Policy") || !html.contains("data:"), "an icon must not add data: to the policy");
+    assert!(
+        !html.contains("Content-Security-Policy") || !html.contains("data:"),
+        "an icon must not add data: to the policy"
+    );
 }
 
 #[test]
 fn a_page_with_no_icon_has_no_icon_rule() {
     let html = page("component C {\n    view { Column { Text { \"hi\" } } }\n}\n");
-    assert!(!html.contains("cui-icon"), "the rule is written for a page that uses an icon");
+    assert!(
+        !html.contains("cui-icon"),
+        "the rule is written for a page that uses an icon"
+    );
 }
 
 #[test]
 fn the_script_draws_the_same_icon_in_the_svg_namespace_and_a_button_icon_before_its_text() {
-    let js = script("component C {\n    state shown: Bool = true;\n    on Go { }\n    view { Column { If { when: shown Icon { label: \"a\" name: \"bell-off\" } } Button { label: \"Save\" icon: \"save\" on: Go } Button { label: \"Mute\" on: Go Icon { name: \"bell\" } Text { \"Mute\" } } } }\n}\n");
-    assert!(js.contains("createElementNS('http://www.w3.org/2000/svg', 'svg')"), "svg");
+    let js = script(
+        "component C {\n    state shown: Bool = true;\n    on Go { }\n    view { Column { If { when: shown Icon { label: \"a\" name: \"bell-off\" } } Button { label: \"Save\" icon: \"save\" on: Go } Button { label: \"Mute\" on: Go Icon { name: \"bell\" } Text { \"Mute\" } } } }\n}\n",
+    );
+    assert!(
+        js.contains("createElementNS('http://www.w3.org/2000/svg', 'svg')"),
+        "svg"
+    );
     assert!(js.contains("createElementNS('http://www.w3.org/2000/svg', 'path')"));
-    assert!(js.contains("createElementNS('http://www.w3.org/2000/svg', 'circle')") || js.contains("'rect'") || js.contains("'path'"));
-    assert!(js.contains("cui-icon cui-icon-m cui-icon-lead"), "the button's icon");
-    assert!(!js.contains("<img") && !js.contains("data:image/svg"), "no picture");
-    assert!(js.contains("cui-ico"), "a button of an icon is still marked as icon-only");
+    assert!(
+        js.contains("createElementNS('http://www.w3.org/2000/svg', 'circle')")
+            || js.contains("'rect'")
+            || js.contains("'path'")
+    );
+    assert!(
+        js.contains("cui-icon cui-icon-m cui-icon-lead"),
+        "the button's icon"
+    );
+    assert!(
+        !js.contains("<img") && !js.contains("data:image/svg"),
+        "no picture"
+    );
+    assert!(
+        js.contains("cui-ico"),
+        "a button of an icon is still marked as icon-only"
+    );
 }
 
 #[test]
 fn the_vendored_set_is_what_the_source_table_lists_and_both_licence_notices_are_kept() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let dir = root.join("crates/cancho-ui-ir/vendor/lucide");
-    let names: Vec<String> = std::fs::read_to_string(dir.join("NAMES")).expect("NAMES").lines().map(str::trim).filter(|l| !l.is_empty() && !l.starts_with('#')).map(str::to_string).collect();
-    let mut files: Vec<String> = std::fs::read_dir(&dir).expect("dir").filter_map(|e| e.ok()).map(|e| e.file_name().to_string_lossy().into_owned()).filter(|f| f.ends_with(".svg")).map(|f| f.trim_end_matches(".svg").to_string()).collect();
+    let names: Vec<String> = std::fs::read_to_string(dir.join("NAMES"))
+        .expect("NAMES")
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+        .map(str::to_string)
+        .collect();
+    let mut files: Vec<String> = std::fs::read_dir(&dir)
+        .expect("dir")
+        .filter_map(|e| e.ok())
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .filter(|f| f.ends_with(".svg"))
+        .map(|f| f.trim_end_matches(".svg").to_string())
+        .collect();
     files.sort();
     let mut want = names.clone();
     want.sort();
     assert_eq!(files, want, "the vendored files are exactly NAMES");
-    let table = std::fs::read_to_string(root.join("crates/cancho-ui-ir/src/icon_set.rs")).expect("icon_set.rs");
+    let table = std::fs::read_to_string(root.join("crates/cancho-ui-ir/src/icon_set.rs"))
+        .expect("icon_set.rs");
     for n in &names {
-        assert!(table.contains(&format!("(\"{n}\", include_str!")), "{n} is not in the table");
+        assert!(
+            table.contains(&format!("(\"{n}\", include_str!")),
+            "{n} is not in the table"
+        );
     }
     let third = std::fs::read_to_string(root.join("THIRD_PARTY.md")).expect("THIRD_PARTY.md");
     let version = std::fs::read_to_string(dir.join("VERSION")).expect("VERSION");
-    let tag = version.lines().next().and_then(|l| l.strip_prefix("lucide ")).expect("tag");
-    let commit = version.lines().nth(1).and_then(|l| l.strip_prefix("commit ")).expect("commit");
-    assert!(third.contains(tag) && third.contains(commit), "THIRD_PARTY.md names the release and the commit");
-    assert!(third.contains("ISC") && third.contains("Cole Bemis") && third.contains("Lucide Icons and Contributors"), "both notices");
+    let tag = version
+        .lines()
+        .next()
+        .and_then(|l| l.strip_prefix("lucide "))
+        .expect("tag");
+    let commit = version
+        .lines()
+        .nth(1)
+        .and_then(|l| l.strip_prefix("commit "))
+        .expect("commit");
+    assert!(
+        third.contains(tag) && third.contains(commit),
+        "THIRD_PARTY.md names the release and the commit"
+    );
+    assert!(
+        third.contains("ISC")
+            && third.contains("Cole Bemis")
+            && third.contains("Lucide Icons and Contributors"),
+        "both notices"
+    );
     for n in &names {
-        assert!(third.contains(&format!("`{n}`")), "THIRD_PARTY.md lists `{n}`");
+        assert!(
+            third.contains(&format!("`{n}`")),
+            "THIRD_PARTY.md lists `{n}`"
+        );
     }
     let lic = std::fs::read_to_string(dir.join("LICENSE")).expect("LICENSE");
     assert!(lic.contains("ISC License") && lic.contains("The MIT License (MIT)"));

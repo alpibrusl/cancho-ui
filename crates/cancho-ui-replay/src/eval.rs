@@ -878,7 +878,11 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                 (Value::Str(t), Value::Str(m)) => Ok(Value::Str(mark_text(&t, &m))),
                 (a, b) => Err(fault(
                     "replay-type-error",
-                    format!("`mark_text` needs two Strings, got {} and {}", describe(&a), describe(&b)),
+                    format!(
+                        "`mark_text` needs two Strings, got {} and {}",
+                        describe(&a),
+                        describe(&b)
+                    ),
                     span,
                 )),
             }
@@ -893,7 +897,7 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                             "replay-type-error",
                             format!("`face` needs four Strings, got {}", describe(&other)),
                             span,
-                        ))
+                        ));
                     }
                 }
             }
@@ -1017,9 +1021,9 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
             | "router.go" | "router.replace" | "credential.set" | "credential.clear" | "json.get"
             | "json.items" | "json.quote" | "reverse" | "contains" | "lower" | "fold" | "num"
             | "take" | "skip" | "concat" | "move" | "distance" | "min" | "max" | "abs" | "floor"
-            | "ceil" | "round" | "lines" | "split" | "join" | "trim" | "upper" | "emoji_only" | "initials" | "mark_text" | "face" | "starts_with"
-            | "ends_with" | "t" | "fmt.number" | "fmt.percent" | "fmt.date" | "fmt.time"
-            | "locale.current" | "locale.set",
+            | "ceil" | "round" | "lines" | "split" | "join" | "trim" | "upper" | "emoji_only"
+            | "initials" | "mark_text" | "face" | "starts_with" | "ends_with" | "t" | "fmt.number"
+            | "fmt.percent" | "fmt.date" | "fmt.time" | "locale.current" | "locale.set",
             n,
         ) => Err(fault(
             "replay-type-error",
@@ -1553,8 +1557,18 @@ fn operands(op: &str, l: &Value, r: &Value, span: Span) -> Stop {
 /// checks each part again: a tone is 0 to 11, a photo is base64 that starts like a JPEG). The private-use characters U+E000 to U+E002 are taken out of each part, so no part can
 /// shift another. The same as `__cui_face`.
 pub fn face(initials: &str, tone: &str, emoji: &str, photo: &str) -> String {
-    let clean = |t: &str| t.chars().filter(|c| !('\u{E000}'..='\u{E002}').contains(c)).collect::<String>();
-    format!("{}\u{E002}{}\u{E002}{}\u{E002}{}", clean(initials), clean(tone), clean(emoji), clean(photo))
+    let clean = |t: &str| {
+        t.chars()
+            .filter(|c| !('\u{E000}'..='\u{E002}').contains(c))
+            .collect::<String>()
+    };
+    format!(
+        "{}\u{E002}{}\u{E002}{}\u{E002}{}",
+        clean(initials),
+        clean(tone),
+        clean(emoji),
+        clean(photo)
+    )
 }
 
 /// `mark_text(text, marks)` (docs/structure.md 12.0j): `marks` is a JSON array of `{"start":n,"end":m}` byte offsets into `text` (UTF-8); each marked part is wrapped in U+E000 .. U+E001,
@@ -1562,7 +1576,11 @@ pub fn face(initials: &str, tone: &str, emoji: &str, photo: &str) -> String {
 /// boundary is skipped; so is a `marks` that is not such an array (the text then comes back as it is). The two private-use characters are taken out of the text itself, so a message
 /// that contains them draws no mark of its own. The same as `__cui_mark_text`.
 pub fn mark_text(text: &str, marks: &str) -> String {
-    let clean = |t: &str| t.chars().filter(|c| *c != '\u{E000}' && *c != '\u{E001}').collect::<String>();
+    let clean = |t: &str| {
+        t.chars()
+            .filter(|c| *c != '\u{E000}' && *c != '\u{E001}')
+            .collect::<String>()
+    };
     let b = text.as_bytes();
     let list: Vec<(usize, usize)> = match parse_marks(marks) {
         Some(l) => l,
@@ -1571,7 +1589,12 @@ pub fn mark_text(text: &str, marks: &str) -> String {
     let mut out = String::new();
     let mut at = 0usize;
     for (start, end) in list {
-        if start < at || end <= start || end > b.len() || !text.is_char_boundary(start) || !text.is_char_boundary(end) {
+        if start < at
+            || end <= start
+            || end > b.len()
+            || !text.is_char_boundary(start)
+            || !text.is_char_boundary(end)
+        {
             continue;
         }
         out.push_str(&clean(&text[at..start]));
@@ -1632,7 +1655,20 @@ pub fn emoji_only(text: &str) -> bool {
         }
         let pict = (0x1F000..=0x1FAFF).contains(&c)
             || (0x2600..=0x27BF).contains(&c)
-            || matches!(c, 0xA9 | 0xAE | 0x203C | 0x2049 | 0x2122 | 0x2139 | 0x2934 | 0x2935 | 0x3030 | 0x303D | 0x3297 | 0x3299)
+            || matches!(
+                c,
+                0xA9 | 0xAE
+                    | 0x203C
+                    | 0x2049
+                    | 0x2122
+                    | 0x2139
+                    | 0x2934
+                    | 0x2935
+                    | 0x3030
+                    | 0x303D
+                    | 0x3297
+                    | 0x3299
+            )
             || (0x2194..=0x21AA).contains(&c)
             || (0x231A..=0x23FF).contains(&c)
             || (0x25AA..=0x25FE).contains(&c)
@@ -1653,7 +1689,7 @@ pub fn emoji_only(text: &str) -> bool {
 /// `initials(text)` (docs/lists.md section 7.2b): the first character of each of the first two words (a word ends at a space, tab, newline, `_`, `.` or `-`), a-z made
 /// capitals; "" for no word. The model of the emitted `__cui_initials`.
 pub fn initials(text: &str) -> String {
-    text.split(|c: char| matches!(c, ' ' | '\t' | '\n' | '\r' | '_' | '.' | '-'))
+    text.split([' ', '\t', '\n', '\r', '_', '.', '-'])
         .filter_map(|w| w.chars().next())
         .take(2)
         .map(|c| c.to_ascii_uppercase())
@@ -1686,18 +1722,30 @@ mod chat_builtins {
     #[test]
     fn face_joins_four_parts_and_no_part_can_shift_another() {
         assert_eq!(face("AR", "3", "", ""), "AR\u{E002}3\u{E002}\u{E002}");
-        assert_eq!(face("A\u{E002}R", "3\u{E000}", "\u{E001}x", "y\u{E002}z"), "AR\u{E002}3\u{E002}x\u{E002}yz");
+        assert_eq!(
+            face("A\u{E002}R", "3\u{E000}", "\u{E001}x", "y\u{E002}z"),
+            "AR\u{E002}3\u{E002}x\u{E002}yz"
+        );
         assert_eq!(face("", "", "", "").matches('\u{E002}').count(), 3);
     }
 
     #[test]
     fn mark_text_wraps_the_marked_bytes_and_nothing_else() {
         let m = |t: &str, marks: &str| mark_text(t, marks);
-        assert_eq!(m("hi @ana!", r#"[{"start":3,"end":7}]"#), format!("hi {S}@ana{E}!"));
+        assert_eq!(
+            m("hi @ana!", r#"[{"start":3,"end":7}]"#),
+            format!("hi {S}@ana{E}!")
+        );
         assert_eq!(m("@ana", r#"[{"start":0,"end":4}]"#), format!("{S}@ana{E}"));
-        assert_eq!(m("@a @b", r#"[{"start":0,"end":2},{"start":3,"end":5}]"#), format!("{S}@a{E} {S}@b{E}"));
+        assert_eq!(
+            m("@a @b", r#"[{"start":0,"end":2},{"start":3,"end":5}]"#),
+            format!("{S}@a{E} {S}@b{E}")
+        );
         // offsets are BYTES: after an e-acute (2 bytes) and an emoji (4 bytes)
-        assert_eq!(m("é 😂 @ben", r#"[{"start":8,"end":12}]"#), format!("é 😂 {S}@ben{E}"));
+        assert_eq!(
+            m("é 😂 @ben", r#"[{"start":8,"end":12}]"#),
+            format!("é 😂 {S}@ben{E}")
+        );
         // no marks, no array, a damaged answer: the text as it is
         assert_eq!(m("plain", "[]"), "plain");
         assert_eq!(m("plain", ""), "plain");
@@ -1709,19 +1757,52 @@ mod chat_builtins {
         assert_eq!(m("abc", r#"[{"start":1,"end":9}]"#), "abc");
         assert_eq!(m("é", r#"[{"start":1,"end":2}]"#), "é");
         assert_eq!(m("é", r#"[{"start":0,"end":1}]"#), "é");
-        assert_eq!(m("abcd", r#"[{"start":0,"end":3},{"start":2,"end":4}]"#), format!("{S}abc{E}d"));
+        assert_eq!(
+            m("abcd", r#"[{"start":0,"end":3},{"start":2,"end":4}]"#),
+            format!("{S}abc{E}d")
+        );
         assert_eq!(m("abc", r#"[{"start":"1","end":2}]"#), "abc");
         // the delimiters in the text itself are taken out, so a message cannot draw a mark of its own
         assert_eq!(m(&format!("a{S}b{E}c"), "[]"), "abc");
-        assert_eq!(m(&format!("a{S}bc"), r#"[{"start":4,"end":6}]"#), format!("a{S}bc{E}"));
+        assert_eq!(
+            m(&format!("a{S}bc"), r#"[{"start":4,"end":6}]"#),
+            format!("a{S}bc{E}")
+        );
     }
 
     #[test]
     fn emoji_only_is_one_to_three_emoji_and_nothing_else() {
-        for yes in ["😂", "😂😂", "😂 😂 😂", "🤣🤣🤣", "👍🏽", "👨‍👩‍👧", "❤️", "🇪🇸", "🇪🇸🇵🇹", " 😍 ", "👨‍👩‍👧😂🎉"] {
+        for yes in [
+            "😂",
+            "😂😂",
+            "😂 😂 😂",
+            "🤣🤣🤣",
+            "👍🏽",
+            "👨‍👩‍👧",
+            "❤️",
+            "🇪🇸",
+            "🇪🇸🇵🇹",
+            " 😍 ",
+            "👨‍👩‍👧😂🎉",
+        ] {
             assert!(emoji_only(yes), "{yes}");
         }
-        for no in ["", " ", "a", "hi 😂", "😂 ok", "😂😂😂😂", "1", "!!!", "...", "\u{200d}", "\u{fe0f}", "😂\n", "ñ", "🙂x"] {
+        for no in [
+            "",
+            " ",
+            "a",
+            "hi 😂",
+            "😂 ok",
+            "😂😂😂😂",
+            "1",
+            "!!!",
+            "...",
+            "\u{200d}",
+            "\u{fe0f}",
+            "😂\n",
+            "ñ",
+            "🙂x",
+        ] {
             assert!(!emoji_only(no), "{no:?}");
         }
     }
