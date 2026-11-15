@@ -1,10 +1,10 @@
 # Tables that stay readable: numeric cells, a sticky header, a frozen first column
 
-> **Status: designed (15 Nov 2026), written before the code ([`CONTRIBUTING.md`](../CONTRIBUTING.md) section 1). Nothing is built.** Slice F5a of the gaps found while specifying a table browser in
+> **Status: built (15 Nov 2026), measured in section 6; designed before the code ([`CONTRIBUTING.md`](../CONTRIBUTING.md) section 1).** Slice F5a of the gaps found while specifying a table browser in
 > cancho-sheets (`docs/design.md` section 23, finding F5), which the table of `presentation.md` section 4 listed as not built: *no column width, alignment (numbers right-aligned), sorting from the header,
 > or sticky header; a header cell is not a button* and *no sticky first column* (section 4b). This slice is the three that need **no state**, so the page the program draws and the page the prerenderer writes
-> (`prerender.md`) agree by construction. **F5b**, a header that is a button with `aria-sort`, depends on state and has its own design later. Every claim below is a **choice**, a **read** (with the place) or
-> **open**; none is measured yet, and a measurement will replace its line in place.
+> (`prerender.md`) agree by construction. **F5b**, a header that is a button with `aria-sort`, depends on state and has its own design, [`table-sort.md`](table-sort.md). Every claim below is a **choice**, a **read** (with the place) or
+> **open**; section 6 holds what was measured.
 
 ## 1. The decision
 
