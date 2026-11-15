@@ -64,6 +64,28 @@ function __cui_num(text, fallback) {
 }
 ";
 
+const EXACT_JS: &str = "\
+// Builtin: exact(text, default) (docs/lists.md section 11). A text whose order, by code units, is the order of the decimals the texts spell:
+// `1` zero, `2` + length (6 digits) + integer + fraction for a positive, `0` + (999999 - length) + complemented digits + `~` for a negative, `3` for
+// what is neither text a decimal. The grammar is -?(0|[1-9]d*)(.d+)? with at most 999999 integer digits. Never throws.
+function __cui_exact(text, fallback) {
+    var key = function (s) {
+        var m = /^(-?)(0|[1-9][0-9]*)(?:\\.([0-9]+))?$/.exec(s);
+        if (!m || m[2].length > 999999) { return null; }
+        var frac = m[3] === undefined ? \"\" : m[3].replace(/0+$/, \"\");
+        if (/^0*$/.test(m[2]) && frac === \"\") { return \"1\"; }
+        var pad = function (n) { return (\"000000\" + n).slice(-6); };
+        if (m[1] === \"\") { return \"2\" + pad(m[2].length) + m[2] + frac; }
+        var comp = function (d) { return d.replace(/[0-9]/g, function (c) { return String(9 - Number(c)); }); };
+        return \"0\" + pad(999999 - m[2].length) + comp(m[2]) + comp(frac) + \"~\";
+    };
+    var a = key(typeof text === \"string\" ? text : String(text));
+    if (a !== null) { return a; }
+    var b = key(typeof fallback === \"string\" ? fallback : String(fallback));
+    return b !== null ? b : \"3\";
+}
+";
+
 const PAGING_JS: &str = "\
 // Builtins: take(list, n) and skip(list, n) (docs/lists.md section 6). New lists. n is cut toward zero; a negative n,
 // NaN, or anything not a number is 0; +Infinity is every element. take keeps the first n, skip drops them.
@@ -306,6 +328,7 @@ pub fn helpers_used(emitted: &str) -> String {
         (&["__cui_contains("][..], CONTAINS_JS),
         (&["__cui_lower("][..], LOWER_JS),
         (&["__cui_num("][..], NUM_JS),
+        (&["__cui_exact("][..], EXACT_JS),
         (&["__cui_json_quote("][..], JSON_QUOTE_JS),
         (
             &[

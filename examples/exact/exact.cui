@@ -1,0 +1,11 @@
+// examples/exact/exact.cui — an exact order for decimals (docs/lists.md section 11). `sort(rows, x => num(x, 0))` orders by a double, so two
+// integers past 2^53 can tie and keep their input order; `exact(text, default)` is a key whose order is the order of the decimals the texts spell.
+
+component Exact {
+    state rows: List[String] = ["9007199254740993", "9007199254740992", "10", "9", "-9007199254740993", "-0.5", "1.50", "1.5"];
+    state ordered: List[String] = [];
+
+    on Go { ordered = sort(rows, x => exact(x, "0")); }
+
+    view { Text { "x" } }
+}

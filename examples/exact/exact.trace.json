@@ -1,0 +1,9 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "component": "Exact",
+  "note": "Eight decimals, two of them past 2^53 and two spelled differently for one value: the exact order, ties (1.50 and 1.5) in input order. docs/lists.md section 11.",
+  "steps": [
+    { "event": "Go", "state": { "ordered": ["-9007199254740993", "-0.5", "1.50", "1.5", "9", "10", "9007199254740992", "9007199254740993"] } }
+  ]
+}
