@@ -35,6 +35,7 @@ pub mod recipe;
 pub mod routemap;
 pub mod routing;
 pub mod serialize;
+pub mod sortheader;
 pub mod sortlist;
 pub mod stream;
 pub mod structure;

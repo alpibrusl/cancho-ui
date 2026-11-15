@@ -624,6 +624,15 @@ pub(crate) fn emit_view_node(
                             emit_expr_runtime(expr, params)
                         ));
                     }
+                    IrBindingValue::Const { expr, .. } if b.key == "sorted" => {
+                        // a sortable header says how its column is sorted (docs/table-sort.md): `aria-sort` on the `th`, only while it is sorted; read at every render
+                        out.push_str(&format!(
+                            "{0}{{ const __s = String({2}); if (__s !== '') {{ {1}.setAttribute('aria-sort', __s); }} }}\n",
+                            indent,
+                            var,
+                            emit_expr_runtime(expr, params)
+                        ));
+                    }
                     IrBindingValue::Const { expr, .. } if b.key == "gap" => {
                         // A step of the scale in the default stylesheet (docs/presentation.md section 2).
                         if let IrExpr::IntLit { value, .. } = **expr {
