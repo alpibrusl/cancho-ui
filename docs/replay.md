@@ -489,9 +489,12 @@ about them.
   and by review. A differential test that runs the emitted code under a JavaScript
   engine against the same trace would close that gap, and needs a JS runtime,
   which this slice refuses to depend on (§12).
-- **No view.** Text interpolation, `For`, attributes, accessibility metadata, focus
-  and the DOM are not rendered or checked. `Text { "Elapsed: {clock.now()...}" }` is
-  never evaluated; only handlers are. (`not_claimed: view_rendering`.)
+- **No view, except the outline a step asks for** (`docs/view-test.md`, added 15 Nov 2026). Without a `view` or
+  `view_has` in a step, text interpolation, `For`, attributes, accessibility metadata, focus
+  and the DOM are not rendered or checked, and `Text { "Elapsed: {clock.now()...}" }` is
+  never evaluated; only handlers are. (`not_claimed: view_rendering`.) A step that asserts an outline claims what the outline says of the page after it, for the
+  nodes the outline can say, and nothing else: no layout, no focus, no pixel. The list `not_claimed` is unchanged, because it is a list for the report as a whole;
+  the steps that asserted a view carry it in their own report (`view`).
 - **No timing.** There is no wall clock and no latency model. `net.search`'s
   `60 + 45 * len(q)` delay in the adapter is not modelled; ordering is whatever the
   trace scripts. "A slow request" in a trace is a request the trace resolves

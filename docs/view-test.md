@@ -1,9 +1,9 @@
 # What the page shows, checked in a trace: the outline of the view
 
-> **Status: designed (15 Nov 2026), written before the code ([`CONTRIBUTING.md`](../CONTRIBUTING.md) section 1). Nothing is built.** Slice F9 of the gaps found while specifying a table browser in cancho-sheets
+> **Status: built (15 Nov 2026), measured in section 6; designed before the code ([`CONTRIBUTING.md`](../CONTRIBUTING.md) section 1).** Slice F9 of the gaps found while specifying a table browser in cancho-sheets
 > (`docs/design.md` section 23, finding F9): `cancho-ui test` replays handlers and reports state, so *"the grid shows what the state says"* has no check written in Cancho; it is checked by `inspect` and by eye.
 > `replay.md` section 9 lists `view_rendering` among the things a passing replay does **not** claim, and every report prints it (`NOT_CLAIMED`, `crates/cancho-ui-replay/src/report.rs`). Every claim below is a
-> **choice**, a **read** (with the place) or **open**; none is measured yet, and a measurement will replace its line in place.
+> **choice**, a **read** (with the place) or **open**; section 6 holds what was measured, and where it changed a line of the design the line is corrected in place.
 
 ## 1. The decision
 
@@ -22,7 +22,7 @@ A step of a trace may say what the page shows after it, as an **outline**: one l
     "    cell \"8\" numeric" ] }
 ```
 
-and `cancho-ui inspect view <file> [<component>] [--state '{"first": 1500}']` prints the outline of the component for its initial state, or for the state fields it is given (the others keep their initial value).
+and `cancho-ui inspect view <file> [<component>] [--state '{"first": 1500}']` prints the outline of the component for its initial state, or for the state fields it is given (the others keep their initial value). `cancho-ui test <file> <trace> --view` puts the outline in the report of **every** step, not only of those that assert one (`steps[i].view` in `--output json`), which is how the browser check of section 3 reads it.
 
 * **`view` is exact; `view_has` is a list of lines that must all appear, in that order, with anything between them.** A page that is long, or that holds a part the program does not care about, says `view_has`. A line is
   compared as written, indentation included for `view`, and with the indentation ignored for `view_has` (it names a node, not its depth). A difference is reported as the lines that differ, with the step's number.
@@ -36,7 +36,8 @@ and `cancho-ui inspect view <file> [<component>] [--state '{"first": 1500}']` pr
   |---|---|
   | `Column`, `Row` (not in a table) | not a line: a layout box has no role; its children are the lines, one level in |
   | `Text` | `text "the text"` (a `Text` whose role is `status` or `alert` says it: `status "…"`) |
-  | `Heading` / `Text { role: heading }` | `heading "…" level=N` |
+  | `Heading` / `Text { role: heading }` | `heading "…" level=N` (a `Text` with `role: heading` is level 2, which is what the page's `role="heading"` without `aria-level` means) |
+  | a `Column` or `Row` given a `role:` (`role: banner label: ".."`) | `banner ".."`, and its children one level in: a box with a role is a node, not a layout box *(found by the browser check: the first outline left it out)* |
   | `Button` | `button "label"`, then `pressed`, `disabled` when they are true |
   | `TextField`, `TextArea` | `textbox "label" value="…"`, `disabled`, `invalid` |
   | `Checkbox` | `checkbox "label"`, `checked` |
@@ -55,8 +56,7 @@ and `cancho-ui inspect view <file> [<component>] [--state '{"first": 1500}']` pr
 
 ## 2. Refusals
 
-`view-bad-line` (a line that is not `role`, an optional quoted name and known properties), `view-mismatch` (the outline differs; the report carries both), `view-unsupported` (an asserted view with a `? Kind`),
-`view-expression-unsupported` (a view expression the replay cannot evaluate: a request, the clock, storage). The first two are failures of a step as a wrong `state` is; the last two are refusals of the trace.
+`view-bad-line` (a line that is not a role, an optional quoted name and the properties of the outline, indented two spaces for each level: a **refusal of the trace** before it runs, as `trace-bad-step` is), `view-mismatch` (the outline differs; the report carries both), `view-unsupported` (an asserted view with a `? Kind`) and `view-expression-unsupported` (a view expression the replay cannot evaluate, or cannot say exactly: a request, or a number the page writes differently from Rust, such as `0.0000001`): **failures of the step**, as a wrong `state` is, and the trace goes on. A component that `requires Storage`, `Router` or `Credential` is refused whole (`view-expression-unsupported`): its view may read what the browser holds, which a trace does not give the outline, so an outline of it would say what the page shows for an empty browser, not for the one it is in. The fake clock and the language in use are what the replay already has, and a view that reads them is outlined.
 
 ## 3. The oracle: the browser's own accessibility tree
 
@@ -64,8 +64,7 @@ A claim that a Rust evaluator of the view agrees with the page that is drawn nee
 each, a short list of **interactions**: a real click, a real typing, a real key or scroll, paired with the trace step that is the same event. After each interaction it reads the outline out of the DOM with a function
 that applies the table above to the document (`table` -> `table`, `tr` -> `row`, `th scope=col` -> `columnheader`, `td` -> `cell`, `button`, `input` -> `textbox` ..., with `aria-sort`, `aria-rowcount`, `pressed`,
 `disabled` and `checked` read from the attributes), and compares it with the outline `cancho-ui test` gives for the same trace prefix. A difference is a bug in the evaluator or in the emitter, and the check says which line.
-`ariaSnapshot` of the same page is read too, and the names of the lines must be the names it gives (a second witness that the vocabulary is the browser's, not ours). *Choice: the examples of this repository
-are the corpus (`counter`, `rows`, `keys`, `table-sort`, `table-static`, `window`, `clipboard`, `exact`, `ops-console` .. as the table covers them); the claim is for those pages and those interactions, and says so.*
+*The first draft said `ariaSnapshot` of the same page would be read too, as a second witness that the vocabulary is the browser's; **that is not built**: the DOM function applies the table of section 1 and nothing else, so the check says the outline equals the table applied to the DOM, which is a weaker claim than "equals the accessibility tree". Open.* *Choice: the examples of this repository are the corpus; the claim is for those pages and those interactions, and section 6 lists them and the ones skipped.*
 
 ## 4. The checks, written before the code
 
@@ -73,7 +72,7 @@ are the corpus (`counter`, `rows`, `keys`, `table-sort`, `table-static`, `window
 * the outline of each example in its initial state, written by hand in the test (so the evaluator is not its own oracle), and after the steps of its trace;
 * `view` and `view_has` passing, and failing with the lines that differ; a bad line; an `? Kind`; an expression that needs a request; a state field the step did not name keeping its value;
 * a trace of the sortable header (`table-sort`) with `aria-sort` through its three states, of the window (`rows=3001`, the rows drawn at `first`), of the keys example (no line for a `Key`);
-* **in Chromium**, the interactions of section 3 for at least eight examples, every line compared, and the names compared with `ariaSnapshot`;
+* **in Chromium**, the interactions of section 3 for five examples and the state at rest of every other example the outline can say, every line compared (the names compared with `ariaSnapshot`: not built, section 3);
 * **mutants**: an `If` that ignores its condition; a `For` that draws one element too few or too many; a name that is the text and not the label; `sort=` missing; `numeric` missing; `pressed` for `disabled`; `view_has` that
   ignores the order; `view` that ignores one line; `? Kind` that is skipped instead of refused; the `rows=` of a window computed without the header.
 
