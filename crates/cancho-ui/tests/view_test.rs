@@ -300,3 +300,21 @@ fn a_button_says_whether_it_is_pressed_or_disabled_and_a_box_whether_it_is_check
         ])
     );
 }
+
+#[test]
+fn a_component_whose_view_may_read_the_browser_is_refused_whole() {
+    let src = "component A {\n    requires Storage;\n    state n: Int = 0;\n    on Go { n = n + 1; storage.set(\"k\", \"v\"); }\n    view { Text { \"{n}\" } }\n}\n";
+    let t = r#"{ "schema": "cancho-ui-trace", "version": "0.1.0", "steps": [
+        { "event": "Go", "state": { "n": 1 }, "view": ["text \"1\""] } ] }"#;
+    let (code, out) = test_trace(src, t, "storage");
+    assert_eq!(code, 4, "{out}");
+    assert!(
+        out.contains("view-expression-unsupported") && out.contains("requires Storage"),
+        "{out}"
+    );
+    // `inspect view` says it too
+    let file = scratch("storage2.cui", src);
+    let (code, _, stderr) = run(&["inspect", "view", p(&file)]);
+    assert_ne!(code, 0);
+    assert!(stderr.contains("requires Storage"), "{stderr}");
+}

@@ -450,6 +450,18 @@ impl Walk<'_, '_> {
 impl Machine<'_> {
     /// The outline of the component's view for the state it is in now.
     pub fn outline(&self) -> Result<Vec<String>, OutlineError> {
+        // a view may read what the browser holds, which a trace does not give the outline (docs/view-test.md section 1)
+        if let Some(r) = self
+            .comp
+            .requires
+            .iter()
+            .find(|r| matches!(r.name.as_str(), "Storage" | "Router" | "Credential"))
+        {
+            return Err(unsupported(format!(
+                "this component `requires {}`: its view may read what the browser holds, so an outline of it would be the page for an empty browser",
+                r.name
+            )));
+        }
         let mut w = Walk {
             m: self,
             locals: Vec::new(),

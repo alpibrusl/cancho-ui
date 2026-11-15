@@ -81,3 +81,26 @@ that applies the table above to the document (`table` -> `table`, `tr` -> `row`,
 An outline of a child component instance (the replay does not create them: `replay.md` section 9); an outline of the page the prerenderer writes (it is the same elements; **open**: whether to check it against
 the outline too); a `view` for the **initial** state in a trace header (the first step's report is enough); a diff of two outlines over time (`semantic-diff.md` is the diff of programs); focus (which node holds it);
 a screenshot or a visual comparison of any kind.
+
+## 6. Measured (2026-11-15)
+
+Machine: the development container, Chromium from the Playwright installed there, one run each.
+
+* `cargo test -p cancho-ui --test view_test` (8 tests), outlines written by hand: the counter, the keys example, the sortable table in a descending state (the rows in the order the program sorts them, `sort=descending` on one
+  header and `numeric` on the cells), a window (`rows=61`, 16 rows drawn from `first`, the last rows near the end), a false and a true `If`, a `For` over three elements and over one, a button pressed and disabled and a
+  box checked, `view` and `view_has` passing, and five ways of being wrong (a wrong count, the order, a missing line, only the last line wrong, a line too many) each failing as `view-mismatch` with both outlines in the
+  report; `? Rich` refused as `view-unsupported`; `0.0000001` refused as `view-expression-unsupported`; nine bad lines refused as `view-bad-line` and six good ones not; a component that `requires Storage` refused whole.
+* `node scripts/check-view.js`: **33 outlines compared** with the DOM, every line: 5 examples driven by real interactions (counter: 3 clicks; rows: 3 clicks with arguments; table-sort: 5 clicks on the headers through three
+  states and two columns; keys: typing in a field, ArrowDown, Shift+ArrowDown, a click; window: two scrolls) and **16 examples at rest** (the five above, table-static, and `await`, `clipboard`, `dashboard/cards`, `exact`,
+  `hello`, `list`, `match`, `near`, `theme`, `where`). **29 examples are skipped, each with its reason printed**: 19 have a node the outline cannot say (charts, maps, images, icons, islands, the page head, a waffle ..),
+  4 are components the outline refuses whole because they `require` `Storage`, `Router` or `Credential`, and 6 do something before the first event or read the browser (`start`, `every`, `subscribe`, a `Locale`, a `Network`). This is the claim: for those 16 pages and those interactions the
+  outline is what the DOM says; it is not a claim about the other 29.
+* **The check found two things the first outline got wrong**, both now fixed and in the table of section 1: a `Text { role: heading }` is level 2 in the page and the outline wrote it as `text`; and a `Column` given
+  `role: banner` is a node of the accessibility tree and the outline left it out.
+* `node scripts/check-view-mutants.js`: **15/15 killed** in one run: an `If` that ignores its condition; a `For` one element short and one that draws each twice; a button with no name; `sort=`, `numeric` and the value of a
+  text field missing; `pressed` written as `disabled`; the rows of a window without the header; a role of a box dropped; `view_has` out of order; `view` ignoring its last line; a `? Kind` skipped; an odd indentation and an
+  unknown word accepted. **Three earlier runs were wrong and are kept here:** the first run left `an If ignores its condition` alive (no test had a false `If`), `pressed says disabled` alive (no test had a pressed
+  button) and `view ignores the last line` alive (no wrong trace differed only in its last line); each got a test, and the whole set was run again. A run that is interrupted leaves its mutant in the file: twice that
+  was found by `git diff` before a commit and reverted.
+* **Not measured:** the names against `ariaSnapshot`; an outline of a component instance, a chart, a map or an image; a `Router`, `Storage` or `Credential` page.
+
