@@ -652,6 +652,22 @@ function __cui_router_replace(p) {
 }
 "#;
 
+/// The tap of a `Button { copy: field }` (docs/clipboard.md): it writes the text the field holds to the clipboard (`writeText`, never `readText`), inside the click, and tells
+/// the person what happened in the button's own label for a moment. Over 1,000,000 UTF-16 units nothing is written (the text is refused, never cut).
+pub(crate) const COPY_TEXT_ADAPTER_JS: &str = r#"// Platform adapter: Clipboard (docs/clipboard.md). Write only, and only inside the click of a `Button { copy: .. }`.
+function __cui_copy_text(button, text) {
+    const label = button.textContent;
+    const say = function (s) { button.textContent = s; setTimeout(function () { button.textContent = label; }, 1500); };
+    const value = String(text);
+    if (value.length > 1000000) { say('Too long to copy'); return; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(value).then(function () { say('Copied'); }, function () { say('Not copied'); });
+    } else {
+        say('Not copied');
+    }
+}
+"#;
+
 /// The copy button of a `Code { copy: true }` (docs/structure.md section 8). It writes the text of the box to the clipboard (`writeText`, never `readText`)
 /// when the button is tapped, and tells the person what happened; where the clipboard is not offered it selects the text so that Ctrl+C or the
 /// long-press menu finishes the job.

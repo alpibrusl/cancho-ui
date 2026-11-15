@@ -1,0 +1,17 @@
+// examples/clipboard/clipboard.cui — copying a text the page holds (docs/clipboard.md). `Button { copy: draft }` writes the text of the
+// `draft` field to the system clipboard when it is tapped, and nothing else in the program can touch the clipboard.
+
+component Copier {
+    requires Clipboard;
+
+    state draft: String = "";
+
+    on Change(value) { draft = value; }
+
+    view {
+        Column {
+            TextField { label: "Text" value: draft on: Change }
+            Button { label: "Copy" copy: draft }
+        }
+    }
+}

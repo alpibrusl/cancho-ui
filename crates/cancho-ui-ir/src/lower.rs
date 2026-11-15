@@ -1587,7 +1587,9 @@ fn check_capabilities(ir: &IrFile) -> Result<(), LowerError> {
                     || (req.name == "Network"
                         && (crate::map::view_has_map(&c.view.body)
                             || crate::routemap::view_has_tiles(&c.view.body)))
-                    || (req.name == "Clipboard" && crate::structure::view_has_copy(&c.view.body))
+                    || (req.name == "Clipboard"
+                        && (crate::structure::view_has_copy(&c.view.body)
+                            || crate::structure::view_has_button_copy(&c.view.body)))
                     || (req.name == "Dom" && crate::island::view_has_open(&c.view.body))
             };
             if !used {
