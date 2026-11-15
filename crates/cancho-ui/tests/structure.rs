@@ -656,23 +656,30 @@ fn a_link_to_the_backend_is_a_route_not_a_file() {
         "/api/x.json",
         "/api/with space",
     ] {
-        let text = format!("component C {{\n    view {{ Link {{ to: \"{bad}\" \"Go on\" }} }}\n}}\n");
+        let text =
+            format!("component C {{\n    view {{ Link {{ to: \"{bad}\" \"Go on\" }} }}\n}}\n");
         let (code, got) = codes(&text);
         assert_ne!(code, 0, "{bad} was accepted");
         assert!(
-            got.iter().any(|t| t == "link-route-invalid" || t == "link-scheme-refused"),
+            got.iter()
+                .any(|t| t == "link-route-invalid" || t == "link-scheme-refused"),
             "{bad}: {got:?}"
         );
     }
     // a path that is not under /api/ is still a file of the site, and is still refused as one
-    let (code, got) = codes("component C {\n    view { Link { to: \"/auth/start\" \"Go on\" } }\n}\n");
+    let (code, got) =
+        codes("component C {\n    view { Link { to: \"/auth/start\" \"Go on\" } }\n}\n");
     assert_ne!(code, 0);
     assert!(got.iter().any(|t| t == "link-file-invalid"), "{got:?}");
     let long = format!("/api/{}", "a".repeat(124));
-    let (code, got) = codes(&format!("component C {{\n    view {{ Link {{ to: \"{long}\" \"Go on\" }} }}\n}}\n"));
+    let (code, got) = codes(&format!(
+        "component C {{\n    view {{ Link {{ to: \"{long}\" \"Go on\" }} }}\n}}\n"
+    ));
     assert_ne!(code, 0);
     assert!(got.iter().any(|t| t == "link-route-invalid"), "{got:?}");
     let edge = format!("/api/{}", "a".repeat(123));
-    let (code, got) = codes(&format!("component C {{\n    view {{ Link {{ to: \"{edge}\" \"Go on\" }} }}\n}}\n"));
+    let (code, got) = codes(&format!(
+        "component C {{\n    view {{ Link {{ to: \"{edge}\" \"Go on\" }} }}\n}}\n"
+    ));
     assert_eq!(code, 0, "{got:?}");
 }

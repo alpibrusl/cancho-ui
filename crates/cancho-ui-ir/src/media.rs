@@ -204,7 +204,10 @@ pub fn check_app_route(to: &str) -> Result<(), String> {
     if to.len() > 128 {
         return Err("it is longer than 128 bytes".to_string());
     }
-    if !to.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'/')) {
+    if !to
+        .bytes()
+        .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'/'))
+    {
         return Err("it has a character other than letters, digits, `-`, `_` and `/` (a link to the backend carries no query, no fragment and no dot)".to_string());
     }
     if to[1..].split('/').any(|seg| seg.is_empty()) {

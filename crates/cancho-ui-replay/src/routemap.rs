@@ -84,7 +84,7 @@ pub fn tile_plan(points: &[(f64, f64)], template: &str) -> Option<TilePlan> {
         let mut chosen = None;
         for z in (MIN_ZOOM..=MAX_ZOOM).rev() {
             let c = cover(z);
-            if c.1 - c.0 + 1 <= MAX_GRID && c.3 - c.2 + 1 <= MAX_GRID {
+            if c.1 - c.0 < MAX_GRID && c.3 - c.2 < MAX_GRID {
                 chosen = Some((z, c));
                 break;
             }

@@ -778,38 +778,46 @@ pub fn check_program(ir: &IrFile) -> Result<(), LowerError> {
     if let Some(second) = bands2.get(1) {
         return Err(refuse(
             "aside-band-duplicate",
-            "a page has one `Aside { band2: true }`: it is the second band that a marker shows".to_string(),
+            "a page has one `Aside { band2: true }`: it is the second band that a marker shows"
+                .to_string(),
             *second,
         ));
     }
-    for (spans, key) in [(&fabs2, "fab2"), (&sheets2, "sheet2"), (&bands, "band"), (&bands2, "band2")] {
-        if let Some(f) = spans.first() {
-            if !marks.iter().any(|m| m == key) {
-                return Err(refuse(
-                    "aside-unmarked",
-                    format!("an `Aside {{ {key}: true }}` is shown only while an `Aside {{ marks: \"{key}\" }}` is on the page (inside an `If`): there is none, so it would never be seen"),
-                    *f,
-                ));
-            }
-        }
-    }
-    if let Some(f) = fabs.first() {
-        if !marks.iter().any(|m| m == "fab") {
+    for (spans, key) in [
+        (&fabs2, "fab2"),
+        (&sheets2, "sheet2"),
+        (&bands, "band"),
+        (&bands2, "band2"),
+    ] {
+        if let Some(f) = spans.first()
+            && !marks.iter().any(|m| m == key)
+        {
             return Err(refuse(
                 "aside-unmarked",
-                "an `Aside { fab: true }` is shown only while an `Aside { marks: \"fab\" }` is on the page (inside an `If`): there is none, so it would never be seen".to_string(),
+                format!(
+                    "an `Aside {{ {key}: true }}` is shown only while an `Aside {{ marks: \"{key}\" }}` is on the page (inside an `If`): there is none, so it would never be seen"
+                ),
                 *f,
             ));
         }
     }
-    if let Some(f) = sheets.first() {
-        if !marks.iter().any(|m| m == "sheet") {
-            return Err(refuse(
-                "aside-unmarked",
-                "an `Aside { sheet: true }` is shown only while an `Aside { marks: \"sheet\" }` is on the page (inside an `If`): there is none, so it would never be seen".to_string(),
-                *f,
-            ));
-        }
+    if let Some(f) = fabs.first()
+        && !marks.iter().any(|m| m == "fab")
+    {
+        return Err(refuse(
+            "aside-unmarked",
+            "an `Aside { fab: true }` is shown only while an `Aside { marks: \"fab\" }` is on the page (inside an `If`): there is none, so it would never be seen".to_string(),
+            *f,
+        ));
+    }
+    if let Some(f) = sheets.first()
+        && !marks.iter().any(|m| m == "sheet")
+    {
+        return Err(refuse(
+            "aside-unmarked",
+            "an `Aside { sheet: true }` is shown only while an `Aside { marks: \"sheet\" }` is on the page (inside an `If`): there is none, so it would never be seen".to_string(),
+            *f,
+        ));
     }
     if let Some(second) = docks.get(1) {
         return Err(refuse(
@@ -914,7 +922,8 @@ pub fn uses_icons(ir: &IrFile) -> bool {
     for c in &ir.components {
         visit(&c.view.body, false, &mut |kind, bindings, _, _| {
             if matches!(kind, IrElementKind::Icon)
-                || (matches!(kind, IrElementKind::Button) && bindings.iter().any(|b| b.key == "icon"))
+                || (matches!(kind, IrElementKind::Button)
+                    && bindings.iter().any(|b| b.key == "icon"))
             {
                 any = true;
             }

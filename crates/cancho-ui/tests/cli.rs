@@ -253,7 +253,6 @@ fn skill_and_introspect_refuse_bad_flags_with_exit_2() {
     }
 }
 
-
 #[test]
 fn a_button_whose_content_is_an_icon_keeps_its_label_as_name_and_tooltip() {
     // `Button { label: "Home" Text { "H" } }` shows its child; the label is its accessible name and also its `title`, a tooltip. A button with no
@@ -275,7 +274,17 @@ fn a_button_whose_content_is_an_icon_keeps_its_label_as_name_and_tooltip() {
     ]);
     assert_eq!(code, 0, "stdout: {stdout}");
     let js = std::fs::read_to_string(&out).expect("build wrote the file");
-    assert!(js.contains("setAttribute('title', \"Home\")"), "an icon button has a tooltip:\n{js}");
-    assert!(!js.contains("setAttribute('title', \"Plain\")"), "a button that shows its label needs none:\n{js}");
-    assert_eq!(js.matches("setAttribute('title'").count(), 2, "the expression label gives one more:\n{js}");
+    assert!(
+        js.contains("setAttribute('title', \"Home\")"),
+        "an icon button has a tooltip:\n{js}"
+    );
+    assert!(
+        !js.contains("setAttribute('title', \"Plain\")"),
+        "a button that shows its label needs none:\n{js}"
+    );
+    assert_eq!(
+        js.matches("setAttribute('title'").count(),
+        2,
+        "the expression label gives one more:\n{js}"
+    );
 }

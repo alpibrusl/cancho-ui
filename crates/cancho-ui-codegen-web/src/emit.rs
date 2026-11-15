@@ -506,7 +506,8 @@ fn view_has_bar(node: &IrViewNode) -> bool {
             children,
             ..
         } => {
-            (matches!(kind, IrElementKind::Row) && cancho_ui_ir::structure::is_flag(bindings, "bar"))
+            (matches!(kind, IrElementKind::Row)
+                && cancho_ui_ir::structure::is_flag(bindings, "bar"))
                 || children.iter().any(view_has_bar)
         }
         IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {

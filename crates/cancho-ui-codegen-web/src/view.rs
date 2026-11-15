@@ -1004,9 +1004,10 @@ pub(crate) fn emit_view_node(
             // `Text { style: "marked" mark_text(text, marks) }` (docs/structure.md 12.0j): the text is cut at the marks `mark_text` put in it and each marked part
             // becomes a span (a mention); built with text nodes and `textContent`, never as markup, so nothing in the text can be read as HTML
             if matches!(kind, IrElementKind::Text)
-                && bindings
-                    .iter()
-                    .any(|b| b.key == "style" && matches!(&b.value, IrBindingValue::String(s) if s == "marked"))
+                && bindings.iter().any(|b| {
+                    b.key == "style"
+                        && matches!(&b.value, IrBindingValue::String(s) if s == "marked")
+                })
             {
                 out.push_str(&format!("{0}__cui_marked({1});\n", indent, var));
             }
