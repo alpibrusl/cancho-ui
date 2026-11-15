@@ -536,6 +536,24 @@ fn view_has_chatlog(node: &IrViewNode) -> bool {
     }
 }
 
+fn view_has_window(node: &IrViewNode) -> bool {
+    match node {
+        IrViewNode::Element {
+            kind,
+            bindings,
+            children,
+            ..
+        } => {
+            (matches!(kind, IrElementKind::Table) && cancho_ui_ir::window::is_window(bindings))
+                || children.iter().any(view_has_window)
+        }
+        IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
+            children.iter().any(view_has_window)
+        }
+        IrViewNode::Text { .. } => false,
+    }
+}
+
 fn view_has_file(node: &IrViewNode) -> bool {
     match node {
         IrViewNode::Element { kind, children, .. } => {
@@ -982,6 +1000,10 @@ fn emit_component(
     if view_has_chatlog(&c.view.body) {
         out.push_str("            const __cui_log = [];\n            root.querySelectorAll('.cui-chatlog').forEach((e) => { __cui_log.push({ foot: e.scrollHeight - e.scrollTop - e.clientHeight < 48, top: e.scrollTop }); });\n");
     }
+    // docs/window.md: a window's box is rebuilt at every render and a new box starts at the top; each one is put back where it was
+    if view_has_window(&c.view.body) {
+        out.push_str("            const __cui_win = Array.prototype.map.call(root.querySelectorAll('[data-cui-window]'), (e) => e.scrollTop);\n");
+    }
     // docs/drag-and-drop.md section 3: a drag does not survive a rebuild, so the page is not rebuilt under one; the render runs once, after it.
     if view_has_sortlist(&c.view.body) {
         out.push_str("            if (__cui_drag.on) { if (__cui_drag.defer.indexOf(__render) < 0) { __cui_drag.defer.push(__render); } return; }\n");
@@ -1073,6 +1095,9 @@ fn emit_component(
     }
     if view_body.contains("__cui_ifs_now[") {
         out.push_str("            const __cui_drawn = [];\n            for (const k in __cui_ifs_now) { if (!__cui_ifs_prev[k]) { __cui_drawn.push(__cui_ifs_now[k]); } }\n            __cui_ifs_prev = {};\n            for (const k in __cui_ifs_now) { __cui_ifs_prev[k] = true; }\n            if (__cui_drawn.length) { __cui_screen_of = { path: __cui_appeared(root, __cui_drawn) }; __cui_newscreen = __cui_screen_of.path !== null; }\n");
+    }
+    if view_has_window(&c.view.body) {
+        out.push_str("            root.querySelectorAll('[data-cui-window]').forEach((e, i) => { if (__cui_win[i] !== undefined) { e.scrollTop = __cui_win[i]; } });\n");
     }
     if view_has_chatlog(&c.view.body) {
         out.push_str("            root.querySelectorAll('.cui-chatlog').forEach((e, i) => { const k = __cui_log[i]; if (!k || k.foot) { e.scrollTop = e.scrollHeight; } else { e.scrollTop = k.top; } });\n");

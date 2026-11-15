@@ -40,6 +40,8 @@ body {
 .cui-sticky-head th { position: sticky; top: 0; background: Canvas; z-index: 1; }
 .cui-sticky-col th:first-child, .cui-sticky-col td:first-child { position: sticky; left: 0; background: Canvas; z-index: 1; }
 .cui-sticky-head.cui-sticky-col th:first-child { z-index: 2; }
+/* a window (docs/window.md): every body row is --cui-row high, and a longer text is cut, not taller; the spacer rows are not rows */
+.cui-table-scroll[data-cui-window] tbody tr:not([aria-hidden]) td { height: var(--cui-row); box-sizing: border-box; padding-block: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* numeric: true on a cell: the digits line up (docs/table-static.md) */
 /* a sortable header (docs/table-sort.md): the arrow is drawn, and the empty alternative text keeps it out of the button's name */
 .cui-table th[aria-sort=ascending] button::after { content: " \2191" / ""; }

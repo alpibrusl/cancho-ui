@@ -808,6 +808,8 @@ pub(crate) fn emit_view_node(
                                 select_handler = Some(name.clone());
                             } else if matches!(kind, IrElementKind::FileField) {
                                 file_handler = Some(name.clone());
+                            } else if matches!(kind, IrElementKind::Table) {
+                                // a window's event is wired to the box when the table is drawn (docs/window.md), below
                             } else {
                                 out.push_str(&format!(
                                     "{0}// on: {1} on a non-button/non-textfield primitive (Phase 2+)\n",
@@ -1232,6 +1234,9 @@ pub(crate) fn emit_view_node(
                     "{0}{1}_scroll.appendChild({1});\n{0}{2}.appendChild({1}_scroll);\n",
                     indent, var, parent_var
                 ));
+                if cancho_ui_ir::window::is_window(bindings) {
+                    out.push_str(&window_script(indent, &var, bindings, params));
+                }
             } else {
                 out.push_str(&format!(
                     "{0}{2}.appendChild({1});\n",
@@ -1323,4 +1328,54 @@ pub(crate) fn emit_view_node(
             out
         }
     }
+}
+
+/// What a window does to its table once the rows the program drew are in it (docs/window.md): the two spacer rows, the row numbers for assistive technology, and the listener of the box.
+fn window_script(indent: &str, var: &str, bindings: &[IrBinding], params: &[&str]) -> String {
+    let (Some(rh), Some(total), Some(first), Some(event)) = (
+        cancho_ui_ir::window::row_height(bindings),
+        cancho_ui_ir::window::expr_of(bindings, "total"),
+        cancho_ui_ir::window::expr_of(bindings, "first"),
+        cancho_ui_ir::window::event_of(bindings),
+    ) else {
+        return String::new();
+    };
+    let body = format!("{var}_body");
+    let scroll = format!("{var}_scroll");
+    format!(
+        "{i}{{\n\
+{i}    const wt = Math.max(0, Math.floor(Number({total}) || 0));\n\
+{i}    const wf = Math.min(Math.max(0, Math.floor(Number({first}) || 0)), Math.max(0, wt - 1));\n\
+{i}    const rows = Array.prototype.slice.call({body}.children);\n\
+{i}    let h = 0;\n\
+{i}    while (h < rows.length && rows[h].querySelector('th') && !rows[h].querySelector('td')) {{ h++; }}\n\
+{i}    const cols = rows.length > 0 ? rows[0].children.length : 1;\n\
+{i}    const spacer = function (n) {{\n\
+{i}        const tr = document.createElement('tr');\n\
+{i}        tr.setAttribute('aria-hidden', 'true');\n\
+{i}        const td = document.createElement('td');\n\
+{i}        td.colSpan = cols;\n\
+{i}        td.setAttribute('style', 'height: ' + (n * {rh}) + 'rem; padding: 0; border: 0;');\n\
+{i}        tr.appendChild(td);\n\
+{i}        return tr;\n\
+{i}    }};\n\
+{i}    {var}.setAttribute('aria-rowcount', String(wt + h));\n\
+{i}    rows.forEach(function (r, k) {{ r.setAttribute('aria-rowindex', String(k < h ? k + 1 : h + wf + (k - h) + 1)); }});\n\
+{i}    {body}.insertBefore(spacer(wf), rows[h] || null);\n\
+{i}    {body}.appendChild(spacer(Math.max(0, wt - wf - (rows.length - h))));\n\
+{i}    {scroll}.addEventListener('scroll', function () {{\n\
+{i}        const px = {rh} * parseFloat(getComputedStyle(document.documentElement).fontSize);\n\
+{i}        const at = Math.min(Math.max(0, Math.floor({scroll}.scrollTop / px)), Math.max(0, wt - 1));\n\
+{i}        if (at !== wf) {{ __on_{event}(at); }}\n\
+{i}    }});\n\
+{i}}}\n",
+        i = indent,
+        total = emit_expr_runtime(total, params),
+        first = emit_expr_runtime(first, params),
+        body = body,
+        scroll = scroll,
+        var = var,
+        rh = rh,
+        event = event,
+    )
 }

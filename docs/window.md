@@ -1,8 +1,8 @@
 # A table that draws only the rows in view: `Table { total: n first: first row_height: 2 on: Scrolled }`
 
-> **Status: designed (15 Nov 2026), written before the code ([`CONTRIBUTING.md`](../CONTRIBUTING.md) section 1). Nothing is built.** Slice F7 of the gaps found while specifying a table browser in cancho-sheets
+> **Status: built (15 Nov 2026), measured in section 6; designed before the code ([`CONTRIBUTING.md`](../CONTRIBUTING.md) section 1).** Slice F7 of the gaps found while specifying a table browser in cancho-sheets
 > (`docs/design.md` section 23, finding F7): there is no virtual scrolling, so a page that shows 3,000 rows draws 3,000 (the program's answer today is `take`/`skip`, `lists.md` section 6, which pages instead of
-> scrolling). Every claim below is a **choice**, a **read** (with the place) or **open**; none is measured yet, and a measurement will replace its line in place.
+> scrolling). Every claim below is a **choice**, a **read** (with the place) or **open**; section 6 holds what was measured, and where it changed a line of the design the line is corrected in place.
 
 ## 1. The decision
 
@@ -34,7 +34,7 @@ component Rows {
 * **The compiler does the arithmetic of a scroll box and nothing else.** The program draws the rows from `first` on, however many it likes (`take(skip(rows, first), 16)`: the rows in view and a few more, *an overscan*); the table makes
   the box as tall as `total` rows of `row_height` would be, puts the rows where they belong, and says which row is at the top when the box is scrolled. It does not slice, sort or fetch: a page that gets its rows from a
   database fires its own request from `Scrolled` (`fetch.md`), and a page that has them all in memory slices a list. *Choice: the program owns what a row is; the table owns where it is.*
-* **`row_height: N`** (an integer literal of rem, 1 to 20) is the height of **every** body row. A row is exactly that tall: its cells do not wrap (`white-space: nowrap; overflow: hidden; text-overflow: ellipsis`), so a
+* **`row_height: N`** (an integer literal of rem, 1 to 20; any other expression is `window-row-height-invalid`, a `-1` too) is the height of **every** body row. A row is exactly that tall: its cells do not wrap (`white-space: nowrap; overflow: hidden; text-overflow: ellipsis`), so a
   longer text is cut short, not taller. *Choice: the arithmetic is only right if rows are one height; text that must wrap is not a case for this table (it pages).* In rem, so the height follows the reader's text size.
 * **`total:`** and **`first:`** are `Int` expressions of the view (a state field, `len(rows)`, an arithmetic of them), read at each render. `first` is clamped to `0 ..= max(0, total - 1)` by the table, not refused: a
   `first` past the end draws the rows where they would be and the box shows its end.
@@ -48,7 +48,7 @@ component Rows {
 
 ## 2. What the web backend does
 
-The box is the scroll box of F5a (`div.cui-table-scroll` with `max-height`, now `height`: a window's box is always as tall as `max_height`, since a box shorter than its content is what it is for). The body gets two **spacer
+The box is the scroll box of F5a (`div.cui-table-scroll` with `max-height`, plus the attribute `data-cui-window` and the variable `--cui-row` that the stylesheet reads). *The first draft said the box is always `max_height` high; it is at most that, and a table whose rows are fewer than the box holds is shorter, as before.* The body gets two **spacer
 rows**: one before the rows the program drew, `row_height * first` rem high, and one after, `row_height * (total - first - drawn)` rem high (`drawn` is how many body rows the program drew; never negative). Both are
 `tr`s with `aria-hidden="true"` and one empty cell that spans the columns; the rows drawn are `row_height` high by the rule of section 1. So the scrollable height is `row_height * total`, the drawn rows sit where the scroll
 position puts them, and nothing else about the table changes.
@@ -64,7 +64,7 @@ position puts them, and nothing else about the table changes.
 
 ## 3. Refusals
 
-`window-incomplete`, `window-row-height-invalid`, `window-count-not-number`; the existing `event-arity-mismatch` and `event-unknown`, and `binding-unknown` for `row_height`, `total` or `first` on anything but a `Table`.
+`window-incomplete`, `window-row-height-invalid`, `window-count-not-number`; the existing `event-arity-mismatch` and `event-unknown`, and `binding-unknown` for `row_height` (a literal) on anything but a `Table`. *The first draft said the same of `total:` and `first:`; on any other element they are not read as expressions at all, so the parser stops them first (`parse-unexpected-token`).*
 
 ## 4. The checks, written before the code
 
@@ -85,3 +85,23 @@ position puts them, and nothing else about the table changes.
 A window of anything but a `Table`; rows of different heights; a row that wraps; horizontal windowing of columns; a scroll to a given row from the program (`Scroll to row 1,500` is a state change the program makes
 with `first`, and the box does not move until a binding says so: **open**, and the sheets viewer will want it); keeping a selection across a window (the program's: it is a list of indexes); a drag scrollbar that
 shows a progress while the rows are being fetched.
+
+## 6. Measured (2026-11-15)
+
+Machine: the development container, Chromium from the Playwright installed there, one run each unless said.
+
+* `cargo test -p cancho-ui --test window` (4 tests): the emitted shape (one scroll listener, the row numbers, two hidden spacers, the box's attribute, the scroll kept) and none of it for a plain table; the trace
+  `examples/window/window.trace.json` replays (3 steps); the five bindings together, each missing in turn; row heights 0, 21, -1, a text and a name refused and 1 and 20 accepted; `total:` and `first:` that are a
+  text, a list or a comparison refused, and arithmetic of state accepted; the event with no parameter or an unknown one; `row_height:` on a `Button`.
+* `node scripts/check-window.js`: 16 checks on a 3,000-row table, 16 rows drawn, a 12 rem box at 2 rem a row. The DOM holds the header, 16 rows and 2 spacers; every body row is **exactly** 2 rem high (the
+  stylesheet's `nowrap` and `overflow: hidden` do what section 1 says); the box scrolls the height of 3,000 rows and the header to within 1.5 px; `aria-rowcount` is 3,001 and the header is row 1; at row 1,500 the first
+  row drawn is `row-1500`, is the first under the header to within 1 px, and says `aria-rowindex` 1,502; the sticky header is at the top of the box; the scroll survived the redraw; a state change that is not a scroll
+  does not move the box; **half a row of scrolling fires nothing**; 99 steps of 30 rows fire 99 events; a `first` of 5,000 is clamped and the box keeps its height; at the end the last row of the list is drawn at the
+  bottom of the box.
+* **What the window buys, measured:** time from the start of the page to the table in the document and laid out, minimum of 5 loads in a headless Chromium of this container: **the window 49 to 57 ms, all 3,000 rows drawn
+  at once 97 to 105 ms** (three runs of the check gave 49/97, 50/105 and 57/104) (the 3,000-row list itself is in the program in both, so what differs is the 3,000 rows against 16). One machine, one browser; no other library or page was measured.
+* `node scripts/check-window-mutants.js`: **13/13 killed**: the top spacer a row short, the bottom spacer missing, the index rounded up, the event fired for every scroll, `first` not clamped, the row number off by one, the
+  header out of `aria-rowcount`, the spacers visible to assistive technology, the scroll not put back, the row height not applied (the stylesheet), and three refusals removed or renamed.
+* **Not measured:** a screen reader with `aria-rowindex`; a table whose rows are fetched while the box is scrolled; a header that is not sticky (the index is `scrollTop / row height`, which assumes the header covers
+  the first `header height` of the box, as `sticky: "header"` does).
+

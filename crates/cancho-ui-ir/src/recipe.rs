@@ -180,6 +180,8 @@ pub fn table_scroll(accessibility: &IrAccessibility, bindings: &[IrBinding]) -> 
     }
     // docs/table-static.md: a sticky header, a sticky first column and a height are classes and one style of the box
     let (head, col, max) = structure::table_spec(bindings);
+    // docs/window.md: a window says so, and its row height is a variable of the box that the stylesheet reads
+    let window = crate::window::row_height(bindings);
     let mut class = "cui-table-scroll".to_string();
     if head {
         class.push_str(" cui-sticky-head");
@@ -194,7 +196,16 @@ pub fn table_scroll(accessibility: &IrAccessibility, bindings: &[IrBinding]) -> 
         .attr("class", class)
         .attr("tabindex", "0");
     if let Some(n) = max {
-        d = d.attr("style", format!("max-height: {n}rem;"));
+        d = d.attr(
+            "style",
+            match window {
+                Some(r) => format!("max-height: {n}rem; --cui-row: {r}rem;"),
+                None => format!("max-height: {n}rem;"),
+            },
+        );
+    }
+    if window.is_some() {
+        d = d.attr("data-cui-window", "");
     }
     if let Some(l) = &accessibility.label {
         d = d.attr("role", "region").attr("aria-label", l.clone());

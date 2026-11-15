@@ -116,6 +116,7 @@ fn check_node(c: &IrComponent, node: &IrViewNode, in_for: bool) -> Result<(), Lo
                     *span,
                     in_for,
                 )?;
+                crate::window::check_complete(kind, bindings, *span)?;
                 crate::media::check_complete(kind, accessibility, bindings, children, *span)?;
                 crate::waffle::check_complete(kind, accessibility, bindings, children, *span)?;
                 crate::icon::check_complete(kind, accessibility, bindings, children, *span)?;
@@ -257,6 +258,8 @@ fn check_on(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), 
         ) => event.params.len().min(1),
         // a move gives the two indexes (docs/drag-and-drop.md)
         (None, IrElementKind::SortList) => 2,
+        // a window gives the index of the first row in view (docs/window.md)
+        (None, IrElementKind::Table) => 1,
         (None, _) => 0,
     };
     if event.params.len() != given {
@@ -968,6 +971,9 @@ fn check_button_copy(c: &IrComponent, b: &IrBinding) -> Result<(), LowerError> {
 fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
     if matches!(kind, IrElementKind::Key) {
         return crate::keys::check_binding(c, b);
+    }
+    if crate::window::check_binding(kind, b)? {
+        return Ok(());
     }
     if crate::icon::check_binding(kind, b)? {
         return Ok(());
