@@ -402,9 +402,8 @@ pub(crate) fn emit_view_node(
             }
             if matches!(kind, IrElementKind::Icon) {
                 let mut out = String::new();
-                crate::media::emit_dom(
+                crate::media::emit_icon(
                     indent,
-                    &var,
                     &cancho_ui_ir::icon::dom(accessibility, bindings),
                     parent_var,
                     &mut out,
@@ -954,7 +953,7 @@ pub(crate) fn emit_view_node(
                 if matches!(kind, IrElementKind::Button)
                     && let Some(icon) = cancho_ui_ir::icon::button_dom(bindings)
                 {
-                    crate::media::emit_dom(indent, &format!("{var}_icon"), &icon, &var, &mut out);
+                    crate::media::emit_icon(indent, &icon, &var, &mut out);
                 }
                 if accessibility.label_expr.is_some()
                     && matches!(kind, IrElementKind::Button | IrElementKind::NavLink)

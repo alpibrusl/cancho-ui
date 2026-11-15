@@ -393,6 +393,12 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
         out.insert_str(adapters_end, JSON_GET_JS);
     }
 
+    // Icons are one call each (media::emit_icon): the table of the shapes they name, and the function, once.
+    out.insert_str(
+        adapters_end,
+        &crate::media::icon_helper(&out[adapters_end..]),
+    );
+
     // The list builtins (docs/lists.md) are pure too: emit the helpers that the emitted program calls.
     out.insert_str(
         adapters_end,

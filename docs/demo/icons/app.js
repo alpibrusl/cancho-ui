@@ -126,6 +126,24 @@ function __cui_fill(marks, id, fragment) {
     m.end.parentNode.insertBefore(fragment, m.end);
 }
 
+// Icons (one call each, `__cui_icon`): the shapes are written once per name. The attributes are the recipe's (cancho_ui_ir::icon::svg).
+const __cui_icon_shapes = {
+"bell-off":[["path","d","M10.268 21a2 2 0 0 0 3.464 0"],["path","d","M17 17H4a1 1 0 0 1-.74-1.673C4.59 13.956 6 12.499 6 8a6 6 0 0 1 .258-1.742"],["path","d","m2 2 20 20"],["path","d","M8.668 3.01A6 6 0 0 1 18 8c0 2.687.77 4.653 1.707 6.05"]],
+"circle-check":[["circle","cx","12","cy","12","r","10"],["path","d","m16 9-5.5 5.5L8 12"]],
+"save":[["path","d","M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"],["path","d","M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"],["path","d","M7 3v4a1 1 0 0 0 1 1h7"]],
+"search":[["path","d","m21 21-4.34-4.34"],["circle","cx","11","cy","11","r","8"]],
+"settings":[["path","d","M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"],["circle","cx","12","cy","12","r","3"]],
+"trash":[["path","d","M10 11v6"],["path","d","M14 11v6"],["path","d","M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"],["path","d","M3 6h18"],["path","d","M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"]],
+};
+function __cui_icon(parent, name, cls, px, label) {
+    const ns = 'http://www.w3.org/2000/svg';
+    const s = document.createElementNS(ns, 'svg');
+    const a = ['class', cls, 'data-icon', name, 'viewBox', "0 0 24 24", 'width', px, 'height', px, 'fill', "none", 'stroke', "currentColor", 'stroke-width', "2", 'stroke-linecap', "round", 'stroke-linejoin', "round", ].concat(label === null ? ['aria-hidden', "true", 'focusable', "false", ] : ['role', "img", 'aria-label', label, ]);
+    for (let i = 0; i < a.length; i += 2) { s.setAttribute(a[i], a[i + 1]); }
+    const sh = __cui_icon_shapes[name] || [];
+    for (let j = 0; j < sh.length; j++) { const e = document.createElementNS(ns, sh[j][0]); for (let i = 1; i < sh[j].length; i += 2) { e.setAttribute(sh[j][i], sh[j][i + 1]); } s.appendChild(e); }
+    parent.appendChild(s);
+}
 // Component: Icons (id 0)
 function mount_Icons(root) {
     (function () {
@@ -164,32 +182,7 @@ function mount_Icons(root) {
                 __n0.appendChild(document.createTextNode(""));
                 __n0.classList.add('cui-ico');
                 __n0.setAttribute('title', "Mute: no notifications");
-                    const __n1 = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                    __n1.setAttribute('class', "cui-icon cui-icon-m");
-                    __n1.setAttribute('data-icon', "bell-off");
-                    __n1.setAttribute('viewBox', "0 0 24 24");
-                    __n1.setAttribute('width', "20");
-                    __n1.setAttribute('height', "20");
-                    __n1.setAttribute('fill', "none");
-                    __n1.setAttribute('stroke', "currentColor");
-                    __n1.setAttribute('stroke-width', "2");
-                    __n1.setAttribute('stroke-linecap', "round");
-                    __n1.setAttribute('stroke-linejoin', "round");
-                    __n1.setAttribute('aria-hidden', "true");
-                    __n1.setAttribute('focusable', "false");
-                    const __n1_0 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    __n1_0.setAttribute('d', "M10.268 21a2 2 0 0 0 3.464 0");
-                    __n1.appendChild(__n1_0);
-                    const __n1_1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    __n1_1.setAttribute('d', "M17 17H4a1 1 0 0 1-.74-1.673C4.59 13.956 6 12.499 6 8a6 6 0 0 1 .258-1.742");
-                    __n1.appendChild(__n1_1);
-                    const __n1_2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    __n1_2.setAttribute('d', "m2 2 20 20");
-                    __n1.appendChild(__n1_2);
-                    const __n1_3 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    __n1_3.setAttribute('d', "M8.668 3.01A6 6 0 0 1 18 8c0 2.687.77 4.653 1.707 6.05");
-                    __n1.appendChild(__n1_3);
-                    __n0.appendChild(__n1);
+                    __cui_icon(__n0, "bell-off", "cui-icon cui-icon-m", "20", null);
                     const __n2 = document.createElement('span');
                     __n2.appendChild(document.createTextNode("Mute"));
                     __n0.appendChild(__n2);
@@ -204,28 +197,7 @@ function mount_Icons(root) {
                 __n3.appendChild(document.createTextNode(""));
                 __n3.classList.add('cui-ico');
                 __n3.setAttribute('title', "Settings");
-                    const __n4 = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                    __n4.setAttribute('class', "cui-icon cui-icon-m");
-                    __n4.setAttribute('data-icon', "settings");
-                    __n4.setAttribute('viewBox', "0 0 24 24");
-                    __n4.setAttribute('width', "20");
-                    __n4.setAttribute('height', "20");
-                    __n4.setAttribute('fill', "none");
-                    __n4.setAttribute('stroke', "currentColor");
-                    __n4.setAttribute('stroke-width', "2");
-                    __n4.setAttribute('stroke-linecap', "round");
-                    __n4.setAttribute('stroke-linejoin', "round");
-                    __n4.setAttribute('aria-hidden', "true");
-                    __n4.setAttribute('focusable', "false");
-                    const __n4_0 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    __n4_0.setAttribute('d', "M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915");
-                    __n4.appendChild(__n4_0);
-                    const __n4_1 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                    __n4_1.setAttribute('cx', "12");
-                    __n4_1.setAttribute('cy', "12");
-                    __n4_1.setAttribute('r', "3");
-                    __n4.appendChild(__n4_1);
-                    __n3.appendChild(__n4);
+                    __cui_icon(__n3, "settings", "cui-icon cui-icon-m", "20", null);
                     const __n5 = document.createElement('span');
                     __n5.appendChild(document.createTextNode("Settings"));
                     __n3.appendChild(__n5);
@@ -241,28 +213,7 @@ function mount_Icons(root) {
                 __n6.appendChild(document.createTextNode(""));
                 __n6.classList.add('cui-ico');
                 __n6.setAttribute('title', "Search");
-                    const __n7 = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                    __n7.setAttribute('class', "cui-icon cui-icon-m");
-                    __n7.setAttribute('data-icon', "search");
-                    __n7.setAttribute('viewBox', "0 0 24 24");
-                    __n7.setAttribute('width', "20");
-                    __n7.setAttribute('height', "20");
-                    __n7.setAttribute('fill', "none");
-                    __n7.setAttribute('stroke', "currentColor");
-                    __n7.setAttribute('stroke-width', "2");
-                    __n7.setAttribute('stroke-linecap', "round");
-                    __n7.setAttribute('stroke-linejoin', "round");
-                    __n7.setAttribute('aria-hidden', "true");
-                    __n7.setAttribute('focusable', "false");
-                    const __n7_0 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    __n7_0.setAttribute('d', "m21 21-4.34-4.34");
-                    __n7.appendChild(__n7_0);
-                    const __n7_1 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                    __n7_1.setAttribute('cx', "11");
-                    __n7_1.setAttribute('cy', "11");
-                    __n7_1.setAttribute('r', "8");
-                    __n7.appendChild(__n7_1);
-                    __n6.appendChild(__n7);
+                    __cui_icon(__n6, "search", "cui-icon cui-icon-m", "20", null);
                     const __n8 = document.createElement('span');
                     __n8.appendChild(document.createTextNode("Search"));
                     __n6.appendChild(__n8);
@@ -274,29 +225,7 @@ function mount_Icons(root) {
                 const __h = document.createDocumentFragment();
                 const __n9 = document.createElement('button');
                 __n9.setAttribute('aria-label', "Save");
-                const __n9_icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                __n9_icon.setAttribute('class', "cui-icon cui-icon-m cui-icon-lead");
-                __n9_icon.setAttribute('data-icon', "save");
-                __n9_icon.setAttribute('viewBox', "0 0 24 24");
-                __n9_icon.setAttribute('width', "20");
-                __n9_icon.setAttribute('height', "20");
-                __n9_icon.setAttribute('fill', "none");
-                __n9_icon.setAttribute('stroke', "currentColor");
-                __n9_icon.setAttribute('stroke-width', "2");
-                __n9_icon.setAttribute('stroke-linecap', "round");
-                __n9_icon.setAttribute('stroke-linejoin', "round");
-                __n9_icon.setAttribute('aria-hidden', "true");
-                __n9_icon.setAttribute('focusable', "false");
-                const __n9_icon_0 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                __n9_icon_0.setAttribute('d', "M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z");
-                __n9_icon.appendChild(__n9_icon_0);
-                const __n9_icon_1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                __n9_icon_1.setAttribute('d', "M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7");
-                __n9_icon.appendChild(__n9_icon_1);
-                const __n9_icon_2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                __n9_icon_2.setAttribute('d', "M7 3v4a1 1 0 0 0 1 1h7");
-                __n9_icon.appendChild(__n9_icon_2);
-                __n9.appendChild(__n9_icon);
+                __cui_icon(__n9, "save", "cui-icon cui-icon-m cui-icon-lead", "20", null);
                 __n9.appendChild(document.createTextNode("Save"));
                 __h.appendChild(__n9);
                 __n9.addEventListener('click', __on_Save);
@@ -306,35 +235,7 @@ function mount_Icons(root) {
                 const __h = document.createDocumentFragment();
                 const __n10 = document.createElement('button');
                 __n10.setAttribute('aria-label', "Delete");
-                const __n10_icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                __n10_icon.setAttribute('class', "cui-icon cui-icon-m cui-icon-lead");
-                __n10_icon.setAttribute('data-icon', "trash");
-                __n10_icon.setAttribute('viewBox', "0 0 24 24");
-                __n10_icon.setAttribute('width', "20");
-                __n10_icon.setAttribute('height', "20");
-                __n10_icon.setAttribute('fill', "none");
-                __n10_icon.setAttribute('stroke', "currentColor");
-                __n10_icon.setAttribute('stroke-width', "2");
-                __n10_icon.setAttribute('stroke-linecap', "round");
-                __n10_icon.setAttribute('stroke-linejoin', "round");
-                __n10_icon.setAttribute('aria-hidden', "true");
-                __n10_icon.setAttribute('focusable', "false");
-                const __n10_icon_0 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                __n10_icon_0.setAttribute('d', "M10 11v6");
-                __n10_icon.appendChild(__n10_icon_0);
-                const __n10_icon_1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                __n10_icon_1.setAttribute('d', "M14 11v6");
-                __n10_icon.appendChild(__n10_icon_1);
-                const __n10_icon_2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                __n10_icon_2.setAttribute('d', "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6");
-                __n10_icon.appendChild(__n10_icon_2);
-                const __n10_icon_3 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                __n10_icon_3.setAttribute('d', "M3 6h18");
-                __n10_icon.appendChild(__n10_icon_3);
-                const __n10_icon_4 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                __n10_icon_4.setAttribute('d', "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2");
-                __n10_icon.appendChild(__n10_icon_4);
-                __n10.appendChild(__n10_icon);
+                __cui_icon(__n10, "trash", "cui-icon cui-icon-m cui-icon-lead", "20", null);
                 __n10.appendChild(document.createTextNode("Delete"));
                 __h.appendChild(__n10);
                 __n10.addEventListener('click', __on_Save);
@@ -346,28 +247,7 @@ function mount_Icons(root) {
                     const __if_from = __h.childNodes.length;
                     const __n11 = document.createElement('div');
                     __n11.setAttribute('class', "cui-row cui-gap-1");
-                        const __n12 = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                        __n12.setAttribute('class', "cui-icon cui-icon-m");
-                        __n12.setAttribute('data-icon', "circle-check");
-                        __n12.setAttribute('viewBox', "0 0 24 24");
-                        __n12.setAttribute('width', "20");
-                        __n12.setAttribute('height', "20");
-                        __n12.setAttribute('fill', "none");
-                        __n12.setAttribute('stroke', "currentColor");
-                        __n12.setAttribute('stroke-width', "2");
-                        __n12.setAttribute('stroke-linecap', "round");
-                        __n12.setAttribute('stroke-linejoin', "round");
-                        __n12.setAttribute('aria-hidden', "true");
-                        __n12.setAttribute('focusable', "false");
-                        const __n12_0 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                        __n12_0.setAttribute('cx', "12");
-                        __n12_0.setAttribute('cy', "12");
-                        __n12_0.setAttribute('r', "10");
-                        __n12.appendChild(__n12_0);
-                        const __n12_1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                        __n12_1.setAttribute('d', "m16 9-5.5 5.5L8 12");
-                        __n12.appendChild(__n12_1);
-                        __n11.appendChild(__n12);
+                        __cui_icon(__n11, "circle-check", "cui-icon cui-icon-m", "20", null);
                         const __n13 = document.createElement('span');
                         __n13.appendChild(document.createTextNode("Saved"));
                         __n11.appendChild(__n13);

@@ -211,19 +211,36 @@ fn the_script_draws_the_same_icon_in_the_svg_namespace_and_a_button_icon_before_
     let js = script(
         "component C {\n    state shown: Bool = true;\n    on Go { }\n    view { Column { If { when: shown Icon { label: \"a\" name: \"bell-off\" } } Button { label: \"Save\" icon: \"save\" on: Go } Button { label: \"Mute\" on: Go Icon { name: \"bell\" } Text { \"Mute\" } } } }\n}\n",
     );
+    // an icon is one call, and the shapes are written once per name in a table (30.114 of cancho-ota: 513 icons were 1 MB of script as DOM calls)
     assert!(
-        js.contains("createElementNS('http://www.w3.org/2000/svg', 'svg')"),
+        js.contains("function __cui_icon(parent, name, cls, px, label)")
+            && js.contains("createElementNS(ns, 'svg')")
+            && js.contains("const ns = 'http://www.w3.org/2000/svg'"),
         "svg"
     );
-    assert!(js.contains("createElementNS('http://www.w3.org/2000/svg', 'path')"));
     assert!(
-        js.contains("createElementNS('http://www.w3.org/2000/svg', 'circle')")
-            || js.contains("'rect'")
-            || js.contains("'path'")
+        js.contains("__cui_icon(")
+            && js.contains("\"bell-off\":[[\"path\"")
+            && js.contains("\"bell\":[[\"path\""),
+        "a call and a table row for each name"
     );
     assert!(
-        js.contains("cui-icon cui-icon-m cui-icon-lead"),
+        js.contains("\"map-pin\"") == false,
+        "a table row only for a name the program uses"
+    );
+    assert!(
+        js.contains("\"circle\"") || js.contains("\"path\""),
+        "the shapes are in the table"
+    );
+    assert_eq!(js.matches("\"save\":[[").count(), 1, "one row for a name");
+    assert!(
+        js.contains("\"cui-icon cui-icon-m cui-icon-lead\""),
         "the button's icon"
+    );
+    assert!(
+        js.contains("'aria-hidden', \"true\", 'focusable', \"false\"")
+            && js.contains("'role', \"img\", 'aria-label', label"),
+        "hidden from a screen reader or an image with a name"
     );
     assert!(
         !js.contains("<img") && !js.contains("data:image/svg"),
