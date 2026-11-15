@@ -430,7 +430,7 @@ tags: `test-state-mismatch`, `test-expect-mismatch`, `test-fault-missing`, `test
 `trace-request-not-scriptable`, `trace-bad-response`,
 `trace-event-after-dispose`, `trace-navigate-invalid`, `trace-history-empty`, `trace-value-not-a-file`, `trace-stream-state`, `trace-locale-invalid`, `trace-move-invalid`, `trace-number-invalid`, `replay-unsupported`, `replay-tick-limit`, `replay-route-limit`, `replay-type-error`,
 `replay-unknown-identifier`, `replay-no-match-arm`, `replay-non-finite`,
-`replay-number-format`. (`replay-non-finite` is also what the emitted page throws for the same result: `docs/semantics.md`,
+`replay-number-format`, and for the outline of the view (`docs/view-test.md`) `view-bad-line` (a line of `view` or `view_has` that is not an outline line), `view-mismatch` (the page is not what a step asserts), `view-unsupported` (the page has a node the outline cannot say) and `view-expression-unsupported` (a view expression the replay cannot evaluate, or cannot say exactly). (`replay-non-finite` is also what the emitted page throws for the same result: `docs/semantics.md`,
 "Arithmetic is finite".) Their meanings are in `docs/replay.md` §7.1. A program that
 does not compile is still refused with the §3 rule that refuses it (exit `1`).
 

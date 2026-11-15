@@ -13,6 +13,7 @@ mod locale;
 mod machine;
 mod map;
 mod number;
+mod outline;
 mod report;
 mod routemap;
 mod router;
@@ -106,8 +107,22 @@ fn empty_report(file: &str, trace_name: &str, failures: Vec<Failure>) -> TestRep
 
 /// Replay `trace_text` over the IR. `file` and `trace_name` label the report.
 pub fn replay(ir: &IrFile, trace_text: &str, file: &str, trace_name: &str) -> TestReport {
+    replay_with(ir, trace_text, file, trace_name, false)
+}
+
+/// `replay`, with the outline of the page in the report of every step when `all_views` (docs/view-test.md).
+pub fn replay_with(
+    ir: &IrFile,
+    trace_text: &str,
+    file: &str,
+    trace_name: &str,
+    all_views: bool,
+) -> TestReport {
     let trace = match parse_trace(trace_text) {
-        Ok(t) => t,
+        Ok(mut t) => {
+            t.all_views = all_views;
+            t
+        }
         Err(e) => return empty_report(file, trace_name, vec![from_trace_error(e)]),
     };
     let comp = match &trace.component {
@@ -667,7 +682,7 @@ fn run_step(
             )));
         }
     };
-    let step_report = StepReport {
+    let mut step_report = StepReport {
         step: i,
         action,
         detail,
@@ -740,6 +755,7 @@ fn run_step(
         charts: m.charts(),
         stream: m.stream_report(),
         sortlists: m.sortlists_report(),
+        view: None,
         maps: m.maps_report(),
         routemaps: m.routemaps_report(),
         document: locale_used(comp)
@@ -752,6 +768,28 @@ fn run_step(
         }),
     };
     check_expectations(m, comp, step, &step_report, &fx, i, file, report);
+    // docs/view-test.md: the outline of the page after the step, when the step asserts one or the report asks for every one
+    if step.view.is_some() || step.view_has.is_some() || m.all_views {
+        match m.outline() {
+            Ok(lines) => {
+                check_view(step, &lines, i, file, report);
+                step_report.view = Some(lines);
+            }
+            Err(e) => {
+                if step.view.is_some() || step.view_has.is_some() {
+                    report.checks += 1;
+                    report.failures.push(failure(
+                        e.rule,
+                        Some(i),
+                        format!("steps[{i}].view"),
+                        e.message,
+                        file,
+                        None,
+                    ));
+                }
+            }
+        }
+    }
     report.steps.push(step_report);
     Ok(())
 }
@@ -823,4 +861,94 @@ fn check_expectations(
             report.failures.push(f);
         }
     }
+}
+
+/// What a step says the page shows against the outline of it: `view` exactly, `view_has` as lines in order (docs/view-test.md). A node the outline cannot say is a refusal, not a pass.
+fn check_view(step: &Step, lines: &[String], i: usize, file: &str, report: &mut TestReport) {
+    let asserts = step.view.is_some() || step.view_has.is_some();
+    if asserts && let Some(l) = lines.iter().find(|l| l.trim_start().starts_with("? ")) {
+        report.checks += 1;
+        report.failures.push(failure(
+            "view-unsupported",
+            Some(i),
+            format!("steps[{i}].view"),
+            format!(
+                "the page has a node the outline cannot say (`{}`): a view that asserts it would say the page is right about a page it did not read",
+                l.trim()
+            ),
+            file,
+            None,
+        ));
+        return;
+    }
+    if let Some(want) = &step.view {
+        report.checks += 1;
+        if want.as_slice() != lines {
+            let mut f = failure(
+                "view-mismatch",
+                Some(i),
+                format!("steps[{i}].view"),
+                format!("after step {i}, the page does not show what the trace expects"),
+                file,
+                None,
+            );
+            f.expected = Some(serde_json::json!(want));
+            f.actual = Some(serde_json::json!(lines));
+            report.failures.push(f);
+        }
+    }
+    if let Some(want) = &step.view_has {
+        report.checks += 1;
+        let trimmed: Vec<&str> = lines.iter().map(|l| l.trim_start()).collect();
+        let mut at = 0usize;
+        let mut missing = None;
+        for w in want {
+            let w = w.trim_start();
+            match trimmed[at..].iter().position(|l| *l == w) {
+                Some(p) => at += p + 1,
+                None => {
+                    missing = Some(w.to_string());
+                    break;
+                }
+            }
+        }
+        if let Some(m) = missing {
+            let mut f = failure(
+                "view-mismatch",
+                Some(i),
+                format!("steps[{i}].view_has"),
+                format!(
+                    "after step {i}, the page has no line `{m}` (in the order the trace lists them)"
+                ),
+                file,
+                None,
+            );
+            f.expected = Some(serde_json::json!(want));
+            f.actual = Some(serde_json::json!(lines));
+            report.failures.push(f);
+        }
+    }
+}
+
+/// The outline of a component's view in its initial state, with the fields of `state` (a JSON object of field to value) set to what it says (docs/view-test.md).
+pub fn outline_of(
+    ir: &IrFile,
+    component: Option<&str>,
+    state: &BTreeMap<String, Json>,
+) -> Result<Vec<String>, String> {
+    let comp = match component {
+        Some(n) => ir.components.iter().find(|c| c.name == n),
+        None => ir.components.last(),
+    }
+    .ok_or_else(|| "the file declares no such component".to_string())?;
+    let mut m = Machine::new(comp, 0.0).map_err(|f| f.message)?;
+    for (k, v) in state {
+        if !m.state.contains_key(k) {
+            return Err(format!("the component declares no state field `{k}`"));
+        }
+        let value = trace::value_at(v, &format!("state.{k}")).map_err(|e| e.message)?;
+        m.state.insert(k.clone(), value);
+    }
+    m.outline()
+        .map_err(|e| format!("{}: {}", e.rule, e.message))
 }

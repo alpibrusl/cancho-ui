@@ -51,6 +51,7 @@ USAGE:
     cancho-ui inspect component <file.cui> <name> [--output json]
     cancho-ui inspect effects   <file.cui> <name> [--output json]
     cancho-ui inspect ir       <file.cui>          [--output json]
+    cancho-ui inspect view     <file.cui> [<name>] [--state <json object>]
     cancho-ui inspect page     <file.cui>          [--output json]
     cancho-ui inspect data     <file.cui>          [--output json]
     cancho-ui diff <base.cui> <candidate.cui>      [--output json]
@@ -389,6 +390,18 @@ fn run_inspect(args: &[String]) -> Result<ExitCode, CliError> {
                 "holes": p.holes.iter().map(|h| serde_json::json!({"what": h.what, "reason": h.reason})).collect::<Vec<_>>(),
             }))
         }
+        "view" => {
+            // what the page shows for a state, one line for each node (docs/view-test.md)
+            let state: std::collections::BTreeMap<String, serde_json::Value> = match &opts.state {
+                Some(s) => serde_json::from_str(s).map_err(|e| {
+                    CliError::Usage(format!("--state is a JSON object of field to value: {e}"))
+                })?,
+                None => Default::default(),
+            };
+            let lines = cancho_ui_replay::outline_of(&ir, opts.arg.as_deref(), &state)
+                .map_err(CliError::Env)?;
+            cancho_ui_ir::pretty_json(&lines)
+        }
         "ir" => cancho_ui_ir::pretty_json(&ir),
         other => {
             return Err(CliError::Usage(format!(
@@ -722,6 +735,8 @@ struct InspectOpts {
     file: PathBuf,
     arg: Option<String>,
     output_path: Option<PathBuf>,
+    /// `--state '{"field": value}'` of `inspect view` (docs/view-test.md).
+    state: Option<String>,
 }
 
 impl InspectOpts {
@@ -748,6 +763,14 @@ impl InspectOpts {
                         .get(i + 1)
                         .ok_or_else(|| CliError::Usage("-o requires an argument".into()))?;
                     out.output_path = Some(PathBuf::from(v));
+                    i += 2;
+                    continue;
+                }
+                "--state" => {
+                    let v = args
+                        .get(i + 1)
+                        .ok_or_else(|| CliError::Usage("--state requires a JSON object".into()))?;
+                    out.state = Some(v.clone());
                     i += 2;
                     continue;
                 }
