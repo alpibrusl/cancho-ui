@@ -694,7 +694,7 @@ fn outline_lines(
 fn check_outline_line(line: &str) -> Result<(), String> {
     let body = line.trim_start_matches(' ');
     let indent = line.len() - body.len();
-    if indent % 2 != 0 {
+    if !indent.is_multiple_of(2) {
         return Err("the indentation is two spaces for each level".to_string());
     }
     let mut rest = body;

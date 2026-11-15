@@ -24,7 +24,7 @@ const MUTANTS = [
   ['view_has ignores the order', L, 'trimmed[at..].iter()', 'trimmed[..].iter()'],
   ['view ignores the last line', L, 'if want.as_slice() != lines {', 'if want.len() != lines.len() || (want.len() > 1 && want[..want.len() - 1] != lines[..lines.len() - 1]) {'],
   ['a node the outline cannot say is skipped, not refused', L, 'if asserts && let Some(l)', 'if false && asserts && let Some(l)'],
-  ['an odd indentation is a good line', 'crates/cancho-ui-replay/src/trace.rs', 'if indent % 2 != 0 {', 'if false {'],
+  ['an odd indentation is a good line', 'crates/cancho-ui-replay/src/trace.rs', 'if !indent.is_multiple_of(2) {', 'if false {'],
   ['any word is a property', 'crates/cancho-ui-replay/src/trace.rs', 'if !known {', 'if false && !known {'],
 ];
 
