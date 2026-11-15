@@ -88,6 +88,7 @@ pub const MAX_WIDTH_RANGE: (i64, i64) = (10, 200);
 pub fn check_controls(ir: &IrFile) -> Result<(), LowerError> {
     for c in &ir.components {
         check_node(c, &c.view.body, false)?;
+        crate::keys::check(c)?;
     }
     crate::structure::check_program(ir)?;
     Ok(())
@@ -187,6 +188,7 @@ fn element_name(kind: &IrElementKind) -> &'static str {
         IrElementKind::Reveal => "Reveal",
         IrElementKind::CountUp => "CountUp",
         IrElementKind::Waffle => "Waffle",
+        IrElementKind::Key => "Key",
         IrElementKind::Chip => "Chip",
         IrElementKind::List => "List",
         IrElementKind::Item => "Item",
@@ -201,6 +203,11 @@ fn element_name(kind: &IrElementKind) -> &'static str {
         IrElementKind::Island(_) => "an island",
         IrElementKind::Named(_) => "a component",
     }
+}
+
+/// The `on:` of a `Key` (docs/keys.md): an event of the component, given the arguments the key writes.
+pub(crate) fn check_on_key(c: &IrComponent, b: &IrBinding) -> Result<(), LowerError> {
+    check_on(c, &IrElementKind::Key, b)
 }
 
 /// `on: Event` and `on: Event(args)` (docs/row-actions.md section 2): the event is declared by the component, a click
@@ -226,7 +233,7 @@ fn check_on(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), 
             span: b.span,
         });
     };
-    if args.is_some() && !matches!(kind, IrElementKind::Button) {
+    if args.is_some() && !matches!(kind, IrElementKind::Button | IrElementKind::Key) {
         return Err(LowerError::ControlRefused {
             code: "event-args-unsupported",
             message: format!(
@@ -959,6 +966,9 @@ fn check_button_copy(c: &IrComponent, b: &IrBinding) -> Result<(), LowerError> {
 }
 
 fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
+    if matches!(kind, IrElementKind::Key) {
+        return crate::keys::check_binding(c, b);
+    }
     if crate::icon::check_binding(kind, b)? {
         return Ok(());
     }

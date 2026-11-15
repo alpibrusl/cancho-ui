@@ -20,6 +20,7 @@ pub mod emit;
 mod expr;
 mod i18n;
 mod island;
+mod keys;
 mod lists;
 mod map;
 mod media;

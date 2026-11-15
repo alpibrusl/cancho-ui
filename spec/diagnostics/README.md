@@ -253,6 +253,12 @@ in `examples/refusal/`, and by the evidence report.
 | `sort-key-invalid` | `Component` | `Error` | `Static` | A `key:` that is not a text literal of 1 to 64 letters, digits and `_ - .`, or that starts with `-`. *(Built 2026-11-15, docs/table-sort.md.)* |
 | `sort-key-duplicate` | `Component` | `Error` | `Static` | Two sortable headers of one table with the same `key:`. *(Built 2026-11-15, docs/table-sort.md.)* |
 | `sort-label-invalid` | `Component` | `Error` | `Static` | A sortable header whose text is not a plain literal (it has `{..}`): the text is the button's name. *(Built 2026-11-15, docs/table-sort.md.)* |
+| `key-combo-invalid` | `Component` | `Error` | `Static` | A `Key` whose `press:` is not a combination of the closed list (`Control+`, `Shift+`, then a named key, a lowercase letter or a digit; never `Tab`, `Alt+` or `Meta+`), or that has none. *(Built 2026-11-15, docs/keys.md.)* |
+| `key-event-missing` | `Component` | `Error` | `Static` | A `Key` with no `on:`. *(Built 2026-11-15, docs/keys.md.)* |
+| `key-child-invalid` | `Component` | `Error` | `Static` | A `Key` that holds anything. *(Built 2026-11-15, docs/keys.md.)* |
+| `key-outside-container` | `Component` | `Error` | `Static` | A `Key` that is the top of the view, or a direct child of a `For` or an `If`: a key belongs to the element that holds it. *(Built 2026-11-15, docs/keys.md.)* |
+| `key-parent-unnamed` | `Component` | `Error` | `Static` | A container with `Key`s and no `label:`. *(Built 2026-11-15, docs/keys.md.)* |
+| `key-duplicate` | `Component` | `Error` | `Static` | Two `Key`s of one container with the same combination. *(Built 2026-11-15, docs/keys.md.)* |
 | `image-src-invalid` | `Component` | `Error` | `Static` | An `Image` with no `src:`, or a `src:` or `fallback:` that is not a text literal naming a file of the site: an address of another host, an absolute path, a `..`, a character other than letters, digits and `. _ - /`, a format other than png, jpg, jpeg, webp, avif and gif (SVG can carry script); or a `fallback:` that is the `src:` or is in the same format. *(Built 2026-10-24, docs/structure.md section 10.)* |
 | `image-alt-missing` | `Component` | `Error` | `Static` | An `Image` with neither `alt:` nor `decorative: true`; an `alt:` with nothing but spaces; a `decorative:` that is not `true`. *(Built 2026-10-24.)* |
 | `image-alt-conflict` | `Component` | `Error` | `Static` | An `Image` with both `alt:` and `decorative: true`. *(Built 2026-10-24.)* |

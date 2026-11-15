@@ -758,6 +758,8 @@ pub enum IrElementKind {
     CountUp,
     /// Drawing (docs/waffle.md): `Waffle`, a `<figure>` of squares with its caption and table.
     Waffle,
+    /// A key bound to an event for the container that holds it (docs/keys.md); it draws nothing, so it has no tag.
+    Key,
     /// Drawing (docs/waffle.md): `Chip`, a `<span>` with a tone.
     Chip,
     /// Lists (docs/structure.md section 11): `List`, a `<ul>` (an `<ol>` with `ordered: true`).
@@ -826,6 +828,7 @@ impl IrElementKind {
             IrElementKind::Reveal => "div",
             IrElementKind::CountUp => "span",
             IrElementKind::Waffle => "figure",
+            IrElementKind::Key => "template",
             IrElementKind::Chip => "span",
             IrElementKind::List => "ul",
             IrElementKind::Item => "li",

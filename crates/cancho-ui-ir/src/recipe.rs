@@ -535,6 +535,22 @@ fn walk(w: &mut Writer, node: &IrViewNode) {
             children,
             ..
         } => {
+            // docs/keys.md: a container that holds `Key`s is the script's whole: the listeners are on it, so the page draws it, and not a shell with a hole inside
+            if children.iter().any(|c| {
+                matches!(
+                    c,
+                    IrViewNode::Element {
+                        kind: IrElementKind::Key,
+                        ..
+                    }
+                )
+            }) {
+                w.hole(
+                    "a container that takes keys",
+                    "the page draws it with script: its keys are listeners of it",
+                );
+                return;
+            }
             match kind {
                 IrElementKind::Image | IrElementKind::Media => {
                     if let Some((what, why)) = first_hole(node) {

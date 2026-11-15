@@ -443,6 +443,8 @@ pub enum ElementKind {
     CountUp,
     /// Drawing (docs/waffle.md): `Waffle { label: ".." of: 704 value: 697 columns: 44 }`, a grid of squares.
     Waffle,
+    /// A key a container binds to an event (docs/keys.md): `Key { press: "ArrowDown" on: Move(0, 1) }`. It draws nothing.
+    Key,
     /// Drawing (docs/waffle.md): `Chip { tone: "good" "working" }`, a short label with a tone.
     Chip,
     /// Lists (docs/structure.md section 11): `List { ordered: true Item { .. } }`, a `<ul>` or an `<ol>`.

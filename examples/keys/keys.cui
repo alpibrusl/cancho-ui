@@ -1,0 +1,46 @@
+// examples/keys/keys.cui — a list a page moves through with the keys (docs/keys.md). The cursor and the range are the program's state; the keys only fire events.
+component Keys {
+    state cursor: Int = 0;
+    state anchor: Int = 0;
+    state last: Int = 4;
+    state log: String = "";
+    state off: Bool = false;
+    state query: String = "";
+    state other: Int = 0;
+
+    on Move(by) {
+        cursor = if cursor + by < 0 { 0 } else if cursor + by > last { last } else { cursor + by };
+        anchor = cursor;
+        log = "move";
+    }
+    on Extend(by) {
+        cursor = if cursor + by < 0 { 0 } else if cursor + by > last { last } else { cursor + by };
+        log = "extend";
+    }
+    on Top { cursor = 0; anchor = 0; log = "top"; }
+    on Clear { query = ""; log = "clear"; }
+    on SetQuery(text) { query = text; }
+    on Disable { off = true; }
+    on Other { other = other + 1; }
+
+    view {
+        Column {
+            label: "Rows"
+            Key { press: "ArrowDown" on: Move(1) }
+            Key { press: "ArrowUp" on: Move(-1) }
+            Key { press: "Shift+ArrowDown" on: Extend(1) }
+            Key { press: "Shift+ArrowUp" on: Extend(-1) }
+            Key { press: "Control+Home" on: Top }
+            Key { press: "Delete" on: Clear }
+            Key { press: "x" on: Top disabled: off }
+            TextField { label: "Filter" value: query on: SetQuery }
+            Button { label: "Disable x" on: Disable }
+            Text { "cursor {cursor} anchor {anchor} log {log} other {other}" }
+            Column {
+                label: "Other rows"
+                Key { press: "ArrowDown" on: Other }
+                Text { "second container" }
+            }
+        }
+    }
+}

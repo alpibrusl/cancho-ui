@@ -257,7 +257,8 @@ function __cui_focus_restore(root, saved) {
     if (!n || n.tagName !== saved.tag || n.getAttribute('aria-label') !== saved.label) { return false; }
     // A heading the page focused (docs/screen-focus.md) is not focusable until it has its tabindex again.
     if (saved.tabindex === '-1') { n.setAttribute('tabindex', '-1'); }
-    n.focus();
+    // the page keeps its own scroll (below): giving the focus back must not move it, as it did for a control a little out of view at the top of the page
+    n.focus({ preventScroll: true });
     if (saved.typed !== null && saved.typed !== undefined && n.hasAttribute('data-cui-number') && typeof __cui_number_text === 'function'
         && __cui_number_text(n.__cui_nl, saved.typed) === __cui_number_text(n.__cui_nl, n.value)) {
         n.value = saved.typed;
