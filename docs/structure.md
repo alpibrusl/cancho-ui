@@ -149,6 +149,7 @@ component Install {
 * **The DOM**: `<div class="cui-code" data-copy=""><pre tabindex="0" style="max-height: 28rem;"><code>..</code></pre><button type="button" class="cui-copy" aria-label="Copy the code">Copy</button></div>`. The `<pre>` is
   focusable (`tabindex="0"`) so a keyboard user can scroll it; without `copy:` there is no `data-copy` and no button; without `max_height:` no `style`. `max_height:` is an integer from 4 to 100 (rem):
   `code-max-height-invalid`; `copy:` is `true` or `false`: `code-copy-invalid`; the box holds text only: `code-child-invalid`. A brace in the text is written `\{`, as in a `Text`.
+* **`Button { copy: field }`** is the same capability for a text the page holds (docs/clipboard.md): the tap writes the text of a `String` state field, and no other code touches the clipboard.
 * **`copy: true` is the `Clipboard` capability**: the component declares `requires Clipboard;` (`clipboard-not-declared` if it does not; the existing `capability-unused` if it declares it and has no copy button).
   It is **write only**, and only from a tap by construction: the compiler writes the one call to `navigator.clipboard.writeText` inside the click of the button it draws, and no other code touches the clipboard.
   `inspect effects` lists `Clipboard` under `requires` and `diff` adds it as `+ requires Clipboard` with `authority: expanded` (tests).

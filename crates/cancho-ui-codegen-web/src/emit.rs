@@ -273,6 +273,14 @@ pub fn emit_module_with(ir: &IrFile, source_name: Option<&str>, options: &EmitOp
         out.push_str(COPY_ADAPTER_JS);
         out.push('\n');
     }
+    if ir
+        .components
+        .iter()
+        .any(|c| cancho_ui_ir::structure::view_has_button_copy(&c.view.body))
+    {
+        out.push_str(COPY_TEXT_ADAPTER_JS);
+        out.push('\n');
+    }
     if ir.components.iter().any(|c| {
         let mut e = std::collections::BTreeSet::new();
         cancho_ui_ir::motion::seen_events(&c.view.body, &mut e);

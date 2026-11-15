@@ -761,6 +761,21 @@ impl Parser {
                 // (docs/routing.md section 4).
                 Ok(BindingValue::Prop(self.parse_expr()?))
             }
+            "copy" if matches!(kind, ElementKind::Button) => {
+                // `Button { copy: draft }` (docs/clipboard.md): the name of a `String` state field; a literal is read so that the checker can
+                // refuse it with `copy-not-string` and say why, instead of the parser saying only that it expected something else.
+                let tok = self.bump();
+                match tok.token {
+                    Token::Ident(s) => Ok(BindingValue::StateRef(s)),
+                    Token::StringLit(s) => Ok(BindingValue::String(static_text(s, tok.span)?)),
+                    other => Err(ParseError::Unexpected {
+                        expected: "state field name (identifier)",
+                        found: other,
+                        line: tok.span.start.line,
+                        column: tok.span.start.column,
+                    }),
+                }
+            }
             "value" => {
                 // `value: <ident>` — bind to a state field, or
                 // `value: <string>` for a literal initial value.

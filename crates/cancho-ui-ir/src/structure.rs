@@ -333,6 +333,10 @@ fn literal_text(children: &[IrViewNode]) -> Option<String> {
 
 /// Checks one binding. `Ok(true)`: this module owns it and it is fine; `Ok(false)`: not its business.
 pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerError> {
+    // `Button { copy: field }` (docs/clipboard.md) is checked with the component's state, in `controls.rs`: not this module's business.
+    if b.key == "copy" && matches!(kind, IrElementKind::Button) {
+        return Ok(false);
+    }
     const NEW: &[&str] = &[
         "id",
         "level",
@@ -408,7 +412,8 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                     "appearance" => "Link",
                     "summary" => "Details",
                     "style" => "Text and Rich",
-                    "copy" | "max_height" => "Code",
+                    "copy" => "Code and Button",
+                    "max_height" => "Code",
                     "sticky" => "Header",
                     "dock" => "Nav",
                     "fab" | "sheet" | "fab2" | "sheet2" | "band" | "band2" | "marks" => "Aside",
@@ -1154,6 +1159,25 @@ pub fn view_has_copy(node: &IrViewNode) -> bool {
         }
         IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
             children.iter().any(view_has_copy)
+        }
+        IrViewNode::Text { .. } => false,
+    }
+}
+
+/// Whether a view draws a `Button { copy: field }` (docs/clipboard.md): the other use of `Clipboard`.
+pub fn view_has_button_copy(node: &IrViewNode) -> bool {
+    match node {
+        IrViewNode::Element {
+            kind,
+            bindings,
+            children,
+            ..
+        } => {
+            (matches!(kind, IrElementKind::Button) && bindings.iter().any(|b| b.key == "copy"))
+                || children.iter().any(view_has_button_copy)
+        }
+        IrViewNode::For { children, .. } | IrViewNode::If { children, .. } => {
+            children.iter().any(view_has_button_copy)
         }
         IrViewNode::Text { .. } => false,
     }

@@ -45,6 +45,7 @@ pub const ELEMENT_KEYS: &[&str] = &[
     "attribution",
     "points",
     "route",
+    "copy",
 ];
 
 /// What a `Chart` takes (docs/charts.md section 3); every other key is `binding-unknown` on it.
@@ -919,6 +920,42 @@ fn check_to(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
     Ok(())
 }
 
+/// `Button { copy: field }` (docs/clipboard.md): the tap writes the text of a `String` state field to the clipboard, so the component declares `Clipboard`.
+fn check_button_copy(c: &IrComponent, b: &IrBinding) -> Result<(), LowerError> {
+    match &b.value {
+        IrBindingValue::StateRef(name) => {
+            let is_string = c
+                .state
+                .iter()
+                .any(|f| &f.name == name && f.ty == IrType::String);
+            if !is_string {
+                return Err(LowerError::ControlRefused {
+                    code: "copy-not-string",
+                    message: format!(
+                        "`copy: {name}` needs a `String` state field named `{name}` in this component"
+                    ),
+                    span: b.span,
+                });
+            }
+        }
+        _ => {
+            return Err(LowerError::ControlRefused {
+                code: "copy-not-string",
+                message: "`copy:` of a Button is the name of a `String` state field: `Button { label: \"Copy\" copy: text }`".to_string(),
+                span: b.span,
+            });
+        }
+    }
+    if !c.requires.iter().any(|r| r.name == "Clipboard") {
+        return Err(LowerError::ControlRefused {
+            code: "clipboard-not-declared",
+            message: "`Button { copy: .. }` puts text on the clipboard when it is tapped: declare `requires Clipboard;` in this component".to_string(),
+            span: b.span,
+        });
+    }
+    Ok(())
+}
+
 fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
     if crate::icon::check_binding(kind, b)? {
         return Ok(());
@@ -931,6 +968,9 @@ fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result
     }
     if crate::waffle::check_binding(kind, b)? {
         return Ok(());
+    }
+    if b.key == "copy" && matches!(kind, IrElementKind::Button) {
+        check_button_copy(c, b)?;
     }
     crate::sortlist::check_binding(c, kind, b)?;
     crate::map::check_binding(c, kind, b)?;

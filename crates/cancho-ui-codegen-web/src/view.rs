@@ -835,6 +835,13 @@ pub(crate) fn emit_view_node(
                             indent, var, STATE_PREFIX, name
                         ));
                     }
+                    IrBindingValue::StateRef(name) if b.key == "copy" => {
+                        // docs/clipboard.md: the only write to the clipboard is inside this click, of the text the field holds now.
+                        out.push_str(&format!(
+                            "{0}{1}.addEventListener('click', function () {{ __cui_copy_text({1}, {2}{3}); }});\n",
+                            indent, var, STATE_PREFIX, name
+                        ));
+                    }
                     IrBindingValue::StateRef(name) => {
                         if b.key == "value" {
                             if kind.is_field() || matches!(kind, IrElementKind::Select) {

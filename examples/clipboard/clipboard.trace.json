@@ -1,0 +1,10 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "component": "Copier",
+  "note": "Replay runs handlers, not the view, so it cannot tap the copy button; what it can check is the field the button would copy (docs/clipboard.md section 3).",
+  "steps": [
+    { "event": "Change", "params": ["hello"], "state": { "draft": "hello" } },
+    { "event": "Change", "params": ["a\tb\nc"], "state": { "draft": "a\tb\nc" } }
+  ]
+}
