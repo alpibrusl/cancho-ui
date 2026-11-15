@@ -1,0 +1,15 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "component": "Machines",
+  "note": "A header moves the field through the key, the key with a minus, and nothing; another column starts at ascending (docs/table-sort.md section 1).",
+  "steps": [
+    { "event": "__sort_order", "params": ["name"], "state": { "order": "name" } },
+    { "event": "__sort_order", "params": ["name"], "state": { "order": "-name" } },
+    { "event": "__sort_order", "params": ["name"], "state": { "order": "" } },
+    { "event": "__sort_order", "params": ["name"], "state": { "order": "name" } },
+    { "event": "__sort_order", "params": ["length"], "state": { "order": "length" } },
+    { "event": "__sort_order", "params": ["length"], "state": { "order": "-length" } },
+    { "event": "__sort_order", "params": ["name"], "state": { "order": "name" } }
+  ]
+}

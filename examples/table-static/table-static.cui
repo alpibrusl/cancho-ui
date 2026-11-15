@@ -1,0 +1,14 @@
+// examples/table-static/table-static.cui — a table that scrolls with its header and first column in view, and numbers that line up (docs/table-static.md).
+component Ledger {
+    view {
+        Table {
+            label: "Ledger"
+            sticky: "both"
+            max_height: 12
+            Row { Text { role: columnheader "account" } Text { role: columnheader numeric: true "balance" } Text { role: columnheader numeric: true "change" } }
+            Row { Text { "cash" } Text { numeric: true "1250.50" } Text { numeric: true "-12.00" } }
+            Row { Text { "receivables" } Text { numeric: true "98000.00" } Text { numeric: true "4.25" } }
+            Row { Text { "payables" } Text { numeric: true "-3100.10" } Text { numeric: true "0.00" } }
+        }
+    }
+}

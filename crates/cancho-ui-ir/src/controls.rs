@@ -16,6 +16,8 @@ pub const ELEMENT_KEYS: &[&str] = &[
     "value",
     "disabled",
     "pressed",
+    // written by `sortheader.rs` (docs/table-sort.md) for a sortable header; the source cannot spell it
+    "sorted",
     "placeholder",
     "submit",
     "tone",

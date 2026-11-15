@@ -1,0 +1,20 @@
+// examples/table-sort/table-sort.cui — a table whose headers sort it (docs/table-sort.md). The compiler sorts nothing: `order` says which column and which way, and the view sorts the rows.
+component Machines {
+    state rows: List[String] = ["pump", "valve", "fan", "compressor", "pipe"];
+    state order: String = "";
+
+    view {
+        Table {
+            label: "Machines"
+            Row {
+                Text { role: columnheader sort: order key: "name" "name" }
+                Text { role: columnheader numeric: true sort: order key: "length" "length" }
+            }
+            For {
+                over: if order == "name" { sort(rows, r => r) } else if order == "-name" { reverse(sort(rows, r => r)) } else if order == "length" { sort(rows, r => len(r)) } else if order == "-length" { reverse(sort(rows, r => len(r))) } else { rows }
+                as: r
+                Row { Text { "{r}" } Text { numeric: true "{len(r)}" } }
+            }
+        }
+    }
+}

@@ -252,6 +252,9 @@ pub fn merge_ir_files(files: &[IrFile]) -> IrFile {
 }
 
 fn lower_component(c: &Component, next_id: &mut u32) -> Result<IrComponent, LowerError> {
+    // a sortable header (docs/table-sort.md) is written out as an event, a button and an expression before anything else looks at the component
+    let written = crate::sortheader::desugar(c)?;
+    let c: &Component = &written;
     if c.span == Span::DUMMY {
         return Err(LowerError::EmptySpan { span: c.span });
     }

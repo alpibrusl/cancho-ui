@@ -390,6 +390,43 @@ impl Parser {
                         span,
                     });
                 }
+                Token::Ident(name)
+                    if (name == "sort" || name == "key") && matches!(kind, ElementKind::Text) =>
+                {
+                    // `sort: order key: "revenue"` (docs/table-sort.md): a sortable column header; like `numeric:` they come before the text
+                    let key_tok = self.bump();
+                    let key_name = match key_tok.token.clone() {
+                        Token::Ident(n) => n,
+                        other => {
+                            return Err(ParseError::Unexpected {
+                                expected: "`sort` or `key`",
+                                found: other,
+                                line: key_tok.span.start.line,
+                                column: key_tok.span.start.column,
+                            });
+                        }
+                    };
+                    self.expect(Token::DotDot)?;
+                    let value = self.parse_binding_value(&key_name, &kind)?;
+                    let span = Span::new(key_tok.span.start, self.tokens[self.pos - 1].span.end);
+                    bindings.push(Binding {
+                        key: key_name,
+                        value,
+                        span,
+                    });
+                }
+                Token::Ident(name) if name == "numeric" && matches!(kind, ElementKind::Text) => {
+                    // `numeric: true` (docs/table-static.md): a cell whose digits line up; like `style:` it comes before the text
+                    let key_tok = self.bump();
+                    self.expect(Token::DotDot)?;
+                    let value = self.parse_binding_value("numeric", &kind)?;
+                    let span = Span::new(key_tok.span.start, self.tokens[self.pos - 1].span.end);
+                    bindings.push(Binding {
+                        key: "numeric".to_string(),
+                        value,
+                        span,
+                    });
+                }
                 Token::Ident(name) if name == "tone" => {
                     // `tone: "error"` or `tone: outcome_tone` (a String state field): a status text's tone
                     // (docs/presentation.md section 3). It is a binding like the others; it may come first because
@@ -823,7 +860,9 @@ impl Parser {
                         if matches!(kind, ElementKind::Named(_))
                             || key == "disabled"
                             || key == "error"
-                            || key == "checked" =>
+                            || key == "checked"
+                            || key == "numeric"
+                            || key == "sort" =>
                     {
                         // `disabled: sending` names a Bool state field (docs/controls.md section 1).
                         Ok(BindingValue::StateRef(s))

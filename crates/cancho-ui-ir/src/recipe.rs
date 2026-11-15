@@ -174,13 +174,28 @@ pub fn shell(
 
 /// The box a `Table` scrolls in when it is wider than a narrow phone (docs/presentation.md section 4a): a keyboard-focusable region named like the table.
 /// `None` when the name is an expression (the box is then written by script, with the name it has at that render).
-pub fn table_scroll(accessibility: &IrAccessibility) -> Option<Dom> {
+pub fn table_scroll(accessibility: &IrAccessibility, bindings: &[IrBinding]) -> Option<Dom> {
     if accessibility.label_expr.is_some() {
         return None;
     }
+    // docs/table-static.md: a sticky header, a sticky first column and a height are classes and one style of the box
+    let (head, col, max) = structure::table_spec(bindings);
+    let mut class = "cui-table-scroll".to_string();
+    if head {
+        class.push_str(" cui-sticky-head");
+    }
+    if col {
+        class.push_str(" cui-sticky-col");
+    }
+    if max.is_some() {
+        class.push_str(" cui-has-height");
+    }
     let mut d = Dom::element("div")
-        .attr("class", "cui-table-scroll")
+        .attr("class", class)
         .attr("tabindex", "0");
+    if let Some(n) = max {
+        d = d.attr("style", format!("max-height: {n}rem;"));
+    }
     if let Some(l) = &accessibility.label {
         d = d.attr("role", "region").attr("aria-label", l.clone());
     }
@@ -555,7 +570,7 @@ fn walk(w: &mut Writer, node: &IrViewNode) {
                 IrElementKind::Table => {
                     if let Some((what, why)) = first_hole(node) {
                         w.hole(&what, &why);
-                    } else if let Some(scroll) = table_scroll(accessibility)
+                    } else if let Some(scroll) = table_scroll(accessibility, bindings)
                         && let Some(s) = shell(kind, accessibility, bindings)
                     {
                         // div.cui-table-scroll > table.cui-table > tbody > tr ..: what the script builds, from the same functions
