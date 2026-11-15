@@ -204,6 +204,52 @@ fn keys(kind: &IrElementKind) -> &'static [&'static str] {
     }
 }
 
+/// The values a `Table { sticky: .. }` takes (docs/table-static.md section 1).
+const TABLE_STICKY: &[&str] = &["header", "column", "both"];
+
+/// `Table { sticky: "header" | "column" | "both" max_height: N }`: a text literal of three words, an integer literal of rem as `Code`'s is.
+fn table_binding(b: &IrBinding) -> Result<(), LowerError> {
+    if b.key == "sticky" {
+        return match string_of(b) {
+            Some(s) if TABLE_STICKY.contains(&s) => Ok(()),
+            _ => Err(refuse(
+                "table-sticky-invalid",
+                format!(
+                    "`sticky:` of a Table is one of {} as a text literal",
+                    TABLE_STICKY.join(", ")
+                ),
+                b.span,
+            )),
+        };
+    }
+    match int_of(b) {
+        Some(n) if (CODE_HEIGHT.0..=CODE_HEIGHT.1).contains(&n) => Ok(()),
+        _ => Err(refuse(
+            "table-max-height-invalid",
+            format!(
+                "`max_height:` of a Table is an integer literal from {} to {}, in rem",
+                CODE_HEIGHT.0, CODE_HEIGHT.1
+            ),
+            b.span,
+        )),
+    }
+}
+
+/// What a `Table { .. }` asks for: whether the header sticks, whether the first column does, and the height (in rem) after which the box scrolls down.
+pub fn table_spec(bindings: &[IrBinding]) -> (bool, bool, Option<i64>) {
+    let sticky = bindings
+        .iter()
+        .find(|b| b.key == "sticky")
+        .and_then(string_of);
+    let head = matches!(sticky, Some("header" | "both"));
+    let col = matches!(sticky, Some("column" | "both"));
+    let max = bindings
+        .iter()
+        .find(|b| b.key == "max_height")
+        .and_then(int_of);
+    (head, col, max)
+}
+
 fn refuse(code: &'static str, message: String, span: Span) -> LowerError {
     LowerError::ControlRefused {
         code,
@@ -352,6 +398,7 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
         "summary",
         "copy",
         "max_height",
+        "numeric",
         "sticky",
         "dock",
         "fab",
@@ -405,6 +452,31 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
     if !structure && !(NEW.contains(&b.key.as_str())) {
         return Ok(false);
     }
+    // docs/table-static.md: `Table { sticky: .. max_height: .. }` and `numeric: true` on a cell or a `Text` (whether it is in a table is checked when the element is complete)
+    if !structure
+        && matches!(kind, IrElementKind::Table)
+        && matches!(b.key.as_str(), "sticky" | "max_height")
+    {
+        return table_binding(b).map(|()| true);
+    }
+    if !structure
+        && b.key == "numeric"
+        && matches!(
+            kind,
+            IrElementKind::Text | IrElementKind::Cell | IrElementKind::HeaderCell
+        )
+    {
+        return match &b.value {
+            IrBindingValue::Const { expr, .. } if matches!(**expr, IrExpr::BoolLit { .. }) => {
+                Ok(true)
+            }
+            _ => Err(refuse(
+                "numeric-invalid",
+                "`numeric:` is `true` or `false`: `Text { numeric: true \"12.50\" }`".to_string(),
+                b.span,
+            )),
+        };
+    }
     if !structure && b.key == "style" && matches!(kind, IrElementKind::Text) {
         return match string_of(b) {
             Some(s) if TEXT_STYLES.contains(&s) => Ok(true),
@@ -434,8 +506,9 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
                     "summary" => "Details",
                     "style" => "Text and Rich",
                     "copy" => "Code and Button",
-                    "max_height" => "Code",
-                    "sticky" => "Header",
+                    "max_height" => "Code and Table",
+                    "sticky" => "Header and Table",
+                    "numeric" => "Text (a cell of a Table)",
                     "dock" => "Nav",
                     "fab" | "sheet" | "fab2" | "sheet2" | "band" | "band2" | "marks" => "Aside",
                     "bubble" | "chatlog" | "quote" => "Column",
@@ -676,6 +749,24 @@ pub fn check_complete(
     span: Span,
     in_for: bool,
 ) -> Result<(), LowerError> {
+    if matches!(kind, IrElementKind::Table) {
+        let (head, _, max) = table_spec(bindings);
+        if head && max.is_none() {
+            return Err(refuse(
+                "table-sticky-needs-height",
+                "`sticky: \"header\"` (or \"both\") on a Table needs `max_height:`: without a height the box never scrolls down, so the header could never stick".to_string(),
+                span,
+            ));
+        }
+    }
+    if matches!(kind, IrElementKind::Text) && bindings.iter().any(|b| b.key == "numeric") {
+        return Err(refuse(
+            "numeric-outside-table",
+            "`numeric:` aligns a cell of a Table: put this Text in a `Row` of a `Table`"
+                .to_string(),
+            span,
+        ));
+    }
     if !is_structure(kind) {
         return Ok(());
     }
@@ -978,6 +1069,11 @@ pub fn attrs(kind: &IrElementKind, bindings: &[IrBinding]) -> Vec<(&'static str,
 
 /// The class an element gets: a `Link` with an `appearance:`.
 pub fn class(kind: &IrElementKind, bindings: &[IrBinding]) -> Option<String> {
+    if matches!(kind, IrElementKind::Cell | IrElementKind::HeaderCell)
+        && is_flag(bindings, "numeric")
+    {
+        return Some("cui-num".to_string());
+    }
     if matches!(kind, IrElementKind::Header) {
         return is_sticky(bindings).then(|| "cui-sticky".to_string());
     }
@@ -1152,6 +1248,11 @@ pub fn handles(kind: &IrElementKind, key: &str) -> bool {
     (is_structure(kind) && keys(kind).contains(&key))
         || (matches!(kind, IrElementKind::Column | IrElementKind::Row) && keys(kind).contains(&key))
         || (matches!(kind, IrElementKind::Text) && key == "style")
+        || (matches!(kind, IrElementKind::Table) && matches!(key, "sticky" | "max_height"))
+        || (matches!(
+            kind,
+            IrElementKind::Text | IrElementKind::Cell | IrElementKind::HeaderCell
+        ) && key == "numeric")
 }
 
 /// What a `Code { .. }` block asks for: whether it has a copy button, and the height (in rem) after which it scrolls.

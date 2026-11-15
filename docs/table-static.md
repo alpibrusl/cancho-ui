@@ -40,7 +40,7 @@ The box (`div.cui-table-scroll`) gets the classes `cui-sticky-head` and/or `cui-
 .cui-sticky-head th { position: sticky; top: 0; background: Canvas; z-index: 1; }
 .cui-sticky-col th:first-child, .cui-sticky-col td:first-child { position: sticky; left: 0; background: Canvas; z-index: 1; }
 .cui-sticky-head.cui-sticky-col th:first-child { z-index: 2; }
-.cui-num { text-align: end; font-variant-numeric: tabular-nums; }
+.cui-table th.cui-num, .cui-table td.cui-num { text-align: end; font-variant-numeric: tabular-nums; }
 ```
 
 The same classes and the same style attribute are written by the prerenderer from the same recipe functions (`crates/cancho-ui-ir/src/recipe.rs`), so a prerendered page and the page the script draws are one DOM (the check of `prerender.md`). A page built
@@ -65,3 +65,19 @@ without the baseline stylesheet gets the classes and no look, as for every other
 ## 5. Not here
 
 A header that is a button, with `aria-sort` (F5b); more than the first column frozen; column widths; sticky rows at the bottom (a total row); a frozen column in a table that is not scrolled sideways (it is a no-op, not an error).
+
+## 6. Measured (2026-11-15)
+
+Machine: the development container, Chromium from the Playwright installed there, one run each (the checks are exact geometry, not timings).
+
+* `cargo test -p cancho-ui --test table_static` (4 tests) and `--test prerender` (the extended test): pass. The full gate (`cargo fmt --all --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test --workspace`) passes.
+* `node scripts/check-table-static.js`: 13 checks pass. A 40-row, 6-column table in a 280 px page with `sticky: "both" max_height: 10`: the box is 10 rem high and scrolls both ways (the checks fail
+  on a box that does not, so that a check cannot pass by there being nothing to scroll). After a scroll of 200 px down and 120 px right, the header is at the top of the box and the first column at its left edge to
+  **within 0.5 px, measured from the box's padding edge** (`clientTop`, `clientLeft`; the draft said 1 px, which would not tell `top: 1px` from `top: 0`: tightened). The corner is the topmost element at its own point; the
+  header and column cells have a solid background; numeric cells end at the same distance from their cell's edge in five rows.
+* The accessibility check is the DOM's: one `table`, 41 `tr`, six or more `th`, one focus stop (the scroll box), no `aria-hidden`. *The accessibility tree itself was not read; the draft said it would be. Open.*
+* `node scripts/check-table-static-mutants.js`: **14/14 killed**: the three classes not emitted, the height ignored, header `top: 1px`, a transparent header, column `left: 1px`, the corner not raised, numeric not aligned,
+  not tabular, no numeric class, a sticky header accepted without a height, `numeric` outside a table accepted, the height range unchecked. Two first runs of this set were wrong and are kept here because the
+  corrections are the point: the first run left the transparent header alive (the topmost-element check cannot see a background: a computed-style check was added), and a viewport wide enough that the table did
+  not scroll sideways made the column check pass with the column class removed (the check now fails if the box does not scroll).
+

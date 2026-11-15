@@ -1184,7 +1184,7 @@ pub(crate) fn emit_view_node(
                     "{0}const {1}_scroll = document.createElement('div');\n",
                     indent, var
                 ));
-                if let Some(scroll) = cancho_ui_ir::recipe::table_scroll(accessibility) {
+                if let Some(scroll) = cancho_ui_ir::recipe::table_scroll(accessibility, bindings) {
                     // the box of the recipe the prerenderer writes from (docs/prerender.md)
                     for (k, v) in &scroll.attrs {
                         // the class, the tabindex and the role are fixed words of the recipe; the name is the program's text
@@ -1193,12 +1193,20 @@ pub(crate) fn emit_view_node(
                         } else {
                             format!("'{v}'")
                         };
-                        let call = if *k == "class" {
-                            format!("classList.add({value})")
+                        // a class attribute is several classes: `classList.add` takes one token, not a list with spaces
+                        if *k == "class" {
+                            for token in v.split_whitespace() {
+                                out.push_str(&format!(
+                                    "{0}{1}_scroll.classList.add('{2}');\n",
+                                    indent, var, token
+                                ));
+                            }
                         } else {
-                            format!("setAttribute('{k}', {value})")
-                        };
-                        out.push_str(&format!("{0}{1}_scroll.{2};\n", indent, var, call));
+                            out.push_str(&format!(
+                                "{0}{1}_scroll.setAttribute('{2}', {3});\n",
+                                indent, var, k, value
+                            ));
+                        }
                     }
                 } else {
                     // a name read from state: the name it has at this render

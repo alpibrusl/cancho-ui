@@ -445,3 +445,17 @@ fn a_component_that_another_draws_is_not_hydrated() {
         "{html}"
     );
 }
+
+#[test]
+fn a_table_with_sticky_parts_is_prerendered_with_the_classes_the_script_writes() {
+    // docs/table-static.md section 2: the classes, the height and the numeric cells come from the same recipe in both
+    let source = include_str!("../../../examples/table-static/table-static.cui");
+    let html = page(source, &["--page"]);
+    assert!(
+        html.contains("class=\"cui-table-scroll cui-sticky-head cui-sticky-col cui-has-height\""),
+        "{html}"
+    );
+    assert!(html.contains("style=\"max-height: 12rem;\""), "{html}");
+    assert_eq!(html.matches("class=\"cui-num\"").count(), 8, "{html}");
+    // the script's own drawing of the same table is `table_static.rs`: the same classes, from the same recipe
+}
