@@ -1,0 +1,14 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "component": "Keys",
+  "note": "A key fires an event by name, as a button does: replay fires the events a Key is bound to with the arguments it gives them (docs/keys.md section 1).",
+  "steps": [
+    { "event": "Move", "params": [1], "state": { "cursor": 1, "anchor": 1, "log": "move" } },
+    { "event": "Extend", "params": [1], "state": { "cursor": 2, "anchor": 1, "log": "extend" } },
+    { "event": "Extend", "params": [1], "state": { "cursor": 3, "anchor": 1, "log": "extend" } },
+    { "event": "Move", "params": [-1], "state": { "cursor": 2, "anchor": 2, "log": "move" } },
+    { "event": "Top", "state": { "cursor": 0, "anchor": 0, "log": "top" } },
+    { "event": "Move", "params": [-1], "state": { "cursor": 0, "anchor": 0, "log": "move" } }
+  ]
+}

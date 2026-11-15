@@ -25,6 +25,7 @@ pub mod icon;
 mod icon_set;
 pub mod ir;
 pub mod island;
+pub mod keys;
 pub mod lower;
 pub mod map;
 pub mod media;

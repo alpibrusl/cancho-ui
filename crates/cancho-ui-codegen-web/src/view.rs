@@ -411,6 +411,10 @@ pub(crate) fn emit_view_node(
                 );
                 return out;
             }
+            if matches!(kind, IrElementKind::Key) {
+                // docs/keys.md: a key draws nothing; it is a listener of the element that holds it
+                return crate::keys::emit(indent, &var, parent_var, bindings, params);
+            }
             if matches!(kind, IrElementKind::Media) {
                 return crate::media::emit_media(indent, &var, parent_var, accessibility, bindings);
             }

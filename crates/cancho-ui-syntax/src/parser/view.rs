@@ -293,6 +293,7 @@ impl Parser {
             "Reveal" => ElementKind::Reveal,
             "CountUp" => ElementKind::CountUp,
             "Waffle" => ElementKind::Waffle,
+            "Key" => ElementKind::Key,
             "Chip" => ElementKind::Chip,
             "List" => ElementKind::List,
             "Item" => ElementKind::Item,
