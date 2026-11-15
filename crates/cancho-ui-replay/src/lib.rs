@@ -33,8 +33,8 @@ use value::{Value, num_json, subset};
 
 pub use closed::{Closed, eval_closed};
 pub use eval::{
-    JSON_ITEMS_MAX, arith, json_get, json_items, json_quote, math_builtin, move_item, num_of_text,
-    page_count, sort_key_order_json, text_builtin_json,
+    JSON_ITEMS_MAX, arith, exact_key, json_get, json_items, json_quote, math_builtin, move_item,
+    num_of_text, page_count, sort_key_order_json, text_builtin_json,
 };
 pub use geo::{distance_km, parse_position};
 pub use map::{Plan as MapPlan, plan as map_plan};

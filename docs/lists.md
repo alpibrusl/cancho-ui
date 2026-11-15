@@ -343,3 +343,69 @@ changed in the table (3), replay using `to_lowercase` (1).
 
 **Not done.** A Turkic or locale-aware fold; a collation for `sort`; normalization (`é` as one code point and as `e` plus a combining
 accent fold differently, as Unicode specifies; NFC/NFD is not built); full folding (`ß` to `ss`).
+
+## 11. Exact order: `exact(text, default)`
+
+> **Status: designed and built (15 Nov 2026), written before the code ([`CONTRIBUTING.md`](../CONTRIBUTING.md) section 1); measured in section 11.6.** Found by a table browser specified in cancho-sheets
+> (`docs/design.md` section 23, finding F8): `sort` keyed by `num` orders by a double, so a decimal past 2^53 is not ordered exactly.
+
+### 11.1 The problem, measured
+
+`sort(rows, x => num(x, 0))` over `["9007199254740993", "9007199254740992", "10", "9"]` answers `9, 10, 9007199254740993, 9007199254740992` (checked with `cancho-ui test`; the emitted code sorts on JS numbers, which are the same
+doubles). The two large numbers are one double, so they tie and keep their input order, which here is the wrong one. The exact order is `9, 10, 9007199254740992, 9007199254740993`. Any integer past 2^53, and any decimal with more
+than about 15 significant digits, can be mis-ordered the same way. For a page that shows money or identifiers read from a database, that is a wrong answer shown as a right one.
+
+### 11.2 The decision
+
+```
+exact(text: String, default: String) -> String        // a sort key
+sort(rows, x => exact(json.get(x, "revenue", ""), "0"))
+```
+
+* **Pure, no capability**, like `num`. Two arguments, always (`builtin-shape-mismatch`). *Choice.*
+* **The answer is a text** whose order, compared as text by code points, is the order of the decimals the texts spell. It is a *key*, to be given to `sort`; it is not meant to be shown. Two keys are equal exactly when the
+  numbers are equal (`1.5` and `1.50`, `0` and `-0.0`). *Choice: a key that is a string, because `sort` already orders strings by code points in both runtimes, so no new kind of key and no change to `sort` is needed.*
+* **The decimal grammar is `num`'s, without the exponent:** `-?(0|[1-9][0-9]*)(.[0-9]+)?`. No space, no plus sign, no leading zeros, no `1e3` (an exponent form can be exact too, but it would make the key's length depend on the exponent; it is
+  refused here, not rounded), and an integer part of more than 999,999 digits is not one. Anything else uses `default`; if `default` is not a decimal either, the key is `3`, which sorts after every decimal. *Choice.*
+* **Descending is `reverse(sort(..))`.** A key cannot be negated as a number can, so ties come out in reverse input order. *Read from the cost of the alternative: a direction argument would make `exact` and `sort` know each other.*
+
+### 11.3 The key
+
+Write a decimal as its sign, its integer digits `I` (no leading zeros; `0` alone for a value below one) and its fraction `F` with trailing zeros removed.
+
+| the number | the key |
+|---|---|
+| zero (`0`, `-0`, `0.000`) | `1` |
+| positive | `2`, then the length of `I` as six digits, then `I`, then `F` |
+| negative | `0`, then 999999 minus the length of `I` as six digits, then each digit of `I` as 9 minus it, then each digit of `F` as 9 minus it, then `~` |
+| not a decimal, and `default` neither | `3` |
+
+Why it orders: a longer integer part is a larger number, so the length comes first; the same length compares digit by digit, then the fraction, where a prefix is smaller (`0.5` before `0.51`, `0.25` before `0.5`). For a negative number
+everything reverses: the digits are complemented, and the `~` (above every digit) ends the key so that a shorter magnitude, which is the larger number, ends above a longer one. The classes order negative, zero, positive, invalid.
+*A claim, with its check in section 11.4: for every pair of decimals the order of the keys is the order of the numbers.*
+
+### 11.4 The checks, written before the code
+
+`crates/cancho-ui/tests/exact.rs` (the compiler and the replay) and `scripts/check-exact.js` (the emitted code, in node):
+* the helper is emitted for a program that calls `exact` and for no other; a wrong argument count is `builtin-shape-mismatch`; `exact` is a known call (not `call-unknown`);
+* the measured example of 11.1 replays to the exact order, with `exact`, and fails with `num`;
+* **the oracle**: random pairs of decimals (signs, zero forms, integer parts and fractions as long as the oracle holds, equal values written two ways) are ordered by exact integer arithmetic, aligned to a common scale (`i128` in the Rust test, which holds integer parts of up to 18 digits and fractions of up to 18; `BigInt` in
+  node, which is not limited to that and is used for the 40-digit integers and 20-digit fractions; neither is a double and neither shares code with the key function); the order of the two keys must equal it, and equal values must give equal keys;
+* **both runtimes agree**: `tests/exact_corpus.json` holds (text, default, key); the Rust replay and the emitted JavaScript must each reproduce every key;
+* invalid texts: the empty text, a space, `+1`, `1e3`, `.5`, `5.`, `007`, `-`, a text over the digit limit, are `default`'s key, and `3` when `default` is invalid too.
+* **Mutants**: the length not padded to six digits; the length not complemented for a negative; the digits not complemented; the `~` missing; trailing zeros of the fraction kept; zero keyed as positive; the class digits swapped; the exponent accepted.
+
+### 11.5 Not here
+
+Arithmetic on decimals; exponent forms; thousands separators or a decimal comma (`fmt` is for showing, `exact` is for ordering); a `sort` with a direction; showing a key.
+
+### 11.6 Measured (15 Nov 2026, one run each)
+
+* **The checks failed before the code** (the Rust test did not compile without `exact_key`) and pass after it: `crates/cancho-ui/tests/exact.rs`, 6 tests. `cargo fmt --check`, `cargo clippy --all-targets -D warnings` and `cargo test --workspace`
+  (88 test binaries, 0 failures) all pass.
+* **The oracle held on the first run, in both runtimes.** 30,000 random pairs in Rust (integer parts to 18 digits, fractions to 18, checked with `i128` aligned to a common scale) and 30,000 in node (integer parts to 40 digits, fractions to 20, checked with `BigInt`): the order of the
+  keys is the order of the numbers in every pair, and the two spellings of one value (`1.5` and `1.50`, `-0` and `0`) give one key. The 68 keys of `tests/exact_corpus.json` (34 texts, each with a decimal default and a non-decimal one) are the same in the Rust replay and in the emitted code.
+* **The measured case of 11.1 is now ordered exactly**: `sort(rows, x => exact(x, "0"))` gives `9007199254740992` before `9007199254740993`, and negative numbers, zero and `1.50` against `1.5` come out as 11.3 says. The same program keyed by `num` fails the same trace (the negative control).
+* **16 mutants, 16 killed** (`scripts/check-exact-mutants.js`; ten in the replay, six in the emitted helper; the table it prints says which check killed each): the length not padded, not complemented, the digits not complemented, the `~` missing, the zeros of the fraction kept, zero keyed as a
+  positive, one class for both signs, a leading zero accepted, a million digits accepted, the default unused, and the same kinds in the emitted code, plus an exponent accepted. One pattern first matched `num`'s regex too and was skipped by the script (it refuses a pattern that does not occur exactly once); it was made unique and is killed.
+* **Not measured:** the speed of a sort over many rows (a key is one short string per row, built once per row as `num`'s is, but it is longer: 7 characters plus the digits); a key longer than the integer part is allowed to be (999,999 digits is the bound, and a text near it makes a key near a megabyte, which is the caller's data and not a rule here).

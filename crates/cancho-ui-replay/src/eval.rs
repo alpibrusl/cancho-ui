@@ -741,6 +741,22 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
                 )),
             }
         }
+        ("exact", 2) => {
+            let text = eval(ctx, &args[0])?;
+            let default = eval(ctx, &args[1])?;
+            match (&text, &default) {
+                (Value::Str(t), Value::Str(d)) => Ok(Value::Str(exact_key(t, d))),
+                _ => Err(fault(
+                    "replay-type-error",
+                    format!(
+                        "`exact` needs two Strings, got {} and {}",
+                        describe(&text),
+                        describe(&default)
+                    ),
+                    span,
+                )),
+            }
+        }
         ("fold", 1) => match eval(ctx, &args[0])? {
             Value::Str(t) => Ok(Value::Str(cancho_ui_ir::casefold::fold_text(&t))),
             other => Err(fault(
@@ -1020,10 +1036,11 @@ fn call(ctx: &mut Ctx, path: &[String], args: &[IrExpr], span: Span) -> Result<V
             | "net.delete" | "location.current" | "sleep" | "storage.get" | "storage.set"
             | "router.go" | "router.replace" | "credential.set" | "credential.clear" | "json.get"
             | "json.items" | "json.quote" | "reverse" | "contains" | "lower" | "fold" | "num"
-            | "take" | "skip" | "concat" | "move" | "distance" | "min" | "max" | "abs" | "floor"
-            | "ceil" | "round" | "lines" | "split" | "join" | "trim" | "upper" | "emoji_only"
-            | "initials" | "mark_text" | "face" | "starts_with" | "ends_with" | "t" | "fmt.number"
-            | "fmt.percent" | "fmt.date" | "fmt.time" | "locale.current" | "locale.set",
+            | "exact" | "take" | "skip" | "concat" | "move" | "distance" | "min" | "max" | "abs"
+            | "floor" | "ceil" | "round" | "lines" | "split" | "join" | "trim" | "upper"
+            | "emoji_only" | "initials" | "mark_text" | "face" | "starts_with" | "ends_with" | "t"
+            | "fmt.number" | "fmt.percent" | "fmt.date" | "fmt.time" | "locale.current"
+            | "locale.set",
             n,
         ) => Err(fault(
             "replay-type-error",
@@ -1256,6 +1273,63 @@ pub fn json_quote(text: &str) -> String {
 
 /// `num(text, default)` (docs/lists.md section 1): `text` must be exactly a JSON number, and finite once read;
 /// otherwise `default`. The emitted `__cui_num` is the same function; `tests/num_corpus.json` is checked against both.
+/// `exact(text, default)` (docs/lists.md section 11): a text whose order, by code points, is the order of the decimals the texts spell. `1` is zero,
+/// `2`, the length of the integer part as six digits, the integer part and the fraction (trailing zeros cut) a positive number, `0`, 999999 minus that
+/// length, the complemented digits and a `~` a negative one, and `3` what is neither text a decimal.
+pub fn exact_key(text: &str, default: &str) -> String {
+    decimal_key(text)
+        .or_else(|| decimal_key(default))
+        .unwrap_or_else(|| "3".to_string())
+}
+
+/// The key of one decimal text of the grammar `-?(0|[1-9][0-9]*)(.[0-9]+)?` with at most 999,999 integer digits, or `None`.
+fn decimal_key(text: &str) -> Option<String> {
+    let b = text.as_bytes();
+    let (negative, rest) = match b.first() {
+        Some(b'-') => (true, &b[1..]),
+        _ => (false, b),
+    };
+    let int_len = rest.iter().take_while(|c| c.is_ascii_digit()).count();
+    if int_len == 0 || int_len > 999_999 || (rest[0] == b'0' && int_len > 1) {
+        return None;
+    }
+    let int = &rest[..int_len];
+    let after = &rest[int_len..];
+    let frac: &[u8] = if after.is_empty() {
+        &[]
+    } else {
+        let f = after.strip_prefix(b".")?;
+        if f.is_empty() || !f.iter().all(|c| c.is_ascii_digit()) {
+            return None;
+        }
+        f
+    };
+    let mut kept = frac.len();
+    while kept > 0 && frac[kept - 1] == b'0' {
+        kept -= 1;
+    }
+    let frac = &frac[..kept];
+    if int.iter().all(|&c| c == b'0') && frac.is_empty() {
+        return Some("1".to_string());
+    }
+    let mut key = String::with_capacity(8 + int_len + frac.len());
+    if negative {
+        key.push('0');
+        key.push_str(&format!("{:06}", 999_999 - int_len));
+        for &d in int.iter().chain(frac) {
+            key.push(char::from(b'9' - (d - b'0')));
+        }
+        key.push('~');
+    } else {
+        key.push('2');
+        key.push_str(&format!("{int_len:06}"));
+        for &d in int.iter().chain(frac) {
+            key.push(char::from(d));
+        }
+    }
+    Some(key)
+}
+
 pub fn num_of_text(text: &str, default: f64) -> f64 {
     let b = text.as_bytes();
     let digits = |from: usize| b[from..].iter().take_while(|c| c.is_ascii_digit()).count();

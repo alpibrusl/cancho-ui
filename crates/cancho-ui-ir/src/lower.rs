@@ -1764,6 +1764,7 @@ const PURE_BUILTINS: &[(&str, usize, &str)] = &[
     ("lower", 1, "exactly one argument: lower(text)"),
     ("fold", 1, "exactly one argument: fold(text)"),
     ("num", 2, "exactly two arguments: num(text, default)"),
+    ("exact", 2, "exactly two arguments: exact(text, default)"),
     ("take", 2, "exactly two arguments: take(list, n)"),
     ("skip", 2, "exactly two arguments: skip(list, n)"),
     ("concat", 2, "exactly two arguments: concat(a, b)"),
