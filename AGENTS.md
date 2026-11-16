@@ -579,6 +579,8 @@ is a sibling adjacency, deterministic and dependency-ordered:
 Refusals inside an imported file cite that file's path in their
 span; refusals at the import site cite the importing file.
 
+**A file is at most 2,000 lines and 160 KiB** (`file-too-long`, naming the file; the same for each imported module and each part). A program over it is refused, not warned about: split it. A program of several components splits with `import` (one component per module file). **One component too big for a file** (state, handlers, a long view) splits with `include "parts/x.part";`, a line of its own that is replaced by the lines of that file before anything reads the program: allowed in a component body and at any depth of a view, path relative to the entry file's directory, ending `.part`, no `..`, no link out, at most 8 deep (`part-missing`, `part-cycle`, `part-nested-too-deep`, `part-path-invalid`, `part-not-standalone-line`). A refusal in a part cites the part and the line in it; the IR is the IR of the same text written in one file. `cancho-ui inspect sources app.cui` prints the expanded text, to grep. `--max-file-lines N` (or `CANCHO_UI_MAX_FILE_LINES`) moves the limit for a program that is long today and is to come down (`docs/file-budget.md`).
+
 Know-nots:
 
 - **No paths, no packages.** `<module>.cui` beside the importing

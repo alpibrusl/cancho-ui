@@ -31,6 +31,7 @@
 | **Phase 1 / Tier 16** — cross-file `import` (Tier 17 = disposal, below) | ✅ done | `2bffe9b`, `examples/dashboard` |
 | **Phase 1 / Tier 17** — component disposal → `Cancelled` to the arm | ✅ done | this commit, `examples/cancel` |
 | **Phase 4 start** — real adapters: `Storage` (`storage.get`/`storage.set` over `localStorage`) and `Network` (`net.get`, same-origin `fetch`), both replayable | ✅ done; cross-origin `Network("host")` (a bound adds hosts) and `Location` (`location.current()`, rounded to 2 decimals, `"fine"` for 5) built | [`docs/adapters.md`](docs/adapters.md), #PR |
+| **File budget and `include`** — `include "x.part";` splices a part file into a component or a view (inline-identical IR, diagnostics cite the part); `file-too-long` refuses a file over 2,000 lines / 160 KiB (`--max-file-lines`, `CANCHO_UI_MAX_FILE_LINES`) | ✅ done | `docs/file-budget.md`, `examples/parts` |
 | **Phase 2** — capability/effect reachability, full refusal suite, evidence report | ✅ done incrementally per tier | `spec/diagnostics/README.md` frozen Phase 0 |
 
 Per-tier rows 2–14 keep their detail in the git history and

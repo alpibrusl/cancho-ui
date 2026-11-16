@@ -34,6 +34,7 @@ mod motion;
 mod page_files;
 mod pipeline;
 mod pwa;
+mod sources;
 mod test_cmd;
 mod theme;
 
@@ -52,6 +53,7 @@ USAGE:
     cancho-ui inspect effects   <file.cui> <name> [--output json]
     cancho-ui inspect ir       <file.cui>          [--output json]
     cancho-ui inspect view     <file.cui> [<name>] [--state <json object>]
+    cancho-ui inspect sources  <file.cui>          [--output json]   the program's text with its `include`s expanded
     cancho-ui inspect page     <file.cui>          [--output json]
     cancho-ui inspect data     <file.cui>          [--output json]
     cancho-ui diff <base.cui> <candidate.cui>      [--output json]
@@ -61,6 +63,9 @@ USAGE:
     cancho-ui introspect [--output json]
     cancho-ui --version
     cancho-ui --help
+
+Every command that compiles (check, build, inspect, diff, test, report) takes
+    --max-file-lines N     the most lines a source file may have (default 2000; env CANCHO_UI_MAX_FILE_LINES)
 
 Exit codes (matching cancho Core's CLI):
     0  success
@@ -101,6 +106,19 @@ fn run(args: &[String]) -> Result<ExitCode, CliError> {
     if args.is_empty() {
         return Err(CliError::Usage("missing command".into()));
     }
+    // the limit of a source file (docs/file-budget.md) is set once, for every command that compiles
+    let owned: Vec<String>;
+    let args = if matches!(
+        args[0].as_str(),
+        "check" | "build" | "inspect" | "diff" | "test" | "report"
+    ) {
+        let mut v = vec![args[0].clone()];
+        v.extend(sources::configure(&args[1..])?);
+        owned = v;
+        &owned[..]
+    } else {
+        args
+    };
     match args[0].as_str() {
         "--help" | "-h" => {
             println!("{USAGE}");
@@ -289,6 +307,10 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
 
 fn run_inspect(args: &[String]) -> Result<ExitCode, CliError> {
     let opts = InspectOpts::parse(args)?;
+    // the text of the program with its includes expanded (docs/file-budget.md section 2.6): it does not need the program to type-check
+    if opts.what == "sources" {
+        return sources::inspect(&opts.file, opts.json, opts.output_path.as_deref());
+    }
     let ir = pipeline::compile_to_ir(&opts.file).map_err(map_pipeline_env)?;
     let json = match opts.what.as_str() {
         "component" => {
@@ -530,7 +552,7 @@ fn run_introspect(args: &[String]) -> Result<ExitCode, CliError> {
         "commands": [
             { "name": "check",       "args": ["<file.cui>...", "--output json"] },
             { "name": "build",       "args": ["<file.cui>...", "-o <path>", "--target web", "--no-auto-mount", "--pwa", "--page", "--name <text>", "--output json"] },
-            { "name": "inspect",     "subcommands": ["component <file> <name>", "effects <file> <name>", "page <file>", "data <file>", "ir <file>"], "args": ["--output json"] },
+            { "name": "inspect",     "subcommands": ["component <file> <name>", "effects <file> <name>", "page <file>", "data <file>", "ir <file>", "sources <file>"], "args": ["--output json"] },
             { "name": "diff",        "args": ["<base.cui>", "<candidate.cui>", "--output json"], "exit_codes": { "0": "no semantic change", "1": "a file was refused", "2": "command line wrong", "3": "environment failed", "5": "the programs differ semantically" } },
             { "name": "test",        "args": ["<file.cui>", "<trace.json>", "--output json", "--full"], "exit_codes": { "0": "the trace passed", "1": "the program did not compile", "2": "command line wrong", "3": "environment failed", "4": "a test failed (expectation, malformed trace, or a construct replay refuses)" } },
             { "name": "report",      "args": ["<file.cui>...", "--output json"] },
@@ -737,6 +759,8 @@ struct InspectOpts {
     output_path: Option<PathBuf>,
     /// `--state '{"field": value}'` of `inspect view` (docs/view-test.md).
     state: Option<String>,
+    /// `--output json` (only `inspect sources` reads it: the others print JSON always).
+    json: bool,
 }
 
 impl InspectOpts {
@@ -755,6 +779,7 @@ impl InspectOpts {
             match a.as_str() {
                 "--output" => {
                     // The value (`json`) belongs to the flag, not to `arg`.
+                    out.json = args.get(i + 1).is_some_and(|v| v == "json");
                     i += 2;
                     continue;
                 }
@@ -918,6 +943,7 @@ cancho-ui build <file.cui> -o <file.js>          # compile to JS
 cancho-ui inspect component <file.cui> <name>   # one component, as data
 cancho-ui inspect effects <file.cui> <name>     # reachable effects + capabilities
 cancho-ui inspect ir <file.cui>                 # full IR
+cancho-ui inspect sources <file.cui>            # the text with `include`s expanded, to grep (docs/file-budget.md)
 cancho-ui diff <base.cui> <candidate.cui>       # semantic diff: authority, state, events, effects
 cancho-ui test <file.cui> <trace.json>          # replay an event trace; check state after each step (--full: no value cut to 120 chars)
 cancho-ui report <file.cui>                     # evidence report (5 sections)
@@ -955,6 +981,7 @@ The Tier 2 compiler emits JavaScript + DOM that runs in any browser. It does not
 - `docs/proposal.md` — the position and Phase 1 exit criteria.
 - `docs/semantics.md` — the 12 semantic questions answered with guarantee tiers.
 - `docs/semantic-diff.md` — what `diff` compares, its JSON shape, and what it does not claim.
+- `docs/file-budget.md` — the 2,000-line file limit (`file-too-long`, `--max-file-lines`) and `include` of part files.
 - `docs/replay.md` — the trace format, what `test` replays, the scripted network and fake clock, and what it does not claim.
 - `docs/security-model.md` — the five-tier guarantee model and capability/effect rules.
 - `spec/diagnostics/README.md` — the diagnostic format and rule catalog.

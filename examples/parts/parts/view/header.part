@@ -1,0 +1,4 @@
+Text {
+    role: status
+    "Count: {count}"
+}

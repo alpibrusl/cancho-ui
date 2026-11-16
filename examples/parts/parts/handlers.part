@@ -1,0 +1,11 @@
+on Add {
+    count = count + step;
+}
+
+on Sub {
+    count = count - step;
+}
+
+on Reset {
+    count = 0;
+}

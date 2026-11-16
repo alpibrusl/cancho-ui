@@ -11,6 +11,8 @@
 use std::fs;
 use std::path::Path;
 
+use crate::sources::{LoadError, Role, Table};
+
 use cancho_ui_codegen_web::{EmitOptions, emit_module_with};
 use cancho_ui_ir::lower::LowerError;
 use cancho_ui_ir::{lower_file, serialize::canonical_json};
@@ -84,16 +86,44 @@ pub enum Tier {
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Subject {
-    Component { name: String },
-    State { component: String, field: String },
-    Event { name: String },
-    Effect { name: String },
-    Capability { name: String },
-    Lifecycle { component: String, phase: String },
-    Foreign { scope: String, symbol: String },
-    Target { name: String },
-    Accessibility { component: String, role: String },
-    Ir { path: String },
+    Component {
+        name: String,
+    },
+    State {
+        component: String,
+        field: String,
+    },
+    Event {
+        name: String,
+    },
+    Effect {
+        name: String,
+    },
+    Capability {
+        name: String,
+    },
+    Lifecycle {
+        component: String,
+        phase: String,
+    },
+    Foreign {
+        scope: String,
+        symbol: String,
+    },
+    Target {
+        name: String,
+    },
+    Accessibility {
+        component: String,
+        role: String,
+    },
+    Ir {
+        path: String,
+    },
+    /// A source file or an included part (docs/file-budget.md).
+    File {
+        path: String,
+    },
     Internal,
 }
 
@@ -154,7 +184,17 @@ impl SpanOut {
 }
 
 pub fn compile_to_ir(file: &Path) -> Result<cancho_ui_ir::ir::IrFile, PipelineError> {
-    compile_inner(file).map(|(ir, _)| ir)
+    // the text of every file is read through the table (docs/file-budget.md): includes expanded, and a refusal about expanded text turned back into one
+    // about the file and the line the text is in
+    let mut table = Table::new(program_dir(file));
+    match compile_inner(file, &mut table) {
+        Ok((ir, _)) => Ok(ir),
+        Err(PipelineError::Refused(mut d)) => {
+            table.remap(&mut d);
+            Err(PipelineError::Refused(d))
+        }
+        Err(e) => Err(e),
+    }
 }
 
 /// Tier 16: resolve `import <module>.<Component>;` declarations.
@@ -214,6 +254,7 @@ fn resolve_imports(
     file: &Path,
     ast: &cancho_ui_syntax::ast::File,
     stack: &mut Vec<std::path::PathBuf>,
+    table: &mut Table,
 ) -> Result<Vec<ResolvedFile>, PipelineError> {
     let canon = fs::canonicalize(file).unwrap_or_else(|_| file.to_path_buf());
     if let Some(pos) = stack.iter().position(|p| *p == canon) {
@@ -268,19 +309,29 @@ fn resolve_imports(
             Some(dir) => dir.join(format!("{}.cui", imp.module)),
             None => std::path::PathBuf::from(format!("{}.cui", imp.module)),
         };
-        let source = fs::read_to_string(&module_path).map_err(|_| {
-            PipelineError::refused(import_diag(
-                "import-missing-module",
-                format!("{}.{}", imp.module, imp.component),
-                format!(
-                    "`import {}.{};` resolves to `{}`, which does not exist; an import's first segment must name a sibling `.cui` file that declares `module {};`",
-                    imp.module, imp.component, module_path.display(), imp.module
-                ),
-                imp.span,
-                file,
-                Some(format!("Create `{} {{ ... }}` in a sibling `{}.cui`. Make sure it starts with `module {};`.", imp.component, imp.module, imp.module)),
-            ))
-        })?;
+        let source = match crate::sources::load(&module_path, Role::Module, table) {
+            Ok(s) => s,
+            Err(LoadError::Refused(d)) => return Err(PipelineError::Refused(d)),
+            Err(LoadError::Io(_)) => {
+                return Err(PipelineError::refused(import_diag(
+                    "import-missing-module",
+                    format!("{}.{}", imp.module, imp.component),
+                    format!(
+                        "`import {}.{};` resolves to `{}`, which does not exist; an import's first segment must name a sibling `.cui` file that declares `module {};`",
+                        imp.module,
+                        imp.component,
+                        module_path.display(),
+                        imp.module
+                    ),
+                    imp.span,
+                    file,
+                    Some(format!(
+                        "Create `{} {{ ... }}` in a sibling `{}.cui`. Make sure it starts with `module {};`.",
+                        imp.component, imp.module, imp.module
+                    )),
+                )));
+            }
+        };
         let toks = cancho_ui_syntax::lexer::lex(&source)
             .map_err(|e| PipelineError::refused(lex_to_diag(e, &module_path)))?;
         let module_ast =
@@ -339,7 +390,7 @@ fn resolve_imports(
         // (and cycle-checked) before its interior check runs, so
         // the check can see components imported from sibling
         // modules the same way the entry file does.
-        let mut deps = resolve_imports(&module_path, &module_ast, stack)?;
+        let mut deps = resolve_imports(&module_path, &module_ast, stack, table)?;
         // The imported file must itself be valid (its interior
         // refusals belong to its own path in diagnostics). Its
         // shape map includes exactly the components its own
@@ -381,9 +432,19 @@ fn resolve_imports(
 
 fn compile_inner(
     file: &Path,
+    table: &mut Table,
 ) -> Result<(cancho_ui_ir::ir::IrFile, std::path::PathBuf), PipelineError> {
-    let source = fs::read_to_string(file)
-        .map_err(|e| PipelineError::Env(format!("reading `{}`: {}", file.display(), e)))?;
+    let source = match crate::sources::load(file, Role::Entry, table) {
+        Ok(s) => s,
+        Err(LoadError::Io(e)) => {
+            return Err(PipelineError::Env(format!(
+                "reading `{}`: {}",
+                file.display(),
+                e
+            )));
+        }
+        Err(LoadError::Refused(d)) => return Err(PipelineError::Refused(d)),
+    };
 
     let tokens = cancho_ui_syntax::lexer::lex(&source)
         .map_err(|e| PipelineError::refused(lex_to_diag(e, file)))?;
@@ -406,7 +467,7 @@ fn compile_inner(
     // Tier 16: resolve the entry's imports (dependency order,
     // checked with their own file paths) and hand the entry a
     // component-shape view of the imported modules.
-    let resolved = resolve_imports(file, &ast, &mut Vec::new())?;
+    let resolved = resolve_imports(file, &ast, &mut Vec::new(), table)?;
 
     // Dedupe: the same module imported twice resolves once.
     let mut unique: Vec<ResolvedFile> = Vec::new();

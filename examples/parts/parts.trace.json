@@ -1,0 +1,10 @@
+{
+  "schema": "cancho-ui-trace",
+  "version": "0.1.0",
+  "steps": [
+    { "event": "Add", "state": { "count": 1 }, "expect": { "outcome": "completed" } },
+    { "event": "Add", "state": { "count": 2 } },
+    { "event": "Sub", "state": { "count": 1 } },
+    { "event": "Reset", "state": { "count": 0 } }
+  ]
+}

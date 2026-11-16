@@ -1,0 +1,15 @@
+Button {
+    role: button
+    label: "Add"
+    on: Add
+}
+Button {
+    role: button
+    label: "Subtract"
+    on: Sub
+}
+Button {
+    role: button
+    label: "Reset"
+    on: Reset
+}

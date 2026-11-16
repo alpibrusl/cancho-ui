@@ -169,9 +169,12 @@ struct Out {
 
 /// Run the compiler with a 2 MiB stack (`ulimit -s 2048`); a stack overflow is a signal, so `code` is `None`.
 fn run(args: &[&str]) -> Out {
+    // The report's depth of 100,000 is a program of 200 to 500 KB, over the byte bound of a source file (docs/file-budget.md section 3), which would
+    // refuse it first: the bound is raised here, because what is measured is the stack and not the budget.
     let out = Command::new("sh")
         .args(["-c", "ulimit -s 2048; exec \"$0\" \"$@\"", BIN])
         .args(args)
+        .env("CANCHO_UI_MAX_FILE_LINES", "1000000")
         .output()
         .expect("sh runs");
     Out {

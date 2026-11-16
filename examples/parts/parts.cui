@@ -1,0 +1,22 @@
+// examples/parts/parts.cui: one component in several files (docs/file-budget.md).
+//
+// A file is at most 2,000 lines (`file-too-long`). A program of several components is split with `import`; ONE component that is too long for a
+// file is split with `include`: a line of its own, `include "parts/x.part";`, is replaced by the lines of that file before anything reads the
+// program. The compiler sees this program exactly as if the parts were written where the include lines are: `cancho-ui inspect sources
+// examples/parts/parts.cui` prints that text, and `inspect ir`, the script and the page are the ones of that one file. A refusal in a part cites
+// the part and the line in it.
+
+component Tally {
+    // the state and the handlers are kept apart from the view
+    include "parts/state.part";
+    include "parts/handlers.part";
+
+    view {
+        Column {
+            include "parts/view/header.part";
+            Row {
+                include "parts/view/buttons.part";
+            }
+        }
+    }
+}

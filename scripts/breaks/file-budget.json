@@ -1,0 +1,78 @@
+{
+  "checks": [
+    {
+      "name": "cargo test file_budget",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "file_budget"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "a file of exactly the limit is refused",
+      "file": "crates/cancho-ui/src/sources.rs",
+      "from": "    if lines > limit {",
+      "to": "    if lines >= limit {"
+    },
+    {
+      "name": "the byte bound is not inclusive",
+      "file": "crates/cancho-ui/src/sources.rs",
+      "from": "    if bytes > max {",
+      "to": "    if bytes >= max {"
+    },
+    {
+      "name": "the byte bound does not scale with the limit",
+      "file": "crates/cancho-ui/src/sources.rs",
+      "from": "DEFAULT_MAX_FILE_BYTES * u128::from(max_file_lines()) / u128::from(DEFAULT_MAX_FILE_LINES)",
+      "to": "DEFAULT_MAX_FILE_BYTES + 0 * u128::from(max_file_lines()) / u128::from(DEFAULT_MAX_FILE_LINES)"
+    },
+    {
+      "name": "lines are counted by newline characters, not as str::lines",
+      "file": "crates/cancho-ui/src/sources.rs",
+      "from": "    let lines = text.lines().count() as u64;",
+      "to": "    let lines = text.split('\\n').count() as u64;"
+    },
+    {
+      "name": "a limit of 0 is accepted",
+      "file": "crates/cancho-ui/src/sources.rs",
+      "from": "    if n == 0 {",
+      "to": "    if false {"
+    },
+    {
+      "name": "a limit is not digits only",
+      "file": "crates/cancho-ui/src/sources.rs",
+      "from": "!text.bytes().all(|b| b.is_ascii_digit())",
+      "to": "false"
+    },
+    {
+      "name": "the budget is not checked on an entry or a module",
+      "file": "crates/cancho-ui/src/sources.rs",
+      "from": "    check_budget(&text, &shown).map_err(LoadError::Refused)?;",
+      "to": "    let _ = check_budget(&text, &shown);"
+    },
+    {
+      "name": "the budget is not checked on a part",
+      "file": "crates/cancho-ui/src/sources.rs",
+      "from": "        check_budget(&text, &part)?;",
+      "to": "        let _ = check_budget(&text, &part);"
+    },
+    {
+      "name": "the variable is ignored",
+      "file": "crates/cancho-ui/src/sources.rs",
+      "from": "            Ok(v) => parse_limit(&v).map_err(|m| CliError::Env(format!(\"{LIMIT_ENV}: {m}\")))?,",
+      "to": "            Ok(_) => DEFAULT_MAX_FILE_LINES,"
+    },
+    {
+      "name": "the flag does not win over the variable",
+      "file": "crates/cancho-ui/src/sources.rs",
+      "from": "    let n = match flag {",
+      "to": "    let n = match flag.filter(|_| std::env::var(LIMIT_ENV).is_err()) {"
+    }
+  ]
+}

@@ -25,6 +25,11 @@ same forces apply — long files are where unchecked drift hides.
 
 A ceiling is a ceiling; only come down, never up.
 
+**For programs too, since [`docs/file-budget.md`](docs/file-budget.md).** The compiler now refuses a `.cui` file, or a part it includes, of more than
+2,000 lines or 160 KiB (`file-too-long`); `CANCHO_UI_MAX_FILE_LINES` and `--max-file-lines N` move the limit for a consumer that has a long file
+today, to be lowered toward 2,000 and not raised (the compiler cannot enforce the direction; the consumer's CI can). A long component is split with
+`include "parts/x.part";`, a program of several components with `import`.
+
 ## 3. How a slice is done
 
 cancho-ui slices follow the same shape as cancho's:
@@ -137,6 +142,9 @@ Macros break stable, content-addressable identity. cancho-ui inherits
 cancho's prohibition; the syntax tree is canonical, the IR hashes,
 and no macro can change a declaration's identity from outside its
 text.
+
+`include "x.part";` ([`docs/file-budget.md`](docs/file-budget.md)) is a splice of a named file at the line where it stands, not a macro: it has no
+parameters, no conditions and no evaluation, and the program's identity (its IR) is that of the text written in one file, byte for byte (tested).
 
 ## 9. The conventions
 

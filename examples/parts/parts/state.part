@@ -1,0 +1,2 @@
+state count: Int = 0;
+state step: Int = 1;

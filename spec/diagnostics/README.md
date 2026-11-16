@@ -55,6 +55,7 @@ Subject =
     | Target { name: String }
     | Accessibility { component: String, role: String }
     | Ir { path: String }
+    | File { path: String }             // a source file or part (file-too-long, part-*)
 
 Value =
     | Type(...)
@@ -391,6 +392,13 @@ in `examples/refusal/`, and by the evidence report.
 | `island-event-dropped` | `Component` | `Info` | `Runtime` | A message from an island frame that the page did not hear: an event the island does not declare or the view does not hear, a value of another type than the one declared (or a `String` over 4096 characters), a frame that sent more than 50 in a second, or a pointer message that is not two finite numbers. Counted in `window.__cui_island_stats.dropped`; nothing is thrown and no handler runs. A rule of the runtime, not a refusal of the build. *(Built 2026-10-25, docs/islands.md.)* |
 | `parse-nesting-too-deep` | `Component` | `Error` | `Static` | `if` statements nested more than 32 deep, or expressions, view nodes and types nested more than 32 deep together (an operand of a parenthesis, a call, a list, a `match` arm, a lambda, an `else if`, a view node inside a view node, a type argument; a chain of binary operators counts one for each operator): a parse error, not a stack overflow. *(Statements: issue #93. Expressions, views and types: issue #99, `docs/nesting.md`.)* |
 | `import-chain-too-deep` | `Component` | `Error` | `Static` | A chain of imports longer than 32 files (each file imports the next). *(Issue #99, `docs/nesting.md` section 5. The other `import-*` refusals are not in this table yet.)* |
+| `file-too-long` | `File` | `Error` | `Static` | A source file (the entry, an imported module, an included part) of more than 2,000 lines or 160 KiB (both scale with `--max-file-lines N` / `CANCHO_UI_MAX_FILE_LINES`); names the file, the count, the limit and the unit; remediation is to split with `import` or `include`. *(`docs/file-budget.md` section 3.)* |
+| `part-missing` | `File` | `Error` | `Static` | `include "x.part";` naming a file that is not there, is a directory, cannot be read or is not UTF-8. *(`docs/file-budget.md` section 2.2.)* |
+| `part-cycle` | `File` | `Error` | `Static` | A part that includes itself, directly or through other parts. *(`docs/file-budget.md` section 2.3.)* |
+| `part-nested-too-deep` | `File` | `Error` | `Static` | Includes nested more than 8 deep. *(`docs/file-budget.md` section 2.3.)* |
+| `part-path-invalid` | `File` | `Error` | `Static` | An include path that is absolute, has `..`, `.`, an empty segment, `\`, `:` or a control character, does not end in `.part`, or whose real path (a symbolic link) is outside the entry's directory. *(`docs/file-budget.md` section 2.2.)* |
+| `part-not-standalone-line` | `File` | `Error` | `Static` | `include "x.part";` that is not the whole of its line (something follows the `;`, the `;` is missing, or it follows other code). *(`docs/file-budget.md` section 2.1.)* |
+| `part-expansion-too-large` | `File` | `Error` | `Static` | The expanded text of one file over 100,000 lines. *(`docs/file-budget.md` section 2.3.)* |
 | `table-child-invalid` | `Component` | `Error` | `Static` | A `Table` child that is not a `Row` or a `For` that makes `Row`s. *(Built 2026-10-21, issue #42, section 4.)* |
 | `capability-missing` | `Capability` | `Error` | `Static` | A component using an effect without `requires Capability` |
 | `capability-unused` | `Capability` | `Error` | `Static` | A `requires` declaration with no reachable use |

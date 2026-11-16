@@ -1,0 +1,115 @@
+{
+  "checks": [
+    {
+      "name": "cargo test include",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "include"
+      ]
+    },
+    {
+      "name": "cargo test sources (unit)",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--bin",
+        "cancho-ui",
+        "sources"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "nine levels are allowed",
+      "file": "crates/cancho-ui/src/sources.rs",
+      "from": "        if self.stack.len() >= MAX_INCLUDE_DEPTH {",
+      "to": "        if self.stack.len() > MAX_INCLUDE_DEPTH {"
+    },
+    {
+      "name": "a cycle is not looked for",
+      "file": "crates/cancho-ui/src/sources.rs",
+      "from": "        if let Some(pos) = self.stack.iter().position(|p| *p == canon) {",
+      "to": "        if let Some(pos) = self.stack.iter().position(|p| *p == canon).filter(|_| false) {"
+    },
+    {
+      "name": "a link out of the directory is followed",
+      "file": "crates/cancho-ui/src/sources.rs",
+      "from": "        if !canon.starts_with(&self.canon_root) {",
+      "to": "        if false && !canon.starts_with(&self.canon_root) {"
+    },
+    {
+      "name": "a `..` segment is allowed",
+      "file": "crates/cancho-ui/src/sources.rs",
+      "from": "            \".\" | \"..\" => return Some(",
+      "to": "            \".\" => return Some("
+    },
+    {
+      "name": "a path need not name a part",
+      "file": "crates/cancho-ui/src/sources.rs",
+      "from": "        Some(stem) if !stem.is_empty() && !stem.ends_with('/') => None,",
+      "to": "        Some(_) => None,"
+    },
+    {
+      "name": "an include after other code is not refused",
+      "file": "crates/cancho-ui/src/sources.rs",
+      "from": "                    if at(k) == Some('\"') {",
+      "to": "                    if false && at(k) == Some('\"') {"
+    },
+    {
+      "name": "text after the semicolon is not refused",
+      "file": "crates/cancho-ui/src/sources.rs",
+      "from": "    if tail.trim().is_empty() {",
+      "to": "    if true {"
+    },
+    {
+      "name": "a string is not tracked",
+      "file": "crates/cancho-ui/src/sources.rs",
+      "from": "                self.scan.in_str = true;",
+      "to": "                self.scan.in_str = false;"
+    },
+    {
+      "name": "a block comment is not tracked",
+      "file": "crates/cancho-ui/src/sources.rs",
+      "from": "                self.scan.block = 1;",
+      "to": "                self.scan.block = 0;"
+    },
+    {
+      "name": "a line comment is not skipped",
+      "file": "crates/cancho-ui/src/sources.rs",
+      "from": "            } else if c == '/' && at(i + 1) == Some('/') {",
+      "to": "            } else if false && c == '/' && at(i + 1) == Some('/') {"
+    },
+    {
+      "name": "diagnostics are not mapped to the part",
+      "file": "crates/cancho-ui/src/sources.rs",
+      "from": "        let Some(m) = self.maps.get(&s.file) else {",
+      "to": "        let Some(m) = self.maps.get(\"\") else {"
+    },
+    {
+      "name": "a part without a final newline runs into the next line",
+      "file": "crates/cancho-ui/src/sources.rs",
+      "from": "        if !line.ends_with('\\n') && !top {",
+      "to": "        if false && !line.ends_with('\\n') && !top {"
+    },
+    {
+      "name": "the expansion is not bounded",
+      "file": "crates/cancho-ui/src/sources.rs",
+      "from": "        if self.origin.len() as u64 >= self.cap {",
+      "to": "        if false && self.origin.len() as u64 >= self.cap {"
+    },
+    {
+      "name": "a missing part is not a refusal",
+      "file": "crates/cancho-ui/src/sources.rs",
+      "from": "        let Ok(canon) = full.canonicalize() else {\n            return Err(missing(\"does not exist\".to_string()));\n        };",
+      "to": "        let canon = full.canonicalize().unwrap_or(full.clone());"
+    }
+  ]
+}

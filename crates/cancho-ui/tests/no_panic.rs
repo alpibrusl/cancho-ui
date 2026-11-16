@@ -142,6 +142,14 @@ fn example_pairs() -> Vec<(std::path::PathBuf, std::path::PathBuf)> {
         }
     }
     pairs.sort();
+    // a program with `include` lines is expanded by the binary (docs/file-budget.md), which this in-process front end does not run: the mutants of
+    // such a program, and of its parts, are in the unit test `mutated_include_programs_never_panic` of `src/sources.rs`
+    pairs.retain(|(cui, _)| {
+        !std::fs::read_to_string(cui)
+            .expect("example is UTF-8")
+            .lines()
+            .any(|l| l.trim_start().starts_with("include \""))
+    });
     pairs
 }
 
