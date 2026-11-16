@@ -93,6 +93,10 @@ pub struct Step {
     /// `"fault": "replay-.."`: the step is expected to fault with this rule, and the trace goes on after it
     /// (docs/replay.md, "A step that faults").
     pub fault: Option<String>,
+    /// `"view": [..]` (docs/view-test.md): the outline of the page after the step, exactly.
+    pub view: Option<Vec<String>>,
+    /// `"view_has": [..]`: lines the outline must hold, in this order, with anything between them.
+    pub view_has: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -111,6 +115,8 @@ pub struct Trace {
     /// The browser's languages in order of preference, as `navigator.languages` (docs/i18n.md section 3); empty when the trace does not say.
     pub locales: Vec<String>,
     pub steps: Vec<Step>,
+    /// Put the outline of the page in the report of every step (`cancho-ui test --view`), not only of the steps that assert one.
+    pub all_views: bool,
 }
 
 const EXPECT_KEYS: &[&str] = &[
@@ -328,7 +334,13 @@ pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {
     // A step that names the rule it faults with asserts something too.
     let assertions: usize = steps
         .iter()
-        .map(|s| s.state.len() + s.expect.len() + usize::from(s.fault.is_some()))
+        .map(|s| {
+            s.state.len()
+                + s.expect.len()
+                + usize::from(s.fault.is_some())
+                + usize::from(s.view.is_some())
+                + usize::from(s.view_has.is_some())
+        })
         .sum();
     if assertions == 0 {
         return Err(err(
@@ -346,6 +358,7 @@ pub fn parse_trace(text: &str) -> Result<Trace, TraceError> {
         url,
         locales,
         steps,
+        all_views: false,
     })
 }
 
@@ -389,7 +402,7 @@ fn non_negative(j: &Json, path: &str) -> Result<f64, TraceError> {
     }
 }
 
-fn value_at(j: &Json, path: &str) -> Result<Value, TraceError> {
+pub(crate) fn value_at(j: &Json, path: &str) -> Result<Value, TraceError> {
     Value::from_json(j).map_err(|why| err("trace-bad-value", path, why))
 }
 
@@ -403,6 +416,7 @@ fn parse_step(j: &Json, i: usize) -> Result<Step, TraceError> {
         &[
             "event", "params", "resolve", "with", "advance", "dispose", "hide", "show", "navigate",
             "back", "forward", "stream", "message", "id", "state", "expect", "note", "fault",
+            "view", "view_has",
         ],
         &at,
     )?;
@@ -627,10 +641,139 @@ fn parse_step(j: &Json, i: usize) -> Result<Step, TraceError> {
             expect.push((k.clone(), v.clone()));
         }
     }
+    let view = outline_lines(obj, "view", &at)?;
+    let view_has = outline_lines(obj, "view_has", &at)?;
     Ok(Step {
         action,
         state,
         expect,
         fault,
+        view,
+        view_has,
     })
+}
+
+/// `view` or `view_has` of a step: a list of outline lines (docs/view-test.md), each of the form the outline writes.
+fn outline_lines(
+    obj: &serde_json::Map<String, Json>,
+    key: &str,
+    at: &str,
+) -> Result<Option<Vec<String>>, TraceError> {
+    let Some(v) = obj.get(key) else {
+        return Ok(None);
+    };
+    let arr = v.as_array().ok_or_else(|| {
+        err(
+            "trace-malformed",
+            format!("{at}.{key}"),
+            format!("`{key}` is a list of outline lines"),
+        )
+    })?;
+    let mut lines = Vec::with_capacity(arr.len());
+    for (n, l) in arr.iter().enumerate() {
+        let s = l.as_str().ok_or_else(|| {
+            err(
+                "view-bad-line",
+                format!("{at}.{key}[{n}]"),
+                "an outline line is a text",
+            )
+        })?;
+        if let Err(why) = check_outline_line(s) {
+            return Err(err(
+                "view-bad-line",
+                format!("{at}.{key}[{n}]"),
+                format!("`{s}` is not an outline line: {why}"),
+            ));
+        }
+        lines.push(s.to_string());
+    }
+    Ok(Some(lines))
+}
+
+/// An outline line is two spaces for each level, a role (`table`, `? Chart`), then a quoted name and properties (`sort=ascending`, `value="a"`, `numeric`) in any number.
+fn check_outline_line(line: &str) -> Result<(), String> {
+    let body = line.trim_start_matches(' ');
+    let indent = line.len() - body.len();
+    if !indent.is_multiple_of(2) {
+        return Err("the indentation is two spaces for each level".to_string());
+    }
+    let mut rest = body;
+    // `? Kind` and `? component Name`: a node the outline cannot say
+    if let Some(kind) = rest.strip_prefix("? ") {
+        return if kind.is_empty() {
+            Err("`?` is followed by the kind of the node".to_string())
+        } else {
+            Ok(())
+        };
+    }
+    let role_len = rest.find(' ').unwrap_or(rest.len());
+    let role = &rest[..role_len];
+    if role.is_empty() || !role.chars().all(|c| c.is_ascii_lowercase()) {
+        return Err(
+            "it starts with a role, in lowercase letters (`button`, `columnheader`)".to_string(),
+        );
+    }
+    rest = rest[role_len..].trim_start_matches(' ');
+    while !rest.is_empty() {
+        if rest.starts_with('"') {
+            // a quoted text, as JSON writes one
+            let mut end = None;
+            let mut esc = false;
+            for (i, c) in rest.char_indices().skip(1) {
+                if esc {
+                    esc = false;
+                } else if c == '\\' {
+                    esc = true;
+                } else if c == '"' {
+                    end = Some(i);
+                    break;
+                }
+            }
+            let Some(e) = end else {
+                return Err("a quoted text is not closed".to_string());
+            };
+            rest = rest[e + 1..].trim_start_matches(' ');
+        } else {
+            let end = rest.find(' ').unwrap_or(rest.len());
+            let word = &rest[..end];
+            let name = word.split('=').next().unwrap_or("");
+            let known = if word.contains('=') {
+                ["value", "level", "rows", "sort"].contains(&name)
+            } else {
+                ["numeric", "checked", "pressed", "disabled", "invalid"].contains(&name)
+            };
+            if !known {
+                return Err(format!(
+                    "`{word}` is not a property of the outline (value=, level=, rows=, sort=, numeric, checked, pressed, disabled, invalid)"
+                ));
+            }
+            if let Some(val) = word.split_once('=').map(|x| x.1) {
+                if val.starts_with('"') {
+                    // a quoted value: find its end in the whole rest
+                    let mut e2 = None;
+                    let mut esc = false;
+                    for (i, c) in rest.char_indices().skip(name.len() + 2) {
+                        if esc {
+                            esc = false;
+                        } else if c == '\\' {
+                            esc = true;
+                        } else if c == '"' {
+                            e2 = Some(i);
+                            break;
+                        }
+                    }
+                    let Some(e2) = e2 else {
+                        return Err("a quoted value is not closed".to_string());
+                    };
+                    rest = rest[e2 + 1..].trim_start_matches(' ');
+                    continue;
+                }
+                if val.is_empty() {
+                    return Err(format!("`{word}` has no value"));
+                }
+            }
+            rest = rest[end..].trim_start_matches(' ');
+        }
+    }
+    Ok(())
 }

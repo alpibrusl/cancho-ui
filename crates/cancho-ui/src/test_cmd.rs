@@ -20,6 +20,7 @@ struct TestOpts {
     trace: PathBuf,
     output: OutputFormat,
     full: bool,
+    view: bool,
 }
 
 impl TestOpts {
@@ -27,6 +28,7 @@ impl TestOpts {
         let mut files: Vec<PathBuf> = Vec::new();
         let mut output = OutputFormat::Human;
         let mut full = false;
+        let mut view = false;
         let mut i = 0;
         while i < args.len() {
             match args[i].as_str() {
@@ -49,6 +51,11 @@ impl TestOpts {
                     full = true;
                     i += 1;
                 }
+                // the outline of the page after every step, not only after the steps that assert one (docs/view-test.md)
+                "--view" => {
+                    view = true;
+                    i += 1;
+                }
                 s if s.starts_with('-') && s.len() > 1 => {
                     return Err(CliError::Usage(format!("unknown flag `{s}`")));
                 }
@@ -69,6 +76,7 @@ impl TestOpts {
             trace,
             output,
             full,
+            view,
         })
     }
 }
@@ -91,11 +99,12 @@ pub fn run_test(args: &[String]) -> Result<ExitCode, CliError> {
     // A trace that is not UTF-8 is a malformed trace, not an environment error:
     // the lossy text fails JSON parsing with a located `trace-malformed`.
     let text = String::from_utf8_lossy(&bytes);
-    let report = cancho_ui_replay::replay(
+    let report = cancho_ui_replay::replay_with(
         &ir,
         &text,
         &opts.file.display().to_string(),
         &opts.trace.display().to_string(),
+        opts.view,
     );
     match opts.output {
         OutputFormat::Human if opts.full => {

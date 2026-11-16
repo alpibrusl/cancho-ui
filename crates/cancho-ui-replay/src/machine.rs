@@ -212,6 +212,8 @@ pub struct Machine<'a> {
     pub(crate) stream: Option<StreamState>,
     /// The language in use (docs/i18n.md).
     pub locale: crate::locale::LocaleState,
+    /// Put the outline of the page in the report of every step (docs/view-test.md).
+    pub all_views: bool,
 }
 
 impl<'a> Machine<'a> {
@@ -290,6 +292,7 @@ impl<'a> Machine<'a> {
             started: false,
             visible: true,
             locale: crate::locale::LocaleState::new(comp),
+            all_views: false,
             stream: comp
                 .schedules
                 .iter()
@@ -486,6 +489,35 @@ impl<'a> Machine<'a> {
 
     /// Evaluate a pure expression of the view against the state as it is now (a `Chart`'s `values:` and `labels:`); `None` when it
     /// cannot be evaluated.
+    /// A view expression with the loop variables of the `For`s around it in scope (docs/view-test.md): the value, or the reason it has none.
+    pub(crate) fn eval_view_with(
+        &self,
+        expr: &IrExpr,
+        locals: &[(String, Value)],
+    ) -> Result<Value, crate::eval::Stop> {
+        let mut journal = Journal::default();
+        let mut no_storage = BTreeMap::new();
+        let mut no_memory = BTreeMap::new();
+        let mut no_router = Router::new("/");
+        let mut no_credentials: Vec<String> = Vec::new();
+        let mut locale = self.locale.clone();
+        let mut ctx = Ctx {
+            state: &self.state,
+            clock: self.clock,
+            storage: &mut no_storage,
+            storage_ns: "",
+            storage_quota: None,
+            storage_memory: &mut no_memory,
+            router: &mut no_router,
+            credentials: &mut no_credentials,
+            locale: &mut locale,
+            journal: &mut journal,
+            locals: locals.to_vec(),
+            init: false,
+        };
+        eval(&mut ctx, expr)
+    }
+
     pub(crate) fn eval_view(&self, expr: &IrExpr) -> Option<Value> {
         let mut journal = Journal::default();
         let mut no_storage = BTreeMap::new();

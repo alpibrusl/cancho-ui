@@ -153,6 +153,9 @@ pub struct StepReport {
     /// The `SortList`s in the page after the step: label, count and the rows in order (docs/drag-and-drop.md); absent when there are none.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub sortlists: Vec<Json>,
+    /// The outline of the page after the step (docs/view-test.md); only for a step that asserts one, or for every step under `--view`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub view: Option<Vec<String>>,
     /// The `Map`s in the page after the step: the zoom used, the exact tile addresses, the list and the pins (docs/maps.md); absent when there are none.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub maps: Vec<Json>,
