@@ -545,6 +545,21 @@ fn the_word_is_text_in_a_string_in_a_comment_and_a_name() {
 }
 
 #[test]
+fn a_string_that_spans_lines_hides_an_include_line() {
+    let d = dir("string-across");
+    // the line `include "nope.part";` is inside a string that began on the line above (the lexer closes it at the first quote): nothing is spliced, and
+    // the answer is the lexer's or the parser's and not `part-missing`
+    write(
+        &d,
+        "app.cui",
+        "component C {\n    state s: String = \"first\ninclude \"nope.part\";\n    view { Text { \"x\" } }\n}\n",
+    );
+    let (code, _, line, msg) = refusal(&d, "app.cui");
+    assert!(!code.starts_with("part-"), "{code}: {msg}");
+    assert!(line >= 2, "{line}");
+}
+
+#[test]
 fn a_part_that_opens_a_comment_continues_it_in_the_including_file() {
     let d = dir("comment-across");
     write(

@@ -104,12 +104,15 @@
       "file": "crates/cancho-ui/src/sources.rs",
       "from": "        if self.origin.len() as u64 >= self.cap {",
       "to": "        if false && self.origin.len() as u64 >= self.cap {"
-    },
+    }
+  ],
+  "equivalent": [
     {
-      "name": "a missing part is not a refusal",
+      "name": "a missing part is not a refusal (canonicalize unwrapped)",
       "file": "crates/cancho-ui/src/sources.rs",
       "from": "        let Ok(canon) = full.canonicalize() else {\n            return Err(missing(\"does not exist\".to_string()));\n        };",
-      "to": "        let canon = full.canonicalize().unwrap_or(full.clone());"
+      "to": "        let canon = full.canonicalize().unwrap_or(full.clone());",
+      "why": "measured: a file that is not there has no real path, so the unwrapped path is not a file and is refused as `part-missing` by the next test, with the same tag; a refusal is still the answer and only its message differs."
     }
   ]
 }

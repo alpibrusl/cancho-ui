@@ -11,6 +11,19 @@
         "--test",
         "file_budget"
       ]
+    },
+    {
+      "name": "cargo test include (a part over the limit)",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "include",
+        "a_part_over_the_limit"
+      ]
     }
   ],
   "breaks": [
