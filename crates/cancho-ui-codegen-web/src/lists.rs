@@ -350,6 +350,16 @@ pub fn helpers_used(emitted: &str) -> String {
         ),
         (&["__cui_photo_draw("][..], crate::photo::PHOTO_JS),
         (&["__cui_photo_wire("][..], crate::photo::PHOTO_FIELD_JS),
+        // `AudioField` and `AudioClip` (docs/structure.md 12.0t): written only for a program that has one
+        (
+            &["__cui_audio_field_wire(", "__cui_audio_clip_draw("][..],
+            crate::audio::AUDIO_OK_JS,
+        ),
+        (
+            &["__cui_audio_field_wire("][..],
+            crate::audio::AUDIO_FIELD_JS,
+        ),
+        (&["__cui_audio_clip_draw("][..], crate::audio::AUDIO_CLIP_JS),
         // `Rail` (docs/structure.md 12.0s): written only for a program that has one
         (
             &["__cui_rail_wire(", "__cui_rail_save(", "__cui_rail_after("][..],

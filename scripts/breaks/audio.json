@@ -1,0 +1,326 @@
+{
+  "_about": "docs/structure.md 12.0t: each rule of AudioField and AudioClip spoiled in turn (the recorder and the player, the page's check of a text, the compiler's rules, replay, the stylesheet); every break must fail a check. Run: node scripts/deliberate-breaks.js scripts/breaks/audio.json",
+  "checks": [
+    {
+      "name": "cargo test audio",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "audio"
+      ]
+    },
+    {
+      "name": "cargo test audio (ir unit)",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui-ir",
+        "audio"
+      ]
+    },
+    {
+      "name": "check-audio.js",
+      "argv": [
+        "node",
+        "scripts/check-audio.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "a recording nobody ends is never ended",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "if (Date.now() - st.t0 >= st.secs * 1000) { __cui_audio_stop(st); } else { __cui_audio_paint(st); }",
+      "to": "if (false) { __cui_audio_stop(st); } else { __cui_audio_paint(st); }"
+    },
+    {
+      "name": "the cap in characters is not watched while recording",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "if (4 * Math.ceil(st.bytes / 3) >= st.chars * 0.9) { __cui_audio_stop(st); }",
+      "to": "/* not watched */"
+    },
+    {
+      "name": "a text over the cap is given",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "if (b64.length > st.chars) { __cui_audio_fail(st, \"too big\"); return; }",
+      "to": "/* given whatever its length */"
+    },
+    {
+      "name": "a text that is not a recording is given",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "if (kind === null) { __cui_audio_fail(st, \"failed\"); return; }",
+      "to": "/* given whatever it is */"
+    },
+    {
+      "name": "the person's no is not denied",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "name === \"NotAllowedError\" || name === \"SecurityError\" || name === \"PermissionDeniedError\" ? \"denied\"",
+      "to": "name === \"SecurityError\" || name === \"PermissionDeniedError\" ? \"denied\""
+    },
+    {
+      "name": "no device is a failure",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "name === \"NotFoundError\" || name === \"OverconstrainedError\" || name === \"DevicesNotFoundError\" ? \"no microphone\"",
+      "to": "name === \"OverconstrainedError\" || name === \"DevicesNotFoundError\" ? \"no microphone\""
+    },
+    {
+      "name": "no MediaRecorder is not noticed on a tap",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "if (!__cui_audio_supported()) { __cui_audio_fail(st, \"unsupported\"); return; }",
+      "to": "/* tried anyway */"
+    },
+    {
+      "name": "a field that cannot record does not say so before it is tapped",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "if (st.phase === \"idle\" && !st.words && !__cui_audio_supported()) { st.words = __cui_audio_words.unsupported; }",
+      "to": "/* silent */"
+    },
+    {
+      "name": "the key is never pressed",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "u.key.setAttribute(\"aria-pressed\", rec ? \"true\" : \"false\");",
+      "to": "u.key.setAttribute(\"aria-pressed\", \"false\");"
+    },
+    {
+      "name": "the key does not say Stop",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "i.textContent = rec ? \"Stop\" : u.label;",
+      "to": "i.textContent = u.label;"
+    },
+    {
+      "name": "the microphone is kept after the recording",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "if (st.stream) { st.stream.getTracks().forEach(function (t) { t.stop(); }); st.stream = null; }",
+      "to": "if (st.stream) { st.stream = null; }"
+    },
+    {
+      "name": "a recording is told to the program twice",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "st.deliver(JSON.stringify({ data: b64,",
+      "to": "st.deliver(JSON.stringify({ data: b64, again: 1,"
+    },
+    {
+      "name": "the mime is what the browser says",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "mime: __cui_audio_mimes[kind] }));",
+      "to": "mime: 'audio/webm' }));"
+    },
+    {
+      "name": "the status is not a live region",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "{indent}{var}_st.setAttribute('role', 'status');",
+      "to": "{indent}{var}_st.setAttribute('role', 'note');"
+    },
+    {
+      "name": "a render ends the recording in progress",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "st.ui = ui; st.secs = secs; st.chars = chars; st.deliver = deliver; st.shown = -1;",
+      "to": "st.ui = ui; st.secs = secs; st.chars = chars; st.deliver = deliver; st.shown = -1; if (st.phase === \"recording\") { st.phase = \"idle\"; }"
+    },
+    {
+      "name": "another clip does not stop this one",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "if (c && c.key !== u.data) { __cui_audio_halt(c); S.cur = c = null; }",
+      "to": "if (c && c.key !== u.data) { S.cur = c = null; }"
+    },
+    {
+      "name": "a pause forgets where it was",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "__cui_audio_halt(c); c.offset = offset; c.playing = false;",
+      "to": "__cui_audio_halt(c); c.offset = 0; c.playing = false;"
+    },
+    {
+      "name": "the bar does not move",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "u.bar.value = u.dur > 0 ? Math.round(1000 * pos / u.dur) : 0;",
+      "to": "u.bar.value = 0;"
+    },
+    {
+      "name": "the end does not put the clip back",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "if (S.cur === c && c.src === src) { c.src = null; S.cur = null; __cui_audio_paint_clips(); }",
+      "to": "if (S.cur === c && c.src === src) { c.src = null; __cui_audio_paint_clips(); }"
+    },
+    {
+      "name": "Play and Pause are swapped",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "(playing ? \"Pause \" : \"Play \") + u.label",
+      "to": "(playing ? \"Play \" : \"Pause \") + u.label"
+    },
+    {
+      "name": "a text that is not a recording is decoded as one",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "if (__cui_audio_kind(data) === null) {",
+      "to": "if (false) {"
+    },
+    {
+      "name": "a render forgets what plays",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "var c = S.cur && S.cur.key === u.data ? S.cur : null,",
+      "to": "var c = null,"
+    },
+    {
+      "name": "a clip's time is shown without its leading zero",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "(\"0\" + (s % 60)).slice(-2)",
+      "to": "(s % 60)"
+    },
+    {
+      "name": "the page's check puts ftyp at the start",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "if (h.slice(4, 8) === \"ftyp\") { return \"mp4\"; }",
+      "to": "if (h.slice(0, 4) === \"ftyp\") { return \"mp4\"; }"
+    },
+    {
+      "name": "the page's check takes one more character than the most",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "t.length > 48000 ||",
+      "to": "t.length > 48001 ||"
+    },
+    {
+      "name": "the page's check takes three padding characters",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "/^[A-Za-z0-9+\\/]+={0,2}$/.test(t)",
+      "to": "/^[A-Za-z0-9+\\/]+={0,3}$/.test(t)"
+    },
+    {
+      "name": "the page's check takes an AVI for a WAV",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "if (h.slice(0, 4) === \"RIFF\" && h.slice(8, 12) === \"WAVE\") { return \"wav\"; }",
+      "to": "if (h.slice(0, 4) === \"RIFF\") { return \"wav\"; }"
+    },
+    {
+      "name": "the page's check takes a text under the least",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "t.length < 100 ||",
+      "to": "t.length < 99 ||"
+    },
+    {
+      "name": "the compiler's least text is 99",
+      "file": "crates/cancho-ui-ir/src/audio.rs",
+      "from": "pub const CHARS_MIN: i64 = 100;",
+      "to": "pub const CHARS_MIN: i64 = 99;"
+    },
+    {
+      "name": "the compiler takes 61 seconds",
+      "file": "crates/cancho-ui-ir/src/audio.rs",
+      "from": "pub const SECONDS_MAX: i64 = 60;",
+      "to": "pub const SECONDS_MAX: i64 = 61;"
+    },
+    {
+      "name": "the compiler takes 0 seconds",
+      "file": "crates/cancho-ui-ir/src/audio.rs",
+      "from": "pub const SECONDS_MIN: i64 = 1;",
+      "to": "pub const SECONDS_MIN: i64 = 0;"
+    },
+    {
+      "name": "the compiler's first byte of WebM is wrong",
+      "file": "crates/cancho-ui-ir/src/audio.rs",
+      "from": "h[..4] == [0x1A, 0x45, 0xDF, 0xA3]",
+      "to": "h[..4] == [0x1B, 0x45, 0xDF, 0xA3]"
+    },
+    {
+      "name": "the compiler looks for ftyp at the start",
+      "file": "crates/cancho-ui-ir/src/audio.rs",
+      "from": "&h[4..8] == b\"ftyp\"",
+      "to": "&h[0..4] == b\"ftyp\""
+    },
+    {
+      "name": "the compiler takes an AVI for a WAV",
+      "file": "crates/cancho-ui-ir/src/audio.rs",
+      "from": "} else if &h[..4] == b\"RIFF\" && &h[8..12] == b\"WAVE\" {",
+      "to": "} else if &h[..4] == b\"RIFF\" {"
+    },
+    {
+      "name": "replay does not compare the mime with the first bytes",
+      "file": "crates/cancho-ui-ir/src/audio.rs",
+      "from": "if obj[\"mime\"].as_str() != mime_of(kind) {",
+      "to": "if false {"
+    },
+    {
+      "name": "replay takes 0 seconds",
+      "file": "crates/cancho-ui-ir/src/audio.rs",
+      "from": "(data.len() as i64) <= s.max_chars && (SECONDS_MIN..=s.max_seconds).contains(&seconds)",
+      "to": "(data.len() as i64) <= s.max_chars && (0..=s.max_seconds).contains(&seconds)"
+    },
+    {
+      "name": "replay takes a text one over the cap",
+      "file": "crates/cancho-ui-ir/src/audio.rs",
+      "from": "(data.len() as i64) <= s.max_chars &&",
+      "to": "(data.len() as i64) <= s.max_chars + 1 &&"
+    },
+    {
+      "name": "replay takes another key",
+      "file": "crates/cancho-ui-ir/src/audio.rs",
+      "from": "if keys != [\"data\", \"mime\", \"seconds\"] {",
+      "to": "if false {"
+    },
+    {
+      "name": "replay takes an error word of its own",
+      "file": "crates/cancho-ui-ir/src/audio.rs",
+      "from": ".filter(|w| ERRORS.contains(w))",
+      "to": ".filter(|w| !w.is_empty())"
+    },
+    {
+      "name": "a button that could give the event anything does not lift the check",
+      "file": "crates/cancho-ui-replay/src/machine.rs",
+      "from": "        if f.other || f.specs.is_empty() {\n            return None;\n        }\n        Some(f.specs)\n    }\n\n    /// Whether every control in the page that fires `event` is a `Rail`",
+      "to": "        if f.specs.is_empty() {\n            return None;\n        }\n        Some(f.specs)\n    }\n\n    /// Whether every control in the page that fires `event` is a `Rail`"
+    },
+    {
+      "name": "replay does not know an audio field's events",
+      "file": "crates/cancho-ui-replay/src/lib.rs",
+      "from": "m.audio_specs(name))\n                && let Err(why) = cancho_ui_ir::audio::check_value",
+      "to": "m.audio_specs(name).filter(|_| false))\n                && let Err(why) = cancho_ui_ir::audio::check_value"
+    },
+    {
+      "name": "an audio field is allowed in a For",
+      "file": "crates/cancho-ui-ir/src/audio.rs",
+      "from": "if in_for {\n                return Err(refuse(\n                    \"audio-field-in-loop\"",
+      "to": "if false {\n                return Err(refuse(\n                    \"audio-field-in-loop\""
+    },
+    {
+      "name": "a clip without a name is taken",
+      "file": "crates/cancho-ui-ir/src/audio.rs",
+      "from": "if !named {\n                return Err(refuse(\n                    \"audio-clip-label-missing\"",
+      "to": "if false {\n                return Err(refuse(\n                    \"audio-clip-label-missing\""
+    },
+    {
+      "name": "a clip over an Int is taken",
+      "file": "crates/cancho-ui-ir/src/audio.rs",
+      "from": "                        && f.ty != IrType::String\n                    {\n                        return Err(refuse(\n                            \"audio-data-invalid\"",
+      "to": "                        && false\n                    {\n                        return Err(refuse(\n                            \"audio-data-invalid\""
+    },
+    {
+      "name": "an audio field's event is given no text",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "            | IrElementKind::AudioField\n            | IrElementKind::Rail,",
+      "to": "            | IrElementKind::Rail,"
+    },
+    {
+      "name": "the page does not carry the rules of the sound",
+      "file": "crates/cancho-ui/src/page_files.rs",
+      "from": "let audio = cancho_ui_ir::audio::uses_audio(ir);",
+      "to": "let audio = false && cancho_ui_ir::audio::uses_audio(ir);"
+    },
+    {
+      "name": "the pressed key is not the accent",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": ".cui-audio-key[aria-pressed=\"true\"] { background: var(--cui-accent, #185fa5); color: var(--cui-on-accent, #fff); }",
+      "to": ".cui-audio-key[aria-pressed=\"true\"] { }"
+    },
+    {
+      "name": "the key is under 44 px",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": ".cui-audio-key, .cui-audio-play { box-sizing: border-box; display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 0.4rem; min-width: 44px; min-height: 44px;",
+      "to": ".cui-audio-key, .cui-audio-play { box-sizing: border-box; display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 0.4rem; min-width: 30px; min-height: 30px;"
+    }
+  ],
+  "equivalent": []
+}

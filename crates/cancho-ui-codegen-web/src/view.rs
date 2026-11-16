@@ -433,6 +433,29 @@ pub(crate) fn emit_view_node(
                     params,
                 );
             }
+            if matches!(kind, IrElementKind::AudioClip) {
+                return crate::audio::emit_clip(
+                    indent,
+                    &var,
+                    parent_var,
+                    accessibility,
+                    bindings,
+                    params,
+                );
+            }
+            if matches!(kind, IrElementKind::AudioField) {
+                // kept by the place of the field in the source, like a PhotoField
+                let key = format!("{}:{}", span.start.line, span.start.column);
+                return crate::audio::emit_field(
+                    indent,
+                    &var,
+                    parent_var,
+                    &key,
+                    accessibility,
+                    bindings,
+                    params,
+                );
+            }
             if matches!(kind, IrElementKind::Rail) {
                 // the row's children are the things to choose, in the order they are drawn (docs/structure.md 12.0s); kept by the place of the rail in the source
                 let key = format!("{}:{}", span.start.line, span.start.column);

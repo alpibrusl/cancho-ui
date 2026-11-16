@@ -132,6 +132,14 @@ fn check_node(c: &IrComponent, node: &IrViewNode, in_for: bool) -> Result<(), Lo
                     in_for,
                 )?;
                 crate::rail::check_complete(kind, accessibility, bindings, children, *span)?;
+                crate::audio::check_complete(
+                    kind,
+                    accessibility,
+                    bindings,
+                    children,
+                    *span,
+                    in_for,
+                )?;
                 check_navlink_complete(kind, accessibility, bindings, *span)?;
                 check_file_field(kind, accessibility, bindings, *span, in_for)?;
                 check_chart(kind, accessibility, bindings, *span, in_for)?;
@@ -213,6 +221,8 @@ fn element_name(kind: &IrElementKind) -> &'static str {
         IrElementKind::PhotoField => "PhotoField",
         IrElementKind::Photo => "Photo",
         IrElementKind::Rail => "Rail",
+        IrElementKind::AudioField => "AudioField",
+        IrElementKind::AudioClip => "AudioClip",
         IrElementKind::Island(_) => "an island",
         IrElementKind::Named(_) => "a component",
     }
@@ -268,6 +278,7 @@ fn check_on(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), 
             | IrElementKind::Select
             | IrElementKind::FileField
             | IrElementKind::PhotoField
+            | IrElementKind::AudioField
             | IrElementKind::Rail,
         ) => event.params.len().min(1),
         // a move gives the two indexes (docs/drag-and-drop.md)
@@ -993,6 +1004,9 @@ fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result
         return Ok(());
     }
     if crate::rail::check_binding(c, kind, b)? {
+        return Ok(());
+    }
+    if crate::audio::check_binding(c, kind, b)? {
         return Ok(());
     }
     if crate::icon::check_binding(kind, b)? {

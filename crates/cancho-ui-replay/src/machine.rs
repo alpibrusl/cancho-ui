@@ -842,6 +842,69 @@ impl<'a> Machine<'a> {
         Some(f.specs)
     }
 
+    /// What the `AudioField`s that fire `event` promise about the value they give it, when every control in the page that fires it is a
+    /// `PhotoField` that is in the page now; `None` when some other control could give it any value, or none fires it (docs/structure.md 12.0t).
+    pub fn audio_specs(&self, event: &str) -> Option<Vec<cancho_ui_ir::audio::AudioSpec>> {
+        use cancho_ui_ir::audio::AudioSpec;
+        #[derive(Default)]
+        struct Fields {
+            specs: Vec<AudioSpec>,
+            other: bool,
+        }
+        fn walk(m: &Machine<'_>, node: &IrViewNode, event: &str, f: &mut Fields) {
+            match node {
+                IrViewNode::Element {
+                    kind,
+                    bindings,
+                    children,
+                    ..
+                } => {
+                    let fires = bindings.iter().any(|b| {
+                        b.key == "on"
+                            && match &b.value {
+                                IrBindingValue::EventRef(e) => e == event,
+                                IrBindingValue::EventCall { name, .. } => name == event,
+                                _ => false,
+                            }
+                    });
+                    if fires {
+                        if matches!(kind, cancho_ui_ir::ir::IrElementKind::AudioField) {
+                            let (max_seconds, max_chars) = cancho_ui_ir::audio::limits_of(bindings);
+                            f.specs.push(AudioSpec {
+                                max_chars,
+                                max_seconds,
+                            });
+                        } else {
+                            f.other = true;
+                        }
+                    }
+                    for c in children {
+                        walk(m, c, event, f);
+                    }
+                }
+                IrViewNode::For { children, .. } => {
+                    for c in children {
+                        walk(m, c, event, f);
+                    }
+                }
+                IrViewNode::If { cond, children, .. } => {
+                    if m.condition_holds(cond) {
+                        for c in children {
+                            walk(m, c, event, f);
+                        }
+                    }
+                }
+                IrViewNode::Text { .. } => {}
+            }
+        }
+        let mut f = Fields::default();
+        walk(self, &self.comp.view.body, event, &mut f);
+        if f.other || f.specs.is_empty() {
+            return None;
+        }
+        Some(f.specs)
+    }
+
     /// Whether every control in the page that fires `event` is a `Rail` that is in the page now (docs/structure.md 12.0s): it then gives the place of a child,
     /// a whole number from 0. `false` when some other control could give it any value, or none fires it.
     pub fn is_rail_event(&self, event: &str) -> bool {

@@ -307,6 +307,8 @@ impl Parser {
             "PhotoField" => ElementKind::PhotoField,
             "Photo" => ElementKind::Photo,
             "Rail" => ElementKind::Rail,
+            "AudioField" => ElementKind::AudioField,
+            "AudioClip" => ElementKind::AudioClip,
             other => ElementKind::Named(other.to_string()),
         };
 
@@ -636,6 +638,9 @@ impl Parser {
             // (read for any element, so that a wrong place is `binding-unknown` and not a parse error, as `pressed:` is)
             "selected" => Ok(BindingValue::Prop(self.parse_expr()?)),
             // `data:` and `tone:` of a `Photo` (docs/structure.md 12.0r): `String` expressions of the view, read at each render (a state field, or a name of a `For`)
+            "data" if matches!(kind, ElementKind::AudioClip) => {
+                Ok(BindingValue::Prop(self.parse_expr()?))
+            }
             "data" | "tone" if matches!(kind, ElementKind::Photo) => {
                 Ok(BindingValue::Prop(self.parse_expr()?))
             }

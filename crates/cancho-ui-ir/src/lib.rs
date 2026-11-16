@@ -12,6 +12,7 @@
 //! row, and the canonical serialization described in
 //! `../../../spec/ir-schema/README.md`.
 
+pub mod audio;
 pub mod blocks;
 pub mod casefold;
 pub mod conditions;

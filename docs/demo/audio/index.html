@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A voice note</title>
+<style>
+/* A default so a program is usable on a phone; the page owns presentation, replace it freely. */
+:root { color-scheme: light dark; }
+body {
+    margin: 0;
+    padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+        max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.cui-col { display: flex; flex-direction: column; gap: 0.5rem; }
+.cui-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+/* Grid (docs/structure.md section 10): as many columns as fit at `min`, equal; with weights, one flex line whose cells grow in proportion and wrap, one under another, when the line cannot hold them */
+.cui-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--cui-min)), 1fr)); gap: 0.5rem; }
+.cui-grid.cui-grid-w { display: flex; flex-wrap: wrap; }
+.cui-grid-w > * { min-width: 0; }
+.cui-grid-w > :nth-child(1) { flex: var(--cui-w1) 1 min(100%, calc(var(--cui-min) * var(--cui-w1))); }
+.cui-grid-w > :nth-child(2) { flex: var(--cui-w2) 1 min(100%, calc(var(--cui-min) * var(--cui-w2))); }
+.cui-grid-w > :nth-child(3) { flex: var(--cui-w3) 1 min(100%, calc(var(--cui-min) * var(--cui-w3))); }
+.cui-grid-w > :nth-child(4) { flex: var(--cui-w4) 1 min(100%, calc(var(--cui-min) * var(--cui-w4))); }
+/* gap: 0..4 on a Row or Column (docs/presentation.md section 2) */
+.cui-gap-0 { gap: 0; } .cui-gap-1 { gap: 0.25rem; } .cui-gap-2 { gap: 0.5rem; } .cui-gap-3 { gap: 1rem; } .cui-gap-4 { gap: 2rem; }
+/* a TextField with a label: the label is shown above the field */
+.cui-field { display: flex; flex-direction: column; gap: 0.25rem; }
+/* a Checkbox: the box and its text in one label that is the touch target (docs/controls.md section 9) */
+.cui-check { display: flex; align-items: center; gap: 0.5rem; min-height: 44px; min-width: 44px; }
+.cui-check input { min-height: 0; min-width: 0; width: 1.25rem; height: 1.25rem; margin: 0; }
+/* Table */
+.cui-table { border-collapse: collapse; width: 100%; }
+/* a table wider than the page scrolls inside this box, not the page (#144) */
+.cui-table-scroll { overflow-x: auto; max-width: 100%; }
+/* a Table with max_height: the box scrolls down too; sticky: "header", "column" or "both" keeps the first row and the first column in view (docs/table-static.md) */
+.cui-table-scroll.cui-has-height { overflow-y: auto; }
+.cui-sticky-head th { position: sticky; top: 0; background: Canvas; z-index: 1; }
+.cui-sticky-col th:first-child, .cui-sticky-col td:first-child { position: sticky; left: 0; background: Canvas; z-index: 1; }
+.cui-sticky-head.cui-sticky-col th:first-child { z-index: 2; }
+/* a window (docs/window.md): every body row is --cui-row high, and a longer text is cut, not taller; the spacer rows are not rows */
+.cui-table-scroll[data-cui-window] tbody tr:not([aria-hidden]) td { height: var(--cui-row); box-sizing: border-box; padding-block: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* numeric: true on a cell: the digits line up (docs/table-static.md) */
+/* a sortable header (docs/table-sort.md): the arrow is drawn, and the empty alternative text keeps it out of the button's name */
+.cui-table th[aria-sort=ascending] button::after { content: " \2191" / ""; }
+.cui-table th[aria-sort=descending] button::after { content: " \2193" / ""; }
+.cui-table th.cui-num, .cui-table td.cui-num { text-align: end; font-variant-numeric: tabular-nums; }
+.cui-table th, .cui-table td { text-align: start; padding: 0.25rem 0.5rem; border-bottom: 1px solid color-mix(in srgb, currentColor 25%, transparent); }
+.cui-table th { font-weight: 600; }
+/* Chart (docs/charts.md): the series colour is 7.59:1 on white and 9.63:1 on the dark page (WCAG 1.4.11 asks 3:1) */
+:root { --cui-chart: #0550ae; --cui-chart-open: #57606a; }
+.cui-chart { margin: 0; }
+.cui-chart figcaption { font-weight: 600; }
+.cui-chart summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
+/* RouteMap (docs/routes.md): a pin is a fill with the page's own colour as its number and outline; fills are 7.59, 5.08 and 6.39:1 against white and 9.63, 7.37 and 6.43:1 against the dark page, and the number is the page colour on the fill (the same pairs), so a pin is read by its number and the list, never by its colour alone */
+:root { --cui-route-lodging: #0550ae; --cui-route-activity: #1a7f37; --cui-route-transport: #57606a; --cui-route-other: CanvasText; --cui-route-ink: Canvas; }
+.cui-routemap-svg { display: block; width: 100%; max-width: 40rem; height: auto; }
+.cui-rm-lodging { fill: var(--cui-route-lodging); } .cui-rm-activity { fill: var(--cui-route-activity); }
+.cui-rm-transport { fill: var(--cui-route-transport); } .cui-rm-other { fill: var(--cui-route-other); }
+.cui-rm-list { list-style: none; margin: 0; padding: 0; }
+/* tone: a status text says what kind it is by a prefix as well as by colour, so colour is never the only signal */
+[data-tone] { font-weight: 600; }
+[data-tone="ok"] { color: #1a7f37; } [data-tone="ok"]::before { content: "\2713  "; }
+[data-tone="warn"] { color: #9a6700; } [data-tone="warn"]::before { content: "\26A0  "; }
+[data-tone="error"] { color: #cf222e; } [data-tone="error"]::before { content: "\2717  "; }
+@media (prefers-color-scheme: dark) {
+    :root { --cui-chart: #79c0ff; --cui-chart-open: #9198a1; --cui-route-lodging: #79c0ff; --cui-route-activity: #3fb950; --cui-route-transport: #9198a1; }
+    [data-tone="ok"] { color: #3fb950; } [data-tone="warn"] { color: #d29922; } [data-tone="error"] { color: #ff7b72; }
+}
+button, input, textarea { min-height: 44px; min-width: 44px; font: inherit; }
+/* structure (docs/structure.md): a link in a header, a nav or a footer is a target of its own; the appearances of a Link; the roles of a Text */
+header a, nav a, footer a { display: inline-flex; align-items: center; min-height: 44px; }
+a.cui-link-primary, a.cui-link-secondary, a.cui-link-quiet { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-height: 44px; min-width: 44px; padding: 0 1rem; border-radius: 8px; font-weight: 600; text-decoration: none; }
+a.cui-link-primary { background: LinkText; color: Canvas; }
+a.cui-link-secondary { border: 1px solid LinkText; }
+details > summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; }
+figure { margin: 0; } figcaption { font-size: 0.88rem; }
+[data-style] { margin: 0; }
+[data-style="eyebrow"], [data-style="label"] { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+[data-style="eyebrow"] { color: LinkText; }
+/* an avatar (docs/structure.md 12.0c): the initials of a person on a coloured disc; the colours are fixed, each is 4.5:1 or better with the white text */
+[data-style="avatar"] { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; flex: none; width: 2.25rem; height: 2.25rem; margin: 0; border: 2px solid Canvas; border-radius: 50%; font-size: 0.78rem; font-weight: 700; line-height: 1; text-transform: uppercase; background: #b41d26; color: #fff; }
+[data-style="avatar"]:nth-of-type(4n+2) { background: #6b5585; }
+[data-style="avatar"]:nth-of-type(4n+3) { background: #1e7e34; }
+[data-style="avatar"]:nth-of-type(4n) { background: #884e00; }
+[data-style="avatar"] + [data-style="avatar"] { margin-left: -0.6rem; }
+/* a star on the corner of the avatar before it (docs/structure.md 12.0k): an organiser's mark; the avatar after it overlaps as it would without the star */
+[data-style="star"] { display: inline-flex; align-items: center; justify-content: center; position: relative; z-index: 1; flex: none; box-sizing: border-box; align-self: flex-end; width: 0.95rem; height: 0.95rem; margin: 0 0 0 -0.8rem; border: 1px solid Canvas; border-radius: 50%; font-size: 0.55rem; line-height: 1; background: #fff; color: #7a4a00; }
+[data-style="star"] + [data-style="avatar"] { margin-left: -0.15rem; }
+[data-style="lead"] { font-size: 1.1rem; max-width: 40rem; }
+[data-style="note"] { font-size: 0.88rem; }
+/* inline content and code (docs/structure.md sections 7 and 8): a code box is dark in both schemes, as the cancho-www page draws it */
+code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9em; }
+.cui-code { position: relative; border-radius: 12px; background: #12151a; color: #d6dde8; }
+.cui-code pre { margin: 0; padding: 0.9rem 1rem; overflow: auto; white-space: pre; font: 0.78rem/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.cui-code code { font: inherit; }
+.cui-code[data-copy] pre { padding-right: 5.5rem; }
+.cui-copy { position: absolute; top: 0.45rem; right: 0.45rem; }
+/* Image and Media (docs/structure.md section 10): never wider than the file or the column; a `ratio` crops to the shape */
+.cui-img { display: block; overflow: hidden; border-radius: 12px; }
+.cui-img img { display: block; width: 100%; height: auto; }
+.cui-img[data-ratio] img { height: 100%; object-fit: cover; }
+.cui-media { display: block; width: 100%; max-width: 100%; height: auto; border-radius: 12px; background: #000; }
+[data-ratio="1:1"] { aspect-ratio: 1 / 1; } [data-ratio="4:3"] { aspect-ratio: 4 / 3; } [data-ratio="3:2"] { aspect-ratio: 3 / 2; }
+[data-ratio="16:9"] { aspect-ratio: 16 / 9; } [data-ratio="21:9"] { aspect-ratio: 21 / 9; } [data-ratio="3:4"] { aspect-ratio: 3 / 4; } [data-ratio="2:3"] { aspect-ratio: 2 / 3; }
+/* Waffle and Chip (docs/waffle.md): squares are drawn in the series colour (7.59:1 on white, 9.63:1 on the dark page) and a text colour of the page (6.4:1 and 6.5:1), outlined and not filled when they are not counted, so colour is never the only difference; a chip says its message in words and its tone in a colour and a border */
+.cui-waffle svg { display: block; width: 100%; max-width: 60rem; height: auto; }
+.cui-wf-on { fill: var(--cui-chart); }
+.cui-wf-known { fill: none; stroke: var(--cui-chart); stroke-width: 2; }
+.cui-wf-open { fill: none; stroke: var(--cui-chart-open); stroke-width: 1; }
+.cui-waffle table { border-collapse: collapse; } .cui-waffle th, .cui-waffle td { text-align: start; padding: 0.25rem 0.75rem 0.25rem 0; }
+.cui-chip { display: inline-block; font: 600 0.72rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0.04em; text-transform: uppercase; padding: 0.1rem 0.5rem; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.cui-chip-good { color: var(--cui-good, #1a7f37); }
+.cui-chip-warn { color: var(--cui-warn, #9a6700); background: var(--cui-warn-bg, transparent); }
+.cui-chip-accent { color: var(--cui-accent, #0550ae); }
+.cui-chip-quiet { color: var(--cui-chart-open); border-style: dashed; }
+@media (prefers-color-scheme: dark) { .cui-chip-good { color: var(--cui-good, #3fb950); } .cui-chip-warn { color: var(--cui-warn, #d29922); } .cui-chip-accent { color: var(--cui-accent, #79c0ff); } }
+/* page (docs/page.md): a sticky Header stays at the top of the window, a skip link shows only while it has the focus, and a Main a link can start from is not outlined */
+.cui-sticky { position: sticky; top: 0; z-index: 10; box-sizing: border-box; min-height: 4rem; display: flex; flex-wrap: wrap; align-items: center; column-gap: 1rem; background: Canvas; border-bottom: 1px solid color-mix(in srgb, currentColor 25%, transparent); }
+.cui-skip { position: fixed; top: -4rem; left: 0.5rem; z-index: 20; display: inline-flex; align-items: center; min-height: 44px; padding: 0 1rem; border-radius: 8px; font-weight: 600; background: LinkText; color: Canvas; }
+.cui-skip:focus { top: 0.5rem; }
+main[tabindex="-1"]:focus { outline: none; }
+.cui-sticky nav { display: flex; flex-wrap: wrap; column-gap: 1rem; }
+/* a docked Nav (docs/structure.md 12.0b) is the tab bar at the foot of the window: fixed, centred, and the page keeps room under it */
+.cui-dock { position: fixed; left: 50%; bottom: max(0.75rem, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 10; box-sizing: border-box; width: min(calc(100% - 2rem), 28rem); display: flex; justify-content: space-around; gap: 0.25rem; padding: 0.4rem; border-radius: 999px; background: color-mix(in srgb, Canvas 86%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); box-shadow: 0 8px 28px -6px rgba(0,0,0,0.28); border: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+.cui-dock > * { flex: 1 1 0; min-width: 0; }
+body:has(.cui-dock) { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
+/* a floating button and a sheet (docs/structure.md 12.0g): fixed over the page, above the tab bar, shown only while an `Aside { marks: .. }` of their kind is on the page */
+.cui-fab, .cui-sheet { position: fixed; z-index: 11; box-sizing: border-box; margin: 0; }
+.cui-fab { right: 1rem; bottom: calc(5.25rem + env(safe-area-inset-bottom)); }
+.cui-fab > button { min-height: 52px; padding: 0 1.4rem; box-shadow: 0 8px 24px -4px rgba(0,0,0,0.35); }
+.cui-sheet { left: 50%; bottom: calc(5.25rem + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(calc(100% - 1.5rem), 28rem); max-height: calc(100dvh - 9.5rem); overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem; border-radius: 24px; background: var(--cui-surface, Canvas); color: var(--cui-fg, CanvasText); border: 1px solid color-mix(in srgb, currentColor 18%, transparent); box-shadow: 0 16px 48px -8px rgba(0,0,0,0.45); }
+[data-mark] { display: none; }
+/* a chat (docs/structure.md 12.0h, 12.0i): a log with a faint pattern, bubbles that lean to one side (a run of one sender has one avatar and one name, and a tail on its first bubble), day pills, reaction chips on a bubble's edge, a header and a composer in a pill */
+.cui-chatlog { display: flex; flex-direction: column; gap: 0; flex: 1 1 auto; min-height: 9rem; overflow-y: auto; padding: 0.4rem 0.5rem 1rem; border-radius: 18px; background-color: var(--cui-soft, color-mix(in srgb, currentColor 6%, transparent)); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' fill='none' stroke='%23785a46' stroke-opacity='.11' stroke-width='1.4' stroke-linecap='round'%3E%3Ccircle cx='20' cy='22' r='7'/%3E%3Cpath d='M70 14v12M64 20h12'/%3E%3Cpath d='M98 52c6-8 12 8 18 0'/%3E%3Crect x='14' y='70' width='13' height='13' rx='3'/%3E%3Ccircle cx='66' cy='78' r='3'/%3E%3Cpath d='M92 96l8-10 8 10z'/%3E%3Cpath d='M40 108c4-6 8 6 12 0'/%3E%3Cpath d='M52 44l3 6 6 1-4 5 1 6-6-3-6 3 1-6-4-5 6-1z'/%3E%3C/svg%3E"); background-size: 120px 120px; }
+.cui-bubble { --b: var(--cui-surface, Canvas); position: relative; box-sizing: border-box; max-width: calc(100% - 4.8rem); gap: 0.05rem; margin-top: 0.12rem; padding: 0.3rem 0.6rem 0.2rem; border-radius: 12px; background: var(--b); color: var(--cui-fg, CanvasText); box-shadow: 0 1px 1px rgba(0,0,0,0.2); overflow-wrap: anywhere; line-height: 1.3; }
+.cui-bubble p { margin: 0; }
+.cui-bubble-theirs { align-self: flex-start; margin-left: 2.4rem; }
+.cui-bubble-mine { --b: var(--cui-accent-soft, #dcf8c6); align-self: flex-end; margin-right: 0.1rem; }
+.cui-bubble-system { align-self: center; max-width: 92%; background: transparent; box-shadow: none; color: var(--cui-muted, inherit); font-size: 0.8rem; text-align: center; margin-top: 0.4rem; }
+.cui-bubble-day { align-self: center; max-width: 92%; margin: 0.7rem 0 0.4rem; padding: 0.15rem 0.7rem; border-radius: 8px; font-size: 0.74rem; color: var(--cui-muted, inherit); }
+.cui-bubble:has(> [data-style="mark"]) { margin-top: 0.5rem; }
+.cui-bubble-theirs:has(> [data-style="mark"]) { border-top-left-radius: 0; }
+.cui-bubble-mine:has(> [data-style="mark"]) { border-top-right-radius: 0; }
+.cui-bubble:has(> [data-style="mark"])::before { content: ""; position: absolute; top: 0; width: 0; height: 0; border-top: 9px solid var(--b); }
+.cui-bubble-theirs:has(> [data-style="mark"])::before { left: -8px; border-left: 8px solid transparent; }
+.cui-bubble-mine:has(> [data-style="mark"])::before { right: -8px; border-right: 8px solid transparent; }
+.cui-bubble:has(> [data-style="big"]) { --b: transparent; background: transparent; box-shadow: none; padding-inline: 0.2rem; }
+.cui-bubble:has(> [data-style="big"])::before { display: none; }
+.cui-bubble [data-style="mark"] { display: none; }
+.cui-bubble [data-style="big"] { font-size: 2.6rem; line-height: 1.15; }
+.cui-bubble [data-style="eyebrow"] { text-transform: none; letter-spacing: 0; font-size: 0.78rem; font-weight: 700; }
+.cui-bubble [data-style^="hue"] { font-size: 0.8rem; font-weight: 700; line-height: 1.25; text-transform: none; letter-spacing: 0; }
+.cui-bubble [data-style="note"] { align-self: flex-end; font-size: 0.66rem; color: var(--cui-muted, inherit); }
+[data-style^="disc"] { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; flex: none; width: 2rem; height: 2rem; margin: 0; border-radius: 50%; font-size: 0.72rem; font-weight: 700; line-height: 1; text-transform: uppercase; color: #fff; }
+.cui-bubble > [data-style^="disc"] { position: absolute; left: -2.5rem; top: 0; }
+.cui-bubble [data-style="hue0"] { color: #b41d26; }
+[data-style="disc0"] { background: #b41d26; }
+.cui-bubble [data-style="hue1"] { color: #0b6a73; }
+[data-style="disc1"] { background: #0b6a73; }
+.cui-bubble [data-style="hue2"] { color: #6b4a9e; }
+[data-style="disc2"] { background: #6b4a9e; }
+.cui-bubble [data-style="hue3"] { color: #1e7e34; }
+[data-style="disc3"] { background: #1e7e34; }
+.cui-bubble [data-style="hue4"] { color: #8a4b00; }
+[data-style="disc4"] { background: #8a4b00; }
+.cui-bubble [data-style="hue5"] { color: #1d5fa8; }
+[data-style="disc5"] { background: #1d5fa8; }
+.cui-bubble [data-style="hue6"] { color: #a1236f; }
+[data-style="disc6"] { background: #a1236f; }
+.cui-bubble [data-style="hue7"] { color: #556b00; }
+[data-style="disc7"] { background: #556b00; }
+/* a person's own look (docs/structure.md 12.0l): `face(..)` gives a disc a tone (twelve fixed colours, each 6.00:1 or better with white), an emoji in place of the initials, or a photo drawn on a canvas over it */
+[data-tone="0"][data-style] { background: #b41d26; }
+[data-tone="1"][data-style] { background: #0b6a73; }
+[data-tone="2"][data-style] { background: #6b4a9e; }
+[data-tone="3"][data-style] { background: #1e7e34; }
+[data-tone="4"][data-style] { background: #8a4b00; }
+[data-tone="5"][data-style] { background: #1d5fa8; }
+[data-tone="6"][data-style] { background: #a1236f; }
+[data-tone="7"][data-style] { background: #556b00; }
+[data-tone="8"][data-style] { background: #475569; }
+[data-tone="9"][data-style] { background: #4338a0; }
+[data-tone="10"][data-style] { background: #7b2d8e; }
+[data-tone="11"][data-style] { background: #0e6b8c; }
+[data-style][data-emoji] { font-size: 1.5em; font-weight: 400; text-transform: none; }
+[data-style][data-photo] { position: relative; overflow: hidden; }
+.cui-face-pic { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; }
+[data-style="avatar"][data-photo] { border-color: Canvas; }
+/* a quote of an earlier message, a mention, the time and the ticks (docs/structure.md 12.0j) */
+.cui-quote { display: flex; flex-direction: column; gap: 0.05rem; min-width: 0; margin: 0.1rem 0 0.3rem; padding: 0.2rem 0.5rem; border-inline-start: 4px solid var(--q, #1e7e34); border-radius: 6px; background: color-mix(in srgb, currentColor 8%, transparent); }
+.cui-bubble .cui-quote [data-style^="hue"] { font-size: 0.78rem; }
+.cui-bubble .cui-quote [data-style="note"] { align-self: flex-start; max-width: 100%; box-sizing: border-box; font-size: 0.82rem; color: inherit; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cui-quote:has([data-style="hue0"]) { --q: #b41d26; }
+.cui-quote:has([data-style="hue1"]) { --q: #0b6a73; }
+.cui-quote:has([data-style="hue2"]) { --q: #6b4a9e; }
+.cui-quote:has([data-style="hue3"]) { --q: #1e7e34; }
+.cui-quote:has([data-style="hue4"]) { --q: #8a4b00; }
+.cui-quote:has([data-style="hue5"]) { --q: #1d5fa8; }
+.cui-quote:has([data-style="hue6"]) { --q: #a1236f; }
+.cui-quote:has([data-style="hue7"]) { --q: #556b00; }
+.cui-sheet > .cui-row.cui-strip:not(:first-child):not(.cui-composer) { flex: none; flex-wrap: nowrap; align-items: center; gap: 0.4rem; overflow-x: auto; }
+.cui-strip > [data-style] { flex: 1 1 auto; min-width: 0; margin: 0; font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+:root .cui-sheet > .cui-row.cui-strip:not(:first-child):not(.cui-composer) button { flex: none; min-width: 1.9rem; min-height: 1.9rem; padding: 0 0.7rem; border-radius: 999px; font-size: 0.85rem; line-height: 1; white-space: nowrap; background: var(--cui-soft, transparent); color: var(--cui-fg, inherit); border: 1px solid color-mix(in srgb, currentColor 22%, transparent); }
+.cui-mention { padding: 0 0.25em; border-radius: 6px; font-weight: 600; background: color-mix(in srgb, var(--cui-accent, #1e7e34) 22%, transparent); }
+.cui-meta { align-self: flex-end; display: flex; flex-wrap: nowrap; align-items: baseline; gap: 0.25rem; }
+.cui-bubble .cui-meta > [data-style] { align-self: auto; }
+.cui-bubble [data-style="tick"], .cui-bubble [data-style="tickblue"] { font-size: 0.72rem; line-height: 1; letter-spacing: -0.14em; color: var(--cui-muted, inherit); }
+.cui-bubble [data-style="tickblue"] { color: #1d5fa8; }
+.cui-sheet:has(> .cui-chatlog) { overflow: hidden; height: min(34rem, calc(100dvh - 9.5rem)); }
+.cui-sheet > .cui-chatlog { min-height: 0; }
+:root .cui-bubble button { min-height: 28px; min-width: 0; padding: 0 0.7rem; font-size: 0.78rem; background: transparent; color: var(--cui-accent, LinkText); border: 1px solid color-mix(in srgb, currentColor 35%, transparent); box-shadow: none; }
+:root .cui-bubble > button { position: absolute; top: 50%; transform: translateY(-50%); width: 1.75rem; min-width: 1.75rem; height: 1.75rem; min-height: 1.75rem; padding: 0; border-radius: 50%; font-size: 0.95rem; line-height: 1; color: var(--cui-muted, inherit); background: var(--cui-surface, Canvas); border-color: transparent; box-shadow: 0 1px 2px rgba(0,0,0,0.25); }
+:root .cui-bubble-theirs > button { right: -2.2rem; }
+:root .cui-bubble-mine > button { left: -2.2rem; }
+.cui-bubble:has(> .cui-chips) { margin-bottom: 0.95rem; }
+.cui-chips { position: absolute; bottom: -0.85rem; left: 0.4rem; z-index: 1; display: flex; gap: 0.2rem; }
+:root .cui-bubble .cui-chips button { min-height: 24px; min-width: 24px; padding: 0 0.4rem; font-size: 0.78rem; line-height: 1; color: var(--cui-fg, CanvasText); background: var(--cui-surface, Canvas); border: 1px solid color-mix(in srgb, currentColor 20%, transparent); border-radius: 999px; box-shadow: 0 1px 2px rgba(0,0,0,0.25); }
+.cui-sheet > .cui-row:first-child { justify-content: space-between; align-items: center; }
+.cui-sheet > .cui-row:first-child button { background: transparent; color: var(--cui-fg, CanvasText); border: 1px solid color-mix(in srgb, currentColor 35%, transparent); }
+.cui-chathead { flex-wrap: nowrap; gap: 0.65rem; }
+.cui-chathead > .cui-col { flex: 1 1 auto; min-width: 0; gap: 0; }
+.cui-chathead > [data-style="avatar"] { width: 2.5rem; height: 2.5rem; margin: 0; border: 0; font-size: 0.85rem; }
+.cui-chathead > .cui-col > * { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cui-chathead > .cui-col > [role="heading"] { font-size: 1.05rem; line-height: 1.25; }
+.cui-chathead > .cui-col > [data-style="note"] { font-size: 0.78rem; }
+.cui-chathead > button { flex: none; }
+.cui-sheet > .cui-row:not(:first-child):not(.cui-composer) { flex-wrap: wrap; gap: 0.25rem; }
+:root .cui-sheet > .cui-row:not(:first-child):not(.cui-composer) button { min-width: 2.2rem; min-height: 2.2rem; padding: 0 0.2rem; font-size: 1.2rem; background: var(--cui-soft, transparent); color: var(--cui-fg, inherit); border: 0; box-shadow: none; }
+:root .cui-bubble > .cui-row:not(.cui-chips) button { min-width: 2rem; padding: 0 0.3rem; }
+.cui-composer { position: relative; display: flex; flex-wrap: nowrap; align-items: center; gap: 0.15rem; }
+.cui-composer::before { content: ""; position: absolute; left: 0; right: calc(46px + 0.45rem); top: 0; bottom: 0; border-radius: 999px; background: var(--cui-surface, Canvas); border: 1px solid color-mix(in srgb, currentColor 22%, transparent); }
+.cui-composer:focus-within::before { border-color: var(--cui-accent, Highlight); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cui-accent, Highlight) 40%, transparent); }
+.cui-composer > * { position: relative; z-index: 1; }
+.cui-composer > .cui-field { flex: 1 1 0; min-width: 0; font-size: 0; }
+:root .cui-composer > .cui-field input:not([type="checkbox"]):not([type="file"]):not([type="range"]) { width: 100%; box-sizing: border-box; font-size: 1rem; border: 0; border-radius: 0; background: transparent; box-shadow: none; outline: none; padding-inline: 0.2rem; min-height: 2.6rem; }
+:root .cui-composer > .cui-field input:focus-visible { outline: none; }
+:root .cui-composer > button:not(:last-child) { flex: none; width: 2.4rem; min-width: 2.4rem; height: 2.4rem; min-height: 2.4rem; padding: 0; border: 0; border-radius: 50%; background: transparent; box-shadow: none; font-size: 1.2rem; line-height: 1; color: var(--cui-muted, inherit); }
+.cui-composer > button:last-child { flex: none; width: 46px; min-width: 46px; height: 46px; margin-left: 0.3rem; padding: 0; border-radius: 50%; font-size: 0; display: inline-flex; align-items: center; justify-content: center; }
+.cui-composer > button:last-child::before { content: "\27A4"; font-size: 1.25rem; line-height: 1; }
+@media (prefers-color-scheme: dark) {
+.cui-chatlog { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' fill='none' stroke='%23ffffff' stroke-opacity='.07' stroke-width='1.4' stroke-linecap='round'%3E%3Ccircle cx='20' cy='22' r='7'/%3E%3Cpath d='M70 14v12M64 20h12'/%3E%3Cpath d='M98 52c6-8 12 8 18 0'/%3E%3Crect x='14' y='70' width='13' height='13' rx='3'/%3E%3Ccircle cx='66' cy='78' r='3'/%3E%3Cpath d='M92 96l8-10 8 10z'/%3E%3Cpath d='M40 108c4-6 8 6 12 0'/%3E%3Cpath d='M52 44l3 6 6 1-4 5 1 6-6-3-6 3 1-6-4-5 6-1z'/%3E%3C/svg%3E"); }
+.cui-bubble [data-style="hue0"] { color: #ff8a8a; }
+.cui-bubble [data-style="hue1"] { color: #4fd1d9; }
+.cui-bubble [data-style="hue2"] { color: #b79cff; }
+.cui-bubble [data-style="hue3"] { color: #6fdba5; }
+.cui-bubble [data-style="hue4"] { color: #ffb366; }
+.cui-bubble [data-style="hue5"] { color: #7db5ff; }
+.cui-bubble [data-style="hue6"] { color: #ff8ccf; }
+.cui-bubble [data-style="hue7"] { color: #c9d65a; }
+.cui-quote:has([data-style="hue0"]) { --q: #ff8a8a; }
+.cui-quote:has([data-style="hue1"]) { --q: #4fd1d9; }
+.cui-quote:has([data-style="hue2"]) { --q: #b79cff; }
+.cui-quote:has([data-style="hue3"]) { --q: #6fdba5; }
+.cui-quote:has([data-style="hue4"]) { --q: #ffb366; }
+.cui-quote:has([data-style="hue5"]) { --q: #7db5ff; }
+.cui-quote:has([data-style="hue6"]) { --q: #ff8ccf; }
+.cui-quote:has([data-style="hue7"]) { --q: #c9d65a; }
+.cui-bubble [data-style="tickblue"] { color: #7db5ff; }
+}
+:root:not(:has([data-mark="fab"])) .cui-fab { display: none; }
+:root:not(:has([data-mark="sheet"])) .cui-sheet { display: none; }
+/* a second floating button and a second sheet (docs/structure.md 12.0k): the button sits at the start side of the first, the sheet is the first one's twin and is drawn by its own marker */
+.cui-fab2, .cui-sheet2 { position: fixed; z-index: 11; box-sizing: border-box; margin: 0; }
+.cui-fab2 { right: 6.1rem; bottom: calc(5.25rem + env(safe-area-inset-bottom)); }
+.cui-fab2 > button { min-height: 52px; min-width: 52px; padding: 0 1rem; border-radius: 999px; box-shadow: 0 8px 24px -4px rgba(0,0,0,0.35); }
+:root:has([data-mark="fab2"]) .cui-fab > button { min-width: 4.5rem; justify-content: center; }
+.cui-sheet2 { left: 50%; bottom: calc(5.25rem + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(calc(100% - 1.5rem), 28rem); max-height: calc(100dvh - 9.5rem); overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem; border-radius: 24px; background: var(--cui-surface, Canvas); color: var(--cui-fg, CanvasText); border: 1px solid color-mix(in srgb, currentColor 18%, transparent); box-shadow: 0 16px 48px -8px rgba(0,0,0,0.45); }
+.cui-sheet2 > .cui-row:first-child { justify-content: space-between; align-items: center; }
+.cui-sheet2 > .cui-row:first-child button { background: transparent; color: var(--cui-fg, CanvasText); border: 1px solid color-mix(in srgb, currentColor 35%, transparent); }
+:root:not(:has([data-mark="fab2"])) .cui-fab2 { display: none; }
+:root:not(:has([data-mark="sheet2"])) .cui-sheet2 { display: none; }
+:root:has([data-mark="sheet2"]) .cui-fab, :root:has([data-mark="sheet2"]) .cui-fab2 { display: none; }
+/* a band (docs/structure.md 12.0k): a block in the flow, shown only while an `Aside { marks: "band" }` is on the page: a sealed island can sit in it, which an `If` cannot hold */
+.cui-band { display: block; margin: 0 0 0.75rem; }
+:root:not(:has([data-mark="band"])) .cui-band { display: none; }
+/* a second band (docs/structure.md 12.0l): the same, for a second sealed island that is not on the page all the time (a person's picture) */
+.cui-band2 { display: block; margin: 0 0 0.75rem; }
+:root:not(:has([data-mark="band2"])) .cui-band2 { display: none; }
+/* motion (docs/motion.md): an element is hidden only while the page's script has it armed and has not yet seen it, and never when the visitor asks for less motion */
+.cui-reveal.cui-armed { transition: opacity 0.7s ease, transform 0.7s ease; }
+.cui-reveal.cui-armed:not(.cui-in) { opacity: 0; transform: translateY(18px); }
+.cui-countup { font-variant-numeric: tabular-nums; }
+.cui-countup[data-frame] { position: relative; color: transparent; }
+.cui-countup[data-frame]::after { content: attr(data-frame) / ""; position: absolute; left: 0; top: 0; color: var(--cui-cu); }
+@media (prefers-reduced-motion: reduce), print {
+    .cui-reveal.cui-armed { transition: none; }
+    .cui-reveal.cui-armed:not(.cui-in) { opacity: 1; transform: none; }
+    .cui-countup[data-frame] { color: inherit; }
+    .cui-countup[data-frame]::after { content: none; }
+}
+</style>
+<style id="cui-look">
+/* Icons: lucide 1.67.0 (https://github.com/lucide-icons/lucide), commit 4b203ec9b6002fd74fd5dadc8612220e64289305
+
+ISC License
+
+Copyright (c) 2026 Lucide Icons and Contributors
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+---
+
+The following Lucide icons are derived from the Feather project:
+
+airplay, alert-circle, alert-octagon, alert-triangle, aperture, arrow-down-circle, arrow-down-left, arrow-down-right, arrow-down, arrow-left-circle, arrow-left, arrow-right-circle, arrow-right, arrow-up-circle, arrow-up-left, arrow-up-right, arrow-up, at-sign, calendar, cast, check, chevron-down, chevron-left, chevron-right, chevron-up, chevrons-down, chevrons-left, chevrons-right, chevrons-up, circle, clipboard, clock, code, columns, command, compass, corner-down-left, corner-down-right, corner-left-down, corner-left-up, corner-right-down, corner-right-up, corner-up-left, corner-up-right, crosshair, database, divide-circle, divide-square, dollar-sign, download, external-link, feather, frown, hash, headphones, help-circle, info, italic, key, layout, life-buoy, link-2, link, loader, lock, log-in, log-out, maximize, meh, minimize, minimize-2, minus-circle, minus-square, minus, monitor, moon, more-horizontal, more-vertical, move, music, navigation-2, navigation, octagon, pause-circle, percent, plus-circle, plus-square, plus, power, radio, rss, search, server, share, shopping-bag, sidebar, smartphone, smile, square, table-2, tablet, target, terminal, trash-2, trash, triangle, tv, type, upload, x-circle, x-octagon, x-square, x, zoom-in, zoom-out
+
+The MIT License (MIT) (for the icons listed above)
+
+Copyright (c) 2013-present Cole Bemis
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+/* Icon (docs/structure.md 12.0q): a Lucide line icon, an inline SVG. Its strokes are currentColor, so it takes the text colour of whatever holds it (a pressed or disabled key, dark mode and the 4.5:1 checks apply without a rule of their own); the size is in rem, so it follows the page's text size */
+.cui-icon { display: inline-block; flex: none; width: 1.25rem; height: 1.25rem; vertical-align: -0.28em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; overflow: visible; pointer-events: none; }
+.cui-icon-s { width: 1rem; height: 1rem; vertical-align: -0.2em; } .cui-icon-l { width: 1.75rem; height: 1.75rem; vertical-align: -0.4em; }
+.cui-icon-lead { margin-inline-end: 0.45rem; }
+/* AudioField and AudioClip (docs/structure.md 12.0t). The key of a field is a key (12.0m): an icon and its caption on the soft fill, 44 px at least; while it records it takes the accent. A clip is a play key, a bar and the time on one line */
+.cui-audio-field { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.6rem; max-width: 100%; }
+.cui-audio-key, .cui-audio-play { box-sizing: border-box; display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 0.4rem; min-width: 44px; min-height: 44px; padding: 0.45rem 0.9rem; border: 0; border-radius: 12px; background: var(--cui-soft, color-mix(in srgb, currentColor 10%, transparent)); color: inherit; font: inherit; font-size: 0.8rem; font-weight: 600; line-height: 1.2; cursor: pointer; }
+.cui-audio-key:hover, .cui-audio-play:hover { background: color-mix(in srgb, var(--cui-accent, currentColor) 14%, var(--cui-soft, transparent)); }
+.cui-audio-key[aria-pressed="true"] { background: var(--cui-accent, #185fa5); color: var(--cui-on-accent, #fff); }
+.cui-audio-key[aria-disabled="true"], .cui-audio-play[aria-disabled="true"] { opacity: 0.55; cursor: default; }
+.cui-audio-key:focus-visible, .cui-audio-play:focus-visible { outline: 3px solid color-mix(in srgb, var(--cui-accent, #185fa5) 55%, transparent); outline-offset: 2px; }
+.cui-audio-time { min-width: 4.2em; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.cui-audio-status { flex-basis: 100%; min-height: 1.2em; font-size: 0.8rem; line-height: 1.2; }
+.cui-audio-clip { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.6rem; box-sizing: border-box; max-width: 100%; }
+.cui-audio-bar { flex: 1 1 6rem; min-width: 4rem; height: 6px; border: 0; border-radius: 3px; overflow: hidden; background: color-mix(in srgb, currentColor 20%, transparent); accent-color: var(--cui-accent, currentColor); }
+.cui-audio-bar::-webkit-progress-bar { background: color-mix(in srgb, currentColor 20%, transparent); }
+.cui-audio-bar::-webkit-progress-value { background: var(--cui-accent, currentColor); }
+.cui-audio-bar::-moz-progress-bar { background: var(--cui-accent, currentColor); }
+</style>
+</head>
+<body>
+<div id="root" data-cui-skeleton="72e0eb4b350086eb"><div class="cui-col"><h1>Voice note</h1><!--cui:0--><!--/cui:0--><!--cui:1--><!--/cui:1--><!--cui:2--><!--/cui:2--><!--cui:3--><!--/cui:3--><!--cui:4--><!--/cui:4--></div></div>
+<noscript>Some parts of this page need JavaScript.</noscript>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>

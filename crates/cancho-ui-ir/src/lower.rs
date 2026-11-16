@@ -1229,6 +1229,8 @@ fn lower_kind(k: &ElementKind) -> IrElementKind {
         ElementKind::PhotoField => IrElementKind::PhotoField,
         ElementKind::Photo => IrElementKind::Photo,
         ElementKind::Rail => IrElementKind::Rail,
+        ElementKind::AudioField => IrElementKind::AudioField,
+        ElementKind::AudioClip => IrElementKind::AudioClip,
         ElementKind::Named(s) => IrElementKind::Named(s.clone()),
     }
 }

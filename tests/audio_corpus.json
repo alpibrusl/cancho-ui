@@ -1,0 +1,212 @@
+{
+  "_about": "docs/structure.md 12.0t: texts a recording is or is not, by the compiler (cancho_ui_ir::audio::audio_kind, tests/audio.rs) and by the page (__cui_audio_kind, scripts/check-audio.js). A text is `head`, then `fill` repeated, then `tail`, `len` characters in all. No sound is kept here: the heads are the first twelve bytes of each container, in base64.",
+  "recordings": [
+    {
+      "why": "webm, the least length",
+      "head": "GkXfowAAAAAAAAAA",
+      "fill": "A",
+      "tail": "",
+      "len": 100,
+      "ok": true,
+      "kind": "webm"
+    },
+    {
+      "why": "webm, one under the least",
+      "head": "GkXfowAAAAAAAAAA",
+      "fill": "A",
+      "tail": "",
+      "len": 99,
+      "ok": false,
+      "kind": null
+    },
+    {
+      "why": "webm, the most length",
+      "head": "GkXfowAAAAAAAAAA",
+      "fill": "A",
+      "tail": "",
+      "len": 48000,
+      "ok": true,
+      "kind": "webm"
+    },
+    {
+      "why": "webm, one over the most",
+      "head": "GkXfowAAAAAAAAAA",
+      "fill": "A",
+      "tail": "",
+      "len": 48001,
+      "ok": false,
+      "kind": null
+    },
+    {
+      "why": "ogg",
+      "head": "T2dnUwAAAAAAAAAA",
+      "fill": "A",
+      "tail": "",
+      "len": 300,
+      "ok": true,
+      "kind": "ogg"
+    },
+    {
+      "why": "mp4 (ftyp after four bytes)",
+      "head": "AAAAIGZ0eXAAAAAA",
+      "fill": "A",
+      "tail": "",
+      "len": 300,
+      "ok": true,
+      "kind": "mp4"
+    },
+    {
+      "why": "wav (RIFF, four bytes, WAVE)",
+      "head": "UklGRgAAAABXQVZF",
+      "fill": "A",
+      "tail": "",
+      "len": 300,
+      "ok": true,
+      "kind": "wav"
+    },
+    {
+      "why": "a RIFF that is not WAVE (an AVI)",
+      "head": "UklGRgAAAABBVkkg",
+      "fill": "A",
+      "tail": "",
+      "len": 300,
+      "ok": false,
+      "kind": null
+    },
+    {
+      "why": "a JPEG is not a recording",
+      "head": "/9j/AAAAAAAAAAAA",
+      "fill": "A",
+      "tail": "",
+      "len": 300,
+      "ok": false,
+      "kind": null
+    },
+    {
+      "why": "twelve zero bytes",
+      "head": "AAAAAAAAAAAAAAAA",
+      "fill": "A",
+      "tail": "",
+      "len": 300,
+      "ok": false,
+      "kind": null
+    },
+    {
+      "why": "ftyp at the start, not after four bytes",
+      "head": "ZnR5cGlzb20AAAAA",
+      "fill": "A",
+      "tail": "",
+      "len": 300,
+      "ok": false,
+      "kind": null
+    },
+    {
+      "why": "text posing as a recording",
+      "head": "SGVsbG8sIHdvcmxk",
+      "fill": "A",
+      "tail": "",
+      "len": 300,
+      "ok": false,
+      "kind": null
+    },
+    {
+      "why": "webm with one padding character",
+      "head": "GkXfowAAAAAAAAAA",
+      "fill": "A",
+      "tail": "=",
+      "len": 300,
+      "ok": true,
+      "kind": "webm"
+    },
+    {
+      "why": "webm with two padding characters",
+      "head": "GkXfowAAAAAAAAAA",
+      "fill": "A",
+      "tail": "==",
+      "len": 300,
+      "ok": true,
+      "kind": "webm"
+    },
+    {
+      "why": "webm with three padding characters",
+      "head": "GkXfowAAAAAAAAAA",
+      "fill": "A",
+      "tail": "===",
+      "len": 300,
+      "ok": false,
+      "kind": null
+    },
+    {
+      "why": "padding in the middle",
+      "head": "GkXfowAAAAAAAAAA",
+      "fill": "A=A",
+      "tail": "",
+      "len": 300,
+      "ok": false,
+      "kind": null
+    },
+    {
+      "why": "a character outside the alphabet",
+      "head": "GkXfowAAAAAAAAAA",
+      "fill": "A",
+      "tail": "!",
+      "len": 300,
+      "ok": false,
+      "kind": null
+    },
+    {
+      "why": "a space inside",
+      "head": "GkXfowAAAAAAAAAA",
+      "fill": "A ",
+      "tail": "",
+      "len": 300,
+      "ok": false,
+      "kind": null
+    },
+    {
+      "why": "a newline inside",
+      "head": "GkXfowAAAAAAAAAA",
+      "fill": "A\n",
+      "tail": "",
+      "len": 300,
+      "ok": false,
+      "kind": null
+    },
+    {
+      "why": "url-safe alphabet (- and _)",
+      "head": "GkXfowAAAAAAAAAA",
+      "fill": "A-_",
+      "tail": "",
+      "len": 300,
+      "ok": false,
+      "kind": null
+    },
+    {
+      "why": "plus and slash are base64",
+      "head": "GkXfowAAAAAAAAAA",
+      "fill": "+/",
+      "tail": "",
+      "len": 300,
+      "ok": true,
+      "kind": "webm"
+    },
+    {
+      "why": "an empty text",
+      "head": "",
+      "fill": "A",
+      "tail": "",
+      "len": 0,
+      "ok": false,
+      "kind": null
+    },
+    {
+      "why": "sixteen characters",
+      "head": "GkXfowAAAAAAAAAA",
+      "fill": "A",
+      "tail": "",
+      "len": 16,
+      "ok": false,
+      "kind": null
+    }
+  ]
+}

@@ -469,6 +469,10 @@ pub enum ElementKind {
     PhotoField,
     /// A base64 JPEG held in state, drawn on a canvas (docs/structure.md 12.0r).
     Photo,
+    /// A key that records a short voice note and gives the program its base64 text (docs/structure.md 12.0t).
+    AudioField,
+    /// A base64 recording held in state, played from there (docs/structure.md 12.0t).
+    AudioClip,
     /// A scrolling row of the children it holds, each one snapping into place and each one a thing to choose (docs/structure.md 12.0s).
     Rail,
     Named(String),

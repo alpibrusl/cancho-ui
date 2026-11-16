@@ -282,14 +282,16 @@ pub fn check_binding(
             )),
         },
         _ => {
-            if matches!(b.key.as_str(), "square" | "max_side" | "max_chars") {
+            if matches!(b.key.as_str(), "square" | "max_side" | "max_chars")
+                && !(b.key == "max_chars" && matches!(kind, IrElementKind::AudioField))
+            {
                 return Err(refuse(
                     "binding-unknown",
                     format!("`{}:` is a binding of PhotoField, not of this element", b.key),
                     b.span,
                 ));
             }
-            if b.key == "data" {
+            if b.key == "data" && !matches!(kind, IrElementKind::AudioClip) {
                 return Err(refuse(
                     "binding-unknown",
                     "`data:` is a binding of Photo, not of this element".to_string(),

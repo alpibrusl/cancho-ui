@@ -73,6 +73,8 @@ const BUILT_IN: &[&str] = &[
     "PhotoField",
     "Photo",
     "Rail",
+    "AudioField",
+    "AudioClip",
     "Chart",
     "RouteMap",
     "NavLink",

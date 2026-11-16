@@ -1,0 +1,34 @@
+// examples/audio/audio.cui: record a voice note, play it back from state (docs/structure.md 12.0t).
+//
+// An AudioField is a key that records. A tap asks the browser for the microphone (its own prompt); the page records with MediaRecorder until the next tap, `max_seconds:`, or until the
+// base64 text would pass `max_chars:`, and tells the program one JSON text: {"data","seconds","mime"} or {"error": "denied" | "unsupported" | "no microphone" | "failed" | "too big"}.
+// An AudioClip plays such a text from state: a key, a bar and the time, with the browser's audio engine (no <audio>, no address, no request); one clip plays at a time, and it keeps
+// playing through the renders every state change makes. No sound is committed with this page: record one, or let the Chromium check (scripts/check-audio.js) make one at run time.
+// (A gallery page is shown in a frame that may not be allowed the microphone: "The microphone is blocked" there is the frame, and "Open on its own" is the page.)
+
+component AudioDemo {
+    state clip: String = "";
+    state seconds: String = "0";
+    state kind: String = "";
+    state size: Int = 0;
+    state note: String = "Nothing recorded yet.";
+
+    on Recorded(r) {
+        clip = json.get(r, "data", "");
+        seconds = json.get(r, "seconds", "0");
+        kind = json.get(r, "mime", "");
+        size = len(clip);
+        note = if len(clip) > 0 { "Recording ready." } else { "That did not work: " + json.get(r, "error", "unknown") + "." };
+    }
+
+    view {
+        Column {
+            Heading { level: 1 "Voice note" }
+            AudioField { label: "Record a voice note" max_seconds: 10 max_chars: 30000 on: Recorded }
+            Text { role: status "{note}" }
+            Text { "{seconds} seconds, {kind}, {size} characters of text" }
+            AudioClip { label: "Your voice note" data: clip }
+            AudioClip { label: "Your voice note, a second player" data: clip }
+        }
+    }
+}

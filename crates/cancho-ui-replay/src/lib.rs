@@ -404,6 +404,18 @@ fn run_step(
                     ),
                 ));
             }
+            // An audio field gives its event the base64 text of a recording it made, or the reason it did not (docs/structure.md 12.0t).
+            if let (Some(Value::Str(given)), Some(specs)) = (params.first(), m.audio_specs(name))
+                && let Err(why) = cancho_ui_ir::audio::check_value(given, &specs)
+            {
+                return Err(stop(
+                    "trace-value-not-a-recording",
+                    "params",
+                    format!(
+                        "`{name}` is fired only by an AudioField, and the step's value is not one it gives: {why}"
+                    ),
+                ));
+            }
             // A rail gives its event the place of the child that was chosen, a whole number from 0 (docs/structure.md 12.0s).
             if let Some(given) = params.first()
                 && m.is_rail_event(name)

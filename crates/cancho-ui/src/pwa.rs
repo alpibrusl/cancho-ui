@@ -49,6 +49,8 @@ pub struct PageParts {
     pub photos: bool,
     /// the program has a `Rail` (docs/structure.md 12.0s): the rules of the rows are written, for no other page
     pub rails: bool,
+    /// the program has an `AudioField` or an `AudioClip` (docs/structure.md 12.0t): the rules of the sound are written, for no other page
+    pub audio: bool,
 }
 
 const BACKGROUND: [u8; 3] = [0x1f, 0x6f, 0xeb];
@@ -520,6 +522,22 @@ const ICON_CSS: &str = r#"/* Icon (docs/structure.md 12.0q): a Lucide line icon,
 .cui-icon-lead { margin-inline-end: 0.45rem; }
 "#;
 
+const AUDIO_CSS: &str = r#"/* AudioField and AudioClip (docs/structure.md 12.0t). The key of a field is a key (12.0m): an icon and its caption on the soft fill, 44 px at least; while it records it takes the accent. A clip is a play key, a bar and the time on one line */
+.cui-audio-field { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.6rem; max-width: 100%; }
+.cui-audio-key, .cui-audio-play { box-sizing: border-box; display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 0.4rem; min-width: 44px; min-height: 44px; padding: 0.45rem 0.9rem; border: 0; border-radius: 12px; background: var(--cui-soft, color-mix(in srgb, currentColor 10%, transparent)); color: inherit; font: inherit; font-size: 0.8rem; font-weight: 600; line-height: 1.2; cursor: pointer; }
+.cui-audio-key:hover, .cui-audio-play:hover { background: color-mix(in srgb, var(--cui-accent, currentColor) 14%, var(--cui-soft, transparent)); }
+.cui-audio-key[aria-pressed="true"] { background: var(--cui-accent, #185fa5); color: var(--cui-on-accent, #fff); }
+.cui-audio-key[aria-disabled="true"], .cui-audio-play[aria-disabled="true"] { opacity: 0.55; cursor: default; }
+.cui-audio-key:focus-visible, .cui-audio-play:focus-visible { outline: 3px solid color-mix(in srgb, var(--cui-accent, #185fa5) 55%, transparent); outline-offset: 2px; }
+.cui-audio-time { min-width: 4.2em; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.cui-audio-status { flex-basis: 100%; min-height: 1.2em; font-size: 0.8rem; line-height: 1.2; }
+.cui-audio-clip { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.6rem; box-sizing: border-box; max-width: 100%; }
+.cui-audio-bar { flex: 1 1 6rem; min-width: 4rem; height: 6px; border: 0; border-radius: 3px; overflow: hidden; background: color-mix(in srgb, currentColor 20%, transparent); accent-color: var(--cui-accent, currentColor); }
+.cui-audio-bar::-webkit-progress-bar { background: color-mix(in srgb, currentColor 20%, transparent); }
+.cui-audio-bar::-webkit-progress-value { background: var(--cui-accent, currentColor); }
+.cui-audio-bar::-moz-progress-bar { background: var(--cui-accent, currentColor); }
+"#;
+
 const RAIL_CSS: &str = r#"/* Rail (docs/structure.md 12.0s). The row scrolls by itself (a finger, a wheel, the keyboard) and every child stops at the place `snap:` says: scroll-snap, no script. The padding is room for the chosen child's ring and the focus ring, which an `overflow` box would cut off */
 .cui-rail-box { min-width: 0; max-width: 100%; }
 .cui-rail { display: flex; box-sizing: border-box; margin: 0; padding: 8px; scroll-padding: 8px; overscroll-behavior: contain; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
@@ -706,6 +724,9 @@ fn look_css(page: &PageParts) -> String {
     }
     if page.rails {
         css.push_str(RAIL_CSS);
+    }
+    if page.audio {
+        css.push_str(AUDIO_CSS);
     }
     if let Some(m) = page.measure {
         css.push_str(&format!(

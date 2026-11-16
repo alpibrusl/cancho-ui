@@ -290,6 +290,8 @@ fn the_gallery_demos_are_interactive_and_each_keeps_a_line_for_a_visitor_without
         "photo",
         // rail (2026-11-16): headings of its own are static text; the rows, the status and the buttons are holes: ten
         "rail",
+        // audio (2026-11-16): a heading of its own is static text; the recorder, the status and the players are holes: eleven
+        "audio",
     ];
     let demos = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/demo");
     let mut n = 0;
@@ -311,7 +313,7 @@ fn the_gallery_demos_are_interactive_and_each_keeps_a_line_for_a_visitor_without
             "{id}"
         );
     }
-    assert_eq!(n, 18, "the gallery has 18 demos");
+    assert_eq!(n, 19, "the gallery has 19 demos");
 }
 
 // ---- hydration (P1b): the script builds the holes and nothing else ----------------------------------------------------------------------
