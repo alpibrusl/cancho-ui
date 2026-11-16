@@ -79,3 +79,7 @@ a `For`; re-choosing the same file by a real chooser (`change` does not fire whe
   * **An event that takes no parameter is allowed**, as for every field: the check is "at most one" (`event-arity-mismatch` for two); the note had said "one".
   * **`type/*` needs a slash in the file's type**, so a file the browser could not type is never accepted by `image/*`.
 * **Still not done:** section 6.
+
+## 8. A picture is not a text file: `PhotoField` (2026-11-16)
+
+A picture chosen from the phone is not read as UTF-8 text, and a program has no byte values, so `FileField` cannot give it to a program. `PhotoField { label: ".." max_chars: 48000 on: Chosen }` (docs/structure.md 12.0r) is the same native chooser, kept by the place of the field in the source in the same way, for JPEG, PNG and WebP: the page decodes the file, draws it again as a JPEG that fits `max_chars:` and gives the program `{"data":"<base64>"}` or `{"error":"too big"}` / `{"error":"not a picture"}`. Drawing it again leaves the EXIF block (place, time, device) behind.

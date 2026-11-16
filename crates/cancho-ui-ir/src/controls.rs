@@ -123,6 +123,14 @@ fn check_node(c: &IrComponent, node: &IrViewNode, in_for: bool) -> Result<(), Lo
                 crate::icon::check_children(kind, accessibility, children)?;
                 crate::icon::check_complete(kind, accessibility, bindings, children, *span)?;
                 crate::icon::check_children(kind, accessibility, children)?;
+                crate::photo::check_complete(
+                    kind,
+                    accessibility,
+                    bindings,
+                    children,
+                    *span,
+                    in_for,
+                )?;
                 check_navlink_complete(kind, accessibility, bindings, *span)?;
                 check_file_field(kind, accessibility, bindings, *span, in_for)?;
                 check_chart(kind, accessibility, bindings, *span, in_for)?;
@@ -201,6 +209,8 @@ fn element_name(kind: &IrElementKind) -> &'static str {
         IrElementKind::Media => "Media",
         IrElementKind::Grid => "Grid",
         IrElementKind::Icon => "Icon",
+        IrElementKind::PhotoField => "PhotoField",
+        IrElementKind::Photo => "Photo",
         IrElementKind::Island(_) => "an island",
         IrElementKind::Named(_) => "a component",
     }
@@ -254,7 +264,8 @@ fn check_on(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), 
             | IrElementKind::TextArea
             | IrElementKind::Checkbox
             | IrElementKind::Select
-            | IrElementKind::FileField,
+            | IrElementKind::FileField
+            | IrElementKind::PhotoField,
         ) => event.params.len().min(1),
         // a move gives the two indexes (docs/drag-and-drop.md)
         (None, IrElementKind::SortList) => 2,
@@ -973,6 +984,9 @@ fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result
         return crate::keys::check_binding(c, b);
     }
     if crate::window::check_binding(kind, b)? {
+        return Ok(());
+    }
+    if crate::photo::check_binding(c, kind, b)? {
         return Ok(());
     }
     if crate::icon::check_binding(kind, b)? {

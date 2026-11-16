@@ -45,6 +45,8 @@ pub struct PageParts {
     pub copy: bool,
     /// the program has an `Icon` or a `Button { icon: .. }` (docs/structure.md 12.0q): the rules of the icon are written, for no other page
     pub icons: bool,
+    /// the program has a `PhotoField` or a `Photo` (docs/structure.md 12.0r): the rules of the pictures are written, for no other page
+    pub photos: bool,
 }
 
 const BACKGROUND: [u8; 3] = [0x1f, 0x6f, 0xeb];
@@ -422,15 +424,12 @@ body:has(.cui-dock) { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom))
 </html>
 "##,
     );
-    // A page with a map lets images in from its own origin and the tile hosts the program declared, and from nowhere else (docs/maps.md); a page with a
-    // sealed island lets in no frame but its `srcdoc` ones (docs/islands.md section 1). The policy comes first, before anything that could ask.
-    let csp = match csp {
-        Some(policy) => format!(
-            "<meta http-equiv=\"Content-Security-Policy\" content=\"{}\">\n",
-            html_escape(policy)
-        ),
-        None => String::new(),
-    };
+    // Every page has a policy (src/csp.rs): the baseline, and what the program declared: a map lets images in from its own origin and the tile hosts it declared, and from nowhere
+    // else (docs/maps.md); a sealed island lets in no frame but its `srcdoc` ones (docs/islands.md section 1). It comes first, before anything that could ask. It lists the hashes of the
+    // page's inline scripts, so it is written after the page is: a marker that nothing else can contain stands where it goes.
+    const CSP_MARK: &str = "\u{0}csp\u{0}";
+    let csp_extra = csp;
+    let csp = CSP_MARK.to_string();
     let theme_css = match theme {
         Some(t) => format!("<style id=\"cui-theme\">\n{}</style>\n", t.css),
         None => String::new(),
@@ -484,12 +483,17 @@ body:has(.cui-dock) { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom))
     // the program's own text goes in after every token is replaced, and the template is filled on either side of it, so that text can never be
     // read as a token
     let (head, tail) = html.split_once("@ROOT@").unwrap_or((html.as_str(), ""));
-    format!(
+    let page_html = format!(
         "{}{}{}",
         expand(head, &tokens),
         root_block(prerender, &measure),
         expand(tail, &tokens)
-    )
+    );
+    let meta = format!(
+        "<meta http-equiv=\"Content-Security-Policy\" content=\"{}\">\n",
+        html_escape(&crate::csp::policy(csp_extra, &page_html))
+    );
+    page_html.replacen(CSP_MARK, &meta, 1)
 }
 
 /// The rules of the roles `card:`, `align: "center"` and `appearance: "pill"` (docs/www-port/look.md section 3), written only for a program that uses one. A pill is a 44 px
@@ -512,6 +516,34 @@ const ICON_CSS: &str = r#"/* Icon (docs/structure.md 12.0q): a Lucide line icon,
 .cui-icon { display: inline-block; flex: none; width: 1.25rem; height: 1.25rem; vertical-align: -0.28em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; overflow: visible; pointer-events: none; }
 .cui-icon-s { width: 1rem; height: 1rem; vertical-align: -0.2em; } .cui-icon-l { width: 1.75rem; height: 1.75rem; vertical-align: -0.4em; }
 .cui-icon-lead { margin-inline-end: 0.45rem; }
+"#;
+
+const PHOTO_CSS: &str = r#"/* PhotoField and Photo (docs/structure.md 12.0r). A PhotoField is a key (12.0m): an icon over its label on the soft fill, 44 px at least, with the native file input laid over it (invisible, the whole target); its status line is under it. A Photo is a box of its ratio: until a canvas is drawn in it, or when its text is not a picture, it is a gradient of its tone (the twelve colours of face(..), white text 6.00:1 or better) or a neutral one */
+.cui-photo-field { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 0.3rem; max-width: 100%; }
+.cui-photo-key { position: relative; box-sizing: border-box; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2rem; min-width: 44px; min-height: 44px; padding: 0.45rem 0.9rem; border-radius: 12px; background: var(--cui-soft, color-mix(in srgb, currentColor 10%, transparent)); color: inherit; font-size: 0.75rem; font-weight: 600; line-height: 1.2; cursor: pointer; }
+.cui-photo-key:hover { background: color-mix(in srgb, var(--cui-accent, currentColor) 14%, var(--cui-soft, transparent)); }
+.cui-photo-key:has(.cui-photo-in:focus-visible) { outline: 3px solid color-mix(in srgb, var(--cui-accent, #185fa5) 55%, transparent); outline-offset: 2px; }
+.cui-photo-in { position: absolute; inset: 0; box-sizing: border-box; width: 100%; height: 100%; margin: 0; padding: 0; opacity: 0; cursor: pointer; font-size: 0; }
+.cui-photo-cap { pointer-events: none; }
+.cui-photo-status { min-height: 1.2em; font-size: 0.8rem; line-height: 1.2; }
+.cui-photo { --cui-pt: #475569; position: relative; display: block; box-sizing: border-box; width: 100%; max-width: 100%; overflow: hidden; border-radius: 16px; background: linear-gradient(135deg, var(--cui-pt), color-mix(in srgb, var(--cui-pt) 55%, #000)); }
+.cui-photo[data-tone="0"] { --cui-pt: #b41d26; }
+.cui-photo[data-tone="1"] { --cui-pt: #0b6a73; }
+.cui-photo[data-tone="2"] { --cui-pt: #6b4a9e; }
+.cui-photo[data-tone="3"] { --cui-pt: #1e7e34; }
+.cui-photo[data-tone="4"] { --cui-pt: #8a4b00; }
+.cui-photo[data-tone="5"] { --cui-pt: #1d5fa8; }
+.cui-photo[data-tone="6"] { --cui-pt: #a1236f; }
+.cui-photo[data-tone="7"] { --cui-pt: #556b00; }
+.cui-photo[data-tone="8"] { --cui-pt: #475569; }
+.cui-photo[data-tone="9"] { --cui-pt: #4338a0; }
+.cui-photo[data-tone="10"] { --cui-pt: #7b2d8e; }
+.cui-photo[data-tone="11"] { --cui-pt: #0e6b8c; }
+.cui-photo-pic { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+.cui-overlay > .cui-photo:first-child { border-radius: 0; background: linear-gradient(135deg, var(--cui-pt), color-mix(in srgb, var(--cui-pt) 55%, #000)); }
+.cui-overlay-banner > .cui-photo:first-child { aspect-ratio: auto !important; }
+/* a picture the person chose can be any colours, so the words over a banner get a scrim (a cover card has its own, under its second child): black at 60 % at the foot, 25 % at the top, so that white text is on a dark ground over a bright picture too (not measured at 4.5:1 for every picture: none can be) */
+.cui-overlay-banner > .cui-photo:first-child::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6), rgba(0,0,0,0.25)); pointer-events: none; }
 "#;
 
 const COPY_CSS: &str = r#".cui-code[data-copy] pre { padding-top: 2.5rem; }
@@ -646,6 +678,9 @@ fn look_css(page: &PageParts) -> String {
     }
     if page.icons {
         css.push_str(&icon_css());
+    }
+    if page.photos {
+        css.push_str(PHOTO_CSS);
     }
     if let Some(m) = page.measure {
         css.push_str(&format!(

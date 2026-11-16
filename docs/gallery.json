@@ -104,6 +104,12 @@
       "title": "Icons",
       "source": "examples/icons/icons.cui",
       "says": "`Icon`: the line icons the compiler carries (Lucide, ISC), as inline SVG that takes the text colour: sizes, keys, a pressed key, and every icon of the set."
+    },
+    {
+      "id": "photo",
+      "title": "A picture from the phone",
+      "source": "examples/photo/photo.cui",
+      "says": "`PhotoField` and `Photo`: choose a picture with the phone's own chooser; the page cuts and shrinks it to a base64 JPEG that fits a number of characters (no EXIF is kept) and the program draws that text on a canvas, three ways, with no `<img>`, no address and no request. No picture is committed to this page."
     }
   ],
   "soon": [

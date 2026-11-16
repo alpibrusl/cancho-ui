@@ -1,0 +1,145 @@
+{
+  "_about": "docs/structure.md 12.0r: each rule of the baseline Content-Security-Policy removed in turn; every break must fail a check. Run: node scripts/deliberate-breaks.js scripts/breaks/csp.json",
+  "checks": [
+    {
+      "name": "cargo test csp (integration)",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "csp"
+      ]
+    },
+    {
+      "name": "cargo test csp (unit)",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--bin",
+        "cancho-ui",
+        "csp"
+      ]
+    },
+    {
+      "name": "cargo test islands map routemap_tiles",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "islands",
+        "--test",
+        "map",
+        "--test",
+        "routemap_tiles"
+      ]
+    },
+    {
+      "name": "check-csp.js",
+      "argv": [
+        "node",
+        "scripts/check-csp.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "a page has a policy only when its program declared something (the old rule)",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "    page_html.replacen(CSP_MARK, &meta, 1)",
+      "to": "    page_html.replacen(CSP_MARK, if csp_extra.is_some() { &meta } else { \"\" }, 1)"
+    },
+    {
+      "name": "no default-src",
+      "file": "crates/cancho-ui/src/csp.rs",
+      "from": "        (\"default-src\".into(), vec![\"'self'\".into()]),\n",
+      "to": ""
+    },
+    {
+      "name": "scripts may be inline (unsafe-inline)",
+      "file": "crates/cancho-ui/src/csp.rs",
+      "from": "    let mut script = vec![\"'self'\".to_string()];",
+      "to": "    let mut script = vec![\"'self'\".to_string(), \"'unsafe-inline'\".to_string()];"
+    },
+    {
+      "name": "the inline scripts are not listed by hash",
+      "file": "crates/cancho-ui/src/csp.rs",
+      "from": "    script.extend(inline_script_hashes(html));",
+      "to": "    let _ = inline_script_hashes(html);"
+    },
+    {
+      "name": "the scripts of a sealed island's frame are not listed",
+      "file": "crates/cancho-ui/src/csp.rs",
+      "from": "                for h in inline_script_hashes(&i.srcdoc) {",
+      "to": "                for h in Vec::<String>::new() {"
+    },
+    {
+      "name": "the declared Network hosts are not in connect-src",
+      "file": "crates/cancho-ui/src/csp.rs",
+      "from": "        parts.push(format!(\"connect-src 'self' {}\", hosts.join(\" \")));",
+      "to": "        let _ = &hosts;"
+    },
+    {
+      "name": "a host is not lower-cased",
+      "file": "crates/cancho-ui/src/csp.rs",
+      "from": "                let h = b.to_ascii_lowercase();",
+      "to": "                let h = b.clone();"
+    },
+    {
+      "name": "styles may not be inline",
+      "file": "crates/cancho-ui/src/csp.rs",
+      "from": "            vec![\"'self'\".into(), \"'unsafe-inline'\".into()],",
+      "to": "            vec![\"'self'\".into()],"
+    },
+    {
+      "name": "no data: images (the chat's own pattern)",
+      "file": "crates/cancho-ui/src/csp.rs",
+      "from": "(\"img-src\".into(), vec![\"'self'\".into(), \"data:\".into()]),",
+      "to": "(\"img-src\".into(), vec![\"'self'\".into()]),"
+    },
+    {
+      "name": "objects are not refused",
+      "file": "crates/cancho-ui/src/csp.rs",
+      "from": "        (\"object-src\".into(), vec![\"'none'\".into()]),\n",
+      "to": ""
+    },
+    {
+      "name": "a base address may be anywhere",
+      "file": "crates/cancho-ui/src/csp.rs",
+      "from": "        (\"base-uri\".into(), vec![\"'self'\".into()]),\n",
+      "to": ""
+    },
+    {
+      "name": "the program's directives are not added (a map's tile host)",
+      "file": "crates/cancho-ui/src/main.rs",
+      "from": "let csp = csp::program_directives(ir.as_ref());",
+      "to": "let csp: Option<String> = None;"
+    },
+    {
+      "name": "the policy is written after the page",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "    page_html.replacen(CSP_MARK, &meta, 1)",
+      "to": "    page_html.replacen(CSP_MARK, \"\", 1) + &meta"
+    },
+    {
+      "name": "a program's directive replaces the baseline's sources",
+      "file": "crates/cancho-ui/src/csp.rs",
+      "from": "        for w in words {\n            if !directives[at].1.iter().any(|s| s == w) {",
+      "to": "        directives[at].1.clear();\n        for w in words {\n            if !directives[at].1.iter().any(|s| s == w) {"
+    },
+    {
+      "name": "a source is listed twice when two maps name it",
+      "file": "crates/cancho-ui/src/csp.rs",
+      "from": "            if !directives[at].1.iter().any(|s| s == w) {",
+      "to": "            if true {"
+    }
+  ]
+}

@@ -1,0 +1,404 @@
+{
+  "_about": "docs/structure.md 12.0r: each rule of PhotoField and Photo spoiled in turn (the script, the compiler's rules, replay, the stylesheet); every break must fail a check. Run: node scripts/deliberate-breaks.js scripts/breaks/photo.json",
+  "checks": [
+    {
+      "name": "cargo test photo",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "photo"
+      ]
+    },
+    {
+      "name": "cargo test photo (ir unit)",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui-ir",
+        "photo"
+      ]
+    },
+    {
+      "name": "cargo test look (photo)",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "look",
+        "photo"
+      ]
+    },
+    {
+      "name": "check-photo.js",
+      "argv": [
+        "node",
+        "scripts/check-photo.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "no crop: a square field keeps the proportions",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "    if (square) { m = Math.min(sw, sh);",
+      "to": "    if (false && square) { m = Math.min(sw, sh);"
+    },
+    {
+      "name": "the square is cut from the corner, not the middle",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "sx = Math.floor((sw - m) / 2); sy = Math.floor((sh - m) / 2);",
+      "to": "sx = 0; sy = 0;"
+    },
+    {
+      "name": "a small picture is made larger",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "k = Math.min(1, side / Math.max(sw, sh));",
+      "to": "k = side / Math.max(sw, sh);"
+    },
+    {
+      "name": "the cap is one short (strict)",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "if (blob && 4 * Math.ceil(blob.size / 3) <= chars) { return blob; }",
+      "to": "if (blob && 4 * Math.ceil(blob.size / 3) < chars) { return blob; }"
+    },
+    {
+      "name": "the cap is one character too long",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "if (blob && 4 * Math.ceil(blob.size / 3) <= chars) { return blob; }",
+      "to": "if (blob && 4 * Math.ceil(blob.size / 3) <= chars + 4) { return blob; }"
+    },
+    {
+      "name": "the cap is not counted in characters but in bytes",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "if (blob && 4 * Math.ceil(blob.size / 3) <= chars) { return blob; }",
+      "to": "if (blob && blob.size <= chars) { return blob; }"
+    },
+    {
+      "name": "a text over the cap is told all the same",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "if (b64 === null || !__cui_photo_ok(b64) || b64.length > chars) {",
+      "to": "if (b64 === null || !__cui_photo_ok(b64)) {"
+    },
+    {
+      "name": "EXIF is kept: a JPEG that fits is sent as it came",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "return __cui_photo_shrink(bmp, side, square, chars).then(function (b64) {",
+      "to": "return (f.type === \"image/jpeg\" && 4 * Math.ceil(f.size / 3) <= chars ? new Promise(function (ok) { var r = new FileReader(); r.onload = function () { ok(String(r.result).split(\",\")[1] || \"\"); }; r.readAsDataURL(f); }) : __cui_photo_shrink(bmp, side, square, chars)).then(function (b64) {"
+    },
+    {
+      "name": "the EXIF orientation is not applied",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "{ imageOrientation: \"from-image\" }",
+      "to": "{ imageOrientation: \"none\" }"
+    },
+    {
+      "name": "lenient: a file of any type that decodes is a picture",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "if (f.type !== \"\" && __cui_photo_types.indexOf(f.type.toLowerCase()) < 0) {",
+      "to": "if (false && f.type !== \"\" && __cui_photo_types.indexOf(f.type.toLowerCase()) < 0) {"
+    },
+    {
+      "name": "strict: a file with no type is refused",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "if (f.type !== \"\" && __cui_photo_types.indexOf(f.type.toLowerCase()) < 0) {",
+      "to": "if (__cui_photo_types.indexOf(f.type.toLowerCase()) < 0) {"
+    },
+    {
+      "name": "no limit on the size of the file",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "if (f.size > 41943040) {",
+      "to": "if (f.size > 41943040 && false) {"
+    },
+    {
+      "name": "the selection (the status line) is lost on a redraw",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "status.textContent = st[key] || \"\";",
+      "to": "status.textContent = \"\";"
+    },
+    {
+      "name": "a choice that a newer one replaced is told all the same",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "                if (seq[key] !== n) { return; }\n                if (b64 === null",
+      "to": "                if (b64 === null"
+    },
+    {
+      "name": "the page is not told when a newer choice has replaced the error either",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "fail = function (error, word) { if (seq[key] !== n) { return; } say(word);",
+      "to": "fail = function (error, word) { say(word);"
+    },
+    {
+      "name": "a transparent part is black",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "g.fillStyle = \"#fff\"; g.fillRect(0, 0, cv.width, cv.height);",
+      "to": ""
+    },
+    {
+      "name": "the input is not cleared, so the same file cannot be chosen again",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "        input.value = \"\";\n",
+      "to": ""
+    },
+    {
+      "name": "the input has no accessible name",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "{indent}{var}_in.setAttribute('aria-label', {label});\\n\\\n",
+      "to": ""
+    },
+    {
+      "name": "the status line is not a live region",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "{indent}{var}_st.setAttribute('role', 'status');\\n\\\n",
+      "to": ""
+    },
+    {
+      "name": "the input offers every image type",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "{indent}{var}_in.setAttribute('accept', 'image/jpeg,image/png,image/webp');",
+      "to": "{indent}{var}_in.setAttribute('accept', 'image/*');"
+    },
+    {
+      "name": "a photo's canvas is a picture for a screen reader",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "cv.className = \"cui-photo-pic\"; cv.setAttribute(\"aria-hidden\", \"true\");",
+      "to": "cv.className = \"cui-photo-pic\";"
+    },
+    {
+      "name": "a photo's canvas has the wrong ratio",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "cw = w >= h ? long : Math.max(1, Math.round(long * w / h))",
+      "to": "cw = long"
+    },
+    {
+      "name": "a photo draws any text",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "    if (!__cui_photo_ok(data)) { return; }\n    p = __cui_face_bmp(data);",
+      "to": "    p = __cui_face_bmp(String(data));"
+    },
+    {
+      "name": "a tone outside 0 to 11 is a tone",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "if (/^(0|[1-9]|1[01])$/.test(tone)) {",
+      "to": "if (tone !== \"\") {"
+    },
+    {
+      "name": "the check of a text does not look for a JPEG",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "t.indexOf(\"/9j/\") === 0 && ",
+      "to": ""
+    },
+    {
+      "name": "the check of a text allows one more character",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "t.length <= 48000 &&",
+      "to": "t.length <= 48001 &&"
+    },
+    {
+      "name": "the check of a text allows one less",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "t.length >= 100 &&",
+      "to": "t.length >= 99 &&"
+    },
+    {
+      "name": "the check of a text allows the URL alphabet",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "/^[A-Za-z0-9+\\/]+={0,2}$/.test(t); }",
+      "to": "/^[A-Za-z0-9+\\/_-]+={0,2}$/.test(t); }"
+    },
+    {
+      "name": "a decorative photo is not hidden from a screen reader",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "{var}.setAttribute('aria-hidden', 'true');",
+      "to": "{var}.setAttribute('aria-hidden', 'false');"
+    },
+    {
+      "name": "a photo has no role",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "{var}.setAttribute('role', 'img');\\n{indent}",
+      "to": "\\n{indent}"
+    },
+    {
+      "name": "a photo's box has no ratio",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "{var}.style.aspectRatio = '{w} / {h}';",
+      "to": "{var}.style.aspectRatio = '1 / 1';"
+    },
+    {
+      "name": "the cache of face(..) does not keep",
+      "file": "crates/cancho-ui-codegen-web/src/lists.rs",
+      "from": "    if (p) { return p; }\n    if (__cui_face_n >= 120)",
+      "to": "    if (false && p) { return p; }\n    if (__cui_face_n >= 120)"
+    },
+    {
+      "name": "a Photo's page has no decoder of face(..)",
+      "file": "crates/cancho-ui-codegen-web/src/lists.rs",
+      "from": "&[\"__cui_face(\", \"__cui_face_draw(\", \"__cui_photo_draw(\"][..],",
+      "to": "&[\"__cui_face(\", \"__cui_face_draw(\"][..],"
+    },
+    {
+      "name": "a field in a loop is allowed",
+      "file": "crates/cancho-ui-ir/src/photo.rs",
+      "from": "            if in_for {",
+      "to": "            if false && in_for {"
+    },
+    {
+      "name": "max_chars may be 48,001",
+      "file": "crates/cancho-ui-ir/src/photo.rs",
+      "from": "pub const CHARS_MAX: i64 = 48_000;",
+      "to": "pub const CHARS_MAX: i64 = 48_001;"
+    },
+    {
+      "name": "max_chars may be 99",
+      "file": "crates/cancho-ui-ir/src/photo.rs",
+      "from": "pub const CHARS_MIN: i64 = 100;",
+      "to": "pub const CHARS_MIN: i64 = 99;"
+    },
+    {
+      "name": "max_side may be 4097",
+      "file": "crates/cancho-ui-ir/src/photo.rs",
+      "from": "pub const SIDE_MAX: i64 = 4096;",
+      "to": "pub const SIDE_MAX: i64 = 4097;"
+    },
+    {
+      "name": "a photo with no label and not decorative is allowed",
+      "file": "crates/cancho-ui-ir/src/photo.rs",
+      "from": "            if !decorative && !named {",
+      "to": "            if false && !decorative && !named {"
+    },
+    {
+      "name": "a decorative photo with a label is allowed",
+      "file": "crates/cancho-ui-ir/src/photo.rs",
+      "from": "            if decorative && (accessibility.label.is_some()",
+      "to": "            if false && decorative && (accessibility.label.is_some()"
+    },
+    {
+      "name": "a blank label is a label",
+      "file": "crates/cancho-ui-ir/src/photo.rs",
+      "from": "        .is_some_and(|l| !l.trim().is_empty())\n        || accessibility.label_expr.is_some();",
+      "to": "        .is_some()\n        || accessibility.label_expr.is_some();"
+    },
+    {
+      "name": "a ratio may start with a zero",
+      "file": "crates/cancho-ui-ir/src/photo.rs",
+      "from": "            || t.starts_with('0')\n",
+      "to": ""
+    },
+    {
+      "name": "a literal tone is not checked",
+      "file": "crates/cancho-ui-ir/src/photo.rs",
+      "from": "IrExpr::StringLit { value, .. } if !TONES.contains(&value.as_str()) => {",
+      "to": "IrExpr::StringLit { value, .. } if false && !TONES.contains(&value.as_str()) => {"
+    },
+    {
+      "name": "padding in the middle of a text is base64",
+      "file": "crates/cancho-ui-ir/src/photo.rs",
+      "from": ".all(|b| b.is_ascii_alphanumeric() || b == b'+' || b == b'/')",
+      "to": ".all(|b| b.is_ascii_alphanumeric() || b == b'+' || b == b'/' || b == b'=')"
+    },
+    {
+      "name": "three padding signs are allowed",
+      "file": "crates/cancho-ui-ir/src/photo.rs",
+      "from": "text.len() - body.len() <= 2",
+      "to": "text.len() - body.len() <= 3"
+    },
+    {
+      "name": "a value one over the cap is allowed",
+      "file": "crates/cancho-ui-ir/src/photo.rs",
+      "from": "(data.len() as i64) <= s.max_chars",
+      "to": "(data.len() as i64) <= s.max_chars + 1"
+    },
+    {
+      "name": "a value with both data and an error is allowed",
+      "file": "crates/cancho-ui-ir/src/photo.rs",
+      "from": "    if obj.len() != 1 {",
+      "to": "    if obj.len() > 2 {"
+    },
+    {
+      "name": "the event of a field may take no parameter other than none (arity not checked)",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "            | IrElementKind::FileField\n            | IrElementKind::PhotoField,\n        ) => event.params",
+      "to": "            | IrElementKind::FileField,\n        ) => event.params"
+    },
+    {
+      "name": "replay does not look at what a photo field gives",
+      "file": "crates/cancho-ui-replay/src/machine.rs",
+      "from": "        if f.other || f.specs.is_empty() {\n            return None;\n        }\n        Some(f.specs)\n    }\n\n    /// The most characters",
+      "to": "        if true {\n            return None;\n        }\n        Some(f.specs)\n    }\n\n    /// The most characters"
+    },
+    {
+      "name": "a field's page has no icon rules",
+      "file": "crates/cancho-ui/src/page_files.rs",
+      "from": "cancho_ui_ir::page::uses_icons(ir) || cancho_ui_ir::photo::uses_photo_field(ir)",
+      "to": "cancho_ui_ir::page::uses_icons(ir)"
+    },
+    {
+      "name": "no rules of the pictures",
+      "file": "crates/cancho-ui/src/page_files.rs",
+      "from": "let photos = cancho_ui_ir::photo::uses_photo(ir);",
+      "to": "let photos = false;"
+    },
+    {
+      "name": "square defaults to true",
+      "file": "crates/cancho-ui-ir/src/photo.rs",
+      "from": ".and_then(bool_of).unwrap_or(false),",
+      "to": ".and_then(bool_of).unwrap_or(true),"
+    },
+    {
+      "name": "the key is smaller than 44 px",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "min-width: 44px; min-height: 44px; padding: 0.45rem 0.9rem;",
+      "to": "min-width: 24px; min-height: 24px; padding: 0.45rem 0.9rem;"
+    },
+    {
+      "name": "the input is not laid over the key",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": ".cui-photo-in { position: absolute; inset: 0;",
+      "to": ".cui-photo-in { position: static; inset: 0;"
+    },
+    {
+      "name": "the input is hidden with display: none",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "margin: 0; padding: 0; opacity: 0; cursor: pointer; font-size: 0; }",
+      "to": "margin: 0; padding: 0; display: none; cursor: pointer; font-size: 0; }"
+    },
+    {
+      "name": "no ring on the key when the input has the focus",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": ".cui-photo-key:has(.cui-photo-in:focus-visible) { outline: 3px solid",
+      "to": ".cui-photo-key:has(.cui-photo-in:focus-visible) { outline: 0 solid"
+    },
+    {
+      "name": "a photo has no tone gradient",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "background: linear-gradient(135deg, var(--cui-pt), color-mix(in srgb, var(--cui-pt) 55%, #000)); }\n.cui-photo[data-tone=\"0\"]",
+      "to": "background: #475569; }\n.cui-photo[data-tone=\"0\"]"
+    },
+    {
+      "name": "a photo is not cut to cover its box",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": ".cui-photo-pic { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }",
+      "to": ".cui-photo-pic { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: fill; }"
+    },
+    {
+      "name": "a banner photo keeps its ratio and does not fill the banner",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": ".cui-overlay-banner > .cui-photo:first-child { aspect-ratio: auto !important; }",
+      "to": ".cui-overlay-banner > .cui-photo:first-child { }"
+    },
+    {
+      "name": "no scrim over a banner photo",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": ".cui-overlay-banner > .cui-photo:first-child::after { content: \"\"; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6), rgba(0,0,0,0.25)); pointer-events: none; }",
+      "to": ""
+    }
+  ]
+}

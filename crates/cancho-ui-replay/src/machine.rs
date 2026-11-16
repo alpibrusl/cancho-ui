@@ -781,6 +781,67 @@ impl<'a> Machine<'a> {
         Some(f.specs)
     }
 
+    /// What the `PhotoField`s that fire `event` promise about the value they give it, when every control in the page that fires it is a
+    /// `PhotoField` that is in the page now; `None` when some other control could give it any value, or none fires it (docs/structure.md 12.0r).
+    pub fn photo_specs(&self, event: &str) -> Option<Vec<cancho_ui_ir::photo::PhotoSpec>> {
+        use cancho_ui_ir::photo::PhotoSpec;
+        #[derive(Default)]
+        struct Fields {
+            specs: Vec<PhotoSpec>,
+            other: bool,
+        }
+        fn walk(m: &Machine<'_>, node: &IrViewNode, event: &str, f: &mut Fields) {
+            match node {
+                IrViewNode::Element {
+                    kind,
+                    bindings,
+                    children,
+                    ..
+                } => {
+                    let fires = bindings.iter().any(|b| {
+                        b.key == "on"
+                            && match &b.value {
+                                IrBindingValue::EventRef(e) => e == event,
+                                IrBindingValue::EventCall { name, .. } => name == event,
+                                _ => false,
+                            }
+                    });
+                    if fires {
+                        if matches!(kind, cancho_ui_ir::ir::IrElementKind::PhotoField) {
+                            f.specs.push(PhotoSpec {
+                                max_chars: cancho_ui_ir::photo::limits_of(bindings).1,
+                            });
+                        } else {
+                            f.other = true;
+                        }
+                    }
+                    for c in children {
+                        walk(m, c, event, f);
+                    }
+                }
+                IrViewNode::For { children, .. } => {
+                    for c in children {
+                        walk(m, c, event, f);
+                    }
+                }
+                IrViewNode::If { cond, children, .. } => {
+                    if m.condition_holds(cond) {
+                        for c in children {
+                            walk(m, c, event, f);
+                        }
+                    }
+                }
+                IrViewNode::Text { .. } => {}
+            }
+        }
+        let mut f = Fields::default();
+        walk(self, &self.comp.view.body, event, &mut f);
+        if f.other || f.specs.is_empty() {
+            return None;
+        }
+        Some(f.specs)
+    }
+
     /// The most characters (UTF-16 code units) any way of firing `event` with a typed value allows, when every control in the
     /// page that fires it is a `TextField` with a `maxlength:`; `None` when some control without a limit (or a button) could give
     /// it a value of any length, or no control fires it (docs/controls.md section 6).

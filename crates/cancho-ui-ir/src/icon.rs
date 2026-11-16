@@ -202,7 +202,7 @@ pub fn check_binding(kind: &IrElementKind, b: &IrBinding) -> Result<bool, LowerE
     }
 }
 
-fn unknown(name: &str, span: Span) -> LowerError {
+pub(crate) fn unknown(name: &str, span: Span) -> LowerError {
     let near = nearest(name);
     refuse(
         "icon-unknown",

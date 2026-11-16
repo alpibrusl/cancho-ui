@@ -259,7 +259,8 @@ pub fn parts(ir: &IrFile) -> PageParts {
     let motion = crate::motion::uses(ir);
     let roles = cancho_ui_ir::page::uses_look_roles(ir);
     let copy = cancho_ui_ir::page::uses_code_copy(ir);
-    let icons = cancho_ui_ir::page::uses_icons(ir);
+    let icons = cancho_ui_ir::page::uses_icons(ir) || cancho_ui_ir::photo::uses_photo_field(ir);
+    let photos = cancho_ui_ir::photo::uses_photo(ir);
     let Some(p) = &ir.page else {
         return PageParts {
             sticky,
@@ -267,6 +268,7 @@ pub fn parts(ir: &IrFile) -> PageParts {
             roles,
             copy,
             icons,
+            photos,
             ..PageParts::default()
         };
     };
@@ -287,6 +289,7 @@ pub fn parts(ir: &IrFile) -> PageParts {
         roles,
         copy,
         icons,
+        photos,
     }
 }
 

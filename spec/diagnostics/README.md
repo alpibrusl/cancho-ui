@@ -374,6 +374,18 @@ in `examples/refusal/`, and by the evidence report.
 | `icon-label-conflict` | `Component` | `Error` | `Static` | An `Icon` that is `decorative: true` and also has a `label:`. *(Built 2026-11-14, docs/structure.md 12.0q.)* |
 | `icon-label-missing` | `Component` | `Error` | `Static` | An `Icon` with a blank `label:`, or with no `label:` and not `decorative: true` outside a `Button` or `NavLink` that has a label (a picture nobody names). *(Built 2026-11-14, docs/structure.md 12.0q.)* |
 | `icon-button-invalid` | `Component` | `Error` | `Static` | A `Button` with `icon:` that has children or no `label:`: the icon is drawn before the label text. *(Built 2026-11-14, docs/structure.md 12.0q.)* |
+| `photo-field-incomplete` | `Component` | `Error` | `Static` | A `PhotoField` without a `label:` (or with a blank one) or without `on:`, the event that is told the picture. *(Built 2026-11-16, docs/structure.md 12.0r.)* |
+| `photo-field-in-loop` | `Component` | `Error` | `Static` | A `PhotoField` drawn inside a `For`: the page keeps what was chosen by the place of the field in the source, and every row would share it. *(Built 2026-11-16, docs/structure.md 12.0r.)* |
+| `photo-has-children` | `Component` | `Error` | `Static` | A `PhotoField` or a `Photo` with text or an element inside it: the first is an icon over its label, the second is drawn from `data:`. *(Built 2026-11-16, docs/structure.md 12.0r.)* |
+| `photo-limit-invalid` | `Component` | `Error` | `Static` | A `PhotoField` whose `max_chars:` is not an integer literal from 100 to 48,000 or whose `max_side:` is not one from 32 to 4096. *(Built 2026-11-16, docs/structure.md 12.0r.)* |
+| `photo-square-invalid` | `Component` | `Error` | `Static` | A `PhotoField` whose `square:` is not `true` or `false` written in the program. *(Built 2026-11-16, docs/structure.md 12.0r.)* |
+| `photo-incomplete` | `Component` | `Error` | `Static` | A `Photo` with no `data:`. *(Built 2026-11-16, docs/structure.md 12.0r.)* |
+| `photo-label-missing` | `Component` | `Error` | `Static` | A `Photo` with neither a `label:` (what it shows, read aloud) nor `decorative: true`, or with a blank `label:`. *(Built 2026-11-16, docs/structure.md 12.0r.)* |
+| `photo-label-conflict` | `Component` | `Error` | `Static` | A `Photo` that is `decorative: true` and also has a `label:`. *(Built 2026-11-16, docs/structure.md 12.0r.)* |
+| `photo-data-invalid` | `Component` | `Error` | `Static` | A `Photo` whose `data:` is not an expression the view reads, or names a state field that is not a `String`. *(Built 2026-11-16, docs/structure.md 12.0r.)* |
+| `photo-tone-invalid` | `Component` | `Error` | `Static` | A `Photo` whose `tone:` is a literal other than `"0"` to `"11"` (no leading zero), or names a state field that is not a `String`. *(Built 2026-11-16, docs/structure.md 12.0r.)* |
+| `photo-ratio-invalid` | `Component` | `Error` | `Static` | A `Photo` whose `ratio:` is not a string literal `"W:H"` of two whole numbers from 1 to 32 (no leading zero). *(Built 2026-11-16, docs/structure.md 12.0r.)* |
+| `photo-decorative-invalid` | `Component` | `Error` | `Static` | A `Photo` whose `decorative:` is not `true` or `false` written in the program. *(Built 2026-11-16, docs/structure.md 12.0r.)* |
 | `data-duplicate` | `Component` | `Error` | `Static` | A `data Name` declared twice in a program. *(Built 2026-10-26, docs/data.md.)* |
 | `data-path-invalid` | `Component` | `Error` | `Static` | A `data` file written as an address, an absolute path, with `..`, with characters outside letters, digits, `.`, `_`, `-`, `/`, or that does not end in `.json`. *(Built 2026-10-26, docs/data.md.)* |
 | `data-hash-invalid` | `Component` | `Error` | `Static` | A `sha256:` that is not 64 lower-case hex digits. *(Built 2026-10-26, docs/data.md.)* |
@@ -428,7 +440,7 @@ tags: `test-state-mismatch`, `test-expect-mismatch`, `test-fault-missing`, `test
 `trace-unknown-event`, `trace-params-arity`, `trace-value-too-long`, `trace-value-not-an-option`, `trace-unknown-state-field`,
 `trace-unknown-request`, `trace-request-not-pending`,
 `trace-request-not-scriptable`, `trace-bad-response`,
-`trace-event-after-dispose`, `trace-navigate-invalid`, `trace-history-empty`, `trace-value-not-a-file`, `trace-stream-state`, `trace-locale-invalid`, `trace-move-invalid`, `trace-number-invalid`, `replay-unsupported`, `replay-tick-limit`, `replay-route-limit`, `replay-type-error`,
+`trace-event-after-dispose`, `trace-navigate-invalid`, `trace-history-empty`, `trace-value-not-a-file`, `trace-value-not-a-photo`, `trace-stream-state`, `trace-locale-invalid`, `trace-move-invalid`, `trace-number-invalid`, `replay-unsupported`, `replay-tick-limit`, `replay-route-limit`, `replay-type-error`,
 `replay-unknown-identifier`, `replay-no-match-arm`, `replay-non-finite`,
 `replay-number-format`, and for the outline of the view (`docs/view-test.md`) `view-bad-line` (a line of `view` or `view_has` that is not an outline line), `view-mismatch` (the page is not what a step asserts), `view-unsupported` (the page has a node the outline cannot say) and `view-expression-unsupported` (a view expression the replay cannot evaluate, or cannot say exactly). (`replay-non-finite` is also what the emitted page throws for the same result: `docs/semantics.md`,
 "Arithmetic is finite".) Their meanings are in `docs/replay.md` §7.1. A program that

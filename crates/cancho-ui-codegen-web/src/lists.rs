@@ -339,7 +339,17 @@ pub fn helpers_used(emitted: &str) -> String {
             ][..],
             EMOJI_JS,
         ),
-        (&["__cui_face(", "__cui_face_draw("][..], FACE_JS),
+        (
+            &["__cui_face(", "__cui_face_draw(", "__cui_photo_draw("][..],
+            FACE_JS,
+        ),
+        // `Photo` and `PhotoField` (docs/structure.md 12.0r): written only for a program that has one; a `Photo` draws with `face(..)`'s decoder and cache above
+        (
+            &["__cui_photo_draw(", "__cui_photo_wire("][..],
+            crate::photo::PHOTO_OK_JS,
+        ),
+        (&["__cui_photo_draw("][..], crate::photo::PHOTO_JS),
+        (&["__cui_photo_wire("][..], crate::photo::PHOTO_FIELD_JS),
         (&["__cui_take(", "__cui_skip("][..], PAGING_JS),
         (&["__cui_concat("][..], CONCAT_JS),
         (&["__cui_move("][..], MOVE_JS),

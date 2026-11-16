@@ -70,6 +70,8 @@ const BUILT_IN: &[&str] = &[
     "Checkbox",
     "Select",
     "FileField",
+    "PhotoField",
+    "Photo",
     "Chart",
     "RouteMap",
     "NavLink",
@@ -982,7 +984,7 @@ fn base64(bytes: &[u8]) -> String {
 }
 
 /// A CSP hash source from the 64 hex digits of a SHA-256: `'sha256-<base64>'`.
-fn csp_hash(hex: &str) -> String {
+pub fn csp_hash(hex: &str) -> String {
     let bytes: Vec<u8> = (0..hex.len() / 2)
         .filter_map(|i| u8::from_str_radix(&hex[2 * i..2 * i + 2], 16).ok())
         .collect();

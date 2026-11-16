@@ -32,6 +32,7 @@ pub mod media;
 pub mod messages;
 pub mod motion;
 pub mod page;
+pub mod photo;
 pub mod recipe;
 pub mod routemap;
 pub mod routing;

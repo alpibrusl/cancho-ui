@@ -1,0 +1,46 @@
+// examples/photo/photo.cui: choose a picture, see it drawn from state three ways (docs/structure.md 12.0r).
+//
+// A PhotoField is a native chooser of a picture. The page decodes it (the EXIF orientation applied), cuts the middle of it, and draws it again as a JPEG that is made smaller
+// until its base64 text fits `max_chars:`: the text the program is told has no EXIF block, so no place and no time. A Photo draws such a text on a canvas, from state: no <img>,
+// no data: address, no request. Until a picture is chosen a Photo is a gradient of its tone. No picture is committed with this page: choose one of your own, or let the
+// Chromium check (scripts/check-photo.js) draw one at run time.
+
+component PhotoDemo {
+    state picture: String = "";
+    state note: String = "No picture chosen yet.";
+    state size: Int = 0;
+    state tone: String = "5";
+
+    on Chosen(r) {
+        picture = json.get(r, "data", "");
+        size = len(picture);
+        note = if len(picture) > 0 { "Picture ready." } else { "That did not work: " + json.get(r, "error", "unknown") + "." };
+    }
+
+    on Recolour { tone = if tone == "5" { "9" } else { "5" }; }
+
+    view {
+        Column {
+            Heading { level: 1 "Photo" }
+            Row {
+                PhotoField { label: "Add a picture" icon: "camera" square: false max_side: 960 max_chars: 30000 on: Chosen }
+                Button { label: "Recolour" on: Recolour }
+            }
+            Text { role: status "{note}" }
+            Text { "{size} characters of text" }
+            Photo { label: "Your picture, wide" data: picture ratio: "16:9" tone: tone }
+            Column {
+                card: true
+                overlay: "cover"
+                Photo { label: "Your picture on a cover card" data: picture ratio: "16:10" tone: tone }
+                Text { "Weekend at the lake" }
+                Text { "3 days" }
+            }
+            Column {
+                overlay: "banner"
+                Photo { decorative: true data: picture ratio: "3:1" tone: tone }
+                Heading { level: 2 "A banner" }
+            }
+        }
+    }
+}
