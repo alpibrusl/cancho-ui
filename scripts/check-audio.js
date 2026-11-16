@@ -7,7 +7,7 @@
 //     is never passed (a cap nobody can meet is "too big"); a render in the middle (a poll) does not end the recording and the new key is attached to it;
 //  C. the states that are not a recording: the microphone refused (denied), none found, another failure, and no MediaRecorder at all (unsupported), each given to the program as `error` and
 //     said in words, and the key usable again afterwards;
-//  D. the player, with a WAV made here (8-bit, 8 kHz, 2.4 s): the key is named, the time is known before it plays, a tap plays (the label says Pause, the bar moves), a second tap pauses where it
+//  D. the player, with a WAV made here (8-bit mono: 6 s at 5 kHz, and 2.2 s at 8 kHz): the key is named, the time is known before it plays, a tap plays (the label says Pause, the bar moves), a second tap pauses where it
 //     is, a third goes on, a render in the middle keeps it playing, another clip stops this one, the end puts it back at the start; a text that is not a recording is a key that is disabled;
 //  E. no <audio>, no <img>, no `blob:` or `data:` request, no policy violation, and the page's policy has no `media-src` and no `blob:`;
 //  F. the gallery demo (examples/audio) builds, records and plays what it recorded.
@@ -90,8 +90,8 @@ const helpers = `
   window.mid = (el) => { const b = el.getBoundingClientRect(); return { x: Math.round((b.left + b.right) / 2), y: Math.round((b.top + b.bottom) / 2) }; };
   window.setText = (label, v) => { const i = Array.from(document.querySelectorAll('input')).find((x) => x.getAttribute('aria-label') === label); i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); };
   // a WAV made here: 8-bit mono, 8 kHz, a sine, 2.4 s
-  window.makeWav = (secs) => {
-    const rate = 8000, n = Math.round(rate * secs), b = new Uint8Array(44 + n), v = new DataView(b.buffer);
+  window.makeWav = (secs, rate0) => {
+    const rate = rate0 || 8000, n = Math.round(rate * secs), b = new Uint8Array(44 + n), v = new DataView(b.buffer);
     const w = (o, s) => { for (let i = 0; i < s.length; i++) { b[o + i] = s.charCodeAt(i); } };
     w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
     v.setUint32(24, rate, true); v.setUint32(28, rate, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); w(36, 'data'); v.setUint32(40, n, true);
@@ -168,23 +168,23 @@ const helpers = `
     check('D: a text that is not a recording says so and cannot be played; an empty one is a disabled key with no words', bad.dis === 'true' && bad.words === 'This is not a recording' && bad.empty === '' && bad.emptyDis === 'true', JSON.stringify(bad));
 
     // ---- D. the player ----
-    await ev(`setText('clip', makeWav(2.4)); setText('other', makeWav(2.4).slice(0, 0) + makeWav(2.2))`);
+    await ev(`setText('clip', makeWav(6, 5000)); setText('other', makeWav(2.2))`);
     await wait(800);
     const d0 = await ev(`({ time: clip('One').querySelector('.cui-audio-time').textContent, time2: clip('Two').querySelector('.cui-audio-time').textContent, dis: clip('One').querySelector('.cui-audio-play').getAttribute('aria-disabled'), len: document.querySelector('input').value.length })`);
-    check('D: the length is known before it plays (decoded at once, nothing sounded)', d0.time === '0:00 / 0:02' && d0.dis === 'false', JSON.stringify(d0));
+    check('D: the length is known before it plays (decoded at once, nothing sounded)', d0.time === '0:00 / 0:06' && d0.time2 === '0:00 / 0:02' && d0.dis === 'false', JSON.stringify(d0));
     if (haveCdp) {
       await tapClip('One'); await wait(900);
       const d1 = await ev(`({ label: clip('One').querySelector('.cui-audio-play').getAttribute('aria-label'), bar: clip('One').querySelector('progress').value, time: clip('One').querySelector('.cui-audio-time').textContent, icon: clip('One').querySelector('.cui-audio-play svg') !== null })`);
-      check('D: a tap plays: the key says Pause and the label, the bar moves, the time runs', d1.label === 'Pause One' && d1.bar > 100 && d1.bar < 900 && /^0:0[01] \/ 0:02$/.test(d1.time) && d1.icon, JSON.stringify(d1));
+      check('D: a tap plays: the key says Pause and the label, the bar moves, the time runs', d1.label === 'Pause One' && d1.bar > 80 && d1.bar < 500 && /^0:0[01] \/ 0:06$/.test(d1.time) && d1.icon, JSON.stringify(d1));
       await ev(`Array.from(document.querySelectorAll('button')).find((b) => b.textContent === 'Bump').click()`);
       await wait(500);
       const d2 = await ev(`({ label: clip('One').querySelector('.cui-audio-play').getAttribute('aria-label'), bar: clip('One').querySelector('progress').value, st: counts() })`);
-      check('D: a render in the middle (the page is drawn again) leaves it playing, and the new key goes on with the bar', d2.label === 'Pause One' && d2.bar > 300 && d2.st.bumps === 1, JSON.stringify(d2));
+      check('D: a render in the middle (the page is drawn again) leaves it playing, and the new key goes on with the bar', d2.label === 'Pause One' && d2.bar > 130 && d2.st.bumps === 1, JSON.stringify(d2));
       await tapClip('One'); await wait(200);
       const p1 = await ev(`clip('One').querySelector('progress').value`);
       await wait(700);
       const d3 = await ev(`({ label: clip('One').querySelector('.cui-audio-play').getAttribute('aria-label'), bar: clip('One').querySelector('progress').value })`);
-      check('D: a second tap pauses where it is (the bar stays), the key says Play', d3.label === 'Play One' && Math.abs(d3.bar - p1) <= 2 && d3.bar > 300, JSON.stringify([p1, d3]));
+      check('D: a second tap pauses where it is (the bar stays), the key says Play', d3.label === 'Play One' && Math.abs(d3.bar - p1) <= 2 && d3.bar > 130, JSON.stringify([p1, d3]));
       await tapClip('One'); await wait(500);
       const d4 = await ev(`({ label: clip('One').querySelector('.cui-audio-play').getAttribute('aria-label'), bar: clip('One').querySelector('progress').value })`);
       check('D: a third tap goes on from there', d4.label === 'Pause One' && d4.bar > d3.bar, JSON.stringify([d3.bar, d4]));
