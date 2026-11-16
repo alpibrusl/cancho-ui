@@ -122,7 +122,7 @@ collapsed list, the accessible name, the sentence, the km figure and the report'
   It is shown as visible text under the drawing, set with `textContent`, never parsed as markup.
 * **There is no default host** and the toolkit names no provider (the test that scans the compiler's sources for provider names covers this element too). The example reads its tiles from a folder beside the page.
 * The generated page's `Content-Security-Policy` is the `Map`'s: `img-src 'self' data:` plus the origin (scheme and port) of each declared tile host of any `Map` or tiled `RouteMap`. An image from another host is not
-  requested. A page with a `RouteMap` and no tiles gets no policy, as before.
+  requested. A page with a `RouteMap` and no tiles adds no host to the baseline policy that every page has (*corrected 2026-11-16, docs/structure.md 12.0r: it used to get no policy at all*).
 
 **What the tile host learns.** The reader's **IP address** and **User-Agent**, and the tile addresses asked for, which say the area of the trip to the size of the grid (zoom and tile numbers: the zoom is the fit
 of the whole trip, so it also says roughly how far apart the stops are). `referrerpolicy="no-referrer"` is set on every tile, so no `Referer`. No cookie, no `crossorigin`. The page does not store tiles and the

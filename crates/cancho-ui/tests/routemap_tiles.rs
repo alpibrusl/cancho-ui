@@ -460,8 +460,9 @@ fn the_tile_code_sets_no_markup_and_asks_with_no_referrer() {
 #[test]
 fn a_page_with_a_tiled_route_map_lets_images_in_from_its_host_and_no_other() {
     let html = built_index(&tiled("requires Network(\"tiles.example\");"));
-    assert!(
-        html.contains("<meta http-equiv=\"Content-Security-Policy\" content=\"img-src 'self' data: https://tiles.example\">"),
+    assert_eq!(
+        common::directive(&html, "img-src").as_deref(),
+        Some("'self' data: https://tiles.example"),
         "{html}"
     );
     assert!(html.find("Content-Security-Policy") < html.find("<style>"));
@@ -470,10 +471,16 @@ fn a_page_with_a_tiled_route_map_lets_images_in_from_its_host_and_no_other() {
         "requires Network;",
         "RouteMap { label: \"Trip\" points: rows tiles: \"./tiles/{z}/{x}/{y}.png\" attribution: \"c\" }",
     );
-    assert!(built_index(&own).contains("content=\"img-src 'self' data:\""));
-    // a route map without tiles needs no policy
+    assert_eq!(
+        common::directive(&built_index(&own), "img-src").as_deref(),
+        Some("'self' data:")
+    );
+    // a route map without tiles adds no host to the baseline
     let plain = comp("", "RouteMap { label: \"Trip\" points: rows }");
-    assert!(!built_index(&plain).contains("Content-Security-Policy"));
+    assert_eq!(
+        common::directive(&built_index(&plain), "img-src").as_deref(),
+        Some("'self' data:")
+    );
 }
 
 #[test]

@@ -191,9 +191,15 @@ fn the_page_has_the_icon_as_an_inline_svg_with_currentcolor_strokes() {
         "the licence notices"
     );
     // the page's policy is not touched by an icon
-    assert!(
-        !html.contains("Content-Security-Policy") || !html.contains("data:"),
-        "an icon must not add data: to the policy"
+    // (the baseline lists `data:` for the page's own stylesheet; an icon adds nothing to it)
+    assert_eq!(
+        common::directive(&html, "img-src").as_deref(),
+        Some("'self' data:"),
+        "an icon must not add to the policy"
+    );
+    assert_eq!(
+        common::directive(&html, "connect-src").as_deref(),
+        Some("'self'")
     );
 }
 

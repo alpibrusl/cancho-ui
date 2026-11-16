@@ -723,6 +723,10 @@ impl Serialize for IrElementKind {
             IrElementKind::Media => ser.serialize_unit_variant("IrElementKind", 38, "Media"),
             IrElementKind::Grid => ser.serialize_unit_variant("IrElementKind", 39, "Grid"),
             IrElementKind::Icon => ser.serialize_unit_variant("IrElementKind", 46, "Icon"),
+            IrElementKind::PhotoField => {
+                ser.serialize_unit_variant("IrElementKind", 48, "PhotoField")
+            }
+            IrElementKind::Photo => ser.serialize_unit_variant("IrElementKind", 49, "Photo"),
             IrElementKind::Key => ser.serialize_unit_variant("IrElementKind", 47, "Key"),
             IrElementKind::Table => ser.serialize_unit_variant("IrElementKind", 5, "Table"),
             IrElementKind::TableRow => ser.serialize_unit_variant("IrElementKind", 6, "TableRow"),

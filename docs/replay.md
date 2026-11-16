@@ -434,6 +434,7 @@ Every refusal has a stable tag. Tier **tested** throughout.
 | `trace-params-arity` | `params` length differs from the handler's | yes |
 | `trace-value-not-an-option` | an event fired only by `Select`s is given a string that is none of their options (read from the state when the step runs): the browser never reports one (`docs/controls.md` section 10) | yes |
 | `trace-value-not-a-file` | an event fired only by `FileField`s is given a value none of them could produce: not the JSON text of exactly `name`, `size`, `type` and one of `text` or `error`; a name with `/` or `\\`; text from a file over `max_bytes` or not an accepted type; text longer in bytes than `size`; an `error` that is not one of the four words, or `too large` / `not an accepted type` for a file that is neither (`docs/file-upload.md` section 3) | yes |
+| `trace-value-not-a-photo` | an event fired only by `PhotoField`s is given a value none of them could produce: not the JSON text of exactly one of `data` (base64 that starts `/9j/`, 100 characters to the longest `max_chars:`) or `error` (`too big`, `not a picture`); a trace that gives another describes a page that does not exist (`docs/structure.md` 12.0r) | yes |
 | `trace-value-too-long` | an event fired only by `TextField`s with a `maxlength:` is given a string longer than the longest limit (UTF-16 code units): the browser never reports one (`docs/controls.md` section 6) | yes |
 | `trace-unknown-state-field` | a `state` expectation names an undeclared field | yes |
 | `trace-unknown-request` | `resolve` of an id never issued | yes |

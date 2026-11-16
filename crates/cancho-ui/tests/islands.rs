@@ -386,24 +386,37 @@ fn built(program: &str, flags: &[&str]) -> (PathBuf, String, String) {
 #[test]
 fn the_page_of_a_program_with_an_island_carries_frame_src_about() {
     let (_, html, _) = built(PROGRAM, &["--page"]);
-    assert!(
-        html.contains("<meta http-equiv=\"Content-Security-Policy\" content=\"frame-src about:\">"),
+    assert_eq!(
+        common::directive(&html, "frame-src").as_deref(),
+        Some("about:"),
         "{}",
         &html[..400]
     );
+    // the frame inherits the page's policy, so the scripts of its document are among the page's hashes: the shim, the island's script and the line that asks for the props
+    let script = common::directive(&html, "script-src").expect("a script-src");
+    assert!(
+        script.starts_with("'self' 'sha256-") && !script.contains("unsafe-inline"),
+        "{script}"
+    );
+    assert!(script.matches("'sha256-").count() >= 3, "{script}");
     // the same for an app
     let (_, html, _) = built(PROGRAM, &["--pwa"]);
-    assert!(html.contains("content=\"frame-src about:\""));
-    // a program with no island has no policy, and an island that is declared and not used does not make one
+    assert_eq!(
+        common::directive(&html, "frame-src").as_deref(),
+        Some("about:")
+    );
+    // a program with no island has the baseline and no frame rule, and an island that is declared and not used does not make one
     let (_, html, _) = built(
         "component C { view { Column { Text { \"x\" } } } }\n",
         &["--page"],
     );
-    assert!(!html.contains("Content-Security-Policy"));
+    assert!(common::csp(&html).is_some());
+    assert_eq!(common::directive(&html, "frame-src"), None);
     let unused = PROGRAM.replace("Stones { seed: 1 on: Picked }", "Text { \"-\" }");
     let (_, html, _) = built(&unused, &["--page"]);
-    assert!(
-        !html.contains("Content-Security-Policy"),
+    assert_eq!(
+        common::directive(&html, "frame-src"),
+        None,
         "an unused island"
     );
 }
@@ -692,9 +705,10 @@ component C {
 fn an_open_island_is_a_div_of_the_page_and_adds_no_frame_policy() {
     let (_, html, js) = built(OPEN, &["--page"]);
     assert!(!html.contains("<iframe"), "an open island has no frame");
-    assert!(
-        !html.contains("Content-Security-Policy"),
-        "an open island adds no policy"
+    assert_eq!(
+        common::directive(&html, "frame-src"),
+        None,
+        "an open island adds no frame policy"
     );
     assert!(
         html.contains("<div role=\"group\" aria-label=\"Places\" aria-describedby=\"alt\""),
@@ -809,7 +823,10 @@ fn the_page_policy_of_a_program_with_both_kinds_is_the_sealed_islands_alone() {
         "island Places {\n    sealed: false;\n    script: \"a.js\" sha256: \"{sha:a.js}\";\n    decorative: true;\n    width: 10;\n    height: 10;\n}\ncomponent C {\n    requires Dom;\n    state n: Int = 0;\n    on Picked(v) { n = v; }\n    view { Column { Stones { seed: 1 on: Picked } Places { } } }\n}\n"
     );
     let (_, html, _) = built(&both, &["--page"]);
-    assert!(html.contains("content=\"frame-src about:\""));
+    assert_eq!(
+        common::directive(&html, "frame-src").as_deref(),
+        Some("about:")
+    );
     assert_eq!(
         html.matches("<iframe").count(),
         1,

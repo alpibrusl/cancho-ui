@@ -465,6 +465,10 @@ pub enum ElementKind {
     Grid,
     /// Icons (docs/structure.md 12.0q): `Icon { name: "bell" }`, an inline SVG drawn from the vendored Lucide set.
     Icon,
+    /// A native chooser of a picture that reaches the program as base64 JPEG text (docs/structure.md 12.0r).
+    PhotoField,
+    /// A base64 JPEG held in state, drawn on a canvas (docs/structure.md 12.0r).
+    Photo,
     Named(String),
 }
 

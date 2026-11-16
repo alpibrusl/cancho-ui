@@ -70,7 +70,7 @@ Map {
   at compile time, naming the line to add. The semantic diff already reports a new `Network` host as a widening; a tile host is reported the same.
 * **The browser enforces it, not just the compiler.** A page with a `Map` carries a `<meta http-equiv="Content-Security-Policy">` as the
   first thing in `<head>` with `img-src 'self' data: <the tile hosts of every Map in the page>`. Measured: an undeclared host's image is not
-  requested at all. A page without a `Map` gets no policy and nothing else changes.
+  requested at all. *Corrected 2026-11-16 (docs/structure.md 12.0r): a page without a `Map` used to get no policy, so taking the map out of a page took the page's only policy with it; every page now has the baseline, of which the `Map`'s `img-src` is the one directive a map changes (it adds the hosts to `'self' data:`, which the baseline already has).*
 * **The map is centred on the middle of the position's tile**, not on the position. Measured: the position as the centre makes 9 different
   request sets (the tile host can tell where in the tile the user is); the tile's centre makes 1. The user's own pin is drawn over the
   tiles in an SVG, so the picture is exact and the request is not.

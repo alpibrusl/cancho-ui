@@ -1,0 +1,350 @@
+{
+ "about": "docs/structure.md 12.0r. `pictures`: the texts a Photo (and the photo of a face(..)) draws and the ones it does not; a text is head + fill repeated up to len characters (tail at the end), so no picture is kept here. Run by crates/cancho-ui/tests/photo.rs against cancho_ui_ir::photo::picture_ok and by scripts/check-photo.js against the page's __cui_photo_ok. `valid`: a view (of component C) that must check. `refusals`: a view and the rule tag that refuses it. `values`: what a handler of a PhotoField may be told, for replay (trace-value-not-a-photo).",
+ "pictures": [
+  {
+   "why": "100 characters is the least",
+   "head": "/9j/",
+   "fill": "A",
+   "len": 100,
+   "tail": "",
+   "ok": true
+  },
+  {
+   "why": "99 characters is too short",
+   "head": "/9j/",
+   "fill": "A",
+   "len": 99,
+   "tail": "",
+   "ok": false
+  },
+  {
+   "why": "48,000 characters is the most",
+   "head": "/9j/",
+   "fill": "A",
+   "len": 48000,
+   "tail": "",
+   "ok": true
+  },
+  {
+   "why": "48,001 characters is too long",
+   "head": "/9j/",
+   "fill": "A",
+   "len": 48001,
+   "tail": "",
+   "ok": false
+  },
+  {
+   "why": "it has to start like a JPEG",
+   "head": "iVBO",
+   "fill": "A",
+   "len": 200,
+   "tail": "",
+   "ok": false
+  },
+  {
+   "why": "a lower-case start is not a JPEG start",
+   "head": "/9J/",
+   "fill": "A",
+   "len": 200,
+   "tail": "",
+   "ok": false
+  },
+  {
+   "why": "the whole alphabet is base64",
+   "head": "/9j/",
+   "fill": "aZ09+/",
+   "len": 204,
+   "tail": "",
+   "ok": true
+  },
+  {
+   "why": "a hyphen is not base64 (the URL alphabet is another)",
+   "head": "/9j/",
+   "fill": "A",
+   "len": 200,
+   "tail": "-",
+   "ok": false
+  },
+  {
+   "why": "an underscore is not base64",
+   "head": "/9j/",
+   "fill": "A",
+   "len": 200,
+   "tail": "_",
+   "ok": false
+  },
+  {
+   "why": "a space is not base64",
+   "head": "/9j/",
+   "fill": "A",
+   "len": 200,
+   "tail": " ",
+   "ok": false
+  },
+  {
+   "why": "a newline at the end is not base64",
+   "head": "/9j/",
+   "fill": "A",
+   "len": 200,
+   "tail": "\n",
+   "ok": false
+  },
+  {
+   "why": "a line break inside is not base64",
+   "head": "/9j/",
+   "fill": "A",
+   "len": 200,
+   "tail": "A\nA",
+   "ok": false
+  },
+  {
+   "why": "one padding sign at the end",
+   "head": "/9j/",
+   "fill": "A",
+   "len": 200,
+   "tail": "=",
+   "ok": true
+  },
+  {
+   "why": "two padding signs at the end",
+   "head": "/9j/",
+   "fill": "A",
+   "len": 200,
+   "tail": "==",
+   "ok": true
+  },
+  {
+   "why": "three padding signs are too many",
+   "head": "/9j/",
+   "fill": "A",
+   "len": 200,
+   "tail": "===",
+   "ok": false
+  },
+  {
+   "why": "padding inside is not base64",
+   "head": "/9j/",
+   "fill": "A",
+   "len": 200,
+   "tail": "=A",
+   "ok": false
+  },
+  {
+   "why": "a quote is not base64",
+   "head": "/9j/",
+   "fill": "A",
+   "len": 200,
+   "tail": "\"",
+   "ok": false
+  },
+  {
+   "why": "a letter beyond ASCII is not base64",
+   "head": "/9j/",
+   "fill": "A",
+   "len": 200,
+   "tail": "é",
+   "ok": false
+  },
+  {
+   "why": "a data: address is not a picture text",
+   "head": "data:image/jpeg;base64,/9j/",
+   "fill": "A",
+   "len": 200,
+   "tail": "",
+   "ok": false
+  },
+  {
+   "why": "an empty text is not a picture",
+   "head": "",
+   "fill": "",
+   "len": 0,
+   "tail": "",
+   "ok": false
+  }
+ ],
+ "component": "component C {\n    state pic: String = \"\";\n    state tone: String = \"3\";\n    state n: Int = 0;\n    state flag: Bool = false;\n    state pics: List[String] = [];\n    on Chosen(r) { pic = json.get(r, \"data\", \"\"); n = n + 1; }\n    on Go { n = n + 1; }\n    on Two(a, b) { n = n + 1; }\n    view { Column { {view} } }\n}\n",
+ "valid": [
+  {
+   "name": "a field with only a label and its event",
+   "view": "PhotoField { label: \"Photo\" on: Chosen }"
+  },
+  {
+   "name": "a field with every key",
+   "view": "PhotoField { label: \"Cover\" icon: \"image\" square: false max_side: 960 max_chars: 30000 on: Chosen }"
+  },
+  {
+   "name": "the least and the most of the limits",
+   "view": "PhotoField { label: \"a\" max_side: 32 max_chars: 100 on: Chosen } PhotoField { label: \"b\" max_side: 4096 max_chars: 48000 on: Chosen }"
+  },
+  {
+   "name": "a photo with a label",
+   "view": "Photo { label: \"The lake\" data: pic }"
+  },
+  {
+   "name": "a photo with every key",
+   "view": "Photo { label: \"The lake\" data: pic ratio: \"16:9\" tone: tone }"
+  },
+  {
+   "name": "a photo with a literal tone",
+   "view": "Photo { label: \"The lake\" data: pic tone: \"11\" }"
+  },
+  {
+   "name": "a decorative photo",
+   "view": "Photo { decorative: true data: pic ratio: \"3:1\" }"
+  },
+  {
+   "name": "a photo of each row of a For",
+   "view": "For { over: pics as: p Photo { label: \"A picture\" data: p ratio: \"1:1\" } }"
+  },
+  {
+   "name": "a photo first in a cover card and a banner",
+   "view": "Column { card: true overlay: \"cover\" Photo { label: \"Cover\" data: pic ratio: \"16:10\" } Text { \"Title\" } } Column { overlay: \"banner\" Photo { decorative: true data: pic ratio: \"3:1\" } Heading { level: 2 \"Name\" } }"
+  },
+  {
+   "name": "a label that is read from state",
+   "view": "PhotoField { label: \"Photo \" + \"x\" on: Chosen }"
+  }
+ ],
+ "refusals": [
+  {
+   "name": "a field without a label",
+   "tag": "photo-field-incomplete",
+   "view": "PhotoField { on: Chosen }"
+  },
+  {
+   "name": "a field with a blank label",
+   "tag": "photo-field-incomplete",
+   "view": "PhotoField { label: \" \" on: Chosen }"
+  },
+  {
+   "name": "a field without its event",
+   "tag": "photo-field-incomplete",
+   "view": "PhotoField { label: \"Photo\" }"
+  },
+  {
+   "name": "a field in a loop",
+   "tag": "photo-field-in-loop",
+   "view": "For { over: pics as: p PhotoField { label: \"Photo\" on: Chosen } }"
+  },
+  {
+   "name": "a field with content",
+   "tag": "photo-has-children",
+   "view": "PhotoField { label: \"Photo\" on: Chosen Text { \"x\" } }"
+  },
+  {
+   "name": "an event that takes two values",
+   "tag": "event-arity-mismatch",
+   "view": "PhotoField { label: \"Photo\" on: Two }"
+  },
+  {
+   "name": "max_chars under 100",
+   "tag": "photo-limit-invalid",
+   "view": "PhotoField { label: \"Photo\" max_chars: 99 on: Chosen }"
+  },
+  {
+   "name": "max_chars over 48000",
+   "tag": "photo-limit-invalid",
+   "view": "PhotoField { label: \"Photo\" max_chars: 48001 on: Chosen }"
+  },
+  {
+   "name": "max_side under 32",
+   "tag": "photo-limit-invalid",
+   "view": "PhotoField { label: \"Photo\" max_side: 31 on: Chosen }"
+  },
+  {
+   "name": "max_side over 4096",
+   "tag": "photo-limit-invalid",
+   "view": "PhotoField { label: \"Photo\" max_side: 4097 on: Chosen }"
+  },
+  {
+   "name": "a limit that is a string",
+   "tag": "photo-limit-invalid",
+   "view": "PhotoField { label: \"Photo\" max_chars: \"5000\" on: Chosen }"
+  },
+  {
+   "name": "square that is a string",
+   "tag": "photo-square-invalid",
+   "view": "PhotoField { label: \"Photo\" square: \"yes\" on: Chosen }"
+  },
+  {
+   "name": "an icon outside the set",
+   "tag": "icon-unknown",
+   "view": "PhotoField { label: \"Photo\" icon: \"not-an-icon\" on: Chosen }"
+  },
+  {
+   "name": "a key a field does not take",
+   "tag": "binding-unknown",
+   "view": "PhotoField { label: \"Photo\" accept: \".png\" on: Chosen }"
+  },
+  {
+   "name": "a limit on another element",
+   "tag": "binding-unknown",
+   "view": "Button { label: \"x\" max_chars: 5000 on: Go }"
+  },
+  {
+   "name": "a photo without data",
+   "tag": "photo-incomplete",
+   "view": "Photo { label: \"The lake\" }"
+  },
+  {
+   "name": "a photo with neither label nor decorative",
+   "tag": "photo-label-missing",
+   "view": "Photo { data: pic }"
+  },
+  {
+   "name": "a photo with both label and decorative",
+   "tag": "photo-label-conflict",
+   "view": "Photo { label: \"The lake\" decorative: true data: pic }"
+  },
+  {
+   "name": "a photo with content",
+   "tag": "photo-has-children",
+   "view": "Photo { label: \"The lake\" data: pic Text { \"x\" } }"
+  },
+  {
+   "name": "a photo whose data is a number field",
+   "tag": "photo-data-invalid",
+   "view": "Photo { label: \"The lake\" data: n }"
+  },
+  {
+   "name": "a photo whose tone is a number field",
+   "tag": "photo-tone-invalid",
+   "view": "Photo { label: \"The lake\" data: pic tone: n }"
+  },
+  {
+   "name": "a literal tone outside 0 to 11",
+   "tag": "photo-tone-invalid",
+   "view": "Photo { label: \"The lake\" data: pic tone: \"12\" }"
+  },
+  {
+   "name": "a literal tone with a leading zero",
+   "tag": "photo-tone-invalid",
+   "view": "Photo { label: \"The lake\" data: pic tone: \"03\" }"
+  },
+  {
+   "name": "a ratio with a zero",
+   "tag": "photo-ratio-invalid",
+   "view": "Photo { label: \"The lake\" data: pic ratio: \"0:9\" }"
+  },
+  {
+   "name": "a ratio over 32",
+   "tag": "photo-ratio-invalid",
+   "view": "Photo { label: \"The lake\" data: pic ratio: \"33:9\" }"
+  },
+  {
+   "name": "a ratio that is not W:H",
+   "tag": "photo-ratio-invalid",
+   "view": "Photo { label: \"The lake\" data: pic ratio: \"wide\" }"
+  },
+  {
+   "name": "decorative that is a string",
+   "tag": "photo-decorative-invalid",
+   "view": "Photo { decorative: \"yes\" data: pic }"
+  },
+  {
+   "name": "a key a photo does not take",
+   "tag": "binding-unknown",
+   "view": "Photo { label: \"The lake\" data: pic square: true }"
+  }
+ ]
+}

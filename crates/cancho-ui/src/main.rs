@@ -27,6 +27,7 @@
 //! literal dash in `cancho-ui skill` output (Phase 2).
 
 mod assets;
+mod csp;
 mod data;
 mod diff_cmd;
 mod islands;
@@ -200,9 +201,9 @@ fn run_build(args: &[String]) -> Result<ExitCode, CliError> {
                         .unwrap_or("app")
                         .to_string()
                 });
-                // a program with a map gets a Content-Security-Policy listing the hosts it declared (docs/maps.md)
+                // every page gets a Content-Security-Policy: the baseline, and what the program declared (a map's tile hosts, a sealed island, a `Network` host); src/csp.rs
                 let ir = pipeline::compile_to_ir(file).ok();
-                let csp = ir.as_ref().and_then(cancho_ui_ir::island::page_policy);
+                let csp = csp::program_directives(ir.as_ref());
                 // a theme (docs/theme.md): its stylesheet, and its font files copied into the build
                 let theme = match ir.as_ref().and_then(|i| i.theme.as_ref()) {
                     Some(t) => {

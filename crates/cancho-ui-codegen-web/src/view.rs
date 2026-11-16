@@ -410,6 +410,29 @@ pub(crate) fn emit_view_node(
                 );
                 return out;
             }
+            if matches!(kind, IrElementKind::Photo) {
+                return crate::photo::emit_photo(
+                    indent,
+                    &var,
+                    parent_var,
+                    accessibility,
+                    bindings,
+                    params,
+                );
+            }
+            if matches!(kind, IrElementKind::PhotoField) {
+                // kept by the place of the field in the source, like a FileField (docs/file-upload.md section 2)
+                let key = format!("{}:{}", span.start.line, span.start.column);
+                return crate::photo::emit_field(
+                    indent,
+                    &var,
+                    parent_var,
+                    &key,
+                    accessibility,
+                    bindings,
+                    params,
+                );
+            }
             if matches!(kind, IrElementKind::Key) {
                 // docs/keys.md: a key draws nothing; it is a listener of the element that holds it
                 return crate::keys::emit(indent, &var, parent_var, bindings, params);

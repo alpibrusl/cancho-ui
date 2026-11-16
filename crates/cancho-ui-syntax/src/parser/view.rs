@@ -304,6 +304,8 @@ impl Parser {
             "Media" => ElementKind::Media,
             "Grid" => ElementKind::Grid,
             "Icon" => ElementKind::Icon,
+            "PhotoField" => ElementKind::PhotoField,
+            "Photo" => ElementKind::Photo,
             other => ElementKind::Named(other.to_string()),
         };
 
@@ -628,6 +630,10 @@ impl Parser {
                     }
                 };
                 Ok(BindingValue::Role(role))
+            }
+            // `data:` and `tone:` of a `Photo` (docs/structure.md 12.0r): `String` expressions of the view, read at each render (a state field, or a name of a `For`)
+            "data" | "tone" if matches!(kind, ElementKind::Photo) => {
+                Ok(BindingValue::Prop(self.parse_expr()?))
             }
             "tone" => {
                 // A literal (`"error"`) or the name of a String state field.

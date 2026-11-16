@@ -420,8 +420,11 @@ fn a_page_with_a_map_lets_images_in_from_the_hosts_it_declared_and_no_others() {
     let src = full("requires Network(\"tiles.example\");");
     for mode in ["--page", "--pwa"] {
         let html = built_index(&src, mode);
-        let want = "<meta http-equiv=\"Content-Security-Policy\" content=\"img-src 'self' data: https://tiles.example\">";
-        assert!(html.contains(want), "{mode}: {html}");
+        assert_eq!(
+            common::directive(&html, "img-src").as_deref(),
+            Some("'self' data: https://tiles.example"),
+            "{mode}: {html}"
+        );
         // before anything in the head that could ask for an image
         assert!(
             html.find("Content-Security-Policy") < html.find("<style>"),
@@ -437,29 +440,46 @@ fn a_page_with_a_map_lets_images_in_from_the_hosts_it_declared_and_no_others() {
         "requires Network;",
         &FULL.replace("https://tiles.example/{z}", "/tiles/{z}"),
     );
-    assert!(built_index(&own, "--page").contains("content=\"img-src 'self' data:\""));
+    assert_eq!(
+        common::directive(&built_index(&own, "--page"), "img-src").as_deref(),
+        Some("'self' data:")
+    );
     // a localhost stand-in keeps its scheme and port
     let local = comp(
         "requires Network(\"localhost:8099\");",
         &FULL.replace("https://tiles.example", "http://localhost:8099"),
     );
-    assert!(built_index(&local, "--page").contains("img-src 'self' data: http://localhost:8099\""));
+    assert_eq!(
+        common::directive(&built_index(&local, "--page"), "img-src").as_deref(),
+        Some("'self' data: http://localhost:8099")
+    );
 }
 
 #[test]
-fn two_maps_on_one_host_name_it_once_and_a_page_without_a_map_has_no_policy() {
+fn two_maps_on_one_host_name_it_once_and_a_page_without_a_map_has_the_baseline_only() {
     let two = format!(
         "component M {{\n    requires Network(\"tiles.example\", \"other.example\");\n    state pos: String = \"40.42,-3.70\";\n    state places: List[String] = {ROWS};\n    view {{ Column {{ Map {{ {FULL} }} Map {{ {} }} Map {{ {} }} }} }}\n}}\n",
         FULL.replace("Places", "Second"),
         FULL.replace("tiles.example", "other.example"),
     );
     let html = built_index(&two, "--page");
-    assert!(
-        html.contains("img-src 'self' data: https://tiles.example https://other.example\""),
+    assert_eq!(
+        common::directive(&html, "img-src").as_deref(),
+        Some("'self' data: https://tiles.example https://other.example"),
         "{html}"
     );
     let plain = "component C {\n    state n: Int = 0;\n    on Inc { n = n + 1; }\n    view { Column { Button { label: \"Add\" on: Inc } } }\n}\n";
-    assert!(!built_index(plain, "--page").contains("Content-Security-Policy"));
+    // not a page with no policy any more (docs/structure.md 12.0r): the baseline, whose images are the page's own and `data:`, and no tile host
+    let html = built_index(plain, "--page");
+    assert_eq!(
+        common::directive(&html, "img-src").as_deref(),
+        Some("'self' data:")
+    );
+    assert!(
+        common::csp(&html)
+            .expect("a policy")
+            .starts_with("default-src 'self'")
+    );
 }
 
 #[test]

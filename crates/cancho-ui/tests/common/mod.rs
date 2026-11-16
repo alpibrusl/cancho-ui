@@ -70,3 +70,26 @@ pub fn scratch_root() -> PathBuf {
     })
     .clone()
 }
+
+/// The text of the page's `<meta http-equiv="Content-Security-Policy">`, with the entities of an attribute undone; `None` when the page has none.
+#[allow(dead_code)]
+pub fn csp(html: &str) -> Option<String> {
+    let at = html.find("<meta http-equiv=\"Content-Security-Policy\" content=\"")?;
+    let rest = &html[at + "<meta http-equiv=\"Content-Security-Policy\" content=\"".len()..];
+    let end = rest.find("\">")?;
+    Some(
+        rest[..end]
+            .replace("&quot;", "\"")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&amp;", "&"),
+    )
+}
+
+/// The sources one directive of the page's policy lists (`None`: the page has no policy, or the policy has no such directive).
+#[allow(dead_code)]
+pub fn directive(html: &str, name: &str) -> Option<String> {
+    csp(html)?
+        .split("; ")
+        .find_map(|d| d.strip_prefix(&format!("{name} ")).map(str::to_string))
+}

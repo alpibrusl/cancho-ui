@@ -1442,3 +1442,212 @@ fn steps_month_and_ticks_are_refused_where_they_do_not_belong() {
         );
     }
 }
+
+// ---- 12.0r: PhotoField and Photo ----
+
+const PHOTO_PROGRAM: &str = "component App {\n    state pic: String = \"\";\n    on Chosen(r) { pic = r; }\n    view { Column { PhotoField { label: \"Photo\" on: Chosen } Photo { label: \"Shown\" data: pic ratio: \"3:2\" tone: \"5\" } } }\n}\n";
+
+fn css_rule<'a>(html: &'a str, selector: &str) -> &'a str {
+    let at = html
+        .find(&format!("{selector} {{"))
+        .unwrap_or_else(|| panic!("no rule for {selector}"));
+    let rest = &html[at..];
+    &rest[..rest.find('}').expect("a rule ends") + 1]
+}
+
+#[test]
+fn a_photo_field_is_a_key_an_icon_over_its_caption_with_a_44_px_target_and_the_input_laid_over_it()
+{
+    let (html, _) = page_of(PHOTO_PROGRAM);
+    let key = css_rule(&html, ".cui-photo-key");
+    for want in [
+        "display: inline-flex",
+        "flex-direction: column",
+        "min-width: 44px",
+        "min-height: 44px",
+        "border-radius: 12px",
+        "var(--cui-soft",
+    ] {
+        assert!(key.contains(want), "`{want}` in {key}");
+    }
+    // the native input is the whole target and cannot be seen: opacity, not display:none (a hidden input is not focusable)
+    let input = css_rule(&html, ".cui-photo-in");
+    for want in [
+        "position: absolute",
+        "inset: 0",
+        "width: 100%",
+        "height: 100%",
+        "opacity: 0",
+    ] {
+        assert!(input.contains(want), "`{want}` in {input}");
+    }
+    assert!(
+        !input.contains("display: none") && !input.contains("visibility"),
+        "{input}"
+    );
+    // the keyboard's focus is drawn on the key, in the accent as the fields' is
+    assert!(
+        html.contains(".cui-photo-key:has(.cui-photo-in:focus-visible) { outline: 3px solid color-mix(in srgb, var(--cui-accent, #185fa5) 55%, transparent);"),
+        "a focus ring"
+    );
+    // the status line is text in the page's own colour: no opacity that would take it under 4.5:1
+    let status = css_rule(&html, ".cui-photo-status");
+    assert!(
+        !status.contains("opacity") && !status.contains("color:"),
+        "{status}"
+    );
+}
+
+#[test]
+fn a_photo_is_a_box_of_its_ratio_with_a_gradient_of_its_tone_until_a_canvas_is_in_it() {
+    let (html, js) = page_of(PHOTO_PROGRAM);
+    let photo = css_rule(&html, ".cui-photo");
+    for want in [
+        "overflow: hidden",
+        "border-radius: 16px",
+        "linear-gradient(135deg, var(--cui-pt)",
+        "width: 100%",
+    ] {
+        assert!(photo.contains(want), "`{want}` in {photo}");
+    }
+    // the twelve colours of face(..): the same ones, so a person's disc and a person's picture agree
+    let tones = [
+        "#b41d26", "#0b6a73", "#6b4a9e", "#1e7e34", "#8a4b00", "#1d5fa8", "#a1236f", "#556b00",
+        "#475569", "#4338a0", "#7b2d8e", "#0e6b8c",
+    ];
+    for (i, c) in tones.iter().enumerate() {
+        assert!(
+            html.contains(&format!(
+                "[data-tone=\"{i}\"][data-style] {{ background: {c}; }}"
+            )) && html.contains(&format!(
+                ".cui-photo[data-tone=\"{i}\"] {{ --cui-pt: {c}; }}"
+            )),
+            "tone {i}"
+        );
+    }
+    let pic = css_rule(&html, ".cui-photo-pic");
+    assert!(
+        pic.contains("object-fit: cover") && pic.contains("position: absolute"),
+        "{pic}"
+    );
+    // the box has its ratio from the program, as a property of the element (the CSSOM, which a policy without unsafe-inline for styles would also allow)
+    assert!(js.contains("style.aspectRatio = '3 / 2'"), "the ratio");
+    // a page that does not draw a picture has none of it
+    let (plain, _) = page_of(&program(PAGE, "Text { \"x\" }"));
+    assert!(
+        !plain.contains("cui-photo"),
+        "a page with no picture has no picture rule"
+    );
+}
+
+#[test]
+fn a_photo_is_the_first_child_of_a_cover_card_or_a_banner_in_place_of_an_image() {
+    let src = "component App {\n    state pic: String = \"\";\n    view { Column { Column { card: true overlay: \"cover\" Photo { label: \"Cover\" data: pic ratio: \"16:10\" } Text { \"Title\" } Text { \"3 days\" } } Column { overlay: \"banner\" Photo { decorative: true data: pic ratio: \"3:1\" } Heading { level: 2 \"Name\" } } } }\n}\n";
+    let (html, js) = page_of(src);
+    // the rules of the two cards are the Image's, and the Photo is a child like it: its box is square-cornered inside the card, and in a banner it fills the block whatever its ratio
+    assert!(
+        html.contains(".cui-overlay-cover > :first-child { grid-area: 1 / 1;"),
+        "the cover rule"
+    );
+    assert!(
+        html.contains(".cui-overlay-banner > :first-child { position: absolute; inset: 0;"),
+        "the banner rule"
+    );
+    assert!(
+        html.contains(".cui-overlay > .cui-photo:first-child { border-radius: 0; background: linear-gradient(135deg, var(--cui-pt),"),
+        "the card's own dark fill must not hide the tone of the first child (it is more specific than `.cui-photo`, so the rule says it again)"
+    );
+    assert!(html.contains(
+        ".cui-overlay-banner > .cui-photo:first-child { aspect-ratio: auto !important; }"
+    ));
+    assert!(
+        html.contains(".cui-overlay-banner > .cui-photo:first-child::after { content: \"\"; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6), rgba(0,0,0,0.25));"),
+        "a scrim over a banner picture, because the picture is the person's"
+    );
+    assert!(
+        html.contains("cui-overlay cui-overlay-cover")
+            && html.contains("cui-overlay cui-overlay-banner"),
+        "the cards are marked"
+    );
+    // the picture is state, so the script draws it (a hole in the skeleton, between the card and its text); that it is the card's first child in the browser is scripts/check-photo.js's
+    assert!(js.contains("__cui_photo_draw("), "{js}");
+    // and it builds with the compiler's rules for the two cards: nothing in the compiler restricts what the first child is
+    assert!(codes(src).is_empty(), "{:?}", codes(src));
+}
+
+/// The page's `__cui_photo_ok` and `__cui_photo_draw` run by node with a small stand-in for the document, against what the compiler's `picture_ok` says: a tone only 0 to 11, a text
+/// only when it is base64 that starts like a JPEG and is 100 to 48,000 characters (the decoder is not even asked otherwise), the canvas of the ratio and the picture cut to cover it, and
+/// the decoder and its cache are the ones of `face(..)`.
+#[test]
+fn the_emitted_photo_draws_only_what_the_compiler_says_is_a_picture_and_on_a_canvas_of_its_ratio() {
+    let Ok(v) = Command::new("node").arg("--version").output() else {
+        eprintln!("node is not installed: not run");
+        return;
+    };
+    assert!(v.status.success());
+    let (_, js) = page_of(PHOTO_PROGRAM);
+    let from = |name: &str| {
+        let start = js.find(name).unwrap_or_else(|| panic!("no {name}"));
+        let end = js[start..]
+            .find("\n}\n")
+            .map(|i| start + i + 3)
+            .expect("a function ends");
+        js[start..end].to_string()
+    };
+    let bmp = format!(
+        "{}\n{}",
+        from("var __cui_face_bmps"),
+        from("function __cui_face_bmp")
+    );
+    let ok = from("function __cui_photo_ok");
+    let draw = from("function __cui_photo_draw");
+    let script = format!(
+        r#"
+var asked = 0, drawn = [];
+global.createImageBitmap = function () {{ asked++; return Promise.resolve({{ width: 400, height: 200 }}); }};
+global.Blob = function (a, o) {{ this.type = o.type; }};
+global.document = {{ createElement: function () {{ var c = {{ attrs: {{}}, setAttribute: function (k, v) {{ this.attrs[k] = v; }}, getContext: function () {{ return {{ drawImage: function () {{ drawn.push([].slice.call(arguments, 1).map(Math.round)); }} }}; }} }}; return c; }} }};
+{bmp}
+{ok}
+{draw}
+function el() {{ var e = {{ attrs: {{}}, kids: [], setAttribute: function (k, v) {{ this.attrs[k] = v; }}, removeAttribute: function (k) {{ delete this.attrs[k]; }}, appendChild: function (c) {{ this.kids.push(c); }} }}; return e; }}
+var jpeg = "/9j/" + "A".repeat(200);
+var a = el(); __cui_photo_draw(a, jpeg, "5", 3, 2);
+var b = el(); __cui_photo_draw(b, jpeg, "12", 2, 3);
+var c = el(); __cui_photo_draw(c, "/9j/short", "03", 1, 1);
+var d = el(); __cui_photo_draw(d, 5, "", 1, 1);
+var e = el(); __cui_photo_draw(e, "/9j/" + "A".repeat(200) + "<", "11", 1, 1);
+console.log(JSON.stringify([a.attrs["data-tone"] || null, b.attrs["data-tone"] || null, c.attrs["data-tone"] || null, d.attrs["data-tone"] || null, e.attrs["data-tone"] || null]));
+setTimeout(function () {{
+    console.log(JSON.stringify([asked, a.kids.length, a.kids[0].width + "x" + a.kids[0].height, a.kids[0].attrs["aria-hidden"], a.attrs["data-photo"], b.kids[0].width + "x" + b.kids[0].height, c.kids.length + d.kids.length + e.kids.length]));
+    console.log(JSON.stringify(drawn));
+}}, 20);
+"#
+    );
+    let out = Command::new("node")
+        .arg("-e")
+        .arg(&script)
+        .output()
+        .expect("node runs");
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let got: Vec<String> = String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .map(str::to_string)
+        .collect();
+    // a tone is 0 to 11 as written, the rest is none, whatever the text is
+    assert_eq!(got[0], r#"["5",null,null,null,"11"]"#, "{got:?}");
+    // the decoder was asked once for the good text, which was drawn twice (a cache shared with face(..)); the canvas of 3:2 is 720x480 and of 2:3 480x720; nothing was drawn for the others
+    assert_eq!(
+        got[1], r#"[1,1,"720x480","true","1","480x720",0]"#,
+        "{got:?}"
+    );
+    // 400x200 picture on 720x480: scaled by max(720/400, 480/200) = 2.4 to 960x480 and centred (-120, 0); on 480x720: by max(1.2, 3.6) = 3.6 to 1440x720 and centred (-480, 0)
+    assert!(
+        got[2].contains("[-120,0,960,480]") && got[2].contains("[-480,0,1440,720]"),
+        "{got:?}"
+    );
+}

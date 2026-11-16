@@ -391,6 +391,19 @@ fn run_step(
                     ),
                 ));
             }
+            // A photo field gives its event the base64 text of a picture it made, or the reason it did not; a trace that gives another describes a
+            // page that does not exist (docs/structure.md 12.0r).
+            if let (Some(Value::Str(given)), Some(specs)) = (params.first(), m.photo_specs(name))
+                && let Err(why) = cancho_ui_ir::photo::check_value(given, &specs)
+            {
+                return Err(stop(
+                    "trace-value-not-a-photo",
+                    "params",
+                    format!(
+                        "`{name}` is fired only by a PhotoField, and the step's value is not one it gives: {why}"
+                    ),
+                ));
+            }
             // A number field gives its event the number typed as the text `num` reads (`1.5`, not `1,5` or `1.50`), or the typed text when it
             // is not a number; a trace that gives a number in another spelling describes a page that does not exist (docs/number-input.md).
             if m.is_number_event(name)
