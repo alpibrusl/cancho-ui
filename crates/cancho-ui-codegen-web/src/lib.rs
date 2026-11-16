@@ -26,6 +26,7 @@ mod map;
 mod media;
 mod number;
 mod photo;
+mod rail;
 mod routemap;
 mod sortlist;
 mod stream;

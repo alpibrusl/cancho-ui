@@ -110,6 +110,12 @@
       "title": "A picture from the phone",
       "source": "examples/photo/photo.cui",
       "says": "`PhotoField` and `Photo`: choose a picture with the phone's own chooser; the page cuts and shrinks it to a base64 JPEG that fits a number of characters (no EXIF is kept) and the program draws that text on a canvas, three ways, with no `<img>`, no address and no request. No picture is committed to this page."
+    },
+    {
+      "id": "rail",
+      "title": "A row that scrolls and chooses",
+      "source": "examples/rail/rail.cui",
+      "says": "`Rail`: a row of cards that scrolls and snaps with CSS alone; a tap, Enter or Space on a card tells the program its place, `selected:` rings the chosen one, `follow: true` makes a swipe choose, and `dots:` and `snap:` shape it."
     }
   ],
   "soon": [

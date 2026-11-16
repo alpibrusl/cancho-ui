@@ -1,0 +1,69 @@
+// examples/rail/rail.cui: a row of cards that scrolls and snaps, and the one that is chosen (docs/structure.md 12.0s).
+//
+// A Rail is the row: CSS scroll-snap does the scrolling (touch, wheel, keyboard), no script moves it. Each child is a thing to choose: a tap, Enter or Space on one
+// tells `on:` its place (0 for the first), and `selected:` says which place is chosen now, so the program holds the choice in one state field and the view reads it.
+// The second rail is chosen by scrolling (`follow: true`): the card that settles in the middle is the chosen one.
+
+component RailDemo {
+    state current: Int = 1;
+    state seen: Int = 0;
+    state names: List[String] = ["Lisbon", "Porto", "Faro", "Evora", "Braga"];
+
+    on Pick(i) { current = i; }
+    on Seen(i) { seen = i; }
+    on Next { current = if current + 1 < len(names) { current + 1 } else { 0 }; }
+
+    view {
+        Column {
+            Heading { level: 1 "Rail" }
+            Text { role: status "Chosen: {current}" }
+            Rail {
+                label: "Cities"
+                on: Pick
+                selected: current
+                snap: "center"
+                gap: 2
+                item_width: 60
+                dots: true
+                For {
+                    over: names
+                    as: name
+                    Column {
+                        card: true
+                        Text { "{name}" }
+                        Text { "A stop on the trip" }
+                    }
+                }
+            }
+            Button { label: "Next card" on: Next }
+            Heading { level: 2 "Chosen by scrolling" }
+            Text { "Settled on: {seen}" }
+            Rail {
+                label: "Cities, chosen by scrolling"
+                on: Seen
+                selected: seen
+                follow: true
+                snap: "center"
+                item_width: 70
+                For {
+                    over: names
+                    as: name
+                    Column {
+                        card: true
+                        Text { "{name}" }
+                    }
+                }
+            }
+            Heading { level: 2 "Only a row to scroll" }
+            Rail {
+                label: "Things to see"
+                snap: "start"
+                item_width: 40
+                Column { card: true Text { "Castle" } }
+                Column { card: true Text { "Tram" } }
+                Column { card: true Text { "Market" } }
+                Column { card: true Text { "Cathedral" } }
+            }
+        }
+    }
+}

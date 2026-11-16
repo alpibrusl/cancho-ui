@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A row that scrolls and chooses</title>
+<style>
+/* A default so a program is usable on a phone; the page owns presentation, replace it freely. */
+:root { color-scheme: light dark; }
+body {
+    margin: 0;
+    padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+        max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.cui-col { display: flex; flex-direction: column; gap: 0.5rem; }
+.cui-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+/* Grid (docs/structure.md section 10): as many columns as fit at `min`, equal; with weights, one flex line whose cells grow in proportion and wrap, one under another, when the line cannot hold them */
+.cui-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--cui-min)), 1fr)); gap: 0.5rem; }
+.cui-grid.cui-grid-w { display: flex; flex-wrap: wrap; }
+.cui-grid-w > * { min-width: 0; }
+.cui-grid-w > :nth-child(1) { flex: var(--cui-w1) 1 min(100%, calc(var(--cui-min) * var(--cui-w1))); }
+.cui-grid-w > :nth-child(2) { flex: var(--cui-w2) 1 min(100%, calc(var(--cui-min) * var(--cui-w2))); }
+.cui-grid-w > :nth-child(3) { flex: var(--cui-w3) 1 min(100%, calc(var(--cui-min) * var(--cui-w3))); }
+.cui-grid-w > :nth-child(4) { flex: var(--cui-w4) 1 min(100%, calc(var(--cui-min) * var(--cui-w4))); }
+/* gap: 0..4 on a Row or Column (docs/presentation.md section 2) */
+.cui-gap-0 { gap: 0; } .cui-gap-1 { gap: 0.25rem; } .cui-gap-2 { gap: 0.5rem; } .cui-gap-3 { gap: 1rem; } .cui-gap-4 { gap: 2rem; }
+/* a TextField with a label: the label is shown above the field */
+.cui-field { display: flex; flex-direction: column; gap: 0.25rem; }
+/* a Checkbox: the box and its text in one label that is the touch target (docs/controls.md section 9) */
+.cui-check { display: flex; align-items: center; gap: 0.5rem; min-height: 44px; min-width: 44px; }
+.cui-check input { min-height: 0; min-width: 0; width: 1.25rem; height: 1.25rem; margin: 0; }
+/* Table */
+.cui-table { border-collapse: collapse; width: 100%; }
+/* a table wider than the page scrolls inside this box, not the page (#144) */
+.cui-table-scroll { overflow-x: auto; max-width: 100%; }
+/* a Table with max_height: the box scrolls down too; sticky: "header", "column" or "both" keeps the first row and the first column in view (docs/table-static.md) */
+.cui-table-scroll.cui-has-height { overflow-y: auto; }
+.cui-sticky-head th { position: sticky; top: 0; background: Canvas; z-index: 1; }
+.cui-sticky-col th:first-child, .cui-sticky-col td:first-child { position: sticky; left: 0; background: Canvas; z-index: 1; }
+.cui-sticky-head.cui-sticky-col th:first-child { z-index: 2; }
+/* a window (docs/window.md): every body row is --cui-row high, and a longer text is cut, not taller; the spacer rows are not rows */
+.cui-table-scroll[data-cui-window] tbody tr:not([aria-hidden]) td { height: var(--cui-row); box-sizing: border-box; padding-block: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* numeric: true on a cell: the digits line up (docs/table-static.md) */
+/* a sortable header (docs/table-sort.md): the arrow is drawn, and the empty alternative text keeps it out of the button's name */
+.cui-table th[aria-sort=ascending] button::after { content: " \2191" / ""; }
+.cui-table th[aria-sort=descending] button::after { content: " \2193" / ""; }
+.cui-table th.cui-num, .cui-table td.cui-num { text-align: end; font-variant-numeric: tabular-nums; }
+.cui-table th, .cui-table td { text-align: start; padding: 0.25rem 0.5rem; border-bottom: 1px solid color-mix(in srgb, currentColor 25%, transparent); }
+.cui-table th { font-weight: 600; }
+/* Chart (docs/charts.md): the series colour is 7.59:1 on white and 9.63:1 on the dark page (WCAG 1.4.11 asks 3:1) */
+:root { --cui-chart: #0550ae; --cui-chart-open: #57606a; }
+.cui-chart { margin: 0; }
+.cui-chart figcaption { font-weight: 600; }
+.cui-chart summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
+/* RouteMap (docs/routes.md): a pin is a fill with the page's own colour as its number and outline; fills are 7.59, 5.08 and 6.39:1 against white and 9.63, 7.37 and 6.43:1 against the dark page, and the number is the page colour on the fill (the same pairs), so a pin is read by its number and the list, never by its colour alone */
+:root { --cui-route-lodging: #0550ae; --cui-route-activity: #1a7f37; --cui-route-transport: #57606a; --cui-route-other: CanvasText; --cui-route-ink: Canvas; }
+.cui-routemap-svg { display: block; width: 100%; max-width: 40rem; height: auto; }
+.cui-rm-lodging { fill: var(--cui-route-lodging); } .cui-rm-activity { fill: var(--cui-route-activity); }
+.cui-rm-transport { fill: var(--cui-route-transport); } .cui-rm-other { fill: var(--cui-route-other); }
+.cui-rm-list { list-style: none; margin: 0; padding: 0; }
+/* tone: a status text says what kind it is by a prefix as well as by colour, so colour is never the only signal */
+[data-tone] { font-weight: 600; }
+[data-tone="ok"] { color: #1a7f37; } [data-tone="ok"]::before { content: "\2713  "; }
+[data-tone="warn"] { color: #9a6700; } [data-tone="warn"]::before { content: "\26A0  "; }
+[data-tone="error"] { color: #cf222e; } [data-tone="error"]::before { content: "\2717  "; }
+@media (prefers-color-scheme: dark) {
+    :root { --cui-chart: #79c0ff; --cui-chart-open: #9198a1; --cui-route-lodging: #79c0ff; --cui-route-activity: #3fb950; --cui-route-transport: #9198a1; }
+    [data-tone="ok"] { color: #3fb950; } [data-tone="warn"] { color: #d29922; } [data-tone="error"] { color: #ff7b72; }
+}
+button, input, textarea { min-height: 44px; min-width: 44px; font: inherit; }
+/* structure (docs/structure.md): a link in a header, a nav or a footer is a target of its own; the appearances of a Link; the roles of a Text */
+header a, nav a, footer a { display: inline-flex; align-items: center; min-height: 44px; }
+a.cui-link-primary, a.cui-link-secondary, a.cui-link-quiet { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-height: 44px; min-width: 44px; padding: 0 1rem; border-radius: 8px; font-weight: 600; text-decoration: none; }
+a.cui-link-primary { background: LinkText; color: Canvas; }
+a.cui-link-secondary { border: 1px solid LinkText; }
+details > summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; }
+figure { margin: 0; } figcaption { font-size: 0.88rem; }
+[data-style] { margin: 0; }
+[data-style="eyebrow"], [data-style="label"] { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+[data-style="eyebrow"] { color: LinkText; }
+/* an avatar (docs/structure.md 12.0c): the initials of a person on a coloured disc; the colours are fixed, each is 4.5:1 or better with the white text */
+[data-style="avatar"] { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; flex: none; width: 2.25rem; height: 2.25rem; margin: 0; border: 2px solid Canvas; border-radius: 50%; font-size: 0.78rem; font-weight: 700; line-height: 1; text-transform: uppercase; background: #b41d26; color: #fff; }
+[data-style="avatar"]:nth-of-type(4n+2) { background: #6b5585; }
+[data-style="avatar"]:nth-of-type(4n+3) { background: #1e7e34; }
+[data-style="avatar"]:nth-of-type(4n) { background: #884e00; }
+[data-style="avatar"] + [data-style="avatar"] { margin-left: -0.6rem; }
+/* a star on the corner of the avatar before it (docs/structure.md 12.0k): an organiser's mark; the avatar after it overlaps as it would without the star */
+[data-style="star"] { display: inline-flex; align-items: center; justify-content: center; position: relative; z-index: 1; flex: none; box-sizing: border-box; align-self: flex-end; width: 0.95rem; height: 0.95rem; margin: 0 0 0 -0.8rem; border: 1px solid Canvas; border-radius: 50%; font-size: 0.55rem; line-height: 1; background: #fff; color: #7a4a00; }
+[data-style="star"] + [data-style="avatar"] { margin-left: -0.15rem; }
+[data-style="lead"] { font-size: 1.1rem; max-width: 40rem; }
+[data-style="note"] { font-size: 0.88rem; }
+/* inline content and code (docs/structure.md sections 7 and 8): a code box is dark in both schemes, as the cancho-www page draws it */
+code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9em; }
+.cui-code { position: relative; border-radius: 12px; background: #12151a; color: #d6dde8; }
+.cui-code pre { margin: 0; padding: 0.9rem 1rem; overflow: auto; white-space: pre; font: 0.78rem/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.cui-code code { font: inherit; }
+.cui-code[data-copy] pre { padding-right: 5.5rem; }
+.cui-copy { position: absolute; top: 0.45rem; right: 0.45rem; }
+/* Image and Media (docs/structure.md section 10): never wider than the file or the column; a `ratio` crops to the shape */
+.cui-img { display: block; overflow: hidden; border-radius: 12px; }
+.cui-img img { display: block; width: 100%; height: auto; }
+.cui-img[data-ratio] img { height: 100%; object-fit: cover; }
+.cui-media { display: block; width: 100%; max-width: 100%; height: auto; border-radius: 12px; background: #000; }
+[data-ratio="1:1"] { aspect-ratio: 1 / 1; } [data-ratio="4:3"] { aspect-ratio: 4 / 3; } [data-ratio="3:2"] { aspect-ratio: 3 / 2; }
+[data-ratio="16:9"] { aspect-ratio: 16 / 9; } [data-ratio="21:9"] { aspect-ratio: 21 / 9; } [data-ratio="3:4"] { aspect-ratio: 3 / 4; } [data-ratio="2:3"] { aspect-ratio: 2 / 3; }
+/* Waffle and Chip (docs/waffle.md): squares are drawn in the series colour (7.59:1 on white, 9.63:1 on the dark page) and a text colour of the page (6.4:1 and 6.5:1), outlined and not filled when they are not counted, so colour is never the only difference; a chip says its message in words and its tone in a colour and a border */
+.cui-waffle svg { display: block; width: 100%; max-width: 60rem; height: auto; }
+.cui-wf-on { fill: var(--cui-chart); }
+.cui-wf-known { fill: none; stroke: var(--cui-chart); stroke-width: 2; }
+.cui-wf-open { fill: none; stroke: var(--cui-chart-open); stroke-width: 1; }
+.cui-waffle table { border-collapse: collapse; } .cui-waffle th, .cui-waffle td { text-align: start; padding: 0.25rem 0.75rem 0.25rem 0; }
+.cui-chip { display: inline-block; font: 600 0.72rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0.04em; text-transform: uppercase; padding: 0.1rem 0.5rem; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.cui-chip-good { color: var(--cui-good, #1a7f37); }
+.cui-chip-warn { color: var(--cui-warn, #9a6700); background: var(--cui-warn-bg, transparent); }
+.cui-chip-accent { color: var(--cui-accent, #0550ae); }
+.cui-chip-quiet { color: var(--cui-chart-open); border-style: dashed; }
+@media (prefers-color-scheme: dark) { .cui-chip-good { color: var(--cui-good, #3fb950); } .cui-chip-warn { color: var(--cui-warn, #d29922); } .cui-chip-accent { color: var(--cui-accent, #79c0ff); } }
+/* page (docs/page.md): a sticky Header stays at the top of the window, a skip link shows only while it has the focus, and a Main a link can start from is not outlined */
+.cui-sticky { position: sticky; top: 0; z-index: 10; box-sizing: border-box; min-height: 4rem; display: flex; flex-wrap: wrap; align-items: center; column-gap: 1rem; background: Canvas; border-bottom: 1px solid color-mix(in srgb, currentColor 25%, transparent); }
+.cui-skip { position: fixed; top: -4rem; left: 0.5rem; z-index: 20; display: inline-flex; align-items: center; min-height: 44px; padding: 0 1rem; border-radius: 8px; font-weight: 600; background: LinkText; color: Canvas; }
+.cui-skip:focus { top: 0.5rem; }
+main[tabindex="-1"]:focus { outline: none; }
+.cui-sticky nav { display: flex; flex-wrap: wrap; column-gap: 1rem; }
+/* a docked Nav (docs/structure.md 12.0b) is the tab bar at the foot of the window: fixed, centred, and the page keeps room under it */
+.cui-dock { position: fixed; left: 50%; bottom: max(0.75rem, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 10; box-sizing: border-box; width: min(calc(100% - 2rem), 28rem); display: flex; justify-content: space-around; gap: 0.25rem; padding: 0.4rem; border-radius: 999px; background: color-mix(in srgb, Canvas 86%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); box-shadow: 0 8px 28px -6px rgba(0,0,0,0.28); border: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+.cui-dock > * { flex: 1 1 0; min-width: 0; }
+body:has(.cui-dock) { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
+/* a floating button and a sheet (docs/structure.md 12.0g): fixed over the page, above the tab bar, shown only while an `Aside { marks: .. }` of their kind is on the page */
+.cui-fab, .cui-sheet { position: fixed; z-index: 11; box-sizing: border-box; margin: 0; }
+.cui-fab { right: 1rem; bottom: calc(5.25rem + env(safe-area-inset-bottom)); }
+.cui-fab > button { min-height: 52px; padding: 0 1.4rem; box-shadow: 0 8px 24px -4px rgba(0,0,0,0.35); }
+.cui-sheet { left: 50%; bottom: calc(5.25rem + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(calc(100% - 1.5rem), 28rem); max-height: calc(100dvh - 9.5rem); overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem; border-radius: 24px; background: var(--cui-surface, Canvas); color: var(--cui-fg, CanvasText); border: 1px solid color-mix(in srgb, currentColor 18%, transparent); box-shadow: 0 16px 48px -8px rgba(0,0,0,0.45); }
+[data-mark] { display: none; }
+/* a chat (docs/structure.md 12.0h, 12.0i): a log with a faint pattern, bubbles that lean to one side (a run of one sender has one avatar and one name, and a tail on its first bubble), day pills, reaction chips on a bubble's edge, a header and a composer in a pill */
+.cui-chatlog { display: flex; flex-direction: column; gap: 0; flex: 1 1 auto; min-height: 9rem; overflow-y: auto; padding: 0.4rem 0.5rem 1rem; border-radius: 18px; background-color: var(--cui-soft, color-mix(in srgb, currentColor 6%, transparent)); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' fill='none' stroke='%23785a46' stroke-opacity='.11' stroke-width='1.4' stroke-linecap='round'%3E%3Ccircle cx='20' cy='22' r='7'/%3E%3Cpath d='M70 14v12M64 20h12'/%3E%3Cpath d='M98 52c6-8 12 8 18 0'/%3E%3Crect x='14' y='70' width='13' height='13' rx='3'/%3E%3Ccircle cx='66' cy='78' r='3'/%3E%3Cpath d='M92 96l8-10 8 10z'/%3E%3Cpath d='M40 108c4-6 8 6 12 0'/%3E%3Cpath d='M52 44l3 6 6 1-4 5 1 6-6-3-6 3 1-6-4-5 6-1z'/%3E%3C/svg%3E"); background-size: 120px 120px; }
+.cui-bubble { --b: var(--cui-surface, Canvas); position: relative; box-sizing: border-box; max-width: calc(100% - 4.8rem); gap: 0.05rem; margin-top: 0.12rem; padding: 0.3rem 0.6rem 0.2rem; border-radius: 12px; background: var(--b); color: var(--cui-fg, CanvasText); box-shadow: 0 1px 1px rgba(0,0,0,0.2); overflow-wrap: anywhere; line-height: 1.3; }
+.cui-bubble p { margin: 0; }
+.cui-bubble-theirs { align-self: flex-start; margin-left: 2.4rem; }
+.cui-bubble-mine { --b: var(--cui-accent-soft, #dcf8c6); align-self: flex-end; margin-right: 0.1rem; }
+.cui-bubble-system { align-self: center; max-width: 92%; background: transparent; box-shadow: none; color: var(--cui-muted, inherit); font-size: 0.8rem; text-align: center; margin-top: 0.4rem; }
+.cui-bubble-day { align-self: center; max-width: 92%; margin: 0.7rem 0 0.4rem; padding: 0.15rem 0.7rem; border-radius: 8px; font-size: 0.74rem; color: var(--cui-muted, inherit); }
+.cui-bubble:has(> [data-style="mark"]) { margin-top: 0.5rem; }
+.cui-bubble-theirs:has(> [data-style="mark"]) { border-top-left-radius: 0; }
+.cui-bubble-mine:has(> [data-style="mark"]) { border-top-right-radius: 0; }
+.cui-bubble:has(> [data-style="mark"])::before { content: ""; position: absolute; top: 0; width: 0; height: 0; border-top: 9px solid var(--b); }
+.cui-bubble-theirs:has(> [data-style="mark"])::before { left: -8px; border-left: 8px solid transparent; }
+.cui-bubble-mine:has(> [data-style="mark"])::before { right: -8px; border-right: 8px solid transparent; }
+.cui-bubble:has(> [data-style="big"]) { --b: transparent; background: transparent; box-shadow: none; padding-inline: 0.2rem; }
+.cui-bubble:has(> [data-style="big"])::before { display: none; }
+.cui-bubble [data-style="mark"] { display: none; }
+.cui-bubble [data-style="big"] { font-size: 2.6rem; line-height: 1.15; }
+.cui-bubble [data-style="eyebrow"] { text-transform: none; letter-spacing: 0; font-size: 0.78rem; font-weight: 700; }
+.cui-bubble [data-style^="hue"] { font-size: 0.8rem; font-weight: 700; line-height: 1.25; text-transform: none; letter-spacing: 0; }
+.cui-bubble [data-style="note"] { align-self: flex-end; font-size: 0.66rem; color: var(--cui-muted, inherit); }
+[data-style^="disc"] { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; flex: none; width: 2rem; height: 2rem; margin: 0; border-radius: 50%; font-size: 0.72rem; font-weight: 700; line-height: 1; text-transform: uppercase; color: #fff; }
+.cui-bubble > [data-style^="disc"] { position: absolute; left: -2.5rem; top: 0; }
+.cui-bubble [data-style="hue0"] { color: #b41d26; }
+[data-style="disc0"] { background: #b41d26; }
+.cui-bubble [data-style="hue1"] { color: #0b6a73; }
+[data-style="disc1"] { background: #0b6a73; }
+.cui-bubble [data-style="hue2"] { color: #6b4a9e; }
+[data-style="disc2"] { background: #6b4a9e; }
+.cui-bubble [data-style="hue3"] { color: #1e7e34; }
+[data-style="disc3"] { background: #1e7e34; }
+.cui-bubble [data-style="hue4"] { color: #8a4b00; }
+[data-style="disc4"] { background: #8a4b00; }
+.cui-bubble [data-style="hue5"] { color: #1d5fa8; }
+[data-style="disc5"] { background: #1d5fa8; }
+.cui-bubble [data-style="hue6"] { color: #a1236f; }
+[data-style="disc6"] { background: #a1236f; }
+.cui-bubble [data-style="hue7"] { color: #556b00; }
+[data-style="disc7"] { background: #556b00; }
+/* a person's own look (docs/structure.md 12.0l): `face(..)` gives a disc a tone (twelve fixed colours, each 6.00:1 or better with white), an emoji in place of the initials, or a photo drawn on a canvas over it */
+[data-tone="0"][data-style] { background: #b41d26; }
+[data-tone="1"][data-style] { background: #0b6a73; }
+[data-tone="2"][data-style] { background: #6b4a9e; }
+[data-tone="3"][data-style] { background: #1e7e34; }
+[data-tone="4"][data-style] { background: #8a4b00; }
+[data-tone="5"][data-style] { background: #1d5fa8; }
+[data-tone="6"][data-style] { background: #a1236f; }
+[data-tone="7"][data-style] { background: #556b00; }
+[data-tone="8"][data-style] { background: #475569; }
+[data-tone="9"][data-style] { background: #4338a0; }
+[data-tone="10"][data-style] { background: #7b2d8e; }
+[data-tone="11"][data-style] { background: #0e6b8c; }
+[data-style][data-emoji] { font-size: 1.5em; font-weight: 400; text-transform: none; }
+[data-style][data-photo] { position: relative; overflow: hidden; }
+.cui-face-pic { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; }
+[data-style="avatar"][data-photo] { border-color: Canvas; }
+/* a quote of an earlier message, a mention, the time and the ticks (docs/structure.md 12.0j) */
+.cui-quote { display: flex; flex-direction: column; gap: 0.05rem; min-width: 0; margin: 0.1rem 0 0.3rem; padding: 0.2rem 0.5rem; border-inline-start: 4px solid var(--q, #1e7e34); border-radius: 6px; background: color-mix(in srgb, currentColor 8%, transparent); }
+.cui-bubble .cui-quote [data-style^="hue"] { font-size: 0.78rem; }
+.cui-bubble .cui-quote [data-style="note"] { align-self: flex-start; max-width: 100%; box-sizing: border-box; font-size: 0.82rem; color: inherit; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cui-quote:has([data-style="hue0"]) { --q: #b41d26; }
+.cui-quote:has([data-style="hue1"]) { --q: #0b6a73; }
+.cui-quote:has([data-style="hue2"]) { --q: #6b4a9e; }
+.cui-quote:has([data-style="hue3"]) { --q: #1e7e34; }
+.cui-quote:has([data-style="hue4"]) { --q: #8a4b00; }
+.cui-quote:has([data-style="hue5"]) { --q: #1d5fa8; }
+.cui-quote:has([data-style="hue6"]) { --q: #a1236f; }
+.cui-quote:has([data-style="hue7"]) { --q: #556b00; }
+.cui-sheet > .cui-row.cui-strip:not(:first-child):not(.cui-composer) { flex: none; flex-wrap: nowrap; align-items: center; gap: 0.4rem; overflow-x: auto; }
+.cui-strip > [data-style] { flex: 1 1 auto; min-width: 0; margin: 0; font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+:root .cui-sheet > .cui-row.cui-strip:not(:first-child):not(.cui-composer) button { flex: none; min-width: 1.9rem; min-height: 1.9rem; padding: 0 0.7rem; border-radius: 999px; font-size: 0.85rem; line-height: 1; white-space: nowrap; background: var(--cui-soft, transparent); color: var(--cui-fg, inherit); border: 1px solid color-mix(in srgb, currentColor 22%, transparent); }
+.cui-mention { padding: 0 0.25em; border-radius: 6px; font-weight: 600; background: color-mix(in srgb, var(--cui-accent, #1e7e34) 22%, transparent); }
+.cui-meta { align-self: flex-end; display: flex; flex-wrap: nowrap; align-items: baseline; gap: 0.25rem; }
+.cui-bubble .cui-meta > [data-style] { align-self: auto; }
+.cui-bubble [data-style="tick"], .cui-bubble [data-style="tickblue"] { font-size: 0.72rem; line-height: 1; letter-spacing: -0.14em; color: var(--cui-muted, inherit); }
+.cui-bubble [data-style="tickblue"] { color: #1d5fa8; }
+.cui-sheet:has(> .cui-chatlog) { overflow: hidden; height: min(34rem, calc(100dvh - 9.5rem)); }
+.cui-sheet > .cui-chatlog { min-height: 0; }
+:root .cui-bubble button { min-height: 28px; min-width: 0; padding: 0 0.7rem; font-size: 0.78rem; background: transparent; color: var(--cui-accent, LinkText); border: 1px solid color-mix(in srgb, currentColor 35%, transparent); box-shadow: none; }
+:root .cui-bubble > button { position: absolute; top: 50%; transform: translateY(-50%); width: 1.75rem; min-width: 1.75rem; height: 1.75rem; min-height: 1.75rem; padding: 0; border-radius: 50%; font-size: 0.95rem; line-height: 1; color: var(--cui-muted, inherit); background: var(--cui-surface, Canvas); border-color: transparent; box-shadow: 0 1px 2px rgba(0,0,0,0.25); }
+:root .cui-bubble-theirs > button { right: -2.2rem; }
+:root .cui-bubble-mine > button { left: -2.2rem; }
+.cui-bubble:has(> .cui-chips) { margin-bottom: 0.95rem; }
+.cui-chips { position: absolute; bottom: -0.85rem; left: 0.4rem; z-index: 1; display: flex; gap: 0.2rem; }
+:root .cui-bubble .cui-chips button { min-height: 24px; min-width: 24px; padding: 0 0.4rem; font-size: 0.78rem; line-height: 1; color: var(--cui-fg, CanvasText); background: var(--cui-surface, Canvas); border: 1px solid color-mix(in srgb, currentColor 20%, transparent); border-radius: 999px; box-shadow: 0 1px 2px rgba(0,0,0,0.25); }
+.cui-sheet > .cui-row:first-child { justify-content: space-between; align-items: center; }
+.cui-sheet > .cui-row:first-child button { background: transparent; color: var(--cui-fg, CanvasText); border: 1px solid color-mix(in srgb, currentColor 35%, transparent); }
+.cui-chathead { flex-wrap: nowrap; gap: 0.65rem; }
+.cui-chathead > .cui-col { flex: 1 1 auto; min-width: 0; gap: 0; }
+.cui-chathead > [data-style="avatar"] { width: 2.5rem; height: 2.5rem; margin: 0; border: 0; font-size: 0.85rem; }
+.cui-chathead > .cui-col > * { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cui-chathead > .cui-col > [role="heading"] { font-size: 1.05rem; line-height: 1.25; }
+.cui-chathead > .cui-col > [data-style="note"] { font-size: 0.78rem; }
+.cui-chathead > button { flex: none; }
+.cui-sheet > .cui-row:not(:first-child):not(.cui-composer) { flex-wrap: wrap; gap: 0.25rem; }
+:root .cui-sheet > .cui-row:not(:first-child):not(.cui-composer) button { min-width: 2.2rem; min-height: 2.2rem; padding: 0 0.2rem; font-size: 1.2rem; background: var(--cui-soft, transparent); color: var(--cui-fg, inherit); border: 0; box-shadow: none; }
+:root .cui-bubble > .cui-row:not(.cui-chips) button { min-width: 2rem; padding: 0 0.3rem; }
+.cui-composer { position: relative; display: flex; flex-wrap: nowrap; align-items: center; gap: 0.15rem; }
+.cui-composer::before { content: ""; position: absolute; left: 0; right: calc(46px + 0.45rem); top: 0; bottom: 0; border-radius: 999px; background: var(--cui-surface, Canvas); border: 1px solid color-mix(in srgb, currentColor 22%, transparent); }
+.cui-composer:focus-within::before { border-color: var(--cui-accent, Highlight); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cui-accent, Highlight) 40%, transparent); }
+.cui-composer > * { position: relative; z-index: 1; }
+.cui-composer > .cui-field { flex: 1 1 0; min-width: 0; font-size: 0; }
+:root .cui-composer > .cui-field input:not([type="checkbox"]):not([type="file"]):not([type="range"]) { width: 100%; box-sizing: border-box; font-size: 1rem; border: 0; border-radius: 0; background: transparent; box-shadow: none; outline: none; padding-inline: 0.2rem; min-height: 2.6rem; }
+:root .cui-composer > .cui-field input:focus-visible { outline: none; }
+:root .cui-composer > button:not(:last-child) { flex: none; width: 2.4rem; min-width: 2.4rem; height: 2.4rem; min-height: 2.4rem; padding: 0; border: 0; border-radius: 50%; background: transparent; box-shadow: none; font-size: 1.2rem; line-height: 1; color: var(--cui-muted, inherit); }
+.cui-composer > button:last-child { flex: none; width: 46px; min-width: 46px; height: 46px; margin-left: 0.3rem; padding: 0; border-radius: 50%; font-size: 0; display: inline-flex; align-items: center; justify-content: center; }
+.cui-composer > button:last-child::before { content: "\27A4"; font-size: 1.25rem; line-height: 1; }
+@media (prefers-color-scheme: dark) {
+.cui-chatlog { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' fill='none' stroke='%23ffffff' stroke-opacity='.07' stroke-width='1.4' stroke-linecap='round'%3E%3Ccircle cx='20' cy='22' r='7'/%3E%3Cpath d='M70 14v12M64 20h12'/%3E%3Cpath d='M98 52c6-8 12 8 18 0'/%3E%3Crect x='14' y='70' width='13' height='13' rx='3'/%3E%3Ccircle cx='66' cy='78' r='3'/%3E%3Cpath d='M92 96l8-10 8 10z'/%3E%3Cpath d='M40 108c4-6 8 6 12 0'/%3E%3Cpath d='M52 44l3 6 6 1-4 5 1 6-6-3-6 3 1-6-4-5 6-1z'/%3E%3C/svg%3E"); }
+.cui-bubble [data-style="hue0"] { color: #ff8a8a; }
+.cui-bubble [data-style="hue1"] { color: #4fd1d9; }
+.cui-bubble [data-style="hue2"] { color: #b79cff; }
+.cui-bubble [data-style="hue3"] { color: #6fdba5; }
+.cui-bubble [data-style="hue4"] { color: #ffb366; }
+.cui-bubble [data-style="hue5"] { color: #7db5ff; }
+.cui-bubble [data-style="hue6"] { color: #ff8ccf; }
+.cui-bubble [data-style="hue7"] { color: #c9d65a; }
+.cui-quote:has([data-style="hue0"]) { --q: #ff8a8a; }
+.cui-quote:has([data-style="hue1"]) { --q: #4fd1d9; }
+.cui-quote:has([data-style="hue2"]) { --q: #b79cff; }
+.cui-quote:has([data-style="hue3"]) { --q: #6fdba5; }
+.cui-quote:has([data-style="hue4"]) { --q: #ffb366; }
+.cui-quote:has([data-style="hue5"]) { --q: #7db5ff; }
+.cui-quote:has([data-style="hue6"]) { --q: #ff8ccf; }
+.cui-quote:has([data-style="hue7"]) { --q: #c9d65a; }
+.cui-bubble [data-style="tickblue"] { color: #7db5ff; }
+}
+:root:not(:has([data-mark="fab"])) .cui-fab { display: none; }
+:root:not(:has([data-mark="sheet"])) .cui-sheet { display: none; }
+/* a second floating button and a second sheet (docs/structure.md 12.0k): the button sits at the start side of the first, the sheet is the first one's twin and is drawn by its own marker */
+.cui-fab2, .cui-sheet2 { position: fixed; z-index: 11; box-sizing: border-box; margin: 0; }
+.cui-fab2 { right: 6.1rem; bottom: calc(5.25rem + env(safe-area-inset-bottom)); }
+.cui-fab2 > button { min-height: 52px; min-width: 52px; padding: 0 1rem; border-radius: 999px; box-shadow: 0 8px 24px -4px rgba(0,0,0,0.35); }
+:root:has([data-mark="fab2"]) .cui-fab > button { min-width: 4.5rem; justify-content: center; }
+.cui-sheet2 { left: 50%; bottom: calc(5.25rem + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(calc(100% - 1.5rem), 28rem); max-height: calc(100dvh - 9.5rem); overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem; border-radius: 24px; background: var(--cui-surface, Canvas); color: var(--cui-fg, CanvasText); border: 1px solid color-mix(in srgb, currentColor 18%, transparent); box-shadow: 0 16px 48px -8px rgba(0,0,0,0.45); }
+.cui-sheet2 > .cui-row:first-child { justify-content: space-between; align-items: center; }
+.cui-sheet2 > .cui-row:first-child button { background: transparent; color: var(--cui-fg, CanvasText); border: 1px solid color-mix(in srgb, currentColor 35%, transparent); }
+:root:not(:has([data-mark="fab2"])) .cui-fab2 { display: none; }
+:root:not(:has([data-mark="sheet2"])) .cui-sheet2 { display: none; }
+:root:has([data-mark="sheet2"]) .cui-fab, :root:has([data-mark="sheet2"]) .cui-fab2 { display: none; }
+/* a band (docs/structure.md 12.0k): a block in the flow, shown only while an `Aside { marks: "band" }` is on the page: a sealed island can sit in it, which an `If` cannot hold */
+.cui-band { display: block; margin: 0 0 0.75rem; }
+:root:not(:has([data-mark="band"])) .cui-band { display: none; }
+/* a second band (docs/structure.md 12.0l): the same, for a second sealed island that is not on the page all the time (a person's picture) */
+.cui-band2 { display: block; margin: 0 0 0.75rem; }
+:root:not(:has([data-mark="band2"])) .cui-band2 { display: none; }
+/* motion (docs/motion.md): an element is hidden only while the page's script has it armed and has not yet seen it, and never when the visitor asks for less motion */
+.cui-reveal.cui-armed { transition: opacity 0.7s ease, transform 0.7s ease; }
+.cui-reveal.cui-armed:not(.cui-in) { opacity: 0; transform: translateY(18px); }
+.cui-countup { font-variant-numeric: tabular-nums; }
+.cui-countup[data-frame] { position: relative; color: transparent; }
+.cui-countup[data-frame]::after { content: attr(data-frame) / ""; position: absolute; left: 0; top: 0; color: var(--cui-cu); }
+@media (prefers-reduced-motion: reduce), print {
+    .cui-reveal.cui-armed { transition: none; }
+    .cui-reveal.cui-armed:not(.cui-in) { opacity: 1; transform: none; }
+    .cui-countup[data-frame] { color: inherit; }
+    .cui-countup[data-frame]::after { content: none; }
+}
+</style>
+<style id="cui-look">
+:root button { border-radius: 999px; border-color: transparent; background: var(--cui-accent, #185fa5); color: var(--cui-accent-fg, #ffffff); font-weight: 600; }
+:root button:disabled { background: var(--cui-soft, #efece1); color: var(--cui-muted, #4f545b); }
+/* an icon-only button (its content is an element, not text) keeps its own size in a column instead of stretching to a bar */
+:root .cui-col > .cui-ico { align-self: flex-start; }
+/* an icon link or button: the icon is larger, and a link that holds one is a round target, not an underlined word */
+:root button:has(> *) { font-size: 1.25rem; line-height: 1; }
+:root a[title]:has(> *) { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; padding: 0 0.5rem; border-radius: 999px; background: var(--cui-soft, #efece1); font-size: 1.25rem; line-height: 1; }
+:root button[aria-pressed="true"] { box-shadow: 0 0 0 3px color-mix(in srgb, var(--cui-accent, #185fa5) 35%, transparent); }
+:root nav button { background: transparent; color: var(--cui-fg, currentColor); }
+:root nav button[aria-pressed="true"] { background: var(--cui-accent, #185fa5); color: var(--cui-accent-fg, #ffffff); box-shadow: none; }
+/* the tab bar is flat (docs/structure.md 12.0m): a filled pill, with no border (the pressed rule above sets the border's colour, and a button's default border style is outset: that was the thick 3D edge) and no ring */
+:root .cui-dock button, :root .cui-dock button[aria-pressed="true"] { border: 0; box-shadow: none; }
+:root .cui-dock button:focus:not(:focus-visible) { outline: none; }
+/* keys (12.0m): icon-only buttons side by side in one row, small, wrapping only when the line is full. A `Row { keys: true }` is one; so is a Column that holds an icon-only button directly
+   (its other children take the whole line, in their order, so what was a stack of round buttons is a row of keys without a change to the program) */
+:root .cui-keys, :root .cui-col:has(> .cui-ico):not(.cui-bubble):not(.cui-chatlog):not(.cui-quote):not(.cui-overlay):not(.cui-chathead):not(.cui-composer):not(.cui-strip):not(.cui-chips):not(.cui-meta):not(.cui-bar):not(.cui-month):not(.cui-ticks):not(.cui-dock):not(.cui-sheet *):not(.cui-band *):not(.cui-band2 *):not(.cui-bar *):not(.cui-month *):not(.cui-ticks *), :root .cui-row:has(> .cui-ico):not(.cui-bubble):not(.cui-chatlog):not(.cui-quote):not(.cui-overlay):not(.cui-chathead):not(.cui-composer):not(.cui-strip):not(.cui-chips):not(.cui-meta):not(.cui-bar):not(.cui-month):not(.cui-ticks):not(.cui-dock):not(.cui-sheet *):not(.cui-band *):not(.cui-band2 *):not(.cui-bar *):not(.cui-month *):not(.cui-ticks *) { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.35rem; }
+:root .cui-col:has(> .cui-ico):not(.cui-bubble):not(.cui-chatlog):not(.cui-quote):not(.cui-overlay):not(.cui-chathead):not(.cui-composer):not(.cui-strip):not(.cui-chips):not(.cui-meta):not(.cui-bar):not(.cui-month):not(.cui-ticks):not(.cui-dock):not(.cui-sheet *):not(.cui-band *):not(.cui-band2 *):not(.cui-bar *):not(.cui-month *):not(.cui-ticks *) > :not(.cui-ico) { flex: 1 1 100%; min-width: 0; }
+:root .cui-keys > button, :root .cui-col:has(> .cui-ico):not(.cui-bubble):not(.cui-chatlog):not(.cui-quote):not(.cui-overlay):not(.cui-chathead):not(.cui-composer):not(.cui-strip):not(.cui-chips):not(.cui-meta):not(.cui-bar):not(.cui-month):not(.cui-ticks):not(.cui-dock):not(.cui-sheet *):not(.cui-band *):not(.cui-band2 *):not(.cui-bar *):not(.cui-month *):not(.cui-ticks *) > .cui-ico, :root .cui-row:has(> .cui-ico):not(.cui-bubble):not(.cui-chatlog):not(.cui-quote):not(.cui-overlay):not(.cui-chathead):not(.cui-composer):not(.cui-strip):not(.cui-chips):not(.cui-meta):not(.cui-bar):not(.cui-month):not(.cui-ticks):not(.cui-dock):not(.cui-sheet *):not(.cui-band *):not(.cui-band2 *):not(.cui-bar *):not(.cui-month *):not(.cui-ticks *) > .cui-ico { flex: none; align-self: center; box-sizing: border-box; min-width: 2.5rem; min-height: 2.5rem; height: 2.5rem; padding: 0 0.6rem; border: 1px solid color-mix(in srgb, currentColor 16%, transparent); border-radius: 12px; background: var(--cui-soft, #efece1); color: var(--cui-fg, CanvasText); font-size: 1.1rem; line-height: 1; box-shadow: none; display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem; }
+:root .cui-keys > button[aria-pressed="true"], :root .cui-col:has(> .cui-ico):not(.cui-bubble):not(.cui-chatlog):not(.cui-quote):not(.cui-overlay):not(.cui-chathead):not(.cui-composer):not(.cui-strip):not(.cui-chips):not(.cui-meta):not(.cui-bar):not(.cui-month):not(.cui-ticks):not(.cui-dock):not(.cui-sheet *):not(.cui-band *):not(.cui-band2 *):not(.cui-bar *):not(.cui-month *):not(.cui-ticks *) > .cui-ico[aria-pressed="true"], :root .cui-row:has(> .cui-ico):not(.cui-bubble):not(.cui-chatlog):not(.cui-quote):not(.cui-overlay):not(.cui-chathead):not(.cui-composer):not(.cui-strip):not(.cui-chips):not(.cui-meta):not(.cui-bar):not(.cui-month):not(.cui-ticks):not(.cui-dock):not(.cui-sheet *):not(.cui-band *):not(.cui-band2 *):not(.cui-bar *):not(.cui-month *):not(.cui-ticks *) > .cui-ico[aria-pressed="true"] { background: color-mix(in srgb, var(--cui-accent, #185fa5) 10%, var(--cui-soft, #efece1)); color: var(--cui-accent, #185fa5); border-color: color-mix(in srgb, var(--cui-accent, #185fa5) 55%, transparent); box-shadow: none; }
+:root .cui-keys > button:disabled { opacity: 0.55; }
+/* a Checkbox in a page with a look role (12.0n): the box is larger and takes the accent, and the label beside it is the touch target; checked and unchecked differ by the box itself, not by colour alone */
+:root .cui-check { gap: 0.6rem; font-weight: 600; }
+:root .cui-check input[type="checkbox"] { width: 1.5rem; height: 1.5rem; flex: none; accent-color: var(--cui-accent, #185fa5); }
+/* a key with a caption: its second child, small, under the icon; the label is still its accessible name */
+:root .cui-keys > button:has(> :nth-child(2)), :root .cui-row:has(> .cui-ico):not(.cui-bubble):not(.cui-chatlog):not(.cui-quote):not(.cui-overlay):not(.cui-chathead):not(.cui-composer):not(.cui-strip):not(.cui-chips):not(.cui-meta):not(.cui-bar):not(.cui-month):not(.cui-ticks):not(.cui-dock):not(.cui-sheet *):not(.cui-band *):not(.cui-band2 *):not(.cui-bar *):not(.cui-month *):not(.cui-ticks *) > .cui-ico:has(> :nth-child(2)) { flex-direction: column; height: auto; min-height: 2.7rem; padding: 0.2rem 0.7rem; gap: 0.1rem; }
+:root .cui-keys > button > * { margin: 0; line-height: 1.1; }
+:root .cui-keys > button > :nth-child(2) { font-size: 0.64rem; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap; }
+:root .cui-row > .cui-keys { margin-inline-start: auto; }
+:root .cui-keys > details { flex: none; }
+:root .cui-keys > details[open] { flex: 1 1 100%; order: 9; }
+/* a hint (12.0m): a Details that is a small round "i" or "more" button, not a "+" pill; what it holds opens under it, on a line of its own */
+:root details.cui-hint:not(.cui-chart) > summary { min-height: 2rem; min-width: 2rem; padding: 0 0.45rem; justify-content: center; border: 0; border-radius: 999px; background: var(--cui-soft, #efece1); color: var(--cui-fg, CanvasText); font-size: 0.95rem; font-weight: 400; line-height: 1; }
+:root details.cui-hint:not(.cui-chart) > summary::before, :root details.cui-hint[open]:not(.cui-chart) > summary::before { content: none; margin: 0; }
+:root details.cui-hint[open]:not(.cui-chart) > summary { margin-bottom: 0.5rem; }
+:root .cui-col:has(> .cui-ico) > details.cui-hint:not([open]) { flex: none; }
+/* the bar of places (12.0m): one row that scrolls sideways, an icon over a tiny caption on each, the open place filled, groups divided by a hairline (a nested Row is a group) */
+:root .cui-bar { display: flex; flex-wrap: nowrap; align-items: stretch; gap: 0.15rem; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scrollbar-width: none; padding: 0.15rem 0.1rem; }
+:root .cui-bar::-webkit-scrollbar { display: none; }
+:root .cui-bar > .cui-row { flex: none; flex-wrap: nowrap; align-items: stretch; gap: 0.15rem; padding-inline-end: 0.4rem; margin-inline-end: 0.25rem; border-inline-end: 1px solid color-mix(in srgb, currentColor 16%, transparent); }
+:root .cui-bar > .cui-row:last-child { border-inline-end: 0; margin-inline-end: 0; padding-inline-end: 0; }
+:root .cui-bar button { flex: none; scroll-snap-align: center; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.12rem; min-width: 3.5rem; min-height: 3.2rem; height: auto; padding: 0.3rem 0.45rem; border: 0; border-radius: 14px; background: transparent; box-shadow: none; color: var(--cui-muted, currentColor); font-size: 0.66rem; font-weight: 600; line-height: 1.1; white-space: nowrap; }
+:root .cui-bar button > * { margin: 0; font-size: inherit; line-height: 1.1; }
+:root .cui-bar button > :first-child { font-size: 1.3rem; line-height: 1; }
+:root .cui-bar button[aria-pressed="true"] { background: color-mix(in srgb, var(--cui-accent, #185fa5) 14%, transparent); color: var(--cui-accent, #185fa5); box-shadow: none; }
+/* steps (12.0p): `Row { steps: true }` holds one `Text { style: "seg" }` for each step still to do and `"segon"` for each done or open one: a thin bar of equal segments, the words inside each are for a screen reader only */
+:root .cui-steps { display: flex; flex-wrap: nowrap; gap: 0.4rem; align-items: center; }
+:root .cui-steps > [data-style="seg"], :root .cui-steps > [data-style="segon"] { flex: 1 1 0; min-width: 0; height: 0.3rem; margin: 0; padding: 0; overflow: hidden; border-radius: 0.15rem; font-size: 0; line-height: 0; color: transparent; background: color-mix(in srgb, var(--cui-fg, CanvasText) 22%, transparent); }
+:root .cui-steps > [data-style="segon"] { background: var(--cui-accent, #185fa5); }
+/* a month (12.0p): `Row { month: true }` is a grid of seven columns. A `Text { style: "label" }` is a weekday's heading, an empty `Text` a blank before the 1st, a `Button` a day (44 px high): `pressed:` tints the days of the range, and a day whose button has a second child (a caption such as "start") is the first day of it, filled with the accent. The range is not colour alone: the label says "day 2 of 3" and the first has its caption */
+:root .cui-month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.15rem 0; align-items: center; justify-items: stretch; }
+:root .cui-month > [data-style="label"] { margin: 0; text-align: center; font-size: 0.75rem; font-weight: 600; color: var(--cui-muted, currentColor); text-transform: none; }
+:root .cui-month > button { box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; min-width: 0; width: 100%; height: 2.75rem; min-height: 2.75rem; padding: 0; border: 0; border-radius: 1.375rem; box-shadow: none; background: transparent; color: var(--cui-fg, CanvasText); font-size: 0.95rem; font-weight: 500; line-height: 1.1; }
+:root .cui-month > button > * { margin: 0; font-size: inherit; line-height: 1.1; }
+:root .cui-month > button[aria-pressed="true"] { background: color-mix(in srgb, var(--cui-accent, #185fa5) 12%, var(--cui-surface, Canvas)); color: var(--cui-accent, #185fa5); font-weight: 700; border-radius: 0; box-shadow: none; }
+:root .cui-month > button[aria-pressed="true"]:has(> :nth-child(2)) { background: var(--cui-accent, #185fa5); color: var(--cui-accent-fg, #ffffff); font-weight: 800; border-radius: 1.375rem; }
+:root .cui-month > button:has(> :nth-child(2)) > :nth-child(2) { font-size: 0.56rem; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; }
+:root .cui-month > button:focus-visible { outline: 2px solid var(--cui-accent, #185fa5); outline-offset: -2px; }
+/* a foot (12.0p): `Row { foot: true }` is a row of keys (as `keys: true`) that stays at the bottom of the sheet it is in while the sheet scrolls, on the sheet's own fill, over a hairline: Back and Continue of a sheet with steps are always in reach */
+/* tick rows (12.0p): `Row { ticks: true }` is a list, one row for each `Button`: a disc or an icon first, its text last (the last child is the one that takes the room), and a round box at the end that holds a tick when the button is `pressed:`. A row is at least 52 px high, divided from the next by a hairline; it is a toggle (several ticked) or, when the program lets one pressed at a time, a choice of one */
+:root .cui-ticks { display: flex; flex-direction: column; flex-wrap: nowrap; gap: 0; align-items: stretch; }
+:root .cui-ticks > button { box-sizing: border-box; display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 0.75rem; width: 100%; min-height: 3.25rem; height: auto; padding: 0.35rem 0.25rem; border: 0; border-bottom: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 0; box-shadow: none; background: transparent; color: var(--cui-fg, CanvasText); font-size: 1rem; font-weight: 600; line-height: 1.25; text-align: left; }
+:root .cui-ticks > button:last-child { border-bottom: 0; }
+:root .cui-ticks > button > * { margin: 0; font-size: inherit; line-height: inherit; }
+:root .cui-ticks > button > * { flex: none; }
+:root .cui-ticks > button > :last-child { flex: 1 1 auto; min-width: 0; text-align: left; }
+:root .cui-ticks > button::after { content: ""; flex: none; box-sizing: border-box; display: flex; align-items: center; justify-content: center; width: 1.6rem; height: 1.6rem; border: 2px solid color-mix(in srgb, var(--cui-fg, CanvasText) 55%, transparent); border-radius: 50%; font-size: 1rem; font-weight: 800; line-height: 1; color: var(--cui-accent-fg, #ffffff); }
+:root .cui-ticks > button[aria-pressed="true"]::after { content: "\2713"; background: var(--cui-accent, #185fa5); border-color: var(--cui-accent, #185fa5); }
+:root .cui-foot { position: sticky; bottom: -1rem; z-index: 2; margin: 0 -1rem -1rem; padding: 0.6rem 1rem 1rem; background: var(--cui-surface, Canvas); border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 0 0 24px 24px; }
+:root .cui-ticks > button:disabled { opacity: 1; background: transparent; color: var(--cui-fg, CanvasText); cursor: default; }
+:root .cui-ticks > button:focus-visible { outline: 2px solid var(--cui-accent, #185fa5); outline-offset: -2px; }
+/* fields (docs/structure.md 12.0e): a pill, a soft fill, one thin border, and a ring in the accent when it has the focus */
+:root input:not([type="checkbox"]):not([type="file"]):not([type="range"]), :root select { border-radius: 999px; border-style: solid; border-width: 1px; padding-inline: 1.1rem; min-height: 2.75rem; }
+:root textarea { border-radius: 20px; border-style: solid; border-width: 1px; padding: 0.7rem 1.1rem; }
+/* a disclosure (docs/structure.md 12.0f): its summary is a pill with a plus that turns into a minus when it is open; the inside waits under it */
+:root details:not(.cui-chart) > summary { display: inline-flex; box-sizing: border-box; padding: 0 1.1rem; border: 1px solid var(--cui-muted, currentColor); border-radius: 999px; font-weight: 600; list-style: none; }
+:root details:not(.cui-chart) > summary::-webkit-details-marker { display: none; }
+:root details:not(.cui-chart) > summary::before { content: "+"; margin-inline-end: 0.5rem; font-weight: 700; }
+:root details[open]:not(.cui-chart) > summary::before { content: "\2212"; }
+:root details[open]:not(.cui-chart) > summary { margin-bottom: 0.75rem; }
+:root input:focus-visible, :root textarea:focus-visible, :root select:focus-visible { outline: 3px solid color-mix(in srgb, var(--cui-accent, #185fa5) 55%, transparent); outline-offset: 1px; border-color: var(--cui-accent, #185fa5); }
+.cui-card { box-sizing: border-box; padding: 1.1rem 1.2rem 1.3rem; border-radius: 16px; border: 1px solid color-mix(in srgb, currentColor 20%, transparent); }
+.cui-align-center { align-items: center; }
+.cui-overlay { display: grid; }
+.cui-overlay.cui-card { padding: 0; overflow: hidden; }
+.cui-overlay > * { grid-area: 1 / 1; min-width: 0; }
+.cui-overlay > :nth-child(n+2) { box-sizing: border-box; margin: 0.75rem; padding: 0.5rem 0.8rem; border-radius: 12px; background: Canvas; color: CanvasText; z-index: 1; }
+.cui-overlay:not(.cui-overlay-banner) > :nth-child(n+2) { font-size: 0.9rem; }
+.cui-overlay > :nth-child(2) { align-self: start; justify-self: start; }
+.cui-overlay > :nth-child(3) { align-self: end; }
+.cui-overlay-banner { position: relative; min-height: 11rem; align-content: center; border-radius: 16px; overflow: hidden; color: #fff; }
+.cui-overlay-banner > :first-child { position: absolute; inset: 0; background: #0b1016; }
+.cui-overlay-banner > :first-child img { display: block; width: 100%; height: 100%; max-width: none; aspect-ratio: auto; object-fit: cover; }
+.cui-overlay-banner > picture:first-child { max-width: none !important; }
+.cui-overlay-banner > :nth-child(n+2) { position: relative; grid-area: auto; grid-column: 1; background: none; color: inherit; margin: 0; padding: 0 1.5rem; align-self: auto; justify-self: auto; max-width: 40rem; }
+.cui-overlay-banner > :nth-child(2) { padding-top: 1.5rem; }
+.cui-overlay-banner > :last-child { padding-bottom: 1.5rem; }
+/* a cover card (docs/structure.md 12.0d): the picture on top with the second child over its foot on a dark scrim, and the rest as the panel under it */
+.cui-overlay-cover { position: relative; border-radius: 24px; overflow: hidden; background: Canvas; }
+.cui-overlay-cover > :first-child { grid-area: 1 / 1; background: #0b1016; }
+.cui-overlay-cover > :first-child img { display: block; width: 100%; max-width: none; aspect-ratio: 16 / 10; object-fit: cover; }
+.cui-overlay-cover > picture:first-child { max-width: none !important; }
+.cui-overlay-cover > :nth-child(2) { grid-area: 1 / 1; align-self: end; justify-self: stretch; box-sizing: border-box; margin: 0; padding: 3rem 1.1rem 0.9rem; border-radius: 0; background: linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0)); color: #fff; font-size: inherit; box-shadow: none; z-index: 1; }
+.cui-overlay-cover > :nth-child(n+3) { grid-area: auto; grid-column: 1; align-self: auto; justify-self: stretch; box-sizing: border-box; margin: 0; padding: 0.4rem 1.1rem; border-radius: 0; background: none; color: inherit; font-size: inherit; box-shadow: none; }
+.cui-overlay-cover > :nth-child(3) { padding-top: 0.9rem; }
+.cui-overlay-cover > :last-child:nth-child(n+3) { padding-bottom: 1.1rem; }
+@media (max-width: 39.99rem) { .cui-from-40.cui-grid-w > * { flex-basis: 100%; } .cui-from-40:not(.cui-grid-w) { grid-template-columns: 1fr; } }
+@media (max-width: 47.99rem) { .cui-from-48.cui-grid-w > * { flex-basis: 100%; } .cui-from-48:not(.cui-grid-w) { grid-template-columns: 1fr; } }
+@media (max-width: 59.99rem) { .cui-from-60.cui-grid-w > * { flex-basis: 100%; } .cui-from-60:not(.cui-grid-w) { grid-template-columns: 1fr; } }
+a.cui-card { display: block; color: inherit; text-decoration: none; }
+.cui-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: 1rem; margin: 0; padding: 0; list-style-position: inside; }
+.cui-cards > li { box-sizing: border-box; padding: 1.1rem 1.1rem 1.2rem; border-radius: 16px; border: 1px solid color-mix(in srgb, currentColor 20%, transparent); }
+a.cui-link-pill { display: inline-flex; align-self: flex-start; align-items: center; box-sizing: border-box; min-height: 44px; padding: 0 0.6rem; border: 7px solid transparent; background-clip: padding-box; border-radius: 999px; box-shadow: inset 0 0 0 1px currentColor; font-size: 0.82rem; text-decoration: none; }
+a.cui-link-pill::before { content: ""; width: 0.5rem; height: 0.5rem; margin-inline-end: 0.5rem; border-radius: 50%; background: currentColor; }
+/* Rail (docs/structure.md 12.0s). The row scrolls by itself (a finger, a wheel, the keyboard) and every child stops at the place `snap:` says: scroll-snap, no script. The padding is room for the chosen child's ring and the focus ring, which an `overflow` box would cut off */
+.cui-rail-box { min-width: 0; max-width: 100%; }
+.cui-rail { display: flex; box-sizing: border-box; margin: 0; padding: 8px; scroll-padding: 8px; overscroll-behavior: contain; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
+.cui-rail:not([class*="cui-gap-"]) { gap: 0.5rem; }
+.cui-rail-h { flex-direction: row; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; }
+.cui-rail-v { flex-direction: column; overflow-y: auto; overflow-x: hidden; max-height: 24rem; scroll-snap-type: y mandatory; }
+.cui-rail-none { scroll-snap-type: none; }
+.cui-rail > * { flex: 0 0 auto; box-sizing: border-box; max-width: 100%; scroll-snap-align: start; }
+.cui-rail-center > * { scroll-snap-align: center; }
+.cui-rail-end > * { scroll-snap-align: end; }
+.cui-rail-none > * { scroll-snap-align: none; }
+.cui-rail-sized > * { flex: 0 0 var(--cui-rail-item); }
+.cui-rail[role="listbox"] > * { cursor: pointer; }
+.cui-rail > .cui-rail-on { box-shadow: 0 0 0 3px var(--cui-accent, #185fa5); }
+.cui-rail > *:focus-visible { outline: 3px solid var(--cui-accent, #185fa5); outline-offset: 3px; }
+.cui-rail-dots { display: flex; justify-content: center; align-items: center; gap: 6px; min-height: 14px; }
+.cui-rail-dot { width: 6px; height: 6px; border-radius: 3px; background: color-mix(in srgb, currentColor 40%, transparent); }
+.cui-rail-dot-on { width: 18px; background: var(--cui-accent, currentColor); }
+</style>
+</head>
+<body>
+<div id="root" data-cui-skeleton="3ff3ca34d4c6bfc1"><div class="cui-col"><h1>Rail</h1><!--cui:0--><!--/cui:0--><!--cui:1--><!--/cui:1--><!--cui:2--><!--/cui:2--><h2>Chosen by scrolling</h2><!--cui:3--><!--/cui:3--><!--cui:4--><!--/cui:4--><h2>Only a row to scroll</h2><!--cui:5--><!--/cui:5--></div></div>
+<noscript>Some parts of this page need JavaScript.</noscript>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>

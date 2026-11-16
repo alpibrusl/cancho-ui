@@ -404,6 +404,22 @@ fn run_step(
                     ),
                 ));
             }
+            // A rail gives its event the place of the child that was chosen, a whole number from 0 (docs/structure.md 12.0s).
+            if let Some(given) = params.first()
+                && m.is_rail_event(name)
+                && let Err(why) = match given {
+                    Value::Num(n) => cancho_ui_ir::rail::check_index(*n),
+                    _ => Err("it is not a number".to_string()),
+                }
+            {
+                return Err(stop(
+                    "trace-value-not-a-rail-index",
+                    "params",
+                    format!(
+                        "`{name}` is fired only by a Rail, and the step's value is not a place it gives: {why}"
+                    ),
+                ));
+            }
             // A number field gives its event the number typed as the text `num` reads (`1.5`, not `1,5` or `1.50`), or the typed text when it
             // is not a number; a trace that gives a number in another spelling describes a page that does not exist (docs/number-input.md).
             if m.is_number_event(name)

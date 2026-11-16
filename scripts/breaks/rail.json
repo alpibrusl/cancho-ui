@@ -1,0 +1,380 @@
+{
+  "_about": "docs/structure.md 12.0s: each rule of Rail spoiled in turn (the script, the compiler's rules, replay, the stylesheet, the hooks of the render); every break must fail a check. Run: node scripts/deliberate-breaks.js scripts/breaks/rail.json",
+  "checks": [
+    {
+      "name": "cargo test rail",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui",
+        "--test",
+        "rail"
+      ]
+    },
+    {
+      "name": "cargo test rail (ir unit)",
+      "argv": [
+        "cargo",
+        "test",
+        "--quiet",
+        "-p",
+        "cancho-ui-ir",
+        "rail"
+      ]
+    },
+    {
+      "name": "check-rail.js",
+      "argv": [
+        "node",
+        "scripts/check-rail.js"
+      ]
+    }
+  ],
+  "breaks": [
+    {
+      "name": "the row is not put back where a render found it",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "if (p) { el.__cui_lock = Date.now() + 800; el.scrollLeft = p.left; el.scrollTop = p.top; }",
+      "to": "if (false) { el.__cui_lock = Date.now() + 800; el.scrollLeft = p.left; el.scrollTop = p.top; }"
+    },
+    {
+      "name": "a render brings the chosen child back even when nothing chose it",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "if (item && (!p || p.sel !== el.__cui_sel)) {",
+      "to": "if (item) {"
+    },
+    {
+      "name": "a new row does not show its chosen child",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "if (item && (!p || p.sel !== el.__cui_sel)) {",
+      "to": "if (item && p && p.sel !== el.__cui_sel) {"
+    },
+    {
+      "name": "nothing is aria-selected",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "c.setAttribute(\"aria-selected\", i === sel ? \"true\" : \"false\");",
+      "to": "c.setAttribute(\"aria-selected\", \"false\");"
+    },
+    {
+      "name": "every child is a tab stop",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "c.setAttribute(\"tabindex\", i === focused ? \"0\" : \"-1\");",
+      "to": "c.setAttribute(\"tabindex\", \"0\");"
+    },
+    {
+      "name": "the tab stop is the first child, not the chosen one",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "focused = sel >= 0 && sel < items.length ? sel : 0;",
+      "to": "focused = 0;"
+    },
+    {
+      "name": "the chosen child has no mark",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "if (i === sel) { c.classList.add(\"cui-rail-on\"); }",
+      "to": "if (false) { c.classList.add(\"cui-rail-on\"); }"
+    },
+    {
+      "name": "a tap on a button inside a child chooses the child too",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "if (/^(A|BUTTON|INPUT|SELECT|TEXTAREA|LABEL|SUMMARY)$/.test(t.tagName)) { return; }",
+      "to": "if (false) { return; }"
+    },
+    {
+      "name": "Space does not choose",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "if (e.key === \"Enter\" || e.key === \" \") {",
+      "to": "if (e.key === \"Enter\") {"
+    },
+    {
+      "name": "Enter does not choose",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "if (e.key === \"Enter\" || e.key === \" \") {",
+      "to": "if (e.key === \" \") {"
+    },
+    {
+      "name": "an arrow also chooses the child it moves to",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "list[next].focus({ preventScroll: true });",
+      "to": "list[next].focus({ preventScroll: true }); on(next);"
+    },
+    {
+      "name": "an arrow goes past the last child",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "next = Math.min(list.length - 1, i + 1);",
+      "to": "next = i + 1;"
+    },
+    {
+      "name": "an arrow goes before the first child",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "next = Math.max(0, i - 1);",
+      "to": "next = i - 1;"
+    },
+    {
+      "name": "Home goes to the second child",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "else if (e.key === \"Home\") { next = 0; }",
+      "to": "else if (e.key === \"Home\") { next = 1; }"
+    },
+    {
+      "name": "End goes to the one before the last",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "else if (e.key === \"End\") { next = list.length - 1; }",
+      "to": "else if (e.key === \"End\") { next = list.length - 2; }"
+    },
+    {
+      "name": "a column answers Up where Down is",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "fwd = o.vertical ? \"ArrowDown\"",
+      "to": "fwd = o.vertical ? \"ArrowUp\""
+    },
+    {
+      "name": "the focus is not moved to the child",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "list[next].focus({ preventScroll: true });",
+      "to": "/* no focus */"
+    },
+    {
+      "name": "the roving tab stop is not moved",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "list[i].setAttribute(\"tabindex\", \"-1\"); list[next].setAttribute(\"tabindex\", \"0\");",
+      "to": "/* no roving */"
+    },
+    {
+      "name": "a row that follows hears its own scrolling",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "if (Date.now() < (el.__cui_lock || 0)) { return; }",
+      "to": "/* no lock */"
+    },
+    {
+      "name": "a row that follows chooses the child farthest from the middle",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "if (d < bd) { bd = d; best = i; }",
+      "to": "if (d > bd || bd === Infinity) { bd = d; best = i; }"
+    },
+    {
+      "name": "a row that does not follow follows",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "if (on && o.follow) {",
+      "to": "if (on) {"
+    },
+    {
+      "name": "a row that follows never does",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "if (on && o.follow) {",
+      "to": "if (false) {"
+    },
+    {
+      "name": "a centred child is measured from its edge",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "if (o.snap === \"center\") { return (a + b) / 2 - (lo + hi) / 2; }",
+      "to": "if (o.snap === \"center\") { return a - lo; }"
+    },
+    {
+      "name": "a child is never brought into view",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "if (Math.abs(d) < 1) { return; }",
+      "to": "if (Math.abs(d) < 1e9) { return; }"
+    },
+    {
+      "name": "a row with nothing to choose is a listbox",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "el.setAttribute(\"role\", \"group\");",
+      "to": "el.setAttribute(\"role\", \"listbox\");"
+    },
+    {
+      "name": "a row with nothing to choose is out of the keyboard's reach",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "el.setAttribute(\"tabindex\", \"0\");\n    }\n    if (o.dots)",
+      "to": "el.setAttribute(\"tabindex\", \"-1\");\n    }\n    if (o.dots)"
+    },
+    {
+      "name": "every dot is the chosen one",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "d.className = i === sel ? \"cui-rail-dot cui-rail-dot-on\" : \"cui-rail-dot\";",
+      "to": "d.className = \"cui-rail-dot cui-rail-dot-on\";"
+    },
+    {
+      "name": "the dots are read by a screen reader",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "dots.setAttribute(\"aria-hidden\", \"true\");",
+      "to": "/* shown */"
+    },
+    {
+      "name": "a place the program gives out of range is a child",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "if (!(isFinite(sel) && sel >= 0)) { sel = -1; }",
+      "to": "/* no check */"
+    },
+    {
+      "name": "the snap word is lost",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "format!(\"cui-rail-{snap}\"),",
+      "to": "\"cui-rail-start\".to_string(),"
+    },
+    {
+      "name": "a column is a row",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "        if vertical {\n            \"cui-rail-v\".to_string()",
+      "to": "        if false {\n            \"cui-rail-v\".to_string()"
+    },
+    {
+      "name": "item_width is not given to the row",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "--cui-rail-item', '{w}%'",
+      "to": "--cui-rail-item', '100%'"
+    },
+    {
+      "name": "the page is not asked to keep the rows",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "out.push_str(\"            const __cui_rails = __cui_rail_save(root);\\n\");",
+      "to": "out.push_str(\"            const __cui_rails = {};\\n\");"
+    },
+    {
+      "name": "the page is not asked to put the rows back",
+      "file": "crates/cancho-ui-codegen-web/src/emit.rs",
+      "from": "out.push_str(\"            __cui_rail_after(root, __cui_rails);\\n\");",
+      "to": "out.push_str(\"            \\n\");"
+    },
+    {
+      "name": "the compiler takes an item_width of 19",
+      "file": "crates/cancho-ui-ir/src/rail.rs",
+      "from": "pub const ITEM_WIDTH_MIN: i64 = 20;",
+      "to": "pub const ITEM_WIDTH_MIN: i64 = 19;"
+    },
+    {
+      "name": "the compiler refuses an item_width of 100",
+      "file": "crates/cancho-ui-ir/src/rail.rs",
+      "from": "Some(n) if (ITEM_WIDTH_MIN..=ITEM_WIDTH_MAX).contains(&n) => Ok(true),",
+      "to": "Some(n) if (ITEM_WIDTH_MIN..ITEM_WIDTH_MAX).contains(&n) => Ok(true),"
+    },
+    {
+      "name": "the compiler takes a snap of any word",
+      "file": "crates/cancho-ui-ir/src/rail.rs",
+      "from": "Some(w) if SNAPS.contains(&w) => Ok(true),",
+      "to": "Some(_) => Ok(true),"
+    },
+    {
+      "name": "the compiler forgets snapping can be off",
+      "file": "crates/cancho-ui-ir/src/rail.rs",
+      "from": "pub const SNAPS: &[&str] = &[\"start\", \"center\", \"end\", \"none\"];",
+      "to": "pub const SNAPS: &[&str] = &[\"start\", \"center\", \"end\"];"
+    },
+    {
+      "name": "the compiler takes a selected that is a String field",
+      "file": "crates/cancho-ui-ir/src/rail.rs",
+      "from": "                            .any(|f| &f.name == name && f.ty != IrType::Int),",
+      "to": "                            .any(|_| false),"
+    },
+    {
+      "name": "the compiler takes a selected that is text",
+      "file": "crates/cancho-ui-ir/src/rail.rs",
+      "from": "                        IrExpr::StringLit { .. }\n                        | IrExpr::BoolLit { .. }\n                        | IrExpr::FloatLit { .. } => true,",
+      "to": "                        IrExpr::BoolLit { .. } | IrExpr::FloatLit { .. } => true,"
+    },
+    {
+      "name": "a selected with nothing to choose is taken",
+      "file": "crates/cancho-ui-ir/src/rail.rs",
+      "from": "    if !selectable(bindings) {\n        for key",
+      "to": "    if false {\n        for key"
+    },
+    {
+      "name": "a rail with no children is taken",
+      "file": "crates/cancho-ui-ir/src/rail.rs",
+      "from": "if !named || children.is_empty() {",
+      "to": "if !named {"
+    },
+    {
+      "name": "a rail with no name is taken",
+      "file": "crates/cancho-ui-ir/src/rail.rs",
+      "from": "if !named || children.is_empty() {",
+      "to": "if children.is_empty() {"
+    },
+    {
+      "name": "a place of 1.5 is a place",
+      "file": "crates/cancho-ui-ir/src/rail.rs",
+      "from": "value.is_finite() && value >= 0.0 && value.fract() == 0.0 && value < 1.0e9",
+      "to": "value.is_finite() && value >= 0.0 && value < 1.0e9"
+    },
+    {
+      "name": "a place below the first is a place",
+      "file": "crates/cancho-ui-ir/src/rail.rs",
+      "from": "value.is_finite() && value >= 0.0 && value.fract() == 0.0 && value < 1.0e9",
+      "to": "value.is_finite() && value.fract() == 0.0 && value < 1.0e9"
+    },
+    {
+      "name": "replay does not know a rail's events",
+      "file": "crates/cancho-ui-replay/src/lib.rs",
+      "from": "&& m.is_rail_event(name)",
+      "to": "&& false && m.is_rail_event(name)"
+    },
+    {
+      "name": "a button that could give the event any number does not lift the check",
+      "file": "crates/cancho-ui-replay/src/machine.rs",
+      "from": "        !f.other && f.rails > 0\n",
+      "to": "        f.rails > 0\n"
+    },
+    {
+      "name": "a rail is not a layout of gaps",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "matches!(kind, IrElementKind::Grid | IrElementKind::Rail) && b.key == \"gap\"",
+      "to": "matches!(kind, IrElementKind::Grid) && b.key == \"gap\""
+    },
+    {
+      "name": "a rail's event is given no place",
+      "file": "crates/cancho-ui-ir/src/controls.rs",
+      "from": "            | IrElementKind::PhotoField\n            | IrElementKind::Rail,\n        ) => event.params.len().min(1),",
+      "to": "            | IrElementKind::PhotoField,\n        ) => event.params.len().min(1),"
+    },
+    {
+      "name": "the page does not carry the rules of the rows",
+      "file": "crates/cancho-ui/src/page_files.rs",
+      "from": "let rails = cancho_ui_ir::rail::uses_rail(ir);",
+      "to": "let rails = false && cancho_ui_ir::rail::uses_rail(ir);"
+    },
+    {
+      "name": "the row snaps loosely (proximity)",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; }",
+      "to": "overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; }"
+    },
+    {
+      "name": "the column snaps on x",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": "max-height: 24rem; scroll-snap-type: y mandatory; }",
+      "to": "max-height: 24rem; scroll-snap-type: x mandatory; }"
+    },
+    {
+      "name": "a centred child snaps to its start",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": ".cui-rail-center > * { scroll-snap-align: center; }",
+      "to": ".cui-rail-center > * { scroll-snap-align: start; }"
+    },
+    {
+      "name": "a child shrinks to fit the row",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": ".cui-rail > * { flex: 0 0 auto;",
+      "to": ".cui-rail > * { flex: 0 1 auto;"
+    },
+    {
+      "name": "the chosen child's ring is gone",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": ".cui-rail > .cui-rail-on { box-shadow: 0 0 0 3px var(--cui-accent, #185fa5); }",
+      "to": ".cui-rail > .cui-rail-on { }"
+    },
+    {
+      "name": "a row with a gap of 2 has none",
+      "file": "crates/cancho-ui/src/pwa.rs",
+      "from": ".cui-rail:not([class*=\"cui-gap-\"]) { gap: 0.5rem; }",
+      "to": ".cui-rail { gap: 0.5rem; }"
+    },
+    {
+      "name": "a row that follows measures from the middle whatever snap says",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "snap: o.snap === \"none\" ? \"center\" : o.snap };\n                if (Date.now()",
+      "to": "snap: \"center\" };\n                if (Date.now()"
+    }
+  ],
+  "equivalent": []
+}

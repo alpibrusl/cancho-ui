@@ -80,6 +80,8 @@ async function launch() {
       await done;
       return {
         problems,
+        // the protocol itself, for input the page cannot make for itself (a finger, a key, a swipe); absent under playwright, whose pages have their own
+        cdp: send,
         async evaluate(src) {
           const r = await send('Runtime.evaluate', { expression: src, awaitPromise: true, returnByValue: true });
           if (r.result.exceptionDetails) { throw new Error(`in the page: ${r.result.exceptionDetails.exception ? r.result.exceptionDetails.exception.description : r.result.exceptionDetails.text}`); }

@@ -433,6 +433,37 @@ pub(crate) fn emit_view_node(
                     params,
                 );
             }
+            if matches!(kind, IrElementKind::Rail) {
+                // the row's children are the things to choose, in the order they are drawn (docs/structure.md 12.0s); kept by the place of the rail in the source
+                let key = format!("{}:{}", span.start.line, span.start.column);
+                let (open, close) = crate::rail::emit(
+                    indent,
+                    &var,
+                    parent_var,
+                    &key,
+                    accessibility,
+                    bindings,
+                    params,
+                );
+                let mut out = open;
+                let child_indent = format!("{indent}    ");
+                for c in children {
+                    out.push_str(&emit_view_node(
+                        next_id,
+                        &child_indent,
+                        c,
+                        &var,
+                        params,
+                        components,
+                        prop_consumers,
+                        has_slots,
+                        slot_prefix,
+                        slot_arr,
+                    ));
+                }
+                out.push_str(&close);
+                return out;
+            }
             if matches!(kind, IrElementKind::Key) {
                 // docs/keys.md: a key draws nothing; it is a listener of the element that holds it
                 return crate::keys::emit(indent, &var, parent_var, bindings, params);

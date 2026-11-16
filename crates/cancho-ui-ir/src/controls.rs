@@ -131,6 +131,7 @@ fn check_node(c: &IrComponent, node: &IrViewNode, in_for: bool) -> Result<(), Lo
                     *span,
                     in_for,
                 )?;
+                crate::rail::check_complete(kind, accessibility, bindings, children, *span)?;
                 check_navlink_complete(kind, accessibility, bindings, *span)?;
                 check_file_field(kind, accessibility, bindings, *span, in_for)?;
                 check_chart(kind, accessibility, bindings, *span, in_for)?;
@@ -211,6 +212,7 @@ fn element_name(kind: &IrElementKind) -> &'static str {
         IrElementKind::Icon => "Icon",
         IrElementKind::PhotoField => "PhotoField",
         IrElementKind::Photo => "Photo",
+        IrElementKind::Rail => "Rail",
         IrElementKind::Island(_) => "an island",
         IrElementKind::Named(_) => "a component",
     }
@@ -265,7 +267,8 @@ fn check_on(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result<(), 
             | IrElementKind::Checkbox
             | IrElementKind::Select
             | IrElementKind::FileField
-            | IrElementKind::PhotoField,
+            | IrElementKind::PhotoField
+            | IrElementKind::Rail,
         ) => event.params.len().min(1),
         // a move gives the two indexes (docs/drag-and-drop.md)
         (None, IrElementKind::SortList) => 2,
@@ -546,7 +549,7 @@ fn check_input_type(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerErro
 
 /// `gap:` and `max_width:` are bindings of a `Column` or a `Row`, and take an integer literal in a fixed range.
 fn check_layout(kind: &IrElementKind, b: &IrBinding) -> Result<(), LowerError> {
-    let grid_gap = matches!(kind, IrElementKind::Grid) && b.key == "gap";
+    let grid_gap = matches!(kind, IrElementKind::Grid | IrElementKind::Rail) && b.key == "gap";
     if !grid_gap && !matches!(kind, IrElementKind::Column | IrElementKind::Row) {
         return Err(LowerError::ControlRefused {
             code: "binding-unknown",
@@ -987,6 +990,9 @@ fn check_binding(c: &IrComponent, kind: &IrElementKind, b: &IrBinding) -> Result
         return Ok(());
     }
     if crate::photo::check_binding(c, kind, b)? {
+        return Ok(());
+    }
+    if crate::rail::check_binding(c, kind, b)? {
         return Ok(());
     }
     if crate::icon::check_binding(kind, b)? {

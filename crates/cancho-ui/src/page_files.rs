@@ -261,6 +261,7 @@ pub fn parts(ir: &IrFile) -> PageParts {
     let copy = cancho_ui_ir::page::uses_code_copy(ir);
     let icons = cancho_ui_ir::page::uses_icons(ir) || cancho_ui_ir::photo::uses_photo_field(ir);
     let photos = cancho_ui_ir::photo::uses_photo(ir);
+    let rails = cancho_ui_ir::rail::uses_rail(ir);
     let Some(p) = &ir.page else {
         return PageParts {
             sticky,
@@ -269,6 +270,7 @@ pub fn parts(ir: &IrFile) -> PageParts {
             copy,
             icons,
             photos,
+            rails,
             ..PageParts::default()
         };
     };
@@ -290,6 +292,7 @@ pub fn parts(ir: &IrFile) -> PageParts {
         copy,
         icons,
         photos,
+        rails,
     }
 }
 

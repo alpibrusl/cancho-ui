@@ -33,6 +33,7 @@ pub mod messages;
 pub mod motion;
 pub mod page;
 pub mod photo;
+pub mod rail;
 pub mod recipe;
 pub mod routemap;
 pub mod routing;

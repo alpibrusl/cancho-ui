@@ -786,6 +786,8 @@ pub enum IrElementKind {
     PhotoField,
     /// `Photo { .. }` (docs/structure.md 12.0r): a base64 JPEG held in state, drawn on a canvas.
     Photo,
+    /// `Rail { .. }` (docs/structure.md 12.0s): a scrolling row of the children it holds, each snapping into place and each a thing to choose.
+    Rail,
     /// `Table { .. }` (docs/presentation.md section 4) and what lowering makes of its descendants: a `Row` of a table is
     /// a `TableRow`, a `Text` of that row a `Cell` (a `HeaderCell` with `role: columnheader`), and any other element of
     /// it is wrapped in a `Cell`.
@@ -846,6 +848,7 @@ impl IrElementKind {
             IrElementKind::Icon => "svg",
             IrElementKind::PhotoField => "input",
             IrElementKind::Photo => "div",
+            IrElementKind::Rail => "div",
             IrElementKind::SortList => "ul",
             IrElementKind::Map => "figure",
             IrElementKind::Table => "table",

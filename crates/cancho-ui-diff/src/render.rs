@@ -187,6 +187,7 @@ fn kind(k: &IrElementKind) -> String {
         IrElementKind::Icon => "Icon".into(),
         IrElementKind::PhotoField => "PhotoField".into(),
         IrElementKind::Photo => "Photo".into(),
+        IrElementKind::Rail => "Rail".into(),
         IrElementKind::Island(i) => i.name.clone(),
         IrElementKind::Named(n) => n.clone(),
     }

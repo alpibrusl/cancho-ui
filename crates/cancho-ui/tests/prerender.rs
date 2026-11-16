@@ -288,6 +288,8 @@ fn the_gallery_demos_are_interactive_and_each_keeps_a_line_for_a_visitor_without
         "icons",
         // photo (2026-11-16): a heading of its own is static text; the chooser, the status and the pictures are holes: nine
         "photo",
+        // rail (2026-11-16): headings of its own are static text; the rows, the status and the buttons are holes: ten
+        "rail",
     ];
     let demos = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/demo");
     let mut n = 0;
@@ -309,7 +311,7 @@ fn the_gallery_demos_are_interactive_and_each_keeps_a_line_for_a_visitor_without
             "{id}"
         );
     }
-    assert_eq!(n, 17, "the gallery has 17 demos");
+    assert_eq!(n, 18, "the gallery has 18 demos");
 }
 
 // ---- hydration (P1b): the script builds the holes and nothing else ----------------------------------------------------------------------

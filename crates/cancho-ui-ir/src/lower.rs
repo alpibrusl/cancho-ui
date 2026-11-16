@@ -1228,6 +1228,7 @@ fn lower_kind(k: &ElementKind) -> IrElementKind {
         ElementKind::Icon => IrElementKind::Icon,
         ElementKind::PhotoField => IrElementKind::PhotoField,
         ElementKind::Photo => IrElementKind::Photo,
+        ElementKind::Rail => IrElementKind::Rail,
         ElementKind::Named(s) => IrElementKind::Named(s.clone()),
     }
 }

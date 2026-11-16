@@ -306,6 +306,7 @@ impl Parser {
             "Icon" => ElementKind::Icon,
             "PhotoField" => ElementKind::PhotoField,
             "Photo" => ElementKind::Photo,
+            "Rail" => ElementKind::Rail,
             other => ElementKind::Named(other.to_string()),
         };
 
@@ -631,6 +632,9 @@ impl Parser {
                 };
                 Ok(BindingValue::Role(role))
             }
+            // `selected:` of a `Rail` (docs/structure.md 12.0s): an `Int` expression of the view, the place of the child that is chosen, read at each render
+            // (read for any element, so that a wrong place is `binding-unknown` and not a parse error, as `pressed:` is)
+            "selected" => Ok(BindingValue::Prop(self.parse_expr()?)),
             // `data:` and `tone:` of a `Photo` (docs/structure.md 12.0r): `String` expressions of the view, read at each render (a state field, or a name of a `For`)
             "data" | "tone" if matches!(kind, ElementKind::Photo) => {
                 Ok(BindingValue::Prop(self.parse_expr()?))

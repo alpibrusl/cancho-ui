@@ -469,6 +469,8 @@ pub enum ElementKind {
     PhotoField,
     /// A base64 JPEG held in state, drawn on a canvas (docs/structure.md 12.0r).
     Photo,
+    /// A scrolling row of the children it holds, each one snapping into place and each one a thing to choose (docs/structure.md 12.0s).
+    Rail,
     Named(String),
 }
 

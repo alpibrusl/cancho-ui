@@ -350,6 +350,11 @@ pub fn helpers_used(emitted: &str) -> String {
         ),
         (&["__cui_photo_draw("][..], crate::photo::PHOTO_JS),
         (&["__cui_photo_wire("][..], crate::photo::PHOTO_FIELD_JS),
+        // `Rail` (docs/structure.md 12.0s): written only for a program that has one
+        (
+            &["__cui_rail_wire(", "__cui_rail_save(", "__cui_rail_after("][..],
+            crate::rail::RAIL_JS,
+        ),
         (&["__cui_take(", "__cui_skip("][..], PAGING_JS),
         (&["__cui_concat("][..], CONCAT_JS),
         (&["__cui_move("][..], MOVE_JS),

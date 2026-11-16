@@ -1010,6 +1010,10 @@ fn emit_component(
     if view_has_window(&c.view.body) {
         out.push_str("            const __cui_win = Array.prototype.map.call(root.querySelectorAll('[data-cui-window]'), (e) => e.scrollTop);\n");
     }
+    // docs/structure.md 12.0s: a rail is rebuilt at every render and a new row starts at its first child; each one is put back where it was
+    if cancho_ui_ir::rail::view_has_rail(&c.view.body) {
+        out.push_str("            const __cui_rails = __cui_rail_save(root);\n");
+    }
     // docs/drag-and-drop.md section 3: a drag does not survive a rebuild, so the page is not rebuilt under one; the render runs once, after it.
     if view_has_sortlist(&c.view.body) {
         out.push_str("            if (__cui_drag.on) { if (__cui_drag.defer.indexOf(__render) < 0) { __cui_drag.defer.push(__render); } return; }\n");
@@ -1104,6 +1108,9 @@ fn emit_component(
     }
     if view_has_window(&c.view.body) {
         out.push_str("            root.querySelectorAll('[data-cui-window]').forEach((e, i) => { if (__cui_win[i] !== undefined) { e.scrollTop = __cui_win[i]; } });\n");
+    }
+    if cancho_ui_ir::rail::view_has_rail(&c.view.body) {
+        out.push_str("            __cui_rail_after(root, __cui_rails);\n");
     }
     if view_has_chatlog(&c.view.body) {
         out.push_str("            root.querySelectorAll('.cui-chatlog').forEach((e, i) => { const k = __cui_log[i]; if (!k || k.foot) { e.scrollTop = e.scrollHeight; } else { e.scrollTop = k.top; } });\n");

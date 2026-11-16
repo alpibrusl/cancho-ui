@@ -47,6 +47,8 @@ pub struct PageParts {
     pub icons: bool,
     /// the program has a `PhotoField` or a `Photo` (docs/structure.md 12.0r): the rules of the pictures are written, for no other page
     pub photos: bool,
+    /// the program has a `Rail` (docs/structure.md 12.0s): the rules of the rows are written, for no other page
+    pub rails: bool,
 }
 
 const BACKGROUND: [u8; 3] = [0x1f, 0x6f, 0xeb];
@@ -518,6 +520,26 @@ const ICON_CSS: &str = r#"/* Icon (docs/structure.md 12.0q): a Lucide line icon,
 .cui-icon-lead { margin-inline-end: 0.45rem; }
 "#;
 
+const RAIL_CSS: &str = r#"/* Rail (docs/structure.md 12.0s). The row scrolls by itself (a finger, a wheel, the keyboard) and every child stops at the place `snap:` says: scroll-snap, no script. The padding is room for the chosen child's ring and the focus ring, which an `overflow` box would cut off */
+.cui-rail-box { min-width: 0; max-width: 100%; }
+.cui-rail { display: flex; box-sizing: border-box; margin: 0; padding: 8px; scroll-padding: 8px; overscroll-behavior: contain; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
+.cui-rail:not([class*="cui-gap-"]) { gap: 0.5rem; }
+.cui-rail-h { flex-direction: row; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; }
+.cui-rail-v { flex-direction: column; overflow-y: auto; overflow-x: hidden; max-height: 24rem; scroll-snap-type: y mandatory; }
+.cui-rail-none { scroll-snap-type: none; }
+.cui-rail > * { flex: 0 0 auto; box-sizing: border-box; max-width: 100%; scroll-snap-align: start; }
+.cui-rail-center > * { scroll-snap-align: center; }
+.cui-rail-end > * { scroll-snap-align: end; }
+.cui-rail-none > * { scroll-snap-align: none; }
+.cui-rail-sized > * { flex: 0 0 var(--cui-rail-item); }
+.cui-rail[role="listbox"] > * { cursor: pointer; }
+.cui-rail > .cui-rail-on { box-shadow: 0 0 0 3px var(--cui-accent, #185fa5); }
+.cui-rail > *:focus-visible { outline: 3px solid var(--cui-accent, #185fa5); outline-offset: 3px; }
+.cui-rail-dots { display: flex; justify-content: center; align-items: center; gap: 6px; min-height: 14px; }
+.cui-rail-dot { width: 6px; height: 6px; border-radius: 3px; background: color-mix(in srgb, currentColor 40%, transparent); }
+.cui-rail-dot-on { width: 18px; background: var(--cui-accent, currentColor); }
+"#;
+
 const PHOTO_CSS: &str = r#"/* PhotoField and Photo (docs/structure.md 12.0r). A PhotoField is a key (12.0m): an icon over its label on the soft fill, 44 px at least, with the native file input laid over it (invisible, the whole target); its status line is under it. A Photo is a box of its ratio: until a canvas is drawn in it, or when its text is not a picture, it is a gradient of its tone (the twelve colours of face(..), white text 6.00:1 or better) or a neutral one */
 .cui-photo-field { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 0.3rem; max-width: 100%; }
 .cui-photo-key { position: relative; box-sizing: border-box; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2rem; min-width: 44px; min-height: 44px; padding: 0.45rem 0.9rem; border-radius: 12px; background: var(--cui-soft, color-mix(in srgb, currentColor 10%, transparent)); color: inherit; font-size: 0.75rem; font-weight: 600; line-height: 1.2; cursor: pointer; }
@@ -681,6 +703,9 @@ fn look_css(page: &PageParts) -> String {
     }
     if page.photos {
         css.push_str(PHOTO_CSS);
+    }
+    if page.rails {
+        css.push_str(RAIL_CSS);
     }
     if let Some(m) = page.measure {
         css.push_str(&format!(

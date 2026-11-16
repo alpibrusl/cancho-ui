@@ -72,6 +72,7 @@ const BUILT_IN: &[&str] = &[
     "FileField",
     "PhotoField",
     "Photo",
+    "Rail",
     "Chart",
     "RouteMap",
     "NavLink",

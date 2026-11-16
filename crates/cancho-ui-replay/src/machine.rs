@@ -842,6 +842,61 @@ impl<'a> Machine<'a> {
         Some(f.specs)
     }
 
+    /// Whether every control in the page that fires `event` is a `Rail` that is in the page now (docs/structure.md 12.0s): it then gives the place of a child,
+    /// a whole number from 0. `false` when some other control could give it any value, or none fires it.
+    pub fn is_rail_event(&self, event: &str) -> bool {
+        #[derive(Default)]
+        struct Fields {
+            rails: usize,
+            other: bool,
+        }
+        fn walk(m: &Machine<'_>, node: &IrViewNode, event: &str, f: &mut Fields) {
+            match node {
+                IrViewNode::Element {
+                    kind,
+                    bindings,
+                    children,
+                    ..
+                } => {
+                    let fires = bindings.iter().any(|b| {
+                        b.key == "on"
+                            && match &b.value {
+                                IrBindingValue::EventRef(e) => e == event,
+                                IrBindingValue::EventCall { name, .. } => name == event,
+                                _ => false,
+                            }
+                    });
+                    if fires {
+                        if matches!(kind, cancho_ui_ir::ir::IrElementKind::Rail) {
+                            f.rails += 1;
+                        } else {
+                            f.other = true;
+                        }
+                    }
+                    for c in children {
+                        walk(m, c, event, f);
+                    }
+                }
+                IrViewNode::For { children, .. } => {
+                    for c in children {
+                        walk(m, c, event, f);
+                    }
+                }
+                IrViewNode::If { cond, children, .. } => {
+                    if m.condition_holds(cond) {
+                        for c in children {
+                            walk(m, c, event, f);
+                        }
+                    }
+                }
+                IrViewNode::Text { .. } => {}
+            }
+        }
+        let mut f = Fields::default();
+        walk(self, &self.comp.view.body, event, &mut f);
+        !f.other && f.rails > 0
+    }
+
     /// The most characters (UTF-16 code units) any way of firing `event` with a typed value allows, when every control in the
     /// page that fires it is a `TextField` with a `maxlength:`; `None` when some control without a limit (or a button) could give
     /// it a value of any length, or no control fires it (docs/controls.md section 6).
