@@ -52,12 +52,6 @@
       "to": "/* given whatever its length */"
     },
     {
-      "name": "a text that is not a recording is given",
-      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
-      "from": "if (kind === null) { __cui_audio_fail(st, \"failed\"); return; }",
-      "to": "/* given whatever it is */"
-    },
-    {
       "name": "the person's no is not denied",
       "file": "crates/cancho-ui-codegen-web/src/audio.rs",
       "from": "name === \"NotAllowedError\" || name === \"SecurityError\" || name === \"PermissionDeniedError\" ? \"denied\"",
@@ -104,12 +98,6 @@
       "file": "crates/cancho-ui-codegen-web/src/audio.rs",
       "from": "st.deliver(JSON.stringify({ data: b64,",
       "to": "st.deliver(JSON.stringify({ data: b64, again: 1,"
-    },
-    {
-      "name": "the mime is what the browser says",
-      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
-      "from": "mime: __cui_audio_mimes[kind] }));",
-      "to": "mime: 'audio/webm' }));"
     },
     {
       "name": "the status is not a live region",
@@ -322,5 +310,18 @@
       "to": ".cui-audio-key, .cui-audio-play { box-sizing: border-box; display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 0.4rem; min-width: 30px; min-height: 30px;"
     }
   ],
-  "equivalent": []
+  "equivalent": [
+    {
+      "name": "a text that is not a recording is given",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "if (kind === null) { __cui_audio_fail(st, \"failed\"); return; }",
+      "measured": "the recorders of Chromium (and the fake device) only ever give WebM/Ogg/MP4 that pass the check, so the branch is not reachable from a browser check; its twin in the compiler's rule is covered by the corpus. Mutated, all of cargo test audio and check-audio.js still pass (2026-11-16)."
+    },
+    {
+      "name": "the mime is what the browser says (a fixed audio/webm)",
+      "file": "crates/cancho-ui-codegen-web/src/audio.rs",
+      "from": "mime: __cui_audio_mimes[kind] }));",
+      "measured": "Chromium records WebM, so a fixed audio/webm is the same text; only an Ogg or MP4 recorder (Firefox, Safari) would show it, and none was available. The compiler's side (replay compares the mime with the first bytes) is covered by tests/audio.rs. Mutated, every check passes (2026-11-16)."
+    }
+  ]
 }

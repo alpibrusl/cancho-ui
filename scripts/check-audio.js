@@ -153,7 +153,7 @@ const helpers = `
     // ---- structure ----
     const a = await ev(`(() => {
       const f = field('Voice'), k = f.querySelector('.cui-audio-key'), c = clip('One');
-      return { tag: k.tagName, type: k.getAttribute('type'), pressed: k.getAttribute('aria-pressed'), label: k.getAttribute('aria-label'), icon: !!k.querySelector('svg'), cap: k.textContent, status: f.querySelector('.cui-audio-status').getAttribute('role'),
+      return { bg: getComputedStyle(k).backgroundColor, tag: k.tagName, type: k.getAttribute('type'), pressed: k.getAttribute('aria-pressed'), label: k.getAttribute('aria-label'), icon: !!k.querySelector('svg'), cap: k.textContent, status: f.querySelector('.cui-audio-status').getAttribute('role'),
         timeHidden: f.querySelector('.cui-audio-time').getAttribute('aria-hidden'), h: Math.round(k.getBoundingClientRect().height), w: Math.round(k.getBoundingClientRect().width),
         clipRole: c.getAttribute('role'), clipLabel: c.getAttribute('aria-label'), playLabel: c.querySelector('.cui-audio-play').getAttribute('aria-label'), playDisabled: c.querySelector('.cui-audio-play').getAttribute('aria-disabled'),
         barHidden: c.querySelector('progress').getAttribute('aria-hidden'), playH: Math.round(c.querySelector('.cui-audio-play').getBoundingClientRect().height),
@@ -227,8 +227,8 @@ const helpers = `
     if (haveCdp) {
       const n0 = (await ev(`counts()`)).n;
       await tapField('Voice'); await wait(700);
-      const r1 = await ev(`(() => { const f = field('Voice'), k = f.querySelector('.cui-audio-key'); return { pressed: k.getAttribute('aria-pressed'), cap: k.textContent, status: f.querySelector('.cui-audio-status').textContent, time: f.querySelector('.cui-audio-time').textContent, icon: !!k.querySelector('svg') }; })()`);
-      check('B: a tap records: the key is pressed and says Stop, the status says what is going on, the time runs', r1.pressed === 'true' && r1.cap === 'Stop' && /^Recording, up to 3 seconds$/.test(r1.status) && /^0:0[01] \/ 0:03$/.test(r1.time) && r1.icon, JSON.stringify(r1));
+      const r1 = await ev(`(() => { const f = field('Voice'), k = f.querySelector('.cui-audio-key'); return { pressed: k.getAttribute('aria-pressed'), cap: k.textContent, status: f.querySelector('.cui-audio-status').textContent, time: f.querySelector('.cui-audio-time').textContent, icon: !!k.querySelector('svg'), bg: getComputedStyle(k).backgroundColor }; })()`);
+      check('B: a tap records: the key is pressed and says Stop, the status says what is going on, the time runs', r1.pressed === 'true' && r1.cap === 'Stop' && /^Recording, up to 3 seconds$/.test(r1.status) && /^0:0[01] \/ 0:03$/.test(r1.time) && r1.icon && r1.bg !== a.bg, JSON.stringify([r1, a.bg]));
       await ev(`Array.from(document.querySelectorAll('button')).find((b) => b.textContent === 'Bump').click()`);
       await wait(600);
       const r2 = await ev(`(() => { const f = field('Voice'), k = f.querySelector('.cui-audio-key'); return { pressed: k.getAttribute('aria-pressed'), cap: k.textContent, time: f.querySelector('.cui-audio-time').textContent, bumps: counts().bumps }; })()`);
