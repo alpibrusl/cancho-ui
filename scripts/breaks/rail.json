@@ -202,12 +202,6 @@
       "to": "/* shown */"
     },
     {
-      "name": "a place the program gives out of range is a child",
-      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
-      "from": "if (!(isFinite(sel) && sel >= 0)) { sel = -1; }",
-      "to": "/* no check */"
-    },
-    {
       "name": "the snap word is lost",
       "file": "crates/cancho-ui-codegen-web/src/rail.rs",
       "from": "format!(\"cui-rail-{snap}\"),",
@@ -376,5 +370,12 @@
       "to": "snap: \"center\" };\n                if (Date.now()"
     }
   ],
-  "equivalent": []
+  "equivalent": [
+    {
+      "name": "a place the program gives out of range is a child",
+      "file": "crates/cancho-ui-codegen-web/src/rail.rs",
+      "from": "if (!(isFinite(sel) && sel >= 0)) { sel = -1; }",
+      "measured": "NaN, a negative number and an out-of-range number fail every `sel >= 0` and `i === sel` test the script makes (no child is marked, the tab stop is the first child, no dot is on, nothing is brought into view), so removing the normalisation changes nothing observable; mutated, cargo test rail and check-rail.js pass (2026-11-16)."
+    }
+  ]
 }

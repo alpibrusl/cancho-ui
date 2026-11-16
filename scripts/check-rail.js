@@ -56,7 +56,7 @@ const PROGRAM = [
   '                on: Pick',
   '                selected: cur',
   '                snap: "center"',
-  '                gap: 2',
+  '                gap: 3',
   '                item_width: 74',
   '                dots: true',
   '                For {',
@@ -91,6 +91,10 @@ const PROGRAM = [
   '                snap: "start"',
   '                item_width: 45',
   '                For { over: rows as: n Column { card: true Text { "Start {n}" } } }',
+  '            }',
+  '            Rail {',
+  '                label: "Natural"',
+  '                For { over: rows as: n Column { card: true Text { "A card of some words {n}" } } }',
   '            }',
   '            Rail {',
   '                label: "Plain"',
@@ -183,7 +187,7 @@ const helpers = `
     check('A: a rail with an on: is a named listbox of options', a.role === 'listbox' && a.orient === 'horizontal' && a.roles && a.n === 6 && a.label === 'Cards', JSON.stringify([a.role, a.orient, a.n, a.label]));
     check('A: exactly the chosen child is aria-selected, and is the one child in the tab order', a.selected === 'false,true,false,false,false,false' && a.tabs === '-1,0,-1,-1,-1,-1', `${a.selected} / ${a.tabs}`);
     check('A: dots: one for each child, the chosen one marked, hidden from a screen reader', a.dots === 6 && a.dotOn === '010000' && a.dotsHidden === 'true', `${a.dots} ${a.dotOn}`);
-    check('A: the row snaps (x mandatory), scrolls, is a flex row with the gap step 2 (0.5 rem = 8px)', a.snapType === 'x mandatory' && a.overflowX === 'auto' && a.display === 'flex' && a.gap === '8px' && a.scrolls, `${a.snapType} ${a.overflowX} ${a.display} ${a.gap}`);
+    check('A: the row snaps (x mandatory), scrolls, is a flex row with the gap step 3 (1 rem = 16px)', a.snapType === 'x mandatory' && a.overflowX === 'auto' && a.display === 'flex' && a.gap === '16px' && a.scrolls, `${a.snapType} ${a.overflowX} ${a.display} ${a.gap}`);
     check('A: snap: "center" and item_width: 74 (a child is 74 % of the row, within a pixel)', a.align === 'center' && Math.abs(a.basis - 74) <= 1, `${a.align} ${a.basis}`);
     check('A: the chosen child has a ring, the others none; no <img>', a.highlight && a.plainShadow && a.imgs === 0);
 
@@ -293,8 +297,10 @@ const helpers = `
       const sr = await ev(`(() => { const A = rail('Starts'), r = A.getBoundingClientRect(); const lefts = Array.from(A.children).map((c) => Math.abs(Math.round(c.getBoundingClientRect().left - r.left - 8))); return { st: state(), at: lefts.indexOf(Math.min(...lefts)), min: Math.min(...lefts) }; })()`);
       await wait(1500);
       const sr2 = await ev(`state().starts`);
-      check('D: with snap "start" a swipe chooses the child at the start edge, and the choice does not run on', sr.st.starts >= 1 && sr.st.starts === sr.at && sr.min <= 2 && sr2 === sr.st.starts, JSON.stringify([sr, sr2]));
+      check('D: with snap "start" a swipe of 300 px chooses the child the row stopped on at the start edge (the second, measured), not the one nearest the middle, and the choice does not run on', sr.st.starts === 2 && sr.st.starts === sr.at && sr.min <= 2 && sr2 === sr.st.starts, JSON.stringify([sr, sr2]));
     }
+    const nat = await ev(`(() => { const A = rail('Natural'), cs = getComputedStyle(A.children[0]); return { w: Math.round(A.children[0].getBoundingClientRect().width), row: A.clientWidth, shrink: cs.flexShrink, gap: getComputedStyle(A).columnGap, scrolls: A.scrollWidth > A.clientWidth }; })()`);
+    check('A: with no item_width a child is as wide as its content and does not shrink to fit the others in the row (the row scrolls), and the default gap is 0.5 rem', nat.shrink === '0' && nat.w >= 150 && nat.scrolls && nat.gap === '8px', JSON.stringify(nat));
     const plain = await ev(`(async () => {
       const A = rail('Plain'); A.scrollIntoView({ block: 'center' }); await sleep(200);
       A.scrollTo({ left: 137, behavior: 'instant' }); await sleep(900);
