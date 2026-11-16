@@ -165,6 +165,22 @@ mod tests {
     }
 
     #[test]
+    fn a_program_that_adds_scripts_keeps_the_pages_own() {
+        let html = "<script>page()</script>";
+        let own = inline_script_hashes(html).remove(0);
+        let p = policy(Some("script-src 'self' 'sha256-frame'"), html);
+        let script = p
+            .split("; ")
+            .find(|d| d.starts_with("script-src"))
+            .expect("a script-src");
+        assert_eq!(
+            script,
+            format!("script-src 'self' {own} 'sha256-frame'"),
+            "{p}"
+        );
+    }
+
+    #[test]
     fn the_program_adds_to_a_directive_and_brings_its_own() {
         let p = policy(
             Some(

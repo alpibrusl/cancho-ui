@@ -83,22 +83,10 @@
       "to": "if (blob && blob.size <= chars) { return blob; }"
     },
     {
-      "name": "a text over the cap is told all the same",
-      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
-      "from": "if (b64 === null || !__cui_photo_ok(b64) || b64.length > chars) {",
-      "to": "if (b64 === null || !__cui_photo_ok(b64)) {"
-    },
-    {
       "name": "EXIF is kept: a JPEG that fits is sent as it came",
       "file": "crates/cancho-ui-codegen-web/src/photo.rs",
       "from": "return __cui_photo_shrink(bmp, side, square, chars).then(function (b64) {",
       "to": "return (f.type === \"image/jpeg\" && 4 * Math.ceil(f.size / 3) <= chars ? new Promise(function (ok) { var r = new FileReader(); r.onload = function () { ok(String(r.result).split(\",\")[1] || \"\"); }; r.readAsDataURL(f); }) : __cui_photo_shrink(bmp, side, square, chars)).then(function (b64) {"
-    },
-    {
-      "name": "the EXIF orientation is not applied",
-      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
-      "from": "{ imageOrientation: \"from-image\" }",
-      "to": "{ imageOrientation: \"none\" }"
     },
     {
       "name": "lenient: a file of any type that decodes is a picture",
@@ -399,6 +387,28 @@
       "file": "crates/cancho-ui/src/pwa.rs",
       "from": ".cui-overlay-banner > .cui-photo:first-child::after { content: \"\"; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6), rgba(0,0,0,0.25)); pointer-events: none; }",
       "to": ""
+    },
+    {
+      "name": "the picture comes out upside down (the orientation option is flipY)",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "{ imageOrientation: \"from-image\" }",
+      "to": "{ imageOrientation: \"flipY\" }"
+    }
+  ],
+  "equivalent": [
+    {
+      "name": "a text over the cap is told all the same",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "if (b64 === null || !__cui_photo_ok(b64) || b64.length > chars) {",
+      "to": "if (b64 === null || !__cui_photo_ok(b64)) {",
+      "why": "Measured 2026-11-16: with the edit every check passes. The loop only returns a blob whose base64 length, 4 x ceil(size / 3), is at most `chars`, and FileReader writes exactly that many characters, so the last test of the length cannot be true (it is defence against a reader that writes more). The mutants of the loop's own test (one short, one long, bytes for characters) are caught."
+    },
+    {
+      "name": "the EXIF orientation is not applied (the option is `none`)",
+      "file": "crates/cancho-ui-codegen-web/src/photo.rs",
+      "from": "{ imageOrientation: \"from-image\" }",
+      "to": "{ imageOrientation: \"none\" }",
+      "why": "Measured 2026-11-16 in Chromium: with the edit every check passes, including the one that turns a 200x100 picture with orientation 6 into 100x200. The value `none` is a legacy name of `from-image` in the HTML standard and Chromium applies the EXIF orientation by default, so the option changes nothing there; it is written for engines whose default differs (not measured). The mutant that flips the picture (`flipY`) is caught."
     }
   ]
 }
