@@ -77,6 +77,10 @@ const PROGRAM = [
 
 const helpers = `
   { const st = document.createElement('style'); st.textContent = 'span, p, div { overflow-wrap: anywhere; }'; document.head.appendChild(st); }
+  // every source node the player starts, and whether it has ended: what sounds is what is counted, not the words on the keys
+  window.__srcs = [];
+  { const real = AudioBufferSourceNode.prototype.start; AudioBufferSourceNode.prototype.start = function () { window.__srcs.push(this); this.addEventListener('ended', () => { this.__ended = true; }); return real.apply(this, arguments); }; }
+  window.sounding = () => window.__srcs.filter((x) => !x.__ended).length;
   window.sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   window.field = (label) => Array.from(document.querySelectorAll('.cui-audio-field')).find((f) => f.querySelector('.cui-audio-key').getAttribute('aria-label') === label);
   window.clip = (label) => Array.from(document.querySelectorAll('.cui-audio-clip')).find((f) => f.getAttribute('aria-label') === label);
@@ -186,7 +190,8 @@ const helpers = `
       check('D: a third tap goes on from there', d4.label === 'Pause One' && d4.bar > d3.bar, JSON.stringify([d3.bar, d4]));
       await tapClip('Two'); await wait(500);
       const d5 = await ev(`({ one: clip('One').querySelector('.cui-audio-play').getAttribute('aria-label'), oneBar: clip('One').querySelector('progress').value, two: clip('Two').querySelector('.cui-audio-play').getAttribute('aria-label'), twoBar: clip('Two').querySelector('progress').value, playing: Array.from(document.querySelectorAll('.cui-audio-play')).filter((b) => /^Pause/.test(b.getAttribute('aria-label'))).length })`);
-      check('D: another clip stops this one and starts at its beginning: one clip plays at a time', d5.one === 'Play One' && d5.oneBar === 0 && d5.two === 'Pause Two' && d5.twoBar > 0 && d5.twoBar < 500 && d5.playing === 1, JSON.stringify(d5));
+      d5.sounding = await ev(`sounding()`);
+      check('D: another clip stops this one and starts at its beginning: one clip plays at a time (and one sound is sounding)', d5.sounding === 1 && d5.one === 'Play One' && d5.oneBar === 0 && d5.two === 'Pause Two' && d5.twoBar > 0 && d5.twoBar < 500 && d5.playing === 1, JSON.stringify(d5));
       await wait(2300);
       const d6 = await ev(`({ two: clip('Two').querySelector('.cui-audio-play').getAttribute('aria-label'), bar: clip('Two').querySelector('progress').value, time: clip('Two').querySelector('.cui-audio-time').textContent })`);
       check('D: at the end it stops and is back at its start', d6.two === 'Play Two' && d6.bar === 0 && d6.time === '0:00 / 0:02', JSON.stringify(d6));
