@@ -1617,9 +1617,11 @@ var b = el(); __cui_photo_draw(b, jpeg, "12", 2, 3);
 var c = el(); __cui_photo_draw(c, "/9j/short", "03", 1, 1);
 var d = el(); __cui_photo_draw(d, 5, "", 1, 1);
 var e = el(); __cui_photo_draw(e, "/9j/" + "A".repeat(200) + "<", "11", 1, 1);
+var f = el(); __cui_photo_draw(f, "iVBORw0KGgo" + "A".repeat(200), "", 1, 1);
+var g = el(); __cui_photo_draw(g, "/9j/" + "A".repeat(95), "", 1, 1);
 console.log(JSON.stringify([a.attrs["data-tone"] || null, b.attrs["data-tone"] || null, c.attrs["data-tone"] || null, d.attrs["data-tone"] || null, e.attrs["data-tone"] || null]));
 setTimeout(function () {{
-    console.log(JSON.stringify([asked, a.kids.length, a.kids[0].width + "x" + a.kids[0].height, a.kids[0].attrs["aria-hidden"], a.attrs["data-photo"], b.kids[0].width + "x" + b.kids[0].height, c.kids.length + d.kids.length + e.kids.length]));
+    console.log(JSON.stringify([asked, a.kids.length, a.kids[0].width + "x" + a.kids[0].height, a.kids[0].attrs["aria-hidden"], a.attrs["data-photo"], b.kids[0].width + "x" + b.kids[0].height, c.kids.length + d.kids.length + e.kids.length + f.kids.length + g.kids.length]));
     console.log(JSON.stringify(drawn));
 }}, 20);
 "#

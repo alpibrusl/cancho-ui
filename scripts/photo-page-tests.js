@@ -175,6 +175,11 @@ async function pageTests(win, cfg) {
     check('and the redraw told no handler anything', JSON.stringify(readCounts()) === JSON.stringify(counts), JSON.stringify([readCounts(), counts]));
     check('the redrawn Photo is drawn again from the same text', await until(() => doc.querySelector('[aria-label="Wide picture"] canvas')));
 
+    // 7b. the input lets go of the file it was given (its value is cleared), so the same file can be chosen again
+    const held = field(1);
+    const again = await pickAndWait(1, file(green, 'again.jpg', 'image/jpeg'), 'wide');
+    check('the input is cleared once its file is held (the same file can be chosen again)', again && held.value === '' && held.files.length === 0, held.value);
+
     // 8. a choice that a newer one has replaced is told to nobody
     const heavy = await bytesOf(await blobOf(noise(2400, 2400), 'image/png'));
     const light = await bytesOf(await blobOf(solid(40, 30, '#00f'), 'image/png'));
@@ -185,6 +190,14 @@ async function pageTests(win, cfg) {
     await sleep(1500);
     im = await look(JSON.parse(payloadOf('wide')).data);
     check('only the newer choice is told (once), and it is the one that is last', readCounts()[1] === n0 + 1 && im.w === 40 && im.h === 30, JSON.stringify(readCounts()) + ' ' + im.w + 'x' + im.h);
+    // the same for a choice that ends in an error: bytes that do not decode (the browser says so a moment later), and then a good picture
+    const n1 = readCounts()[1];
+    choose(1, file(new Uint8Array(4096).fill(7), 'corrupt.jpg', 'image/jpeg'));
+    choose(1, file(light, 'light2.png', 'image/png'));
+    await until(() => readCounts()[1] > n1);
+    await sleep(800);
+    const last = JSON.parse(payloadOf('wide'));
+    check('a choice replaced by a newer one is not told its error either: only the good picture is told', readCounts()[1] === n1 + 1 && typeof last.data === 'string' && statusOf(1) === 'Picture added', JSON.stringify(readCounts()) + ' ' + JSON.stringify(last).slice(0, 40) + ' ' + statusOf(1));
 
     // 9. the policy of the page: nothing the tests did was refused, and a request to another origin is
     check('no policy violation while the elements worked', violations.length === 0, violations.join('; '));
