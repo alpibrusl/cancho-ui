@@ -225,7 +225,7 @@ fn the_script_draws_the_same_icon_in_the_svg_namespace_and_a_button_icon_before_
         "a call and a table row for each name"
     );
     assert!(
-        js.contains("\"map-pin\"") == false,
+        !js.contains("\"map-pin\""),
         "a table row only for a name the program uses"
     );
     assert!(
