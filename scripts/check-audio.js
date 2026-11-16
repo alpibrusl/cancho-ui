@@ -39,24 +39,29 @@ const PROGRAM = [
   '    state tiny: String = "";',
   '    state n: Int = 0;',
   '    state nt: Int = 0;',
+  '    state one: String = "";',
+  '    state no: Int = 0;',
   '    state mid: String = "";',
   '    state nm: Int = 0;',
   '    state bumps: Int = 0;',
   '    on Recorded(r) { got = r; n = n + 1; clip = json.get(r, "data", ""); }',
   '    on RecordedTiny(r) { tiny = r; nt = nt + 1; }',
+  '    on RecordedOne(r) { one = r; no = no + 1; }',
   '    on RecordedMid(r) { mid = r; nm = nm + 1; }',
   '    on SetClip(v) { clip = v; }',
   '    on SetOther(v) { other = v; }',
   '    on Bump { bumps = bumps + 1; }',
   '    view {',
   '        Column {',
-  '            Text { "n={n} nt={nt} nm={nm} bumps={bumps}" }',
+  '            Text { "n={n} nt={nt} nm={nm} no={no} bumps={bumps}" }',
   '            Text { "got={got}" }',
   '            Text { "tiny={tiny}" }',
+  '            Text { "one={one}" }',
   '            Text { "mid={mid}" }',
   '            Button { label: "Bump" on: Bump }',
   '            AudioField { label: "Voice" max_seconds: 3 max_chars: 20000 on: Recorded }',
   '            AudioField { label: "Tiny" max_seconds: 10 max_chars: 100 on: RecordedTiny }',
+  '            AudioField { label: "One" max_seconds: 1 max_chars: 48000 on: RecordedOne }',
   '            AudioField { label: "Mid" max_seconds: 10 max_chars: 2500 on: RecordedMid }',
   '            TextField { label: "clip" value: clip on: SetClip }',
   '            TextField { label: "other" value: other on: SetOther }',
@@ -71,6 +76,7 @@ const PROGRAM = [
 ].join('\n');
 
 const helpers = `
+  { const st = document.createElement('style'); st.textContent = 'span, p, div { overflow-wrap: anywhere; }'; document.head.appendChild(st); }
   window.sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   window.field = (label) => Array.from(document.querySelectorAll('.cui-audio-field')).find((f) => f.querySelector('.cui-audio-key').getAttribute('aria-label') === label);
   window.clip = (label) => Array.from(document.querySelectorAll('.cui-audio-clip')).find((f) => f.getAttribute('aria-label') === label);
@@ -133,8 +139,8 @@ const helpers = `
     await page.cdp('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
     await page.cdp('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   };
-  const tapField = async (label) => { await ev(`field('${label}').scrollIntoView({ block: 'center' })`); await wait(100); const p = await ev(`mid(field('${label}').querySelector('.cui-audio-key'))`); await touch(p.x, p.y); };
-  const tapClip = async (label) => { await ev(`clip('${label}').scrollIntoView({ block: 'center' })`); await wait(100); const p = await ev(`mid(clip('${label}').querySelector('.cui-audio-play'))`); await touch(p.x, p.y); };
+  const tapField = async (label) => { await ev(`field('${label}').scrollIntoView({ block: 'center' })`); await wait(400); const p = await ev(`mid(field('${label}').querySelector('.cui-audio-key'))`); await touch(p.x, p.y); };
+  const tapClip = async (label) => { await ev(`clip('${label}').scrollIntoView({ block: 'center' })`); await wait(400); const p = await ev(`mid(clip('${label}').querySelector('.cui-audio-play'))`); await touch(p.x, p.y); };
   try {
     await ev(helpers);
     await wait(500);
@@ -254,12 +260,32 @@ const helpers = `
       // a cap in characters that a recording can nearly meet: it ends the recording early, and what the program is given is never longer than the cap
       const nm = (await ev(`counts().nm`));
       const t2 = Date.now();
-      await tapField('Mid');
+      // found by use: while the page was wider than the screen (a recording's text is one long word) a touch landed beside the key; the long text now wraps (the style in `helpers`), and a tap that began nothing is tried again, by the mouse
+      for (let tries = 0; tries < 3; tries++) {
+        if (tries === 0) { await tapField('Mid'); } else {
+          const q = await ev(`mid(field('Mid').querySelector('.cui-audio-key'))`);
+          await page.cdp('Input.dispatchMouseEvent', { type: 'mousePressed', x: q.x, y: q.y, button: 'left', clickCount: 1 });
+          await page.cdp('Input.dispatchMouseEvent', { type: 'mouseReleased', x: q.x, y: q.y, button: 'left', clickCount: 1 });
+        }
+        await wait(300);
+        if (await ev(`field('Mid').querySelector('.cui-audio-key').getAttribute('aria-pressed') === 'true' || /^(Waiting|Recording,)/.test(field('Mid').querySelector('.cui-audio-status').textContent)`)) { break; }
+      }
       let mdone = false;
       for (let i = 0; i < 60 && !mdone; i++) { await wait(200); mdone = (await ev(`counts().nm`)) === nm + 1; }
       const mid = await ev(`json('mid')`);
       const ok = mid && ((mid.data && mid.data.length <= 2500 && kindOf(mid.data) !== null) || mid.error === 'too big');
       check('B: a cap of 2,500 characters ends a 10-second recording early and is never passed (a text of at most 2,500 characters, or "too big")', mdone && Date.now() - t2 < 8000 && ok, `${Date.now() - t2} ms ${mid && (mid.data ? mid.data.length : mid.error)}`);
+    }
+    if (haveCdp) {
+      // the cap in seconds alone: one second, with room for far more text than a second makes, so that only the clock can end it
+      const no0 = (await ev(`counts().no`));
+      const t3 = Date.now();
+      await tapField('One');
+      let odone = false;
+      for (let i = 0; i < 40 && !odone; i++) { await wait(100); odone = (await ev(`counts().no`)) === no0 + 1; }
+      const one = await ev(`json('one')`);
+      check('B: max_seconds alone ends a recording: one second, with room for far more text, is ended by the clock at about one second and says 1', odone && Date.now() - t3 >= 800 && Date.now() - t3 <= 2000 && one && one.seconds === 1 && one.data && one.data.length < 43000, `${Date.now() - t3} ms ${one && one.seconds} ${one && one.data ? one.data.length : one && one.error}`);
+
     }
     if (haveCdp) {
       const tr = await ev(`(window.__streams || []).map((st) => st.getTracks().map((t) => t.readyState).join(','))`);

@@ -27,7 +27,7 @@ async function launch(chromeArgs) {
   let playwright = null;
   try { playwright = require('playwright'); } catch (e) { /* not installed */ }
   if (playwright) {
-    const browser = await playwright.chromium.launch({ args: ['--no-proxy-server'] });
+    const browser = await playwright.chromium.launch({ args: ['--no-proxy-server', '--mute-audio'] });
     return {
       name: 'playwright',
       async open(url) {
@@ -46,7 +46,7 @@ async function launch(chromeArgs) {
   const exe = candidates.find((c) => fs.existsSync(c));
   if (!exe) { throw new Error('no browser: install playwright, or set CHROME to a Chrome or Chromium'); }
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'check-photo-chrome-'));
-  const proc = spawn(exe, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--no-proxy-server', ...(chromeArgs || []), 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
+  const proc = spawn(exe, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--no-proxy-server', '--mute-audio', ...(chromeArgs || []), 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
   const wsUrl = await new Promise((ok, no) => {
     let buf = '';
     proc.stderr.on('data', (d) => { buf += d; const m = /DevTools listening on (ws:\/\/\S+)/.exec(buf); if (m) { ok(m[1]); } });
