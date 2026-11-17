@@ -1,13 +1,14 @@
 //! `PhotoField` and `Photo` (docs/structure.md 12.0r): a picture chosen by the person, shrunk by the page to a base64 JPEG that fits a number of characters,
-//! and a picture drawn from such a text held in the program's state.
+//! and a picture drawn from a text held in the program's state: base64 of a JPEG, a PNG or a WebP (what the field makes is always a JPEG; the other two are what an API or a
+//! command-line client may have stored).
 //!
 //! * **`PhotoField { label: ".." icon: "camera" square: true max_side: 1024 max_chars: 48000 on: Chosen }`** is a native file chooser
 //!   (`<input type=file accept=image/jpeg,image/png,image/webp>`), a user gesture and no capability. The page decodes the file (the EXIF orientation applied),
 //!   cuts the middle of it (a square, or keeping the picture's proportions), and draws it again as a JPEG, smaller until the base64 text fits `max_chars:`. Drawing
 //!   again is what takes the EXIF block (the place and time a camera wrote) out: the text the program gets has none. The event is given one JSON `String`:
 //!   `{"data":"<base64>"}` or `{"error":"too big"}` or `{"error":"not a picture"}`.
-//! * **`Photo { label: ".." data: picture ratio: "16:9" tone: colour }`** draws such a text on a canvas, with the decoder, the checks and the cache of `face(..)`
-//!   (docs/structure.md 12.0l): no `<img>`, no `data:` address and no request. Until it is drawn, or when the text is not a picture, it is a gradient of the
+//! * **`Photo { label: ".." data: picture ratio: "16:9" fit: true tone: colour }`** draws such a text on a canvas, with the decoder and the cache of `face(..)`
+//!   (docs/structure.md 12.0l): no `<img>`, no `data:` address and no request. `fit: true` makes the box the picture's own proportions (`FIT_MIN` to `FIT_MAX`). Until it is drawn, or when the text is not a picture, it is a gradient of the
 //!   tone (twelve fixed colours) or a neutral one. `decorative: true` instead of a `label:` hides it from a screen reader.
 //! * Both are drawn by the page's script (a state-reading element is a hole of the prerendered skeleton); the code of each is emitted only in a program that has it.
 
@@ -34,13 +35,16 @@ pub const TONES: &[&str] = &["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "
 /// What a `PhotoField` takes beside `label:`.
 pub const FIELD_KEYS: &[&str] = &["icon", "square", "max_side", "max_chars", "on"];
 /// What a `Photo` takes beside `label:`.
-pub const PHOTO_KEYS: &[&str] = &["data", "ratio", "tone", "decorative"];
+pub const PHOTO_KEYS: &[&str] = &["data", "ratio", "fit", "tone", "decorative"];
 /// The icon of a `PhotoField` when `icon:` is not written.
 pub const ICON_DEFAULT: &str = "camera";
 /// The ratio of a `Photo` when `ratio:` is not written.
 pub const RATIO_DEFAULT: &str = "1:1";
 /// The most either number of a `ratio:` may be.
 pub const RATIO_MAX: u32 = 32;
+/// With `fit: true` a `Photo` is the picture's own proportions, width over height, but never narrower than 1:2 nor wider than 2:1 (a longer picture is cut to the bound, never stretched).
+pub const FIT_MIN: (u32, u32) = (1, 2);
+pub const FIT_MAX: (u32, u32) = (2, 1);
 
 fn refuse(code: &'static str, message: String, span: Span) -> LowerError {
     LowerError::ControlRefused {
@@ -107,11 +111,45 @@ pub fn ratio_of(bindings: &[IrBinding]) -> (u32, u32) {
         .unwrap_or((1, 1))
 }
 
-/// Whether a text is one a `Photo` (and a `face`) draws: base64 (only its alphabet, `=` at most twice and only at the end) that starts like a JPEG (`/9j/`),
+/// The value of one base64 character (`None` outside the alphabet).
+fn b64_value(b: u8) -> Option<u8> {
+    match b {
+        b'A'..=b'Z' => Some(b - b'A'),
+        b'a'..=b'z' => Some(b - b'a' + 26),
+        b'0'..=b'9' => Some(b - b'0' + 52),
+        b'+' => Some(62),
+        b'/' => Some(63),
+        _ => None,
+    }
+}
+
+/// The three formats of a `Photo`, by their first bytes (the first 16 characters of the text are 12 bytes, which hold all of the three signatures): a JPEG `FF D8 FF`, a PNG
+/// `89 50 4E 47 0D 0A 1A 0A`, a WebP `RIFF`, four bytes of size, `WEBP`. Nothing else (no GIF, no SVG, no BMP, no AVIF) is a picture here. `None` when it is none of them.
+pub fn picture_mime(text: &str) -> Option<&'static str> {
+    let head = text.as_bytes().get(..16)?;
+    let mut bytes = [0u8; 12];
+    for (i, quad) in head.chunks(4).enumerate() {
+        let v: Vec<u8> = quad.iter().map(|&c| b64_value(c)).collect::<Option<_>>()?;
+        bytes[3 * i] = v[0] << 2 | v[1] >> 4;
+        bytes[3 * i + 1] = v[1] << 4 | v[2] >> 2;
+        bytes[3 * i + 2] = v[2] << 6 | v[3];
+    }
+    if bytes[..3] == [0xFF, 0xD8, 0xFF] {
+        Some("image/jpeg")
+    } else if bytes[..8] == [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A] {
+        Some("image/png")
+    } else if &bytes[..4] == b"RIFF" && &bytes[8..12] == b"WEBP" {
+        Some("image/webp")
+    } else {
+        None
+    }
+}
+
+/// Whether a text is one a `Photo` draws: base64 (only its alphabet, `=` at most twice and only at the end) that starts like a JPEG, a PNG or a WebP (`picture_mime`),
 /// `CHARS_MIN` to `CHARS_MAX` characters. The page's script has its own copy of this (`__cui_photo_ok`); `tests/photo_corpus.json` is run against both.
 pub fn picture_ok(text: &str) -> bool {
     let n = text.len();
-    if !(CHARS_MIN as usize..=CHARS_MAX as usize).contains(&n) || !text.starts_with("/9j/") {
+    if !(CHARS_MIN as usize..=CHARS_MAX as usize).contains(&n) {
         return false;
     }
     let body = text.trim_end_matches('=');
@@ -120,6 +158,17 @@ pub fn picture_ok(text: &str) -> bool {
         && body
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || b == b'+' || b == b'/')
+        && picture_mime(text).is_some()
+}
+
+/// Whether a text is one a `PhotoField` can give: a picture text that is a JPEG (the field always draws the picture again as a JPEG, which is what takes its EXIF block out).
+pub fn jpeg_ok(text: &str) -> bool {
+    picture_ok(text) && picture_mime(text) == Some("image/jpeg")
+}
+
+/// Whether `fit: true` is written.
+pub fn fit_of(bindings: &[IrBinding]) -> bool {
+    find(bindings, "fit").and_then(bool_of) == Some(true)
 }
 
 /// What one `PhotoField` promises about the value it gives its event.
@@ -148,7 +197,7 @@ pub fn check_value(value: &str, specs: &[PhotoSpec]) -> Result<(), String> {
         .get("data")
         .and_then(|v| v.as_str())
         .ok_or("it has exactly one of `data` (a string) or `error`")?;
-    if !picture_ok(data) {
+    if !jpeg_ok(data) {
         return Err(
             "`data` is base64 of a JPEG (it starts `/9j/`), 100 to 48,000 characters".into(),
         );
@@ -261,6 +310,14 @@ pub fn check_binding(
                 _ => Err(refuse(
                     "photo-ratio-invalid",
                     format!("`ratio:` is a string literal \"W:H\" of two whole numbers from 1 to {RATIO_MAX}, like \"16:9\""),
+                    b.span,
+                )),
+            },
+            "fit" => match bool_of(b) {
+                Some(_) => Ok(true),
+                None => Err(refuse(
+                    "photo-fit-invalid",
+                    "`fit:` is `true` (the box is the picture's own proportions, from 1:2 to 2:1; `ratio:` is what it is until the picture is known) or `false`, written in the program".to_string(),
                     b.span,
                 )),
             },

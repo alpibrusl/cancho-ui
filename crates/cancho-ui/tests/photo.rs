@@ -107,6 +107,7 @@ const NEW: &[&str] = &[
     "photo-tone-invalid",
     "photo-ratio-invalid",
     "photo-decorative-invalid",
+    "photo-fit-invalid",
     "trace-value-not-a-photo",
 ];
 const OLD: &[&str] = &["binding-unknown", "icon-unknown", "event-arity-mismatch"];
@@ -397,6 +398,9 @@ fn replay_takes_what_the_chooser_gives_and_refuses_what_it_cannot() {
         ("not JSON", "hello".to_string()),
         ("a data that is not text", json!({"data": 5}).to_string()),
         ("a text that is not base64 of a JPEG", json!({"data": "A".repeat(200)}).to_string()),
+        // a Photo draws these, but the field draws a picture again as a JPEG and never gives one
+        ("a PNG (a field never gives one)", json!({"data": picture(&json!({"head": "iVBORw0KGgo", "fill": "A", "tail": "", "len": 200}))}).to_string()),
+        ("a WebP (a field never gives one)", json!({"data": picture(&json!({"head": "UklGRiQAAABXRUJQ", "fill": "A", "tail": "", "len": 200}))}).to_string()),
         ("an extra key", json!({"data": picture(&json!({"head": "/9j/", "fill": "A", "tail": "", "len": 200})), "name": "a.jpg"}).to_string()),
     ];
     for (why, value) in cases {

@@ -1,5 +1,5 @@
 {
- "about": "docs/structure.md 12.0r. `pictures`: the texts a Photo (and the photo of a face(..)) draws and the ones it does not; a text is head + fill repeated up to len characters (tail at the end), so no picture is kept here. Run by crates/cancho-ui/tests/photo.rs against cancho_ui_ir::photo::picture_ok and by scripts/check-photo.js against the page's __cui_photo_ok. `valid`: a view (of component C) that must check. `refusals`: a view and the rule tag that refuses it. `values`: what a handler of a PhotoField may be told, for replay (trace-value-not-a-photo).",
+ "about": "docs/structure.md 12.0r. `pictures`: the texts a Photo draws (a base64 JPEG, PNG or WebP, told by its first bytes) and the ones it does not (a face(..) takes the JPEGs only and is not changed; the picture a PhotoField gives is always a JPEG, so replay refuses a PNG or a WebP as its value); a text is head + fill repeated up to len characters (tail at the end), so no picture is kept here. Run by crates/cancho-ui/tests/photo.rs against cancho_ui_ir::photo::picture_ok and by scripts/check-photo.js against the page's __cui_photo_ok. `valid`: a view (of component C) that must check. `refusals`: a view and the rule tag that refuses it. `values`: what a handler of a PhotoField may be told, for replay (trace-value-not-a-photo).",
  "pictures": [
   {
    "why": "100 characters is the least",
@@ -34,7 +34,7 @@
    "ok": false
   },
   {
-   "why": "it has to start like a JPEG",
+   "why": "four characters of a PNG's start are not a PNG (and not a JPEG)",
    "head": "iVBO",
    "fill": "A",
    "len": 200,
@@ -160,6 +160,190 @@
    "len": 0,
    "tail": "",
    "ok": false
+  },
+  {
+   "why": "a PNG (its eight-byte signature) is a picture",
+   "head": "iVBORw0KGgoAAAAN",
+   "fill": "A",
+   "len": 200,
+   "tail": "",
+   "ok": true
+  },
+  {
+   "why": "a PNG of 48,000 characters is the most",
+   "head": "iVBORw0KGgoAAAAN",
+   "fill": "A",
+   "len": 48000,
+   "tail": "",
+   "ok": true
+  },
+  {
+   "why": "a PNG of 48,001 characters is too long",
+   "head": "iVBORw0KGgoAAAAN",
+   "fill": "A",
+   "len": 48001,
+   "tail": "",
+   "ok": false
+  },
+  {
+   "why": "a PNG of 99 characters is too short",
+   "head": "iVBORw0KGgoAAAAN",
+   "fill": "A",
+   "len": 99,
+   "tail": "",
+   "ok": false
+  },
+  {
+   "why": "a PNG of 100 characters is the least",
+   "head": "iVBORw0KGgoAAAAN",
+   "fill": "A",
+   "len": 100,
+   "tail": "",
+   "ok": true
+  },
+  {
+   "why": "a PNG signature whose last byte is wrong is not a PNG",
+   "head": "iVBORw0KGgAAAAAN",
+   "fill": "A",
+   "len": 200,
+   "tail": "",
+   "ok": false
+  },
+  {
+   "why": "a PNG signature cut short (CR LF missing) is not a PNG",
+   "head": "iVBORw0KChoKAAAADQ==",
+   "fill": "A",
+   "len": 200,
+   "tail": "",
+   "ok": false
+  },
+  {
+   "why": "a PNG with the right start and a letter beyond ASCII is not base64",
+   "head": "iVBORw0KGgoAAAAN",
+   "fill": "A",
+   "len": 200,
+   "tail": "é",
+   "ok": false
+  },
+  {
+   "why": "a lower-case PNG start is not a PNG",
+   "head": "ivborw0kggoaaaan",
+   "fill": "A",
+   "len": 200,
+   "tail": "",
+   "ok": false
+  },
+  {
+   "why": "a WebP (RIFF, a size, WEBP) is a picture",
+   "head": "UklGRiQAAABXRUJQ",
+   "fill": "A",
+   "len": 200,
+   "tail": "",
+   "ok": true
+  },
+  {
+   "why": "a WebP of 48,000 characters is the most",
+   "head": "UklGRiQAAABXRUJQ",
+   "fill": "A",
+   "len": 48000,
+   "tail": "",
+   "ok": true
+  },
+  {
+   "why": "a WebP of 48,001 characters is too long",
+   "head": "UklGRiQAAABXRUJQ",
+   "fill": "A",
+   "len": 48001,
+   "tail": "",
+   "ok": false
+  },
+  {
+   "why": "a RIFF that is a WAVE is not a picture",
+   "head": "UklGRiQAAABXQVZF",
+   "fill": "A",
+   "len": 200,
+   "tail": "",
+   "ok": false
+  },
+  {
+   "why": "a RIFF whose form is WEBQ is not a picture",
+   "head": "UklGRiQAAABXRUJR",
+   "fill": "A",
+   "len": 200,
+   "tail": "",
+   "ok": false
+  },
+  {
+   "why": "a RIFX is not a RIFF",
+   "head": "UklGWCQAAABXRUJQ",
+   "fill": "A",
+   "len": 200,
+   "tail": "",
+   "ok": false
+  },
+  {
+   "why": "a RIFF with the WEBP form and a different size is a WebP (the size is not looked at)",
+   "head": "UklGRv//fwBXRUJQ",
+   "fill": "A",
+   "len": 200,
+   "tail": "",
+   "ok": true
+  },
+  {
+   "why": "a GIF is not a picture",
+   "head": "R0lGODlhAQABAIAA",
+   "fill": "A",
+   "len": 200,
+   "tail": "",
+   "ok": false
+  },
+  {
+   "why": "an SVG is not a picture (it can carry script)",
+   "head": "PHN2ZyB4bWxucz0i",
+   "fill": "A",
+   "len": 200,
+   "tail": "",
+   "ok": false
+  },
+  {
+   "why": "a BMP is not a picture",
+   "head": "Qk02AAAAAAAAADYA",
+   "fill": "A",
+   "len": 200,
+   "tail": "",
+   "ok": false
+  },
+  {
+   "why": "an AVIF is not a picture",
+   "head": "AAAAIGZ0eXBhdmlm",
+   "fill": "A",
+   "len": 200,
+   "tail": "",
+   "ok": false
+  },
+  {
+   "why": "a JPEG whose third byte is not FF is not a JPEG",
+   "head": "/9j+4AAQSkZJRgAB",
+   "fill": "A",
+   "len": 200,
+   "tail": "",
+   "ok": false
+  },
+  {
+   "why": "a JPEG with a JFIF header is a picture",
+   "head": "/9j/4AAQSkZJRgAB",
+   "fill": "A",
+   "len": 200,
+   "tail": "",
+   "ok": true
+  },
+  {
+   "why": "a data: address of a PNG is not a picture text",
+   "head": "data:image/png;base64,iVBORw0KGgoAAAAN",
+   "fill": "A",
+   "len": 200,
+   "tail": "",
+   "ok": false
   }
  ],
  "component": "component C {\n    state pic: String = \"\";\n    state tone: String = \"3\";\n    state n: Int = 0;\n    state flag: Bool = false;\n    state pics: List[String] = [];\n    on Chosen(r) { pic = json.get(r, \"data\", \"\"); n = n + 1; }\n    on Go { n = n + 1; }\n    on Two(a, b) { n = n + 1; }\n    view { Column { {view} } }\n}\n",
@@ -203,6 +387,14 @@
   {
    "name": "a label that is read from state",
    "view": "PhotoField { label: \"Photo \" + \"x\" on: Chosen }"
+  },
+  {
+   "name": "a photo that fits the picture",
+   "view": "Photo { label: \"The lake\" data: pic ratio: \"4:3\" fit: true }"
+  },
+  {
+   "name": "a photo that does not fit, said so",
+   "view": "Photo { label: \"The lake\" data: pic fit: false }"
   }
  ],
  "refusals": [
@@ -345,6 +537,21 @@
    "name": "a key a photo does not take",
    "tag": "binding-unknown",
    "view": "Photo { label: \"The lake\" data: pic square: true }"
+  },
+  {
+   "name": "fit that is a string",
+   "tag": "photo-fit-invalid",
+   "view": "Photo { label: \"The lake\" data: pic fit: \"yes\" }"
+  },
+  {
+   "name": "fit that is a number",
+   "tag": "photo-fit-invalid",
+   "view": "Photo { label: \"The lake\" data: pic fit: 1 }"
+  },
+  {
+   "name": "fit on a field",
+   "tag": "binding-unknown",
+   "view": "PhotoField { label: \"Photo\" fit: true on: Chosen }"
   }
  ]
 }

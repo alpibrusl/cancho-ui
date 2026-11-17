@@ -348,6 +348,7 @@ pub fn helpers_used(emitted: &str) -> String {
             &["__cui_photo_draw(", "__cui_photo_wire("][..],
             crate::photo::PHOTO_OK_JS,
         ),
+        (&["__cui_photo_draw("][..], crate::photo::PHOTO_DIMS_JS),
         (&["__cui_photo_draw("][..], crate::photo::PHOTO_JS),
         (&["__cui_photo_wire("][..], crate::photo::PHOTO_FIELD_JS),
         // `AudioField` and `AudioClip` (docs/structure.md 12.0t): written only for a program that has one

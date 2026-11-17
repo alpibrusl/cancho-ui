@@ -1599,8 +1599,17 @@ fn the_emitted_photo_draws_only_what_the_compiler_says_is_a_picture_and_on_a_can
         from("var __cui_face_bmps"),
         from("function __cui_face_bmp")
     );
-    let ok = from("function __cui_photo_ok");
-    let draw = from("function __cui_photo_draw");
+    let ok = format!(
+        "{}\n{}",
+        from("function __cui_photo_kind"),
+        from("function __cui_photo_ok")
+    );
+    let draw = format!(
+        "{}\n{}\n{}",
+        from("function __cui_photo_dims"),
+        from("function __cui_photo_ratio"),
+        from("function __cui_photo_draw")
+    );
     let script = format!(
         r#"
 var asked = 0, drawn = [];
@@ -1618,10 +1627,11 @@ var c = el(); __cui_photo_draw(c, "/9j/short", "03", 1, 1);
 var d = el(); __cui_photo_draw(d, 5, "", 1, 1);
 var e = el(); __cui_photo_draw(e, "/9j/" + "A".repeat(200) + "<", "11", 1, 1);
 var f = el(); __cui_photo_draw(f, "iVBORw0KGgo" + "A".repeat(200), "", 1, 1);
+var f2 = el(); __cui_photo_draw(f2, "iVBORw0KGho" + "A".repeat(200), "", 1, 1);
 var g = el(); __cui_photo_draw(g, "/9j/" + "A".repeat(95), "", 1, 1);
 console.log(JSON.stringify([a.attrs["data-tone"] || null, b.attrs["data-tone"] || null, c.attrs["data-tone"] || null, d.attrs["data-tone"] || null, e.attrs["data-tone"] || null]));
 setTimeout(function () {{
-    console.log(JSON.stringify([asked, a.kids.length, a.kids[0].width + "x" + a.kids[0].height, a.kids[0].attrs["aria-hidden"], a.attrs["data-photo"], b.kids[0].width + "x" + b.kids[0].height, c.kids.length + d.kids.length + e.kids.length + f.kids.length + g.kids.length]));
+    console.log(JSON.stringify([asked, a.kids.length, a.kids[0].width + "x" + a.kids[0].height, a.kids[0].attrs["aria-hidden"], a.attrs["data-photo"], b.kids[0].width + "x" + b.kids[0].height, c.kids.length + d.kids.length + e.kids.length + f2.kids.length + g.kids.length, f.kids.length]));
     console.log(JSON.stringify(drawn));
 }}, 20);
 "#
@@ -1642,14 +1652,113 @@ setTimeout(function () {{
         .collect();
     // a tone is 0 to 11 as written, the rest is none, whatever the text is
     assert_eq!(got[0], r#"["5",null,null,null,"11"]"#, "{got:?}");
-    // the decoder was asked once for the good text, which was drawn twice (a cache shared with face(..)); the canvas of 3:2 is 720x480 and of 2:3 480x720; nothing was drawn for the others
+    // the decoder was asked once for the good JPEG, which was drawn twice, and once for the PNG signature (a cache shared with face(..)); the canvas of 3:2 is 720x480 and of 2:3 480x720; nothing was drawn for the others
+    // (the last number: a text that starts with a PNG's signature is drawn, a text one character off it is not)
     assert_eq!(
-        got[1], r#"[1,1,"720x480","true","1","480x720",0]"#,
+        got[1], r#"[2,1,"720x480","true","1","480x720",0,1]"#,
         "{got:?}"
     );
     // 400x200 picture on 720x480: scaled by max(720/400, 480/200) = 2.4 to 960x480 and centred (-120, 0); on 480x720: by max(1.2, 3.6) = 3.6 to 1440x720 and centred (-480, 0)
     assert!(
         got[2].contains("[-120,0,960,480]") && got[2].contains("[-480,0,1440,720]"),
+        "{got:?}"
+    );
+}
+
+/// `fit: true` (docs/structure.md 12.0r): the size a picture says of itself in its first bytes, read by the page's `__cui_photo_dims` with no decoder, and the bounds 1:2 and 2:1 of
+/// `__cui_photo_ratio`, run by node on headers written here byte by byte (no picture is kept): a PNG, the three kinds of WebP chunk, a JPEG whose frame header comes after an EXIF block
+/// (that holds a thumbnail with a frame header of its own, which must be skipped) and whose orientation turns it, and what has no size to read.
+#[test]
+fn the_emitted_fit_reads_the_size_from_the_header_and_bounds_the_ratio() {
+    let Ok(v) = Command::new("node").arg("--version").output() else {
+        eprintln!("node is not installed: not run");
+        return;
+    };
+    assert!(v.status.success());
+    let (_, js) = page_of(PHOTO_PROGRAM);
+    let from = |name: &str| {
+        let start = js.find(name).unwrap_or_else(|| panic!("no {name}"));
+        let end = js[start..]
+            .find("\n}\n")
+            .map(|i| start + i + 3)
+            .expect("a function ends");
+        js[start..end].to_string()
+    };
+    let script = format!(
+        r#"
+{}
+{}
+{}
+{}
+var enc = function (a) {{ var t = Buffer.from(a).toString("base64"); while (t.length < 100) {{ t += "A"; }} return t; }};
+var pad = function (a) {{ a = a.slice(); while (a.length < 90) {{ a.push(0); }} return a; }};
+var be32 = function (n) {{ return [n >>> 24, (n >>> 16) & 255, (n >>> 8) & 255, n & 255]; }};
+var png = function (w, h) {{ return [0x89, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82].concat(be32(w), be32(h), [8, 6, 0, 0, 0]); }};
+var riff = function (chunk) {{ return [82, 73, 70, 70, 100, 0, 0, 0, 87, 69, 66, 80].concat(chunk); }};
+var le24 = function (n) {{ return [n & 255, (n >> 8) & 255, (n >> 16) & 255]; }};
+var vp8x = function (w, h) {{ return riff([86, 80, 56, 88, 10, 0, 0, 0, 16, 0, 0, 0].concat(le24(w - 1), le24(h - 1))); }};
+var vp8 = function (w, h) {{ return riff([86, 80, 56, 32, 30, 0, 0, 0, 0, 0, 0, 0x9d, 1, 0x2a, w & 255, w >> 8, h & 255, h >> 8]); }};
+var vp8l = function (w, h) {{ var b = ((w - 1) | ((h - 1) << 14)) >>> 0; return riff([86, 80, 56, 76, 30, 0, 0, 0, 0x2f, b & 255, (b >> 8) & 255, (b >> 16) & 255, (b >>> 24) & 255]); }};
+var tiff = function (le, o) {{ var u = function (n) {{ return le ? [n & 255, n >> 8] : [n >> 8, n & 255]; }}, w = function (n) {{ return le ? [n & 255, (n >> 8) & 255, 0, 0] : [0, 0, (n >> 8) & 255, n & 255]; }};
+    return (le ? [73, 73, 42, 0, 8, 0, 0, 0] : [77, 77, 0, 42, 0, 0, 0, 8]).concat(u(2), u(0x0100), u(3), w(1), w(5), u(0x0112), u(3), w(1), u(o), [0, 0], [0, 0, 0, 0]); }};
+var app1 = function (t) {{ var body = [69, 120, 105, 102, 0, 0].concat(t); return [255, 225, (body.length + 2) >> 8, (body.length + 2) & 255].concat(body); }};
+var sof = function (w, h) {{ return [255, 192, 0, 17, 8, h >> 8, h & 255, w >> 8, w & 255, 3, 1, 34, 0, 2, 17, 1, 3, 17, 1]; }};
+var jpeg = function (w, h, mid) {{ return [255, 216, 255, 224, 0, 16, 74, 70, 73, 70, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0].concat(mid || [], sof(w, h), [255, 218, 0, 8, 1, 1, 0, 0, 63, 0]); }};
+var out = [
+  __cui_photo_dims(enc(pad(png(300, 400)))),
+  __cui_photo_dims(enc(pad(png(70000, 3)))),
+  __cui_photo_dims(enc(pad(png(16777221, 3)))),
+  __cui_photo_dims(enc(pad(vp8x(300, 400)))),
+  __cui_photo_dims(enc(pad(vp8(640, 480)))),
+  __cui_photo_dims(enc(pad(vp8(16383, 9000)))),
+  __cui_photo_dims(enc(pad(vp8(640 | 0xC000, 480 | 0x4000)))),
+  __cui_photo_dims(enc(pad(vp8l(300, 400)))),
+  __cui_photo_dims(enc(pad(vp8l(1500, 3000)))),
+  __cui_photo_dims(enc(pad(vp8l(300, 9000)))),
+  __cui_photo_dims(enc(pad(jpeg(400, 300)))),
+  __cui_photo_dims(enc(pad(jpeg(400, 300, app1(tiff(true, 6)))))),
+  __cui_photo_dims(enc(pad(jpeg(400, 300, app1(tiff(false, 8)))))),
+  __cui_photo_dims(enc(pad(jpeg(400, 300, app1(tiff(true, 1)))))),
+  __cui_photo_dims(enc(pad(jpeg(400, 300, app1(tiff(false, 3)))))),
+  __cui_photo_dims(enc(pad(jpeg(400, 300, [255, 226, 0, 2 + 10 + 19, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].concat(sof(9, 9)))))),
+  __cui_photo_dims(enc(pad([255, 216, 255, 224, 0, 16]))),
+  __cui_photo_dims(enc(pad(png(0, 5)))),
+  __cui_photo_dims(enc(pad([82, 73, 70, 70, 100, 0, 0, 0, 87, 69, 66, 80, 86, 80, 56, 90]))),
+  __cui_photo_dims("!!!!"),
+];
+console.log(JSON.stringify(out));
+console.log(JSON.stringify([[3, 4], [4, 3], [1, 1], [2, 1], [1, 2], [20, 10], [21, 10], [10, 20], [10, 21], [1000, 1], [1, 1000], [599, 300], [301, 600]].map(function (p) {{ return __cui_photo_ratio(p[0], p[1]); }})));
+"#,
+        from("function __cui_photo_kind"),
+        from("function __cui_photo_dims"),
+        from("function __cui_photo_ratio"),
+        "",
+    );
+    let out = Command::new("node")
+        .arg("-e")
+        .arg(&script)
+        .output()
+        .expect("node runs");
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let got: Vec<String> = String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .map(str::to_string)
+        .collect();
+    // a PNG; a PNG over 65,535 and one over 2^24 (a 32-bit width); VP8X, VP8 (14 bits: the two scale bits above are not part of the size) and VP8L (14 bits each, a height over 8,192); a JPEG; a JPEG turned by EXIF 6 and 8 (swapped, either byte order) and by 1 and 3 (not); a frame header inside another segment (a thumbnail's, in an
+    // EXIF block) is skipped (the real one follows); a JPEG that stops at its header, a PNG of width 0, a RIFF of a chunk that is none of the three, and a text that is not base64: no size
+    assert_eq!(
+        got[0],
+        "[[300,400],[70000,3],[16777221,3],[300,400],[640,480],[16383,9000],[640,480],[300,400],[1500,3000],[300,9000],[400,300],[300,400],[300,400],[400,300],[400,300],[400,300],null,null,null,null]",
+        "{got:?}"
+    );
+    // 2:1 and wider is 2:1, 1:2 and narrower is 1:2, in between as it is
+    assert_eq!(
+        got[1],
+        "[[3,4],[4,3],[1,1],[2,1],[1,2],[2,1],[2,1],[1,2],[1,2],[2,1],[1,2],[599,300],[301,600]]",
         "{got:?}"
     );
 }

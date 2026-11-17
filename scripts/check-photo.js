@@ -99,16 +99,16 @@ function program(cap) {
     const corpus = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'photo_corpus.json'), 'utf8'));
     const dir = buildCap(48000);
     const js = fs.readFileSync(path.join(dir, 'app.js'), 'utf8');
-    const m = /function __cui_photo_ok\(t\) \{[^\n]*\}\n/.exec(js);
-    check('the page carries __cui_photo_ok', !!m);
-    const ok = vm.runInNewContext(`${m[0]}; __cui_photo_ok`);
+    const m = /function __cui_photo_kind\(t\) \{[\s\S]*?\n\}\nfunction __cui_photo_ok\(t\) \{[^\n]*\}\n/.exec(js);
+    check('the page carries __cui_photo_kind and __cui_photo_ok', !!m);
+    const ok = vm.runInNewContext(`${m[0]}; __cui_photo_ok`, { atob });
     for (const c of corpus.pictures) {
       const text = c.head + c.fill.repeat(Math.max(0, c.len - c.head.length - (c.tail || '').length)) + (c.tail || '');
       check(`corpus: ${c.why}`, ok(text) === c.ok);
     }
     check('corpus: a value that is not text is no picture', ok(5) === false && ok(null) === false && ok(undefined) === false && ok(['/9j/']) === false);
     const face = /photo\.length < (\d+) \|\| photo\.length > (\d+) \|\| photo\.indexOf\("([^"]+)"\) !== 0/.exec(js);
-    check('the page\'s face(..) and Photo take the same limits', !!face && (face[1] === '100' && face[2] === '48000' && face[3] === '/9j/'));
+    check('the page\'s face(..) keeps its limits and its JPEG-only start (it is not changed)', !!face && (face[1] === '100' && face[2] === '48000' && face[3] === '/9j/'));
   }
 
   // ---- B. the elements ----
