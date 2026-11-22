@@ -74,10 +74,22 @@ fn collect_frames(node: &cancho_ui_ir::ir::IrViewNode, out: &mut Vec<String>) {
     use cancho_ui_ir::ir::{IrElementKind, IrViewNode};
     match node {
         IrViewNode::Element { kind, children, .. } => {
-            if let IrElementKind::Island(i) = kind
-                && i.sealed
-            {
-                for h in inline_script_hashes(&i.srcdoc) {
+            if let IrElementKind::Island(i) = kind {
+                // A sealed island's frame inherits the page's policy, so its scripts are hashed from its document; an open island's page script
+                // creates one inline `<script>` per file, wrapped as codegen-web/island.rs writes it, and that wrapped text is what the browser hashes.
+                let mut hashes: Vec<String> = if i.sealed {
+                    inline_script_hashes(&i.srcdoc)
+                } else {
+                    i.texts
+                        .iter()
+                        .map(|t| {
+                            let wrapped =
+                                format!("(function (cancho) {{\n{t}\n}})(window.__cui_open_cur);");
+                            cancho_ui_ir::island::csp_hash(&sha256_hex(wrapped.as_bytes()))
+                        })
+                        .collect()
+                };
+                for h in hashes.drain(..) {
                     if !out.contains(&h) {
                         out.push(h);
                     }
