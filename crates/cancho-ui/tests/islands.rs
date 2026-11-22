@@ -720,6 +720,39 @@ fn an_open_island_is_a_div_of_the_page_and_adds_no_frame_policy() {
     assert!(js.contains("var x = 1;"));
 }
 
+/// base64 of the bytes a lower-case hex string spells (a CSP source is the digest in base64).
+fn hex_to_base64(hex: &str) -> String {
+    const A: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let bytes: Vec<u8> = (0..hex.len() / 2)
+        .map(|i| u8::from_str_radix(&hex[2 * i..2 * i + 2], 16).expect("hex"))
+        .collect();
+    let mut out = String::new();
+    for chunk in bytes.chunks(3) {
+        let n = chunk
+            .iter()
+            .enumerate()
+            .fold(0u32, |a, (i, b)| a | (*b as u32) << (16 - 8 * i));
+        for k in 0..4 {
+            if k <= chunk.len() {
+                out.push(A[(n >> (18 - 6 * k) & 63) as usize] as char);
+            } else {
+                out.push('=');
+            }
+        }
+    }
+    out
+}
+
+#[test]
+fn the_page_policy_allows_the_scripts_an_open_island_runs() {
+    // the page's script creates one inline <script> per file, wrapped; the browser hashes that text, so the policy must list it
+    let (_, html, _) = built(OPEN, &["--page"]);
+    let wrapped = "(function (cancho) {\nvar x = 1;\n\n})(window.__cui_open_cur);";
+    let want = format!("'sha256-{}'", hex_to_base64(&sha256_of(wrapped.as_bytes())));
+    let script = common::directive(&html, "script-src").expect("a script-src");
+    assert!(script.contains(&want), "{want} is not in {script}");
+}
+
 #[test]
 fn inspect_effects_and_report_say_unbounded_for_an_open_island() {
     let c = corpus();
