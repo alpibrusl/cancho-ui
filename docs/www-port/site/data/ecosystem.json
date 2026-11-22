@@ -1,7 +1,7 @@
 {
   "name": "cancho",
   "tagline": "Tools built for agents, not adapted from humans: a native systems language, and the ecosystem built with it, where trust comes from verification, not comprehension.",
-  "as_of": "2026-10-20",
+  "as_of": "2026-11-22",
   "site": "https://cancho.dev/",
   "stages": {
     "working": "Does what its README claims.",
@@ -23,7 +23,7 @@
       "name": "cancho",
       "kind": "language",
       "stage": "built",
-      "summary": "The language and its Rust compiler. A second compiler, written in cancho, is being checked against it.",
+      "summary": "The language and its compiler, written in cancho and built from a committed seed with clang alone. Release 0.1.0. Pre-1.0.",
       "url": "https://github.com/alpibrusl/cancho",
       "page": "https://alpibrusl.github.io/cancho/",
       "note": "Pre-1.0."
@@ -270,27 +270,27 @@
     }
   ],
   "measured": {
-    "date": "2026-10-15",
-    "platform": "macOS aarch64",
-    "source": "https://github.com/alpibrusl/cancho/issues/491",
-    "record": "https://alpibrusl.github.io/cancho/bootstrap.html",
+    "date": "2026-11-22",
+    "platform": "macOS aarch64; the gate also runs on linux-x86_64",
+    "source": "https://github.com/alpibrusl/cancho/blob/main/docs/gate.md",
+    "record": "https://alpibrusl.github.io/cancho/gate.html",
     "figures": [
       {
         "id": "conformance",
-        "passed": 697,
-        "of": 704,
-        "what": "conformance tests pass when every build goes through the compiler written in cancho; the other 7 are known differences from the Rust compiler, each listed"
+        "passed": 130,
+        "of": 130,
+        "what": "programs that must be accepted are built and run with the output their directives state, by the gate on every push"
       },
       {
         "id": "refusals",
-        "passed": 256,
-        "of": 333,
-        "what": "programs that must be refused are refused by the cancho compiler with the same rule as the Rust one; it does not yet check everything"
+        "passed": 391,
+        "of": 391,
+        "what": "programs that must be refused are refused, each by the rule its file names, by the gate on every push"
       },
       {
         "id": "rules",
-        "value": 62,
-        "what": "named rules, stable tags a program can match on"
+        "value": 58,
+        "what": "named rules the refusal programs exercise, stable tags a program can match on"
       }
     ]
   },
@@ -412,22 +412,22 @@
         ]
       },
       {
-        "claim": "With every build going through the compiler written in cancho, 697 of 704 conformance tests pass (measured 2026-10-15, macOS aarch64).",
+        "claim": "The gate builds the compiler from the committed seed, requires it to reproduce itself byte for byte, and passes 130 programs that must be accepted and 391 that must be refused by the rule they name (measured 2026-11-22, macOS aarch64).",
         "evidence": [
           [
-            "bootstrap record",
-            "https://alpibrusl.github.io/cancho/bootstrap.html"
+            "the gate",
+            "https://alpibrusl.github.io/cancho/gate.html"
           ]
         ]
       }
     ],
     "open": [
       {
-        "claim": "The compiler written in cancho refuses 256 of the 333 programs that must be refused, with the same rule as the Rust one. It is not the default.",
+        "claim": "Release 0.1.0 writes code with LLVM only, for Linux (x86-64, aarch64) and macOS (Apple silicon); it was install-checked on macOS only, and has no Cranelift or WebAssembly output.",
         "evidence": [
           [
-            "epic #491",
-            "https://github.com/alpibrusl/cancho/issues/491"
+            "README",
+            "https://github.com/alpibrusl/cancho#install"
           ]
         ]
       },

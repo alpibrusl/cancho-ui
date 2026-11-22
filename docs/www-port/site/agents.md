@@ -2,7 +2,7 @@
 
 > Tools built for agents, not adapted from humans: a native systems language, and the ecosystem built with it, where trust comes from verification, not comprehension.
 
-Status: pre-1.0. As of 2026-10-20. Alpha products are built with it; the compiler is the Rust one, and a second compiler written in cancho is being checked against it (it does not yet refuse everything the language refuses).
+Status: pre-1.0. As of 2026-11-22. Alpha products are built with it; the compiler is written in cancho, release 0.1.0, built from a committed seed with clang alone; it writes code with LLVM for Linux and macOS.
 
 ## The idea
 
@@ -73,11 +73,11 @@ A passing check shows that the checks listed here passed. It does not show a pro
 - Every checked code block in AGENTS.md is a fixture; changing a rule name to a wrong one turns the suite red (checked by doing it). ([AGENTS.md](https://github.com/alpibrusl/cancho/blob/main/AGENTS.md))
 - A mutation fuzzer feeds token-level edits of every program through parsing, checking and code generation, requiring no panic, a stable print-and-parse, and that what the checker accepts the backend compiles. ([fuzzer](https://github.com/alpibrusl/cancho/blob/main/crates/cancho/tests/fuzz.rs), [design](https://github.com/alpibrusl/cancho/blob/main/docs/fuzzing.md))
 - Tests are checked by breaking what they cover and watching them fail. ([CONTRIBUTING](https://github.com/alpibrusl/cancho/blob/main/CONTRIBUTING.md), [differential testing](https://github.com/alpibrusl/cancho/blob/main/docs/differential.md))
-- With every build going through the compiler written in cancho, 697 of 704 conformance tests pass (measured 2026-10-15, macOS aarch64). ([bootstrap record](https://alpibrusl.github.io/cancho/bootstrap.html))
+- The gate builds the compiler from the committed seed, requires it to reproduce itself byte for byte, and passes 130 programs that must be accepted and 391 that must be refused by the rule they name (measured 2026-11-22, macOS aarch64). ([the gate](https://alpibrusl.github.io/cancho/gate.html))
 
 ### Still being established
 
-- The compiler written in cancho refuses 256 of the 333 programs that must be refused, with the same rule as the Rust one. It is not the default. ([epic #491](https://github.com/alpibrusl/cancho/issues/491))
+- Release 0.1.0 writes code with LLVM only, for Linux (x86-64, aarch64) and macOS (Apple silicon); it was install-checked on macOS only, and has no Cranelift or WebAssembly output. ([README](https://github.com/alpibrusl/cancho#install))
 - Hash stability is not a contract yet: the canonical-AST document is “proposed”, and 39% of this repository’s own historical revisions do not type-check under today’s build. ([canonical AST](https://github.com/alpibrusl/cancho/blob/main/docs/canonical-ast.md), [hash stability](https://github.com/alpibrusl/cancho/blob/main/docs/hash-stability.md))
 - A cancho program has one network bound shared by listening and connecting, so a proxy’s authority report cannot say which upstreams it reaches; cancho-gateway enforces its compiled-in list by exact match and tests it, but the compiler does not vouch for it. ([cancho-gateway](https://github.com/alpibrusl/cancho-gateway))
 - The TLS stack is not independently reviewed (stated in cancho-fetch’s README). ([cancho-fetch](https://github.com/alpibrusl/cancho-fetch))
@@ -92,7 +92,7 @@ Stages: `working` = Does what its README claims.; `alpha` = Runs, may change, no
 
 ### Language and compiler
 
-- [cancho](https://github.com/alpibrusl/cancho) `built`: The language and its Rust compiler. A second compiler, written in cancho, is being checked against it. Pre-1.0. Page: https://alpibrusl.github.io/cancho/
+- [cancho](https://github.com/alpibrusl/cancho) `built`: The language and its compiler, written in cancho and built from a committed seed with clang alone. Release 0.1.0. Pre-1.0. Pre-1.0. Page: https://alpibrusl.github.io/cancho/
 - [cancho-ui](https://github.com/alpibrusl/cancho-ui) `built`: A UI language whose compiler knows what each component is allowed to do. Builds JavaScript and DOM. Authority: a component declares `requires Clock;`; a missing or unused declaration is refused (capability-missing, capability-unused). Page: https://alpibrusl.github.io/cancho-ui/
 
 ### Services
@@ -133,13 +133,13 @@ More, including repositories not listed here: https://github.com/orgs/alpibrusl/
 
 ## Measured
 
-On macOS aarch64, 2026-10-15 (moves as the work does; https://github.com/alpibrusl/cancho/issues/491):
+On macOS aarch64; the gate also runs on linux-x86_64, 2026-11-22 (moves as the work does; https://github.com/alpibrusl/cancho/blob/main/docs/gate.md):
 
-- 697 / 704 conformance tests pass when every build goes through the compiler written in cancho; the other 7 are known differences from the Rust compiler, each listed.
-- 256 / 333 programs that must be refused are refused by the cancho compiler with the same rule as the Rust one; it does not yet check everything.
-- 62 named rules, stable tags a program can match on.
+- 130 / 130 programs that must be accepted are built and run with the output their directives state, by the gate on every push.
+- 391 / 391 programs that must be refused are refused, each by the rule its file names, by the gate on every push.
+- 58 named rules the refusal programs exercise, stable tags a program can match on.
 
-Record: https://alpibrusl.github.io/cancho/bootstrap.html
+Record: https://alpibrusl.github.io/cancho/gate.html
 
 ## Machine-readable
 

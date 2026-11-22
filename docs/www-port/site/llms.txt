@@ -2,7 +2,7 @@
 
 > Tools built for agents, not adapted from humans: a native systems language, and the ecosystem built with it, where trust comes from verification, not comprehension.
 
-Status: pre-1.0. Alpha products are built with it; the compiler is the Rust one, and a second compiler written in cancho is being checked against it (it does not yet refuse everything the language refuses). See the roadmap for what is open.
+Status: pre-1.0. Alpha products are built with it; the compiler is written in cancho, release 0.1.0, built from a committed seed with clang alone; it writes code with LLVM for Linux and macOS. See the roadmap for what is open.
 
 Manifesto (the idea behind it): https://alpibru.com/manifesto
 Source: https://github.com/alpibrusl/cancho
