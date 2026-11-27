@@ -2,7 +2,7 @@
 
 > Tools built for agents, not adapted from humans: a native systems language, and the ecosystem built with it, where trust comes from verification, not comprehension.
 
-Status: pre-1.0. Alpha products are built with it; the compiler is written in cancho, release 0.1.0, built from a committed seed with clang alone; it writes code with LLVM for Linux and macOS. See the roadmap for what is open.
+Status: pre-1.0. Alpha products are built with it; the compiler is written in cancho, with no Rust, release 0.1.1, built from a committed seed with clang alone; it writes code with LLVM for Linux and macOS, and a backend of its own is started and generates no code yet. cancho-os, an operating system written in cancho with no Linux and no C, has booted one real Raspberry Pi 4. See the roadmap for what is open.
 
 Manifesto (the idea behind it): https://alpibru.com/manifesto
 Source: https://github.com/alpibrusl/cancho
@@ -30,6 +30,7 @@ The ecosystem as JSON: https://cancho.dev/data/ecosystem.json
 - [cancho-ml](https://github.com/alpibrusl/cancho-ml) (alpha): Classical machine learning on tabular data as a command line an agent can read: seven models, one JSON line out, or a named refusal with a repair. Page: https://alpibrusl.github.io/cancho-ml/
 - [cancho-tools](https://github.com/alpibrusl/cancho-tools) (early): Ten small tools for agents (seek, list, peek, jsonq, tally, hash, write, replace, move, archive) and one opt-in, run. JSON out, tagged refusals that often carry a repair. Page: https://alpibrusl.github.io/cancho-tools/
 - [cancho-table](https://github.com/alpibrusl/cancho-table) (early): Select, filter, group and aggregate CSV/TSV for agents; bounded, exact, byte-stable. Page: https://alpibrusl.github.io/cancho-table/
+- [cancho-os](https://github.com/alpibrusl/cancho-os) (built): An operating system written in cancho, on bare metal: no Linux or libc under it and no C in it. The drivers, the page tables, the network stack, SSH and the shell are cancho; what is not is one page of boot assembly and the board’s firmware. Page: https://alpibrusl.github.io/cancho-os/
 - [cancho-robot](https://github.com/alpibrusl/cancho-robot) (design): A robot arm controller: the Feetech servo bus, SO-101 kinematics and a safety core every motion goes through. Page: https://alpibrusl.github.io/cancho-robot/
 - [cancho-gpu](https://github.com/alpibrusl/cancho-gpu) (built): A compiler for typed tile kernels (.chx) to CUDA C and Metal, written in cancho; it also runs language models on a Metal GPU. Page: https://alpibrusl.github.io/cancho-gpu/
 - [cancho-code](https://github.com/alpibrusl/cancho-code) (built): An AI coding assistant that proves its work: the cancho compiler checks every piece the model writes, and a task is done only when the compiler and the task's own examples say so. Page: https://alpibrusl.github.io/cancho-code/

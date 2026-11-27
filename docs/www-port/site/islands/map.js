@@ -11,7 +11,7 @@
     'cancho-forge': [405, 255, 'w'], 'cancho-cache': [560, 335, 's'], 'cancho-hooks': [705, 255, 'n'], 'cancho-gateway': [855, 335, 's'], 'cancho-mqtt': [995, 255, 'n'], 'cancho-dns': [1120, 335, 's'], 'cancho-oci': [1215, 245, 'n'],
     'cancho-schema': [560, 485, 's'], 'cancho-web': [745, 550, 's'], 'cancho-pg': [905, 485, 'n'], 'cancho-log': [1050, 550, 's'], 'cancho-stats': [1170, 465, 'n'], 'cancho-ml': [1200, 600, 's'], 'cancho-mqtt-client': [415, 615, 'w'],
     'cancho-tools': [535, 775, 'w'], 'cancho-table': [690, 775, 's'], 'cancho-client-gen': [855, 775, 's'], 'cancho-code': [610, 865, 's'], 'cancho-fetch': [775, 865, 's'],
-    'cancho-robot': [1030, 775, 'n'], 'cancho-gpu': [1170, 775, 'n'], 'cancho-hdl': [1100, 865, 's']
+    'cancho-robot': [1030, 775, 'n'], 'cancho-gpu': [1170, 775, 'n'], 'cancho-hdl': [1100, 865, 's'], 'cancho-os': [950, 865, 's']
   };
   var REGIONS = [['La Pedriza', 120, 205], ['Services', 420, 150], ['Libraries', 640, 392], ['Tools', 345, 872], ['Edge', 1190, 888]];
   var PARKING = [112, 652];

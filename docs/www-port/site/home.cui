@@ -3,7 +3,7 @@
 // animation and the ecosystem map: islands, PR B2) and what was dropped or changed on purpose (docs/www-port/dropped.md) are listed, not hidden.
 // The text of the page is the page's; the lists the page's Python generator writes from data/ecosystem.json are `For`s over that file, written out at build.
 
-data Ecosystem { file: "data/ecosystem.json" sha256: "033bbf68710c079dc28819221f08717db303b469dda20a4b628977ff6d999247"; }
+data Ecosystem { file: "data/ecosystem.json" sha256: "4c1dc66de4a816e0fecf29ecc69274904f004347739d921fa4d0e20f2d67e06f"; }
 
 page {
     title: "cancho: tools built for agents, not adapted from humans";
@@ -109,7 +109,7 @@ data AuthorityData { file: "data/authority.json" sha256: "829ee6c67254b38b74431b
 island Places {
     sealed: false;
     script: "islands/rocks.js" sha256: "ab5fffd81da37de020b59a17a03eb779d9cf0b4f35fca167d7b9fedd7fa8c008";
-    script: "islands/map.js" sha256: "275bb3bfe526f2b015e33e9eb0eace4ffffb1289b0529d19cb01ae5bc2e06d3e";
+    script: "islands/map.js" sha256: "f96289e9d0390efcff4d09b618487d128a60280585d58202bff98a3672a72f7a";
     style: "islands/map.css" sha256: "1873ecbd5f3935c15bf7c4b8e75d0b65a4c397fed1e6ce83c674e0dc05f3f119";
     label: "Map of the cancho ecosystem: each repository is a rock; choose one for its details";
     width: 1300;
@@ -216,6 +216,7 @@ component Home {
                             Link { to: "#trust" "Trust" }
                             Link { to: "#verifies" "Evidence" }
                             Link { to: "#ecosystem" "Ecosystem" }
+                            Link { to: "#news" "Roadmap" }
                             Link { to: "#demo" "Demo" }
                             Link { to: "#agents" "Agents" }
                             Link { to: "https://alpibru.com/manifesto" "Manifesto" }
@@ -713,7 +714,7 @@ component Home {
                     id: "proof"
                     Text { style: "eyebrow" "Proof, not promises" }
                     Heading { level: 2 "The compiler is written in cancho." }
-                    Text { style: "lead" "The compiler is about seventy thousand lines of cancho, built from a committed seed of LLVM IR with clang alone; the one it builds reproduces itself byte for byte. One square is one test." }
+                    Text { style: "lead" "The compiler is about eighty thousand lines of cancho and no Rust, built from a committed seed of LLVM IR with clang alone; the one it builds reproduces itself byte for byte. One square is one test." }
                     Reveal {
                         Grid {
                             min: 19
@@ -752,6 +753,35 @@ component Home {
                     Rich { style: "note" "Measured {json.get(data.value(Ecosystem, \"measured\"), \"date\", \"\")}, {json.get(data.value(Ecosystem, \"measured\"), \"platform\", \"\")}. The first two figures are what the repository’s gate says and move as the work does. " Link { to: "https://alpibrusl.github.io/cancho/gate.html" "The gate" } " has the record." }
                 }
                 Column { max_width: 10 Cairn { seed: 6 } }
+                Section {
+                    id: "news"
+                    Text { style: "eyebrow" "New, and next" }
+                    Heading { level: 2 "What changed, and where it is going." }
+                    Text { style: "lead" "The compiler is written in cancho with no Rust left, an operating system written in it has booted a real board, and the next step is a backend that does not need LLVM. Each line says what was built and what was not." }
+                    Reveal {
+                        Grid {
+                            min: 19
+                            Column {
+                                Heading { level: 3 "What is new" }
+                                List {
+                                    For { over: data.items(Ecosystem, "highlights") as: c
+                                        Item { Rich { Strong { "{json.get(c, \"title\", \"\")}" } " {json.get(c, \"text\", \"\")} " For { over: json.items(c, "evidence") as: ev Link { to: json.get(ev, "1", "") "{json.get(ev, \"0\", \"\")}" } " " } } }
+                                    }
+                                }
+                            }
+                            Column {
+                                Heading { level: 3 "What is next" }
+                                List {
+                                    For { over: data.items(Ecosystem, "roadmap") as: c
+                                        Item { Rich { Strong { "{json.get(c, \"title\", \"\")}" } " {json.get(c, \"text\", \"\")} " For { over: json.items(c, "evidence") as: ev Link { to: json.get(ev, "1", "") "{json.get(ev, \"0\", \"\")}" } " " } } }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Rich { style: "note" "As of {data.value(Ecosystem, \"as_of\")}. “Built” here means built and checked as the linked document says; “next” is a direction, not a date." }
+                }
+                Column { max_width: 10 Cairn { seed: 10 } }
                 Section {
                     id: "demo"
                     Text { style: "eyebrow" "Recorded, not staged" }
@@ -833,7 +863,7 @@ component Home {
                     Heading { level: 2 "Status: pre-1.0" }
                     List {
                         Item { "Alpha and early products are built with it (see the map), each with an authority report the compiler derives. Alpha means it runs and may change." }
-                        Item { "Release 0.1.0 is the first release of the compiler written in cancho. It writes code with LLVM, for Linux and macOS." }
+                        Item { "The compiler is written in cancho, with no Rust; release 0.1.1. It writes code with LLVM, for Linux and macOS. A backend of its own is started and generates no code yet." }
                         Item { "Dependencies resolve end to end, and a real TLS handshake compiles and runs." }
                         Item { "There is no manifest-level version string: a hash is what you depend on." }
                         Item { "Claims that turn out wrong are corrected in place in the docs, not quietly edited." }
