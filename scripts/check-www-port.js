@@ -3,7 +3,7 @@
 // It needs nothing outside this repository (the comparison with the real page is scripts/parity-www.js):
 //   A. what the files are: every font is the file its SHA-256 says and has its licence text beside it, every file of the site is tracked (none ignored),
 //      no file is a symbolic link;
-//   B. with JavaScript off the page has its lists, its 17 + 9 + 24 items from the data file, its links to files (each answers 200 with the bytes of its file);
+//   B. with JavaScript off the page has its lists, its 18 + 10 + 25 items from the data file, its links to files (each answers 200 with the bytes of its file);
 //   C. outline and anchors: one h1, no level skipped, one main, every #id linked exists, the skip link is the first thing a keyboard reaches;
 //   D. with JavaScript on: the three fonts are the ones drawn, the pane for agents shows agents.md and then llms.txt (read from this site), the menu opens,
 //      the copy button copies; no request to another origin, no console error, layout shift 0;
@@ -89,7 +89,7 @@ const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e
     const eco = JSON.parse(fs.readFileSync(path.join(SITE, 'data', 'ecosystem.json'), 'utf8'));
     const want = ['compiler', 'tests', 'open'].map((k) => eco.verifies[k].map((c) => `${c.claim.replace(/`/g, '')} ${c.evidence.map((e) => e[0]).join(' ')}`.replace(/\s+/g, ' ').trim()));
     check('B: each of the three columns of the evidence is the data file\'s list, claim and evidence in order', JSON.stringify(r.columns) === JSON.stringify(want), JSON.stringify(r.columns.map((c) => c.length)));
-    check('B: with no script, the 17 claims, the 9 path entries and the 24 projects are in the HTML', r.claims === 17 && r.paths === 9 && r.all === 24, JSON.stringify([r.claims, r.paths, r.all]));
+    check('B: with no script, the 18 claims, the 10 path entries and the 25 projects are in the HTML', r.claims === 18 && r.paths === 10 && r.all === 25, JSON.stringify([r.claims, r.paths, r.all]));
     const ax = (await (await ctx.newCDPSession(page)).send('Accessibility.getFullAXTree')).nodes.filter((n) => !n.ignored);
     const roles = (name) => ax.filter((n) => n.role && n.role.value === name).length;
     check('B: with no script the comparison is a table in the accessibility tree: a region and a table (the page has 4 table elements with the 3 data tables of the waffles; the tree has the one), 3 column headers, 3 row headers', r.table === 4 && roles('table') === 1 && roles('columnheader') === 3 && roles('rowheader') === 3 && ax.some((n) => n.role.value === 'region' && n.name && n.name.value.startsWith('Human tools')), `${r.table} table, ${roles('table')} table role, ${roles('columnheader')} columnheader, ${roles('rowheader')} rowheader`);
@@ -99,8 +99,8 @@ const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e
     await page.evaluate(() => document.querySelectorAll('details').forEach((d) => { d.open = true; }));
     const openTables = (await cdp2.send('Accessibility.getFullAXTree')).nodes.filter((n) => !n.ignored && n.role && n.role.value === 'table').length;
     check('B: the waffles\' data tables are in the accessibility tree once their <details> is opened (1 table with them closed, 4 open: a disclosure, not a hidden table)', closedTables === 1 && openTables === 4, `${closedTables} closed, ${openTables} open`);
-    check('B: the five backtick pairs of the claims are <code>', r.code === 5, String(r.code));
-    check('B: the three final numbers are in the HTML, and the waffles are drawn', JSON.stringify(r.counts) === JSON.stringify(['697', '256', '62']) && r.waffles >= 3, JSON.stringify(r.counts));
+    check('B: the six backtick pairs of the claims are <code>', r.code === 6, String(r.code));
+    check('B: the three final numbers are in the HTML, and the waffles are drawn', JSON.stringify(r.counts) === JSON.stringify(eco.measured.figures.map((f) => String(f.passed !== undefined ? f.passed : f.value))) && r.waffles >= 3, JSON.stringify(r.counts));
     check('B: the pictures (5 img: the mark beside its brand link, which is no longer a link around the logo, dropped.md 2) and the two videos are in the HTML', r.imgs === 5 && r.videos === 2, `${r.imgs} ${r.videos}`);
     const rel = [...new Set(r.hrefs.filter((h) => !/^(https?:|mailto:|#)/.test(h)))].sort();
     check('B: the links to files of the site are the seven the page has', JSON.stringify(rel) === JSON.stringify(['agents.md', 'assets/media/ui-demo.mp4', 'data/ecosystem.json', 'demo/demo.cast', 'demo/demo.mp4', 'llms-full.txt', 'llms.txt'].sort()), JSON.stringify(rel));
@@ -162,7 +162,7 @@ const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e
     check('D: and its button says it is pressed', JSON.stringify(pressed) === JSON.stringify(['false', 'false', 'true']), JSON.stringify(pressed));
     await page.evaluate(() => document.querySelector('header details summary').click());
     const open = await page.evaluate(() => { const d = document.querySelector('header details'); return d.open && d.querySelectorAll('a').length; });
-    check('D: the menu opens and has its nine links', open === 9, String(open));
+    check('D: the menu opens and has its ten links', open === 10, String(open));
     await page.evaluate(() => document.querySelector('#try').scrollIntoView());
     await sleep(300);
     await page.click('#try button.cui-copy >> nth=0');
@@ -191,7 +191,7 @@ const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e
     await sleep(1200);
     const frames = await page.evaluate(() => [...document.querySelectorAll('iframe')].map((f) => ({ sandbox: f.getAttribute('sandbox'), title: f.title, hidden: f.getAttribute('aria-hidden'), name: JSON.parse(f.getAttribute('data-cui-island')).name })));
     const count = (n) => frames.filter((f) => f.name === n).length;
-    check('F: the page has 15 sealed frames: the hero, 10 cairns, 3 card drawings and the canvas of the animation', frames.length === 15 && count('Hero') === 1 && count('Cairn') === 10 && count('CardChain') + count('CardRings') + count('CardJson') === 3 && count('AuthorityCanvas') === 1, JSON.stringify(frames.map((f) => f.name)));
+    check('F: the page has 16 sealed frames: the hero, 11 cairns, 3 card drawings and the canvas of the animation', frames.length === 16 && count('Hero') === 1 && count('Cairn') === 11 && count('CardChain') + count('CardRings') + count('CardJson') === 3 && count('AuthorityCanvas') === 1, JSON.stringify(frames.map((f) => f.name)));
     check('F: every frame is sandboxed with allow-scripts and nothing else, the cairns are hidden from a screen reader and the others are named', frames.every((f) => f.sandbox === 'allow-scripts') && frames.filter((f) => f.name === 'Cairn').every((f) => f.hidden === 'true') && frames.filter((f) => f.name !== 'Cairn').every((f) => f.title.length > 10), '');
     const csp = await page.evaluate(() => [...document.querySelectorAll('meta[http-equiv="Content-Security-Policy"]')].map((m) => m.content).join(' '));
     check('F: the page allows frames of about: only', /frame-src about:/.test(csp), csp);
@@ -211,7 +211,7 @@ const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e
       const el = await f.frameElement();
       if (JSON.parse(await el.getAttribute('data-cui-island')).name === 'Cairn') { cairnPaths.push(await f.evaluate(() => [...document.querySelectorAll('.st')].length + ':' + document.querySelector('.rock-shape').getAttribute('d').slice(0, 24))); }
     }
-    check('F: ten cairns of three stones each, and no two alike (a seed each)', cairnPaths.length === 10 && cairnPaths.every((x) => x.startsWith('3:')) && new Set(cairnPaths).size === 10, JSON.stringify(cairnPaths.slice(0, 3)));
+    check('F: eleven cairns of three stones each, and no two alike (a seed each)', cairnPaths.length === 11 && cairnPaths.every((x) => x.startsWith('3:')) && new Set(cairnPaths).size === 11, JSON.stringify(cairnPaths.slice(0, 3)));
     for (const t of ['Three blocks', 'Rings spreading', 'A diagnostic as JSON']) {
       const f = await byTitle(t);
       check(`F: the card drawing "${t}" is drawn`, !!f && (await f.evaluate(() => document.querySelectorAll('svg *').length)) >= 4, '');
@@ -269,7 +269,7 @@ const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e
     const host = '[role=group][data-cui-island]';
     await page.evaluate((h) => { window.__host = document.querySelector(h); }, host);
     const m = await page.evaluate((h) => ({ role: document.querySelector(h).getAttribute('role'), label: document.querySelector(h).getAttribute('aria-label'), describedby: document.querySelector(h).getAttribute('aria-describedby'), rocks: [...document.querySelectorAll(h + ' .rock')].map((g) => [g.getAttribute('data-id'), g.getAttribute('role'), g.getAttribute('tabindex')]), rests: document.querySelectorAll(h + ' .rests').length, legend: document.querySelectorAll(h + ' .cmap-legend span').length, park: !!document.querySelector(h + ' a.park'), names: [...document.querySelectorAll(h + ' text.name')].map((t) => t.textContent) }), host);
-    check('G: the open island is a named group with its text alternative, and draws a rock for each of the 24 projects, each a button in the tab order', m.role === 'group' && m.label.startsWith('Map of the cancho ecosystem') && m.describedby === 'map-fallback' && m.rocks.length === eco.projects.length && m.rocks.every((r) => r[1] === 'button' && r[2] === '0'), `${m.rocks.length} rocks`);
+    check('G: the open island is a named group with its text alternative, and draws a rock for each of the 25 projects, each a button in the tab order', m.role === 'group' && m.label.startsWith('Map of the cancho ecosystem') && m.describedby === 'map-fallback' && m.rocks.length === eco.projects.length && m.rocks.every((r) => r[1] === 'button' && r[2] === '0'), `${m.rocks.length} rocks`);
     const look = await page.evaluate((h) => { const host = document.querySelector(h); const lg = host.querySelector('.cmap-legend'); const reg = host.querySelector('svg.cmap .region'); const hr = host.getBoundingClientRect(), lr = lg && lg.getBoundingClientRect(); return { legendInside: !!lr && lr.height > 10 && lr.bottom <= hr.bottom + 1 && lr.top >= hr.top, regionSize: reg && getComputedStyle(reg).fontSize, regionFamily: reg && getComputedStyle(reg).fontFamily }; }, host);
     check('G: the legend is inside the host and shown under the map (it was clipped by the aspect box), and the region names are drawn in the hand font at 40px (a generic rule had made them 12px mono)', look.legendInside && look.regionSize === '40px' && /Caveat|cursive|hand/i.test(look.regionFamily), JSON.stringify(look));
     check('G: the four "rests on" arrows, the legend of four and the car park are drawn', m.rests === eco.projects.reduce((a, p) => a + (p.rests_on || []).length, 0) && m.legend === 4 && m.park, JSON.stringify([m.rests, m.legend, m.park]));
@@ -327,7 +327,7 @@ const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e
     const pane = eff('AgentFiles');
     check('E: the page asks for the clipboard (the copy buttons) and the DOM (the open map island), and nothing else', JSON.stringify(home.requires.map((x) => x.name)) === '["Clipboard","Dom"]' && home.reachable_effects.length === 0, JSON.stringify(home.requires.map((x) => x.name)));
     check('E: the pane asks for the network and nothing else', JSON.stringify(pane.requires.map((x) => x.name)) === '["Network"]', JSON.stringify(pane.requires.map((x) => x.name)));
-    check('E: the data file is named by its hash', home.data[0].sha256 === 'a52c94388823335830af426be6c9163b9cf7e78f6b76eb333f2ef265b488fd5f' && home.data[0].file === 'data/ecosystem.json', JSON.stringify(home.data));
+    check('E: the data file is named by its hash', home.data[0].sha256 === sha(fs.readFileSync(path.join(SITE, 'data', 'ecosystem.json'))) && home.data[0].file === 'data/ecosystem.json', JSON.stringify(home.data));
     const js = fs.readFileSync(path.join(out, 'app.js'), 'utf8');
     check('E: the script holds no address of another host (the loopback address in two demo transcripts is text of the map\'s session boxes, not an address the page contacts)', !/https?:\/\/(?!www\.w3\.org|127\.0\.0\.1:18950)/.test(js.replace(/https:\/\/(github\.com|alpibru\.com|alpibrusl\.github\.io)[^"']*/g, '')), 'checked');
   }

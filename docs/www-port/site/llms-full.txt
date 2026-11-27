@@ -2,7 +2,7 @@
 
 > Tools built for agents, not adapted from humans: a native systems language, and the ecosystem built with it, where trust comes from verification, not comprehension.
 
-Status: pre-1.0. As of 2026-11-22. Alpha products are built with it; the compiler is written in cancho, release 0.1.0, built from a committed seed with clang alone; it writes code with LLVM for Linux and macOS.
+Status: pre-1.0. As of 2026-11-27. Alpha products are built with it; the compiler is written in cancho, with no Rust, release 0.1.1, built from a committed seed with clang alone; it writes code with LLVM for Linux and macOS, and a backend of its own is started and generates no code yet. cancho-os, an operating system written in cancho with no Linux and no C, has booted one real Raspberry Pi 4.
 
 ## The idea
 
@@ -12,6 +12,21 @@ Status: pre-1.0. As of 2026-11-22. Alpha products are built with it; the compile
 - Effect rows are exact: performing an effect you did not declare, or declaring one you do not perform, is refused.
 - Every refusal has a stable rule tag (for example `linear-value-unconsumed`, `effect-not-declared`). Match on the tag, not the prose.
 - Dependencies pin to content hashes. There is no version string.
+
+## What is new
+
+- **The compiler is cancho, and only cancho.** 158 files and about 80,000 lines of it. clang builds a committed seed, the seed builds the compiler, and that compiler builds itself again, byte for byte the same. No Rust is left in the compiler or in its gate; the Rust still in the repository is comparison code (the other side of three benchmarks, of the TLS interop scripts and of one float test). ([where it stands](https://github.com/alpibrusl/cancho/blob/main/docs/status.md), [the seed](https://github.com/alpibrusl/cancho/blob/main/docs/seed.md), [the gate](https://github.com/alpibrusl/cancho/blob/main/docs/gate.md))
+- **Bare metal is a target.** `--target aarch64-none-elf` writes an object with no libc in it, and hardware is two capabilities: `Mmio`, bounded to exactly the registers a driver uses, and `Cpu`, the processor’s own registers by name. On `main`; not in release 0.1.1. ([freestanding](https://github.com/alpibrusl/cancho/blob/main/docs/freestanding.md), [Mmio](https://github.com/alpibrusl/cancho/blob/main/docs/mmio.md), [Cpu](https://github.com/alpibrusl/cancho/blob/main/docs/cpu.md))
+- **cancho-os: an operating system with no Linux and no C.** A kernel written in cancho booted a real Raspberry Pi 4 from its own SD card, joined a network through its own Ethernet driver and gave its shell over SSH; a new kernel is sent to it over SSH and it restarts into it. That is one board, one card and one day of sessions; the rest is measured in QEMU on every change. What is not cancho is one page of boot assembly and the board’s firmware. ([cancho-os](https://github.com/alpibrusl/cancho-os#readme), [what the kernel can touch](https://github.com/alpibrusl/cancho-os/blob/main/docs/authority.txt))
+- **cancho-gpu: a 27B model, pictures, video and speech on a Metal GPU.** Its kernels run Qwen3.8-27B with the reference’s tokens at 27.9 tokens a second, 43.6 with the model’s own draft head; Ollama does 45.5 in the same benchmark run, so it is still the faster. It edits a photograph end to end in 92 s (torch: 54 s, the same edit), makes 17 frames of 640 x 352 video in 44 s, and transcribes speech to the reference’s words. All of it on Apple silicon; nothing has run on NVIDIA hardware. ([benchmark](https://github.com/alpibrusl/cancho-gpu/blob/main/docs/benchmark.md), [images and video](https://github.com/alpibrusl/cancho-gpu/blob/main/docs/diffusion.md), [audio](https://github.com/alpibrusl/cancho-gpu/blob/main/docs/audio.md))
+
+## What is next
+
+- **A backend of cancho’s own, without LLVM.** Today the compiler writes LLVM text and clang makes the machine code. A backend written in cancho is being built, AArch64 first, so that a kernel can rebuild itself on its own board. Built: the design, a reader of the LLVM text the compiler writes, and the AArch64 encoder, held to clang’s assembler over 6,144 instructions. Not built: the code generator, objects and images (steps N3 to N15), and nothing calls the encoder yet. LLVM stays the default until a measured gap says otherwise. ([the design and its status](https://github.com/alpibrusl/cancho/blob/main/docs/native-backend.md), [cancho#840](https://github.com/alpibrusl/cancho/issues/840))
+- **cancho-os: the safety core as the only holder of the servo bus.** The kernel reads two real SO-101 arms and judges a pose with cancho-robot’s safety check, and it cannot move a servo. Next is sending a motion, through the safety core or not at all. ([cancho-os roadmap](https://github.com/alpibrusl/cancho-os/blob/main/docs/ROADMAP.md))
+- **cancho-os: separate programs, the Pi 5, a second target.** Programs run inside the kernel today, on a system lent to them for a block. Not done: separate programs, signed grants and approval, USB, and the Pi 5, whose code is written from the board’s device tree and has never run. A PC with UEFI is the planned second target. ([cancho-os roadmap](https://github.com/alpibrusl/cancho-os/blob/main/docs/ROADMAP.md))
+- **cancho-gpu: Kolibri 1.1 as a model server, in progress.** Aleph Alpha’s Kolibri 1.1 (50 layers, a mixture of experts, 4-bit weights) runs on the Metal GPU with the reference’s greedy tokens, 27 to 30 ms a step, and a server answers cancho-code’s agent, tools included. Open: it does not stream, serves one request at a time, and a first prompt of 11,000 tokens takes two minutes. Speech and music come after recognition. ([Kolibri](https://github.com/alpibrusl/cancho-gpu/blob/main/docs/kolibri.md), [known gaps](https://github.com/alpibrusl/cancho-gpu#known-gaps))
+- **The language is pre-1.0, with no date for 1.0.** It lands one measured slice at a time; the roadmap is the index of what landed and what is open. ([cancho roadmap](https://alpibrusl.github.io/cancho/ROADMAP.html))
 
 ## Commands
 
@@ -48,10 +63,11 @@ Services and tools written in cancho, each with an authority report the compiler
 
 ### Explore new computing boundaries
 
-Hardware, GPUs and robotics. Experimental: read each status before you rely on it.
+Hardware, GPUs, robotics and an operating system. Experimental: read each status before you rely on it.
 
+- [cancho-os](https://github.com/alpibrusl/cancho-os) `built`: Booted a real Raspberry Pi 4 and gave its shell over SSH, with no Linux, no libc and no C; every change to a file keeps the old version and a line in a record of who made it. Page: https://alpibrusl.github.io/cancho-os/ Next: Read where it stands: https://github.com/alpibrusl/cancho-os#readme
 - [cancho-hdl](https://github.com/alpibrusl/cancho-hdl) `built`: A .chw contract is checked (a field overlap is refused as `field-overlap`), and a C header, device tree, SystemVerilog and CMSIS-SVD are generated from it. Page: https://alpibrusl.github.io/cancho-hdl/ Next: See its refusal examples: https://github.com/alpibrusl/cancho-hdl#readme
-- [cancho-gpu](https://github.com/alpibrusl/cancho-gpu) `built`: CUDA C and Metal for 208 test cases (182 emit, 26 refused by both) are byte-identical with an independent implementation’s. Page: https://alpibrusl.github.io/cancho-gpu/ Next: Read its landing page: https://alpibrusl.github.io/cancho-gpu/
+- [cancho-gpu](https://github.com/alpibrusl/cancho-gpu) `built`: CUDA C and Metal for 433 test cases (403 emit, 30 refused) are held byte for byte to recorded output, which first agreed with an independent implementation’s on 218 cases. Page: https://alpibrusl.github.io/cancho-gpu/ Next: Read its landing page: https://alpibrusl.github.io/cancho-gpu/
 - [cancho-robot](https://github.com/alpibrusl/cancho-robot) `design`: Nothing is built yet: research, design stage. Page: https://alpibrusl.github.io/cancho-robot/ Next: Read the plan: https://alpibrusl.github.io/cancho-robot/
 
 ## What is verified, and what is not
@@ -68,23 +84,24 @@ A passing check shows that the checks listed here passed. It does not show a pro
 
 ### Exercised by tests
 
-- 359 refusal fixtures, each naming the rule it must be refused with, and 123 accepting programs. ([tests/reject](https://github.com/alpibrusl/cancho/tree/main/tests/reject), [tests/accept](https://github.com/alpibrusl/cancho/tree/main/tests/accept))
-- The conformance suite builds and runs real programs; the gate (format, clippy, tests) runs on linux-x86_64 and darwin-aarch64. ([CONTRIBUTING](https://github.com/alpibrusl/cancho/blob/main/CONTRIBUTING.md))
+- 446 refusal fixtures, each naming the rule it must be refused with, and 134 accepting programs. ([tests/reject](https://github.com/alpibrusl/cancho/tree/main/tests/reject), [tests/accept](https://github.com/alpibrusl/cancho/tree/main/tests/accept))
+- The fixtures are real programs, built and run; the gate (format, file budget, links, the seed, the fixtures, the compiler’s tests) is written in cancho and shell, with no Rust, and runs on linux-x86_64 and darwin-aarch64. ([the gate](https://github.com/alpibrusl/cancho/blob/main/docs/gate.md), [CONTRIBUTING](https://github.com/alpibrusl/cancho/blob/main/CONTRIBUTING.md))
 - Every checked code block in AGENTS.md is a fixture; changing a rule name to a wrong one turns the suite red (checked by doing it). ([AGENTS.md](https://github.com/alpibrusl/cancho/blob/main/AGENTS.md))
-- A mutation fuzzer feeds token-level edits of every program through parsing, checking and code generation, requiring no panic, a stable print-and-parse, and that what the checker accepts the backend compiles. ([fuzzer](https://github.com/alpibrusl/cancho/blob/main/crates/cancho/tests/fuzz.rs), [design](https://github.com/alpibrusl/cancho/blob/main/docs/fuzzing.md))
+- A mutation fuzzer feeds token-level edits of every program to the compiler, requiring a stable print-and-parse, a rule tag on every refusal (none of them `internal`), and that what the checker accepts the backend compiles. ([fuzzer](https://github.com/alpibrusl/cancho/blob/main/tests/commands/fuzz.sh), [design](https://github.com/alpibrusl/cancho/blob/main/docs/fuzzing.md))
 - Tests are checked by breaking what they cover and watching them fail. ([CONTRIBUTING](https://github.com/alpibrusl/cancho/blob/main/CONTRIBUTING.md), [differential testing](https://github.com/alpibrusl/cancho/blob/main/docs/differential.md))
-- The gate builds the compiler from the committed seed, requires it to reproduce itself byte for byte, and passes 130 programs that must be accepted and 391 that must be refused by the rule they name (measured 2026-11-22, macOS aarch64). ([the gate](https://alpibrusl.github.io/cancho/gate.html))
+- The gate builds the compiler from the committed seed, requires it to reproduce itself byte for byte, and passes 133 of the 134 programs that must be accepted and 437 of the 446 that must be refused by the rule they name; the ten it leaves out are listed with their reasons (measured 2026-11-27, Linux x86-64). ([the gate](https://alpibrusl.github.io/cancho/gate.html), [what is left out](https://github.com/alpibrusl/cancho/blob/main/tests/run.known))
 
 ### Still being established
 
-- Release 0.1.0 writes code with LLVM only, for Linux (x86-64, aarch64) and macOS (Apple silicon); it was install-checked on macOS only, and has no Cranelift or WebAssembly output. ([README](https://github.com/alpibrusl/cancho#install))
+- The compiler writes code with LLVM only, for Linux (x86-64, aarch64) and macOS (Apple silicon), and has no WebAssembly output. A backend of its own is started (a reader and an AArch64 encoder) and generates no code yet. ([README](https://github.com/alpibrusl/cancho#install), [native backend](https://github.com/alpibrusl/cancho/blob/main/docs/native-backend.md))
+- cancho-os has run on one real Raspberry Pi 4, for one day of sessions; everything else about it is measured in QEMU. Its Pi 5 code has never run, it cannot move a servo, and an agent’s key has been tried only in QEMU. ([cancho-os](https://github.com/alpibrusl/cancho-os#readme))
 - Hash stability is not a contract yet: the canonical-AST document is “proposed”, and 39% of this repository’s own historical revisions do not type-check under today’s build. ([canonical AST](https://github.com/alpibrusl/cancho/blob/main/docs/canonical-ast.md), [hash stability](https://github.com/alpibrusl/cancho/blob/main/docs/hash-stability.md))
 - A cancho program has one network bound shared by listening and connecting, so a proxy’s authority report cannot say which upstreams it reaches; cancho-gateway enforces its compiled-in list by exact match and tests it, but the compiler does not vouch for it. ([cancho-gateway](https://github.com/alpibrusl/cancho-gateway))
 - The TLS stack is not independently reviewed (stated in cancho-fetch’s README). ([cancho-fetch](https://github.com/alpibrusl/cancho-fetch))
 - Not evaluated: whether agents do better with cancho-tools than with the usual tools. That needs an agent-in-the-loop evaluation that has not been run. ([cancho#228](https://github.com/alpibrusl/cancho/issues/228))
-- Pre-1.0, supported on linux-x86_64 and darwin-aarch64 only, and its own README says it is not a usable language yet. ([README](https://github.com/alpibrusl/cancho#readme))
+- Pre-1.0, and its own README says it is not a usable language yet. ([README](https://github.com/alpibrusl/cancho#readme))
 
-Counted at cancho 1d4c44e, 2026-10-20. Each line links its evidence; a claim found false is corrected here, in place.
+Counted at cancho 39afb52, 2026-11-27. Each line links its evidence; a claim found false is corrected here, in place.
 
 ## Ecosystem
 
@@ -92,7 +109,7 @@ Stages: `working` = Does what its README claims.; `alpha` = Runs, may change, no
 
 ### Language and compiler
 
-- [cancho](https://github.com/alpibrusl/cancho) `built`: The language and its compiler, written in cancho and built from a committed seed with clang alone. Release 0.1.0. Pre-1.0. Pre-1.0. Page: https://alpibrusl.github.io/cancho/
+- [cancho](https://github.com/alpibrusl/cancho) `built`: The language and its compiler. The compiler is written in cancho and built from a committed seed with clang alone; no Rust is left in it or in its gate. Release 0.1.1. Pre-1.0. Page: https://alpibrusl.github.io/cancho/
 - [cancho-ui](https://github.com/alpibrusl/cancho-ui) `built`: A UI language whose compiler knows what each component is allowed to do. Builds JavaScript and DOM. Authority: a component declares `requires Clock;`; a missing or unused declaration is refused (capability-missing, capability-unused). Page: https://alpibrusl.github.io/cancho-ui/
 
 ### Services
@@ -125,19 +142,20 @@ Stages: `working` = Does what its README claims.; `alpha` = Runs, may change, no
 
 ### Hardware and kernels
 
+- [cancho-os](https://github.com/alpibrusl/cancho-os) `built`: An operating system written in cancho, on bare metal: no Linux or libc under it and no C in it. The drivers, the page tables, the network stack, SSH and the shell are cancho; what is not is one page of boot assembly and the board’s firmware. Authority: the kernel has no extern fn and no Ffi, so the report says it never touches foreign code, and it lists the hardware registers the kernel can reach; checked in CI. Rests on: cancho-tools, cancho-robot. Seen on one real Raspberry Pi 4 (one board, one card, one day of sessions); the rest is measured in QEMU. It reads two SO-101 arms and cannot move them. Not yet: separate programs, USB, the Pi 5 (its code has never run). Page: https://alpibrusl.github.io/cancho-os/
 - [cancho-robot](https://github.com/alpibrusl/cancho-robot) `design`: A robot arm controller: the Feetech servo bus, SO-101 kinematics and a safety core every motion goes through. Research, design stage. Page: https://alpibrusl.github.io/cancho-robot/
-- [cancho-gpu](https://github.com/alpibrusl/cancho-gpu) `built`: A compiler for typed tile kernels (.chx) to CUDA C and Metal, written in cancho; it also runs language models on a Metal GPU. Per its README: Qwen2.5-0.5B and a 27B model agree with reference implementations. Page: https://alpibrusl.github.io/cancho-gpu/
+- [cancho-gpu](https://github.com/alpibrusl/cancho-gpu) `built`: A compiler for typed tile kernels (.chx) to CUDA C and Metal, written in cancho. On a Metal GPU its kernels run and train language models, and make images, video and transcripts of speech. Per its README: Qwen3.8-27B decodes at 27.9 tokens a second, 43.6 with the model’s draft head, against Ollama’s 45.5 in the same run. CUDA is checked against a mock driver: no kernel has run on NVIDIA hardware. Page: https://alpibrusl.github.io/cancho-gpu/
 - [cancho-hdl](https://github.com/alpibrusl/cancho-hdl) `built`: One .chw file declares the software/hardware boundary (registers, fields, interrupts, DMA); it is checked, and a C header, device tree, SystemVerilog RTL and CMSIS-SVD are generated from it. Being ported from Python to cancho: the parser, validator and checker are ported; the generators, diff and report are still Python. Page: https://alpibrusl.github.io/cancho-hdl/
 
 More, including repositories not listed here: https://github.com/orgs/alpibrusl/repositories?q=cancho-&type=public
 
 ## Measured
 
-On macOS aarch64; the gate also runs on linux-x86_64, 2026-11-22 (moves as the work does; https://github.com/alpibrusl/cancho/blob/main/docs/gate.md):
+On Linux x86-64, the compiler built from the committed seed; CI runs the same gate on linux-x86_64 and macOS aarch64, 2026-11-27 (moves as the work does; https://github.com/alpibrusl/cancho/blob/main/docs/gate.md):
 
-- 130 / 130 programs that must be accepted are built and run with the output their directives state, by the gate on every push.
-- 391 / 391 programs that must be refused are refused, each by the rule its file names, by the gate on every push.
-- 58 named rules the refusal programs exercise, stable tags a program can match on.
+- 133 / 134 programs that must be accepted are built and run with the output their directives state, by the gate on every push; the one left out is a program the compiler cannot build yet.
+- 437 / 446 programs that must be refused are refused, each by the rule its file names, by the gate on every push; the 9 left out name a WebAssembly target, which the compiler has not.
+- 59 named rules the refusal programs exercise, stable tags a program can match on.
 
 Record: https://alpibrusl.github.io/cancho/gate.html
 
