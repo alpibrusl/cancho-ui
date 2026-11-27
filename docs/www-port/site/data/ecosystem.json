@@ -215,10 +215,10 @@
       "name": "cancho-gpu",
       "kind": "edge",
       "stage": "built",
-      "summary": "A compiler for typed tile kernels (.chx) to CUDA C and Metal, written in cancho; it also runs language models on a Metal GPU.",
+      "summary": "A compiler for typed tile kernels (.chx) to CUDA C and Metal, written in cancho. On a Metal GPU its kernels run and train language models, and make images, video and transcripts of speech.",
       "url": "https://github.com/alpibrusl/cancho-gpu",
       "page": "https://alpibrusl.github.io/cancho-gpu/",
-      "note": "Per its README: Qwen2.5-0.5B and a 27B model agree with reference implementations."
+      "note": "Per its README: Qwen3.8-27B decodes at 27.9 tokens a second, 43.6 with the model’s draft head, against Ollama’s 45.5 in the same run. CUDA is checked against a mock driver: no kernel has run on NVIDIA hardware."
     },
     {
       "id": "cancho-code",
@@ -588,7 +588,7 @@
         },
         {
           "id": "cancho-gpu",
-          "can": "CUDA C and Metal for 208 test cases (182 emit, 26 refused by both) are byte-identical with an independent implementation’s.",
+          "can": "CUDA C and Metal for 433 test cases (403 emit, 30 refused) are held byte for byte to recorded output, which first agreed with an independent implementation’s on 218 cases.",
           "next": "Read its landing page",
           "next_url": "https://alpibrusl.github.io/cancho-gpu/"
         },
@@ -651,6 +651,24 @@
           "https://github.com/alpibrusl/cancho-os/blob/main/docs/authority.txt"
         ]
       ]
+    },
+    {
+      "title": "cancho-gpu: a 27B model, pictures, video and speech on a Metal GPU.",
+      "text": "Its kernels run Qwen3.8-27B with the reference’s tokens at 27.9 tokens a second, 43.6 with the model’s own draft head; Ollama does 45.5 in the same benchmark run, so it is still the faster. It edits a photograph end to end in 92 s (torch: 54 s, the same edit), makes 17 frames of 640 x 352 video in 44 s, and transcribes speech to the reference’s words. All of it on Apple silicon; nothing has run on NVIDIA hardware.",
+      "evidence": [
+        [
+          "benchmark",
+          "https://github.com/alpibrusl/cancho-gpu/blob/main/docs/benchmark.md"
+        ],
+        [
+          "images and video",
+          "https://github.com/alpibrusl/cancho-gpu/blob/main/docs/diffusion.md"
+        ],
+        [
+          "audio",
+          "https://github.com/alpibrusl/cancho-gpu/blob/main/docs/audio.md"
+        ]
+      ]
     }
   ],
   "roadmap": [
@@ -685,6 +703,20 @@
         [
           "cancho-os roadmap",
           "https://github.com/alpibrusl/cancho-os/blob/main/docs/ROADMAP.md"
+        ]
+      ]
+    },
+    {
+      "title": "cancho-gpu: Kolibri 1.1 as a model server, in progress.",
+      "text": "Aleph Alpha’s Kolibri 1.1 (50 layers, a mixture of experts, 4-bit weights) runs on the Metal GPU with the reference’s greedy tokens, 27 to 30 ms a step, and a server answers cancho-code’s agent, tools included. Open: it does not stream, serves one request at a time, and a first prompt of 11,000 tokens takes two minutes. Speech and music come after recognition.",
+      "evidence": [
+        [
+          "Kolibri",
+          "https://github.com/alpibrusl/cancho-gpu/blob/main/docs/kolibri.md"
+        ],
+        [
+          "known gaps",
+          "https://github.com/alpibrusl/cancho-gpu#known-gaps"
         ]
       ]
     },

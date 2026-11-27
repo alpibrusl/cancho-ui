@@ -3,7 +3,7 @@
 // animation and the ecosystem map: islands, PR B2) and what was dropped or changed on purpose (docs/www-port/dropped.md) are listed, not hidden.
 // The text of the page is the page's; the lists the page's Python generator writes from data/ecosystem.json are `For`s over that file, written out at build.
 
-data Ecosystem { file: "data/ecosystem.json" sha256: "4c1dc66de4a816e0fecf29ecc69274904f004347739d921fa4d0e20f2d67e06f"; }
+data Ecosystem { file: "data/ecosystem.json" sha256: "69804ff103804819e53a4abb3fcb9c3897e3e4db76a01a34d48b15578248a417"; }
 
 page {
     title: "cancho: tools built for agents, not adapted from humans";
